@@ -35,10 +35,12 @@ class BudgetUpdate(BaseModel):
     budgetowner: Optional[str] = None
     description: Optional[str] = None
     budget_frequency: Optional[str] = None
+    variance_mode: Optional[str] = None
 
 
 class BudgetOut(BudgetBase):
     budgetid: int
+    variance_mode: str = "always"
     model_config = {"from_attributes": True}
 
 
@@ -50,6 +52,7 @@ class IncomeTypeBase(BaseModel):
     isfixed: bool = False
     autoinclude: bool = False
     amount: Decimal = Decimal("0.00")
+    linked_account: Optional[str] = None
 
     @model_validator(mode="after")
     def auto_set_autoinclude(self) -> "IncomeTypeBase":
@@ -67,6 +70,7 @@ class IncomeTypeUpdate(BaseModel):
     isfixed: Optional[bool] = None
     autoinclude: Optional[bool] = None
     amount: Optional[Decimal] = None
+    linked_account: Optional[str] = None
 
 
 class IncomeTypeOut(IncomeTypeBase):
@@ -79,17 +83,18 @@ class IncomeTypeOut(IncomeTypeBase):
 class ExpenseItemBase(BaseModel):
     expensedesc: str
     active: bool = True
-    freqtype: Optional[str] = None   # Fixed Day of Month | Days
+    freqtype: Optional[str] = None
     frequency_value: Optional[int] = None
-    paytype: Optional[str] = None    # AUTO | MANUAL
+    paytype: Optional[str] = None
     effectivedate: Optional[datetime] = None
     expenseamount: Decimal = Decimal("0.00")
+    sort_order: int = 0
 
     @field_validator("freqtype")
     @classmethod
     def validate_freqtype(cls, v: Optional[str]) -> Optional[str]:
-        if v is not None and v not in {"Fixed Day of Month", "Days"}:
-            raise ValueError("freqtype must be 'Fixed Day of Month' or 'Days'")
+        if v is not None and v not in {"Always", "Fixed Day of Month", "Every N Days"}:
+            raise ValueError("freqtype must be 'Always', 'Fixed Day of Month', or 'Every N Days'")
         return v
 
     @field_validator("paytype")
@@ -111,7 +116,7 @@ class ExpenseItemUpdate(BaseModel):
     paytype: Optional[str] = None
     effectivedate: Optional[datetime] = None
     expenseamount: Optional[Decimal] = None
-    # caller must indicate a revision-worthy change
+    sort_order: Optional[int] = None
     bump_revision: bool = False
 
 
@@ -121,11 +126,25 @@ class ExpenseItemOut(ExpenseItemBase):
     model_config = {"from_attributes": True}
 
 
+class ExpenseReorderItem(BaseModel):
+    expensedesc: str
+    sort_order: int
+
+
+class PeriodExpenseReorderRequest(BaseModel):
+    items: list[ExpenseReorderItem]
+
+
+class ExpenseItemReorderRequest(BaseModel):
+    items: list[ExpenseReorderItem]
+
+
 # ── FinancialPeriod ───────────────────────────────────────────────────────────
 
 class PeriodGenerateRequest(BaseModel):
     budgetid: int
     startdate: datetime
+    count: int = 1
 
 
 class PeriodOut(BaseModel):
@@ -166,13 +185,31 @@ class PeriodExpenseOut(BaseModel):
     expensedesc: str
     budgetamount: Decimal
     actualamount: Decimal
-    varianceamount: Decimal
+    varianceamount: Decimal = Decimal("0")
     is_oneoff: bool
-    # enriched from expenseitems — optional so existing DB rows without items still work
+    sort_order: int = 0
+    revision_snapshot: int = 0
+    status: str = 'Current'
+    # computed: budgetamount - actualamount (0 when Paid)
+    remaining_amount: Decimal = Decimal("0")
     freqtype: Optional[str] = None
     frequency_value: Optional[int] = None
     paytype: Optional[str] = None
+    effectivedate: Optional[datetime] = None
+    note: Optional[str] = None
     model_config = {"from_attributes": True}
+
+
+class PeriodExpenseNoteUpdate(BaseModel):
+    note: Optional[str] = None
+
+
+class PeriodExpenseStatusUpdate(BaseModel):
+    status: str
+
+
+class PeriodExpenseBudgetUpdate(BaseModel):
+    budgetamount: Decimal
 
 
 class PeriodExpenseActualUpdate(BaseModel):
@@ -183,7 +220,7 @@ class AddExpenseToPeriodRequest(BaseModel):
     budgetid: int
     expensedesc: str
     budgetamount: Decimal
-    scope: str  # "oneoff" | "future"
+    scope: str
 
     @field_validator("scope")
     @classmethod
@@ -197,7 +234,7 @@ class AddIncomeToPeriodRequest(BaseModel):
     budgetid: int
     incomedesc: str
     budgetamount: Decimal
-    scope: str  # "oneoff" | "future"
+    scope: str
 
     @field_validator("scope")
     @classmethod
@@ -207,13 +244,17 @@ class AddIncomeToPeriodRequest(BaseModel):
         return v
 
 
+class SavingsTransferRequest(BaseModel):
+    budgetid: int
+    balancedesc: str
+    amount: Decimal
+
+
 class PeriodExpenseAddActual(BaseModel):
-    """Add an amount to the running actual (additive, not replace)."""
     amount: Decimal
 
 
 class PeriodIncomeAddActual(BaseModel):
-    """Add an amount to the running actual (additive, not replace)."""
     amount: Decimal
 
 
@@ -224,6 +265,7 @@ class InvestmentItemBase(BaseModel):
     active: bool = True
     effectivedate: Optional[datetime] = None
     initial_value: Decimal = Decimal("0.00")
+    linked_account_desc: Optional[str] = None
 
 
 class InvestmentItemCreate(InvestmentItemBase):
@@ -234,11 +276,108 @@ class InvestmentItemUpdate(BaseModel):
     active: Optional[bool] = None
     effectivedate: Optional[datetime] = None
     initial_value: Optional[Decimal] = None
+    linked_account_desc: Optional[str] = None
 
 
 class InvestmentItemOut(InvestmentItemBase):
     budgetid: int
     model_config = {"from_attributes": True}
+
+
+# ── PeriodInvestment ──────────────────────────────────────────────────────────
+
+class PeriodInvestmentOut(BaseModel):
+    finperiodid: int
+    budgetid: int
+    investmentdesc: str
+    opening_value: Decimal
+    closing_value: Decimal
+    budgeted_amount: Decimal = Decimal("0")
+    actualamount: Decimal = Decimal("0")
+    remaining_amount: Decimal = Decimal("0")
+    linked_account_desc: Optional[str] = None
+    model_config = {"from_attributes": True}
+
+
+# ── PeriodInvestmentTransaction ───────────────────────────────────────────────
+
+class InvestmentTxCreate(BaseModel):
+    amount: Decimal
+    note: Optional[str] = None
+    linked_incomedesc: Optional[str] = None
+
+
+class InvestmentTxOut(BaseModel):
+    id: int
+    finperiodid: int
+    budgetid: int
+    investmentdesc: str
+    amount: Decimal
+    note: Optional[str] = None
+    entrydate: datetime
+    linked_incomedesc: Optional[str] = None
+    model_config = {"from_attributes": True}
+
+
+# ── PeriodExpenseEntry ────────────────────────────────────────────────────────
+
+class ExpenseEntryCreate(BaseModel):
+    amount: Decimal
+    note: Optional[str] = None
+
+
+class ExpenseEntryOut(BaseModel):
+    id: int
+    finperiodid: int
+    budgetid: int
+    expensedesc: str
+    amount: Decimal
+    note: Optional[str] = None
+    entrydate: datetime
+    model_config = {"from_attributes": True}
+
+
+# ── BalanceType ───────────────────────────────────────────────────────────────
+
+class BalanceTypeBase(BaseModel):
+    balancedesc: str
+    balance_type: Optional[str] = None
+    opening_balance: Decimal = Decimal("0.00")
+    active: bool = True
+    is_primary: bool = False
+
+
+class BalanceTypeCreate(BalanceTypeBase):
+    pass
+
+
+class BalanceTypeUpdate(BaseModel):
+    balance_type: Optional[str] = None
+    opening_balance: Optional[Decimal] = None
+    active: Optional[bool] = None
+    is_primary: Optional[bool] = None
+
+
+class BalanceTypeOut(BalanceTypeBase):
+    budgetid: int
+    model_config = {"from_attributes": True}
+
+
+# ── PeriodBalance ─────────────────────────────────────────────────────────────
+
+class PeriodBalanceOut(BaseModel):
+    finperiodid: int
+    budgetid: int
+    balancedesc: str
+    balance_type: Optional[str] = None
+    opening_amount: Decimal
+    closing_amount: Decimal
+    movement_amount: Decimal = Decimal("0.00")
+    model_config = {"from_attributes": True}
+
+
+class PeriodBalanceUpdate(BaseModel):
+    movement_amount: Decimal
 
 
 # ── Period detail (combined) ──────────────────────────────────────────────────
@@ -247,3 +386,5 @@ class PeriodDetailOut(BaseModel):
     period: PeriodOut
     incomes: list[PeriodIncomeOut]
     expenses: list[PeriodExpenseOut]
+    investments: list[PeriodInvestmentOut] = []
+    balances: list[PeriodBalanceOut] = []

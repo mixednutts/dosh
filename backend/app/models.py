@@ -1,6 +1,7 @@
+from datetime import datetime as dt
 from sqlalchemy import (
     Boolean, Column, DateTime, ForeignKey, ForeignKeyConstraint, Integer,
-    Numeric, String, UniqueConstraint,
+    Numeric, String, UniqueConstraint, func,
 )
 from sqlalchemy.orm import relationship
 from .database import Base
@@ -21,11 +22,14 @@ class Budget(Base):
     description = Column(String)
     # Weekly | Fortnightly | Monthly
     budget_frequency = Column(String, nullable=False)
+    # always | overspend_only
+    variance_mode = Column(String, nullable=False, default="always")
 
-    periods = relationship("FinancialPeriod", back_populates="budget")
-    income_types = relationship("IncomeType", back_populates="budget")
-    expense_items = relationship("ExpenseItem", back_populates="budget")
-    investment_items = relationship("InvestmentItem", back_populates="budget")
+    periods = relationship("FinancialPeriod", back_populates="budget", cascade="all, delete-orphan")
+    income_types = relationship("IncomeType", back_populates="budget", cascade="all, delete-orphan")
+    expense_items = relationship("ExpenseItem", back_populates="budget", cascade="all, delete-orphan")
+    investment_items = relationship("InvestmentItem", back_populates="budget", cascade="all, delete-orphan")
+    balance_types = relationship("BalanceType", back_populates="budget", cascade="all, delete-orphan")
 
 
 class PayType(Base):
@@ -48,6 +52,8 @@ class FinancialPeriod(Base):
     budget = relationship("Budget", back_populates="periods")
     period_incomes = relationship("PeriodIncome", back_populates="period", cascade="all, delete-orphan")
     period_expenses = relationship("PeriodExpense", back_populates="period", cascade="all, delete-orphan")
+    period_balances = relationship("PeriodBalance", back_populates="period", cascade="all, delete-orphan")
+    period_investments = relationship("PeriodInvestment", back_populates="period", cascade="all, delete-orphan")
 
 
 class IncomeType(Base):
@@ -57,9 +63,9 @@ class IncomeType(Base):
     incomedesc = Column(String, primary_key=True)
     issavings = Column(Boolean, default=False, nullable=False)
     isfixed = Column(Boolean, default=False, nullable=False)
-    # auto-set to True when isfixed is True
     autoinclude = Column(Boolean, default=False, nullable=False)
     amount = Column(Numeric(10, 2), default=0)
+    linked_account = Column(String, nullable=True)
 
     budget = relationship("Budget", back_populates="income_types")
 
@@ -68,7 +74,6 @@ class PeriodIncome(Base):
     __tablename__ = "periodincome"
 
     finperiodid = Column(Integer, ForeignKey("financialperiods.finperiodid"), primary_key=True)
-    # FK to incometypes(budgetid, incomedesc) via application logic
     budgetid = Column(Integer, nullable=False)
     incomedesc = Column(String, primary_key=True)
     budgetamount = Column(Numeric(10, 2), default=0)
@@ -84,17 +89,13 @@ class ExpenseItem(Base):
     budgetid = Column(Integer, ForeignKey("budgets.budgetid"), primary_key=True)
     expensedesc = Column(String, primary_key=True)
     active = Column(Boolean, default=True, nullable=False)
-    # Fixed Day of Month | Days
     freqtype = Column(String)
-    # For "Fixed Day of Month": day of month (1-31)
-    # For "Days": interval in days (e.g. 30)
     frequency_value = Column(Integer)
-    # AUTO | MANUAL
     paytype = Column(String, ForeignKey("paytypes.paytype"))
     revisionnum = Column(Integer, default=0, nullable=False)
-    # first due / commencement date
     effectivedate = Column(DateTime)
     expenseamount = Column(Numeric(10, 2), default=0)
+    sort_order = Column(Integer, default=0, nullable=False)
 
     budget = relationship("Budget", back_populates="expense_items")
     period_expenses = relationship("PeriodExpense", back_populates="expense_item")
@@ -107,10 +108,17 @@ class PeriodExpense(Base):
     budgetid = Column(Integer, primary_key=True)
     expensedesc = Column(String, primary_key=True)
     budgetamount = Column(Numeric(10, 2), default=0)
+    # actualamount is kept in sync with SUM of periodexpense_transactions
     actualamount = Column(Numeric(10, 2), default=0)
     varianceamount = Column(Numeric(10, 2), default=0)
-    # True = added as a one-off to this period only
     is_oneoff = Column(Boolean, default=False, nullable=False)
+    sort_order = Column(Integer, default=0, nullable=False)
+    # snapshot of revisionnum at time of period generation — identifies historical revision
+    revision_snapshot = Column(Integer, default=0, nullable=False)
+    note = Column(String, nullable=True)
+
+    # Current | Paid | Revised
+    status = Column(String, default='Current', nullable=False)
 
     period = relationship("FinancialPeriod", back_populates="period_expenses")
     expense_item = relationship(
@@ -120,11 +128,87 @@ class PeriodExpense(Base):
         foreign_keys="[PeriodExpense.budgetid, PeriodExpense.expensedesc]",
         back_populates="period_expenses",
     )
+    entries = relationship("PeriodExpenseEntry", back_populates="period_expense", cascade="all, delete-orphan")
 
     __table_args__ = (
         ForeignKeyConstraint(
             ["budgetid", "expensedesc"],
             ["expenseitems.budgetid", "expenseitems.expensedesc"],
+        ),
+    )
+
+
+class PeriodExpenseEntry(Base):
+    """Individual expense transactions against a period expense line item."""
+    __tablename__ = "periodexpense_transactions"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    finperiodid = Column(Integer, nullable=False)
+    budgetid = Column(Integer, nullable=False)
+    expensedesc = Column(String, nullable=False)
+    # positive = expense incurred, negative = refund/credit
+    amount = Column(Numeric(10, 2), nullable=False)
+    note = Column(String)
+    entrydate = Column(DateTime, default=dt.utcnow)
+
+    period_expense = relationship(
+        "PeriodExpense",
+        primaryjoin="and_(PeriodExpenseEntry.finperiodid == PeriodExpense.finperiodid, "
+                    "PeriodExpenseEntry.budgetid == PeriodExpense.budgetid, "
+                    "PeriodExpenseEntry.expensedesc == PeriodExpense.expensedesc)",
+        foreign_keys="[PeriodExpenseEntry.finperiodid, PeriodExpenseEntry.budgetid, PeriodExpenseEntry.expensedesc]",
+        back_populates="entries",
+    )
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["finperiodid", "budgetid", "expensedesc"],
+            ["periodexpenses.finperiodid", "periodexpenses.budgetid", "periodexpenses.expensedesc"],
+        ),
+    )
+
+
+class BalanceType(Base):
+    """Account balance definitions per budget (bank, savings, cash, etc.)."""
+    __tablename__ = "balancetypes"
+
+    budgetid = Column(Integer, ForeignKey("budgets.budgetid"), primary_key=True)
+    balancedesc = Column(String, primary_key=True)
+    balance_type = Column(String)
+    opening_balance = Column(Numeric(10, 2), default=0)
+    active = Column(Boolean, default=True, nullable=False)
+    is_primary = Column(Boolean, default=False, nullable=False)
+
+    budget = relationship("Budget", back_populates="balance_types")
+    period_balances = relationship("PeriodBalance", back_populates="balance_type_rel")
+
+
+class PeriodBalance(Base):
+    """Opening/closing balance snapshot per period per account."""
+    __tablename__ = "periodbalances"
+
+    finperiodid = Column(Integer, ForeignKey("financialperiods.finperiodid"), primary_key=True)
+    budgetid = Column(Integer, nullable=False)
+    balancedesc = Column(String, primary_key=True)
+    opening_amount = Column(Numeric(10, 2), default=0)
+    closing_amount = Column(Numeric(10, 2), default=0)
+
+    # movement tracked; closing = opening + movement
+    movement_amount = Column(Numeric(10, 2), default=0)
+
+    period = relationship("FinancialPeriod", back_populates="period_balances")
+    balance_type_rel = relationship(
+        "BalanceType",
+        primaryjoin="and_(PeriodBalance.budgetid == BalanceType.budgetid, "
+                    "PeriodBalance.balancedesc == BalanceType.balancedesc)",
+        foreign_keys="[PeriodBalance.budgetid, PeriodBalance.balancedesc]",
+        back_populates="period_balances",
+    )
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["budgetid", "balancedesc"],
+            ["balancetypes.budgetid", "balancetypes.balancedesc"],
         ),
     )
 
@@ -137,5 +221,73 @@ class InvestmentItem(Base):
     active = Column(Boolean, default=True, nullable=False)
     effectivedate = Column(DateTime)
     initial_value = Column(Numeric(10, 2), default=0)
+    # optional link to an account balance (contributions credited to that account)
+    linked_account_desc = Column(String, nullable=True)
 
     budget = relationship("Budget", back_populates="investment_items")
+    period_investments = relationship("PeriodInvestment", back_populates="investment_item")
+
+
+class PeriodInvestment(Base):
+    """Per-period investment value tracking."""
+    __tablename__ = "periodinvestments"
+
+    finperiodid = Column(Integer, ForeignKey("financialperiods.finperiodid"), primary_key=True)
+    budgetid = Column(Integer, nullable=False)
+    investmentdesc = Column(String, primary_key=True)
+    # opening = prev period closing, or initial_value if first period
+    opening_value = Column(Numeric(10, 2), default=0)
+    # closing synced from opening + sum(transactions)
+    closing_value = Column(Numeric(10, 2), default=0)
+    # budget/actual tracking (like expense items)
+    budgeted_amount = Column(Numeric(10, 2), default=0)
+    actualamount = Column(Numeric(10, 2), default=0)
+
+    period = relationship("FinancialPeriod", back_populates="period_investments")
+    investment_item = relationship(
+        "InvestmentItem",
+        primaryjoin="and_(PeriodInvestment.budgetid == InvestmentItem.budgetid, "
+                    "PeriodInvestment.investmentdesc == InvestmentItem.investmentdesc)",
+        foreign_keys="[PeriodInvestment.budgetid, PeriodInvestment.investmentdesc]",
+        back_populates="period_investments",
+    )
+    transactions = relationship("PeriodInvestmentTransaction", back_populates="period_investment", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["budgetid", "investmentdesc"],
+            ["investmentitems.budgetid", "investmentitems.investmentdesc"],
+        ),
+    )
+
+
+class PeriodInvestmentTransaction(Base):
+    """Individual investment transactions (buy, sell, dividend, etc.)."""
+    __tablename__ = "periodinvestment_transactions"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    finperiodid = Column(Integer, nullable=False)
+    budgetid = Column(Integer, nullable=False)
+    investmentdesc = Column(String, nullable=False)
+    # positive = increase in value, negative = decrease/withdrawal
+    amount = Column(Numeric(10, 2), nullable=False)
+    note = Column(String)
+    entrydate = Column(DateTime, default=dt.utcnow)
+    # optional link to a period income line (e.g. savings transfer)
+    linked_incomedesc = Column(String, nullable=True)
+
+    period_investment = relationship(
+        "PeriodInvestment",
+        primaryjoin="and_(PeriodInvestmentTransaction.finperiodid == PeriodInvestment.finperiodid, "
+                    "PeriodInvestmentTransaction.budgetid == PeriodInvestment.budgetid, "
+                    "PeriodInvestmentTransaction.investmentdesc == PeriodInvestment.investmentdesc)",
+        foreign_keys="[PeriodInvestmentTransaction.finperiodid, PeriodInvestmentTransaction.budgetid, PeriodInvestmentTransaction.investmentdesc]",
+        back_populates="transactions",
+    )
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["finperiodid", "budgetid", "investmentdesc"],
+            ["periodinvestments.finperiodid", "periodinvestments.budgetid", "periodinvestments.investmentdesc"],
+        ),
+    )

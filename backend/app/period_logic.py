@@ -44,13 +44,18 @@ def expense_occurs_in_period(
     Return the total budgeted amount for an expense within a period,
     or None if it does not occur.
 
+    Always: always included once per period.
+
     Fixed Day of Month: frequency_value = day-of-month (1–31).
         Checks every month within [period_start, period_end] to see if
         that day-of-month falls within the range.
 
-    Days: frequency_value = interval in days.
+    Every N Days: frequency_value = interval in days.
         Starting from effectivedate, find all occurrences within the period.
     """
+    if freqtype == "Always":
+        return expense_amount
+
     if freqtype == "Fixed Day of Month":
         day = frequency_value
         count = 0
@@ -70,13 +75,11 @@ def expense_occurs_in_period(
             return None
         return expense_amount * count
 
-    elif freqtype == "Days":
+    elif freqtype == "Every N Days":
         if frequency_value <= 0:
             return None
-        # Find first occurrence on or after period_start
         if effectivedate > period_end:
             return None
-        # advance effectivedate to first occurrence >= period_start
         if effectivedate < period_start:
             delta = (period_start - effectivedate).days
             steps = (delta + frequency_value - 1) // frequency_value
@@ -87,7 +90,6 @@ def expense_occurs_in_period(
         if first_in_period > period_end:
             return None
 
-        # Count all occurrences
         count = 0
         current = first_in_period
         while current <= period_end:
