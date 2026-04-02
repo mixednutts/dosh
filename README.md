@@ -256,6 +256,7 @@ Additional budget route surface now includes:
 - Decide whether app timezone should remain deployment-driven through `TZ` or eventually become a user-configurable setting.
 - Extend the budget health momentum model so corrective action in future periods can influence the visible trend more directly.
 - Assess a revision reason code pick list when revising an expense item, especially if revision reporting becomes more structured later.
+- Consider a `Health Check for Current Period` card on the budget summary page to surface immediate issues such as negative surplus or other active-period warning signals.
 
 ## Development Roadmap
 
