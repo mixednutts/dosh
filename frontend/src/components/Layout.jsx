@@ -7,14 +7,71 @@ import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import clsx from 'clsx'
 import { useDarkMode } from '../hooks/useDarkMode'
-import { getBudgets, getPeriodDetail } from '../api/client'
+import { getBudgets, getPeriodDetail, getPeriodsForBudget } from '../api/client'
 import { format, parseISO } from 'date-fns'
+
+function BudgetPeriodsNav({ budgetId, activePeriodId, defaultOpen, onNav }) {
+  const [open, setOpen] = useState(defaultOpen)
+
+  useEffect(() => {
+    if (defaultOpen) setOpen(true)
+  }, [defaultOpen])
+
+  const { data: periods = [] } = useQuery({
+    queryKey: ['periods', budgetId],
+    queryFn: () => getPeriodsForBudget(budgetId),
+    staleTime: 60_000,
+  })
+
+  return (
+    <div className="ml-3 mt-0.5">
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="flex w-full items-center gap-1 rounded px-2 py-1 text-left text-[11px] uppercase tracking-wide text-dosh-400 transition-colors hover:bg-dosh-800 hover:text-white"
+      >
+        {open ? <ChevronDownIcon className="h-3 w-3 shrink-0" /> : <ChevronRightIcon className="h-3 w-3 shrink-0" />}
+        Periods
+      </button>
+      {open && (
+        <div className="ml-2 mt-0.5 space-y-0.5 border-l border-dosh-700 pl-2">
+          {periods.length === 0 ? (
+            <span className="block px-2 py-1 text-xs text-dosh-400">No periods yet</span>
+          ) : (
+            [...periods]
+              .sort((a, b) => parseISO(b.startdate) - parseISO(a.startdate))
+              .map(period => (
+                <Link
+                  key={period.finperiodid}
+                  to={`/periods/${period.finperiodid}`}
+                  onClick={onNav}
+                  className={clsx(
+                    'flex items-center gap-1 truncate rounded px-2 py-1 text-xs transition-colors',
+                    period.finperiodid === activePeriodId
+                      ? 'bg-dosh-600 font-semibold text-white'
+                      : 'text-dosh-300 hover:bg-dosh-800 hover:text-white'
+                  )}
+                >
+                  <ChevronRightIcon className="h-3 w-3 shrink-0" />
+                  {format(parseISO(period.startdate), 'dd MMM')} - {format(parseISO(period.enddate), 'dd MMM')}
+                </Link>
+              ))
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
 
 function BudgetsDrilldown({ onNav }) {
   const budgetMatch = useMatch('/budgets/:budgetId')
+  const budgetSetupMatch = useMatch('/budgets/:budgetId/setup')
   const periodMatch = useMatch('/periods/:periodId')
 
-  const activeBudgetId = budgetMatch ? parseInt(budgetMatch.params.budgetId, 10) : null
+  const activeBudgetId = budgetMatch
+    ? parseInt(budgetMatch.params.budgetId, 10)
+    : budgetSetupMatch
+      ? parseInt(budgetSetupMatch.params.budgetId, 10)
+      : null
   const activePeriodId = periodMatch ? parseInt(periodMatch.params.periodId, 10) : null
 
   const { data: periodData } = useQuery({
@@ -52,18 +109,12 @@ function BudgetsDrilldown({ onNav }) {
             >
               {b.description || 'Untitled'}
             </Link>
-            {isActive && activePeriodId && periodData?.period && (
-              <div className="ml-3 mt-0.5 border-l border-dosh-700 pl-2">
-                <Link
-                  to={`/periods/${periodData.period.finperiodid}`}
-                  onClick={onNav}
-                  className="flex items-center gap-1 truncate rounded bg-dosh-600 px-2 py-1 text-xs font-semibold text-white"
-                >
-                  <ChevronRightIcon className="h-3 w-3 shrink-0" />
-                  {format(parseISO(periodData.period.startdate), 'dd MMM')}-{format(parseISO(periodData.period.enddate), 'dd MMM')}
-                </Link>
-              </div>
-            )}
+            <BudgetPeriodsNav
+              budgetId={b.budgetid}
+              activePeriodId={activePeriodId}
+              defaultOpen={isActive}
+              onNav={onNav}
+            />
           </div>
         )
       })}
@@ -77,8 +128,9 @@ export default function Layout() {
   const [budgetsExpanded, setBudgetsExpanded] = useState(false)
 
   const budgetMatch = useMatch('/budgets/:budgetId')
+  const budgetSetupMatch = useMatch('/budgets/:budgetId/setup')
   const periodMatch = useMatch('/periods/:periodId')
-  const onBudgetOrPeriod = !!(budgetMatch || periodMatch)
+  const onBudgetOrPeriod = !!(budgetMatch || budgetSetupMatch || periodMatch)
 
   useEffect(() => {
     if (onBudgetOrPeriod) setBudgetsExpanded(true)

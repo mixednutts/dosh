@@ -84,7 +84,7 @@ function BudgetTableRows({ budget }) {
           <p className="text-xs text-gray-500 dark:text-gray-400">{budget.budgetowner}</p>
         </td>
         <td className="table-cell-muted"><span className="badge-gray">{budget.budget_frequency}</span></td>
-        <td colSpan={7} className="table-cell-muted italic">No periods — <Link to={`/budgets/${budget.budgetid}`} className="text-dosh-600 dark:text-dosh-400 hover:underline">set up budget</Link></td>
+        <td colSpan={7} className="table-cell-muted italic">No periods — <Link to={`/budgets/${budget.budgetid}/setup`} className="text-dosh-600 dark:text-dosh-400 hover:underline">set up budget</Link></td>
       </tr>
     )
   }

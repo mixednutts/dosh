@@ -90,7 +90,9 @@ export default function BudgetDetailPage() {
           <div className="mb-1 flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
             <Link to="/budgets" className="hover:underline">Budgets</Link>
             <ChevronRightIcon className="h-3 w-3" />
-            <span className="font-medium text-gray-800 dark:text-gray-200">{budget.description || 'Untitled'}</span>
+            <Link to={`/budgets/${id}`} className="hover:underline">{budget.description || 'Untitled'}</Link>
+            <ChevronRightIcon className="h-3 w-3" />
+            <span className="font-medium text-gray-800 dark:text-gray-200">Setup</span>
           </div>
           <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">{budget.description || 'Untitled Budget'}</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">{budget.budgetowner} · {budget.budget_frequency}</p>
@@ -137,7 +139,7 @@ export default function BudgetDetailPage() {
           </div>
         </div>
         <div className="mt-4 rounded-xl border border-dosh-200 bg-dosh-50 px-4 py-3 text-sm text-dosh-800 dark:border-dosh-800 dark:bg-dosh-900/20 dark:text-dosh-200">
-          Periods are managed from the main Budgets page. Use this page to build and maintain the setup that future periods will be generated from.
+          Periods are managed from this budget's periods page. Use this page to build and maintain the setup that future periods will be generated from.
         </div>
       </SectionShell>
 

@@ -51,7 +51,7 @@ export default function BudgetsPage() {
     mutationFn: createBudget,
     onSuccess: (newBudget) => {
       qc.invalidateQueries({ queryKey: ['budgets'] })
-      navigate(`/budgets/${newBudget.budgetid}`)
+      navigate(`/budgets/${newBudget.budgetid}/setup`)
     },
   })
 
@@ -97,6 +97,9 @@ export default function BudgetsPage() {
                   {b.description || 'Untitled'}
                 </Link>
                 <p className="text-xs text-gray-500 dark:text-gray-400">{b.budgetowner} · {b.budget_frequency}</p>
+                <Link to={`/budgets/${b.budgetid}/setup`} className="mt-1 inline-block text-xs text-gray-500 hover:text-dosh-700 dark:text-gray-400 dark:hover:text-dosh-400">
+                  Open setup
+                </Link>
               </div>
               <div className="flex gap-2">
                 <button className="btn-secondary" onClick={() => setModal({ mode: 'edit', budget: b })}>

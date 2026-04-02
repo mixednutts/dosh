@@ -93,8 +93,6 @@ export const deleteBalanceType = (budgetId, desc) =>
 // ── Period Balances ───────────────────────────────────────────────────────────
 export const getPeriodBalances = periodId =>
   api.get(`/periods/${periodId}/balances`).then(r => r.data)
-export const updatePeriodBalance = (periodId, desc, movement_amount) =>
-  api.patch(`/periods/${periodId}/balances/${encodeURIComponent(desc)}`, { movement_amount }).then(r => r.data)
 
 export const setPeriodExpenseStatus = (periodId, desc, status, revision_comment = null) =>
   api.patch(`/periods/${periodId}/expense/${encodeURIComponent(desc)}/status`, { status, revision_comment }).then(r => r.data)

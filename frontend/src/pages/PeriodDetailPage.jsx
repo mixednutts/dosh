@@ -13,7 +13,7 @@ import {
   addExpenseToPeriod, addIncomeToPeriod, savingsTransfer,
   getExpenseItems, getIncomeTypes, createExpenseItem,
   getExpenseEntries, addExpenseEntry, deleteExpenseEntry,
-  updatePeriodBalance, reorderPeriodExpenses,
+  reorderPeriodExpenses,
   getInvestmentTransactions, addInvestmentTransaction, deleteInvestmentTransaction,
   setPeriodExpenseStatus, updatePeriodExpenseBudget, removePeriodExpense,
   updatePeriodInvestmentBudget, getBalanceTypes, updateExpenseNote, removePeriodIncome,
@@ -803,7 +803,6 @@ export default function PeriodDetailPage() {
   const lock = useMutation({ mutationFn: islocked => setPeriodLock(id, islocked), onSuccess: () => qc.invalidateQueries({ queryKey: ['period', id] }) })
   const setIncome = useMutation({ mutationFn: ({ desc, val }) => updateIncomeActual(id, desc, val), onSuccess: () => qc.invalidateQueries({ queryKey: ['period', id] }) })
   const addIncome = useMutation({ mutationFn: ({ desc, val }) => addToIncomeActual(id, desc, val), onSuccess: () => qc.invalidateQueries({ queryKey: ['period', id] }) })
-  const updateBalance = useMutation({ mutationFn: ({ desc, movement }) => updatePeriodBalance(id, desc, movement), onSuccess: () => qc.invalidateQueries({ queryKey: ['period', id] }) })
   const setExpenseStatus = useMutation({ mutationFn: ({ desc, status, revisionComment = null }) => setPeriodExpenseStatus(id, desc, status, revisionComment), onSuccess: () => qc.invalidateQueries({ queryKey: ['period', id] }) })
   const editExpenseBudget = useMutation({ mutationFn: ({ desc, budgetamount }) => updatePeriodExpenseBudget(id, desc, budgetamount), onSuccess: () => qc.invalidateQueries({ queryKey: ['period', id] }) })
   const deleteExpenseLine = useMutation({ mutationFn: desc => removePeriodExpense(id, desc), onSuccess: () => qc.invalidateQueries({ queryKey: ['period', id] }) })
@@ -870,7 +869,7 @@ export default function PeriodDetailPage() {
             <ChevronRightIcon className="w-3 h-3" />
             {budget && <Link to={`/budgets/${budget.budgetid}`} className="hover:underline">{budget.description}</Link>}
             <ChevronRightIcon className="w-3 h-3" />
-            <span className="text-gray-800 dark:text-gray-200">Expense Tracking</span>
+            <span className="text-gray-800 dark:text-gray-200">Period Details</span>
           </div>
           <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
             {format(parseISO(period.startdate), 'dd MMM yyyy')} – {format(parseISO(period.enddate), 'dd MMM yyyy')}
@@ -1185,7 +1184,9 @@ export default function PeriodDetailPage() {
                 <th className="table-header-cell text-left">Account</th>
                 <th className="table-header-cell text-left">Type</th>
                 <th className="table-header-cell text-right">Opening</th>
-                <th className="table-header-cell text-right col-actual">Movement ✎</th>
+                <th className="table-header-cell text-right col-actual">
+                  <span title="Calculated from account-linked transactions and transfers">Movement</span>
+                </th>
                 <th className="table-header-cell text-right">Closing</th>
               </tr>
             </thead>
@@ -1198,9 +1199,9 @@ export default function PeriodDetailPage() {
                     <td className="table-cell-muted">{b.balance_type || '—'}</td>
                     <td className="table-cell-muted text-right">{fmt(b.opening_amount)}</td>
                     <td className="table-cell text-right col-actual">
-                      {!locked ? (
-                        <BudgetEditCell value={b.movement_amount ?? 0} onSave={val => updateBalance.mutate({ desc: b.balancedesc, movement: val })} allowNegative />
-                      ) : <span className={`font-medium ${Number(b.movement_amount ?? 0) >= 0 ? 'text-dosh-600 dark:text-dosh-400' : 'text-red-600 dark:text-red-400'}`}>{fmt(b.movement_amount ?? 0)}</span>}
+                      <span className={`font-medium ${Number(b.movement_amount ?? 0) >= 0 ? 'text-dosh-600 dark:text-dosh-400' : 'text-red-600 dark:text-red-400'}`}>
+                        {fmt(b.movement_amount ?? 0)}
+                      </span>
                     </td>
                     <td className="table-cell text-right">
                       <span className={`font-medium ${closing >= 0 ? 'text-dosh-600 dark:text-dosh-400' : 'text-red-600 dark:text-red-400'}`}>{fmt(closing)}</span>

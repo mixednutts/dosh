@@ -1,4 +1,3 @@
-from decimal import Decimal
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from ..database import get_db
@@ -99,14 +98,4 @@ def update_period_balance(
     payload: PeriodBalanceUpdate,
     db: Session = Depends(get_db),
 ):
-    pb = db.get(PeriodBalance, (finperiodid, balancedesc))
-    if not pb:
-        raise HTTPException(404, "Period balance not found")
-    pb.movement_amount = payload.movement_amount
-    pb.closing_amount = Decimal(str(pb.opening_amount)) + payload.movement_amount
-    db.commit()
-    db.refresh(pb)
-    bt = db.get(BalanceType, (pb.budgetid, pb.balancedesc))
-    d = PeriodBalanceOut.model_validate(pb)
-    d.balance_type = bt.balance_type if bt else None
-    return d
+    raise HTTPException(405, "Period balance movement is calculated from transactions and cannot be edited directly")

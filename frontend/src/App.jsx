@@ -3,6 +3,7 @@ import Layout from './components/Layout'
 import Dashboard from './pages/Dashboard'
 import BudgetsPage from './pages/BudgetsPage'
 import BudgetDetailPage from './pages/BudgetDetailPage'
+import BudgetPeriodsPage from './pages/BudgetPeriodsPage'
 import PeriodDetailPage from './pages/PeriodDetailPage'
 
 export default function App() {
@@ -13,7 +14,8 @@ export default function App() {
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="budgets" element={<BudgetsPage />} />
-          <Route path="budgets/:budgetId" element={<BudgetDetailPage />} />
+          <Route path="budgets/:budgetId" element={<BudgetPeriodsPage />} />
+          <Route path="budgets/:budgetId/setup" element={<BudgetDetailPage />} />
           <Route path="periods/:periodId" element={<PeriodDetailPage />} />
         </Route>
       </Routes>
