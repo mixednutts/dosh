@@ -1,5 +1,7 @@
-from datetime import timedelta
+from collections import defaultdict
+from datetime import datetime, timedelta
 from decimal import Decimal
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from ..database import get_db
@@ -9,7 +11,7 @@ from ..models import (
     InvestmentItem, PeriodInvestment,
 )
 from ..schemas import (
-    PeriodGenerateRequest, PeriodOut, PeriodDetailOut,
+    PeriodGenerateRequest, PeriodOut, PeriodDetailOut, PeriodSummaryOut,
     PeriodLockRequest, PeriodIncomeOut, PeriodExpenseOut,
     PeriodIncomeActualUpdate, PeriodExpenseActualUpdate,
     PeriodIncomeAddActual, PeriodExpenseAddActual,
@@ -77,6 +79,39 @@ def _enrich_investments(investments: list, db) -> list[PeriodInvestmentOut]:
     return out
 
 
+def _period_status(period: FinancialPeriod, now: datetime) -> str:
+    if period.startdate <= now <= period.enddate:
+        return "Current"
+    if period.startdate > now:
+        return "Future"
+    return "Historical"
+
+
+def _projected_savings(period_status: str, savings_budget: Decimal, savings_actual: Decimal) -> Decimal:
+    if period_status == "Historical":
+        return savings_actual
+    if period_status == "Current":
+        if savings_actual <= Decimal("0"):
+            return savings_budget
+        if savings_actual < savings_budget:
+            return savings_budget - savings_actual
+        return savings_actual
+    return savings_budget
+
+
+def _pick_auto_surplus_investment(investment_items: list[InvestmentItem]) -> Optional[InvestmentItem]:
+    for item in investment_items:
+        if item.active and item.is_primary:
+            return item
+    return None
+
+
+def _normalize_period_datetime(value: datetime) -> datetime:
+    if value.tzinfo is not None:
+        value = value.replace(tzinfo=None)
+    return value.replace(hour=0, minute=0, second=0, microsecond=0)
+
+
 # ── Generate ──────────────────────────────────────────────────────────────────
 
 @router.post("/generate", response_model=PeriodOut, status_code=201)
@@ -114,8 +149,9 @@ def generate_period(payload: PeriodGenerateRequest, db: Session = Depends(get_db
         InvestmentItem.budgetid == payload.budgetid,
         InvestmentItem.active == True,  # noqa: E712
     ).all()
+    auto_surplus_target = _pick_auto_surplus_investment(investment_items) if budget.auto_add_surplus_to_investment else None
 
-    current_start = payload.startdate.replace(hour=0, minute=0, second=0, microsecond=0)
+    current_start = _normalize_period_datetime(payload.startdate)
     last_period = None
 
     for _i in range(max(1, payload.count)):
@@ -156,6 +192,7 @@ def generate_period(payload: PeriodGenerateRequest, db: Session = Depends(get_db
             ))
 
         # Populate expense rows for active expense items
+        projected_expense_budget = Decimal("0.00")
         for ei in expense_items:
             if ei.freqtype == "Always":
                 budgeted = Decimal(str(ei.expenseamount))
@@ -172,6 +209,7 @@ def generate_period(payload: PeriodGenerateRequest, db: Session = Depends(get_db
                 budgeted = None
 
             if budgeted is not None:
+                projected_expense_budget += budgeted
                 db.add(PeriodExpense(
                     finperiodid=period.finperiodid,
                     budgetid=payload.budgetid,
@@ -211,6 +249,12 @@ def generate_period(payload: PeriodGenerateRequest, db: Session = Depends(get_db
                 closing_amount=opening,
             ))
 
+        projected_period_surplus = sum(
+            (Decimal(str(it.amount)) if it.isfixed else Decimal("0.00") for it in income_types),
+            Decimal("0.00"),
+        ) - projected_expense_budget
+        auto_surplus_amount = projected_period_surplus if projected_period_surplus > Decimal("0.00") else Decimal("0.00")
+
         # Populate investment rows
         for ii in investment_items:
             if prev_period:
@@ -218,13 +262,16 @@ def generate_period(payload: PeriodGenerateRequest, db: Session = Depends(get_db
                 opening = Decimal(str(prev_pi.closing_value)) if prev_pi else Decimal(str(ii.initial_value))
             else:
                 opening = Decimal(str(ii.initial_value))
+            budgeted_amount = Decimal("0.00")
+            if auto_surplus_target and ii.investmentdesc == auto_surplus_target.investmentdesc:
+                budgeted_amount = auto_surplus_amount
             db.add(PeriodInvestment(
                 finperiodid=period.finperiodid,
                 budgetid=payload.budgetid,
                 investmentdesc=ii.investmentdesc,
                 opening_value=opening,
                 closing_value=opening,
-                budgeted_amount=Decimal("0.00"),
+                budgeted_amount=budgeted_amount,
                 actualamount=Decimal("0.00"),
             ))
 
@@ -248,6 +295,99 @@ def list_periods_for_budget(budgetid: int, db: Session = Depends(get_db)):
         .order_by(FinancialPeriod.startdate)
         .all()
     )
+
+
+@router.get("/budget/{budgetid}/summary", response_model=list[PeriodSummaryOut])
+def list_period_summaries_for_budget(budgetid: int, db: Session = Depends(get_db)):
+    if not db.get(Budget, budgetid):
+        raise HTTPException(404, "Budget not found")
+
+    periods = (
+        db.query(FinancialPeriod)
+        .filter(FinancialPeriod.budgetid == budgetid)
+        .order_by(FinancialPeriod.startdate)
+        .all()
+    )
+
+    if not periods:
+        return []
+
+    period_ids = [period.finperiodid for period in periods]
+    income_rows = (
+        db.query(PeriodIncome)
+        .filter(PeriodIncome.finperiodid.in_(period_ids))
+        .all()
+    )
+    expense_rows = (
+        db.query(PeriodExpense)
+        .filter(PeriodExpense.finperiodid.in_(period_ids))
+        .all()
+    )
+    investment_rows = (
+        db.query(PeriodInvestment)
+        .filter(PeriodInvestment.finperiodid.in_(period_ids))
+        .all()
+    )
+    incomes_by_period: dict[int, list[PeriodIncome]] = defaultdict(list)
+    expenses_by_period: dict[int, list[PeriodExpense]] = defaultdict(list)
+    investments_by_period: dict[int, list[PeriodInvestment]] = defaultdict(list)
+
+    for row in income_rows:
+        incomes_by_period[row.finperiodid].append(row)
+    for row in expense_rows:
+        expenses_by_period[row.finperiodid].append(row)
+    for row in investment_rows:
+        investments_by_period[row.finperiodid].append(row)
+
+    now = datetime.utcnow()
+    summaries: list[PeriodSummaryOut] = []
+    cumulative_projected_savings = Decimal("0.00")
+
+    for period in periods:
+        incomes = incomes_by_period.get(period.finperiodid, [])
+        expenses = expenses_by_period.get(period.finperiodid, [])
+        investments = investments_by_period.get(period.finperiodid, [])
+
+        income_budget = sum((Decimal(str(row.budgetamount or 0)) for row in incomes), Decimal("0.00"))
+        income_actual = sum((Decimal(str(row.actualamount or 0)) for row in incomes), Decimal("0.00"))
+        expense_budget = sum((
+            Decimal(str(row.actualamount if (getattr(row, "status", "Current") or "Current") == "Paid" else row.budgetamount or 0))
+            for row in expenses
+        ), Decimal("0.00"))
+        expense_actual = sum((Decimal(str(row.actualamount or 0)) for row in expenses), Decimal("0.00"))
+        investment_budget = sum((Decimal(str(row.budgeted_amount or 0)) for row in investments), Decimal("0.00"))
+        investment_actual = sum((Decimal(str(row.actualamount or 0)) for row in investments), Decimal("0.00"))
+
+        savings_budget = investment_budget
+        savings_actual = investment_actual
+
+        period_status = _period_status(period, now)
+        can_delete = (
+            period_status == "Future"
+            and not period.islocked
+            and income_actual == Decimal("0.00")
+            and expense_actual == Decimal("0.00")
+            and investment_actual == Decimal("0.00")
+        )
+
+        cumulative_projected_savings += _projected_savings(period_status, savings_budget, savings_actual)
+
+        summaries.append(PeriodSummaryOut(
+            period=PeriodOut.model_validate(period),
+            period_status=period_status,
+            income_budget=income_budget,
+            income_actual=income_actual,
+            expense_budget=expense_budget,
+            expense_actual=expense_actual,
+            investment_budget=investment_budget,
+            investment_actual=investment_actual,
+            surplus_budget=income_budget - expense_budget - investment_budget,
+            surplus_actual=income_actual - expense_actual,
+            projected_savings=cumulative_projected_savings,
+            can_delete=can_delete,
+        ))
+
+    return summaries
 
 
 @router.get("/{finperiodid}", response_model=PeriodDetailOut)
@@ -631,6 +771,9 @@ def delete_period(
     period = _get_period_or_404(finperiodid, db)
     _assert_unlocked(period)
 
+    if _period_status(period, datetime.utcnow()) != "Future":
+        raise HTTPException(409, "Only future periods can be deleted")
+
     if not force:
         has_expense_actuals = (
             db.query(PeriodExpense)
@@ -648,7 +791,15 @@ def delete_period(
             )
             .first()
         )
-        if has_expense_actuals or has_income_actuals:
+        has_investment_actuals = (
+            db.query(PeriodInvestment)
+            .filter(
+                PeriodInvestment.finperiodid == finperiodid,
+                PeriodInvestment.actualamount != 0,
+            )
+            .first()
+        )
+        if has_expense_actuals or has_income_actuals or has_investment_actuals:
             raise HTTPException(
                 409,
                 "Period has recorded actual values. Pass ?force=true to delete anyway."

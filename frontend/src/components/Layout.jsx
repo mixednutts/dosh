@@ -53,7 +53,16 @@ function BudgetPeriodsNav({ budgetId, activePeriodId, defaultOpen, onNav }) {
   const orderedPeriods = [...periods].sort((a, b) => parseISO(a.startdate) - parseISO(b.startdate))
   const currentPeriods = orderedPeriods.filter(period => {
     try {
-      return parseISO(period.enddate) >= now
+      const start = parseISO(period.startdate)
+      const end = parseISO(period.enddate)
+      return start <= now && end >= now
+    } catch {
+      return false
+    }
+  })
+  const futurePeriods = orderedPeriods.filter(period => {
+    try {
+      return parseISO(period.startdate) > now
     } catch {
       return false
     }
@@ -69,13 +78,23 @@ function BudgetPeriodsNav({ budgetId, activePeriodId, defaultOpen, onNav }) {
 
   return (
     <div className="ml-3 mt-0.5">
-      <button
-        onClick={() => setOpen(v => !v)}
-        className="flex w-full items-center gap-1 rounded px-2 py-1 text-left text-[11px] uppercase tracking-wide text-dosh-400 transition-colors hover:bg-dosh-800 hover:text-white"
-      >
-        {open ? <ChevronDownIcon className="h-3 w-3 shrink-0" /> : <ChevronRightIcon className="h-3 w-3 shrink-0" />}
-        Periods
-      </button>
+      <div className="flex items-center gap-1">
+        <Link
+          to={`/budgets/${budgetId}`}
+          onClick={onNav}
+          className="flex flex-1 items-center gap-1 rounded px-2 py-1 text-left text-[11px] uppercase tracking-wide text-dosh-400 transition-colors hover:bg-dosh-800 hover:text-white"
+        >
+          <ChevronRightIcon className="h-3 w-3 shrink-0" />
+          Periods
+        </Link>
+        <button
+          onClick={() => setOpen(v => !v)}
+          title={open ? 'Collapse periods' : 'Expand periods'}
+          className="rounded p-1 text-dosh-400 transition-colors hover:bg-dosh-800 hover:text-white"
+        >
+          {open ? <ChevronDownIcon className="h-3 w-3 shrink-0" /> : <ChevronRightIcon className="h-3 w-3 shrink-0" />}
+        </button>
+      </div>
       {open && (
         <div className="ml-2 mt-0.5 space-y-0.5 border-l border-dosh-700 pl-2">
           {periods.length === 0 ? (
@@ -85,6 +104,12 @@ function BudgetPeriodsNav({ budgetId, activePeriodId, defaultOpen, onNav }) {
               <PeriodGroup
                 title="Current"
                 periods={currentPeriods}
+                activePeriodId={activePeriodId}
+                onNav={onNav}
+              />
+              <PeriodGroup
+                title="Future"
+                periods={futurePeriods}
                 activePeriodId={activePeriodId}
                 onNav={onNav}
               />
@@ -138,11 +163,11 @@ function BudgetsDrilldown({ onNav }) {
         return (
           <div key={b.budgetid}>
             <Link
-              to={`/budgets/${b.budgetid}`}
+              to={`/budgets/${b.budgetid}/setup`}
               onClick={onNav}
               className={clsx(
                 'flex items-center gap-1 truncate rounded px-2 py-1 text-xs transition-colors',
-                isActive && !activePeriodId
+                !!budgetSetupMatch && b.budgetid === currentBudgetId
                   ? 'bg-dosh-600 font-semibold text-white'
                   : 'text-dosh-300 hover:bg-dosh-800 hover:text-white'
               )}

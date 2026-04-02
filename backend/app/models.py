@@ -24,6 +24,7 @@ class Budget(Base):
     budget_frequency = Column(String, nullable=False)
     # always | overspend_only
     variance_mode = Column(String, nullable=False, default="always")
+    auto_add_surplus_to_investment = Column(Boolean, nullable=False, default=False)
 
     periods = relationship("FinancialPeriod", back_populates="budget", cascade="all, delete-orphan")
     income_types = relationship("IncomeType", back_populates="budget", cascade="all, delete-orphan")
@@ -225,6 +226,7 @@ class InvestmentItem(Base):
     initial_value = Column(Numeric(10, 2), default=0)
     # optional link to an account balance (contributions credited to that account)
     linked_account_desc = Column(String, nullable=True)
+    is_primary = Column(Boolean, default=False, nullable=False)
 
     budget = relationship("Budget", back_populates="investment_items")
     period_investments = relationship("PeriodInvestment", back_populates="investment_item")

@@ -14,6 +14,18 @@ def _get_budget_or_404(budgetid: int, db: Session) -> Budget:
     return budget
 
 
+def _clear_other_primary_investments(budgetid: int, keep_desc: str, db: Session) -> None:
+    (
+        db.query(InvestmentItem)
+        .filter(
+            InvestmentItem.budgetid == budgetid,
+            InvestmentItem.investmentdesc != keep_desc,
+            InvestmentItem.is_primary == True,  # noqa: E712
+        )
+        .update({InvestmentItem.is_primary: False}, synchronize_session=False)
+    )
+
+
 @router.get("/", response_model=list[InvestmentItemOut])
 def list_investment_items(budgetid: int, db: Session = Depends(get_db)):
     _get_budget_or_404(budgetid, db)
@@ -26,7 +38,11 @@ def create_investment_item(budgetid: int, payload: InvestmentItemCreate, db: Ses
     existing = db.get(InvestmentItem, (budgetid, payload.investmentdesc))
     if existing:
         raise HTTPException(409, "Investment item with this description already exists")
+    if payload.is_primary and not payload.active:
+        raise HTTPException(422, "Primary investment items must be active")
     item = InvestmentItem(budgetid=budgetid, **payload.model_dump())
+    if item.is_primary:
+        _clear_other_primary_investments(budgetid, item.investmentdesc, db)
     db.add(item)
     db.commit()
     db.refresh(item)
@@ -40,8 +56,19 @@ def update_investment_item(
     item = db.get(InvestmentItem, (budgetid, investmentdesc))
     if not item:
         raise HTTPException(404, "Investment item not found")
-    for field, value in payload.model_dump(exclude_none=True).items():
+    updates = payload.model_dump(exclude_none=True)
+    next_active = updates.get("active", item.active)
+    next_is_primary = updates.get("is_primary", item.is_primary)
+
+    if next_is_primary and not next_active:
+        raise HTTPException(422, "Primary investment items must be active")
+
+    for field, value in updates.items():
         setattr(item, field, value)
+    if not item.active:
+        item.is_primary = False
+    elif item.is_primary:
+        _clear_other_primary_investments(budgetid, item.investmentdesc, db)
     db.commit()
     db.refresh(item)
     return item

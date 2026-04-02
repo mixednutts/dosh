@@ -36,11 +36,13 @@ class BudgetUpdate(BaseModel):
     description: Optional[str] = None
     budget_frequency: Optional[str] = None
     variance_mode: Optional[str] = None
+    auto_add_surplus_to_investment: Optional[bool] = None
 
 
 class BudgetOut(BudgetBase):
     budgetid: int
     variance_mode: str = "always"
+    auto_add_surplus_to_investment: bool = False
     model_config = {"from_attributes": True}
 
 
@@ -161,6 +163,21 @@ class PeriodLockRequest(BaseModel):
     islocked: bool
 
 
+class PeriodSummaryOut(BaseModel):
+    period: PeriodOut
+    period_status: str
+    income_budget: Decimal = Decimal("0")
+    income_actual: Decimal = Decimal("0")
+    expense_budget: Decimal = Decimal("0")
+    expense_actual: Decimal = Decimal("0")
+    investment_budget: Decimal = Decimal("0")
+    investment_actual: Decimal = Decimal("0")
+    surplus_budget: Decimal = Decimal("0")
+    surplus_actual: Decimal = Decimal("0")
+    projected_savings: Decimal = Decimal("0")
+    can_delete: bool = False
+
+
 # ── PeriodIncome ──────────────────────────────────────────────────────────────
 
 class PeriodIncomeOut(BaseModel):
@@ -268,6 +285,7 @@ class InvestmentItemBase(BaseModel):
     effectivedate: Optional[datetime] = None
     initial_value: Decimal = Decimal("0.00")
     linked_account_desc: Optional[str] = None
+    is_primary: bool = False
 
 
 class InvestmentItemCreate(InvestmentItemBase):
@@ -279,6 +297,7 @@ class InvestmentItemUpdate(BaseModel):
     effectivedate: Optional[datetime] = None
     initial_value: Optional[Decimal] = None
     linked_account_desc: Optional[str] = None
+    is_primary: Optional[bool] = None
 
 
 class InvestmentItemOut(InvestmentItemBase):

@@ -243,7 +243,22 @@ Important product decision:
 - movement explanation should be visible where the movement is shown
 - the feature is intended for transparency and trust, not editing
 
-### 15. Database backup is now a required pre-migration safety step
+### 15. Sidebar period drilldown now separates future periods from current ones
+
+The left-hand budget drilldown no longer treats all non-historical periods as `Current`.
+
+Current behavior:
+
+- `Current` only includes periods whose date range includes today
+- `Future` includes periods that have not started yet
+- `Historical` still includes completed periods and remains limited to the most recent 10 entries
+
+Important product meaning:
+
+- the sidebar now reflects whether a period is active versus merely scheduled
+- future planning is visible without blurring the meaning of `Current`
+
+### 16. Database backup is now a required pre-migration safety step
 
 Before the ledger migration was applied, a full file-level backup of the live SQLite database was taken from the Docker-managed data volume.
 
@@ -256,6 +271,134 @@ Current backup pattern:
 
 - use a timestamped host-side file outside the container lifecycle
 - example naming: `dosh-pre-ledger-migration-YYYYMMDD-HHMMSS.db`
+
+### 17. Period summaries now live under the sidebar Periods entry
+
+The sidebar budget drilldown now uses the `Periods` row as the direct entry point to the period summary listing for that budget.
+
+Current behavior:
+
+- clicking a budget name opens budget setup
+- clicking `Periods` opens the summary listing for that budget
+- the listing now shows period-level financial summary values instead of plain navigation cards
+
+Important product meaning:
+
+- setup and period management now have clearer, separate entry points
+- the navigation better matches how people move between configuration and active budget work
+
+### 18. Future periods can be deleted from the summary listing
+
+Period deletion is now exposed from the period summary page, but only for future periods that have not recorded actual values.
+
+Current behavior:
+
+- current periods cannot be deleted
+- historical periods cannot be deleted
+- future locked periods cannot be deleted
+- future periods with recorded actuals cannot be deleted from the summary view
+
+Important product meaning:
+
+- planned periods can be cleaned up without risking active or historical finance history
+- destructive actions remain blocked once a period has become meaningful financial record
+
+### 19. Period summaries now include projected savings
+
+The period summary listing now shows a projected savings amount based on per-period savings/investment allocations.
+
+Current behavior:
+
+- projected savings is cumulative across the period timeline
+- historical periods add savings/investment actuals into the running total
+- future periods add savings/investment budget into the running total
+- current periods add one of these values into the running total:
+- savings/investment budget when there are no actuals yet
+- remaining savings/investment budget when actuals exist but are still below budget
+- savings/investment actuals once actuals meet or exceed budget
+
+Important note:
+
+- looking ahead to a future period now includes prior historical savings plus projected savings from intervening periods
+
+### 20. Budgets can now auto-allocate surplus to savings investments
+
+Budget settings now include a control for automatically assigning newly created period surplus to a savings investment budget.
+
+Current behavior:
+
+- the setting is stored on the budget
+- when enabled, new periods calculate starting budget surplus during generation
+- positive surplus is added to the active primary investment line
+- if there is no active primary investment line, nothing is auto-assigned
+
+Important product meaning:
+
+- future periods can show planned savings contributions without requiring manual investment budget entry each time
+- the feature is intended to improve forward visibility, not to rewrite historical periods
+
+### 21. Investment lines can now be marked as primary
+
+Investment setup now supports a primary flag so automatic savings allocation has an explicit destination.
+
+Current behavior:
+
+- only active investment lines can be primary
+- setting one investment line as primary clears the primary flag from any other investment line in the same budget
+- deactivating an investment line removes its primary flag
+
+Important product meaning:
+
+- automatic surplus allocation no longer relies on line ordering or naming assumptions
+- savings planning now has a clearer single target within each budget
+
+### 22. Budget settings now explain primary-line allocation directly
+
+The automatic surplus allocation setting now includes an inline help cue so the targeting rule is visible where the setting is changed.
+
+Current behavior:
+
+- a small question-mark tooltip appears next to the setting label
+- the tooltip explains that automatic allocation only goes to the primary investment line
+
+Important product meaning:
+
+- the rule is discoverable without adding a large block of explanatory text
+- the setting is less likely to be misunderstood during budget setup
+
+### 23. Period generation date handling was corrected
+
+Period generation hit a timezone mismatch bug when creating a new period from the frontend date picker.
+
+Current behavior:
+
+- the frontend now sends the chosen start date without converting it to UTC
+- the backend normalizes incoming period start dates before overlap checks
+- period generation no longer fails because of offset-aware versus offset-naive datetime comparison
+
+Important note:
+
+- this was a functional bug fix, not a product-rule change
+- the selected date should now stay aligned with the date the user actually chose
+
+### 24. Surplus auto-allocation now uses generated expense totals correctly
+
+An error in period generation caused new future periods to allocate the full fixed income amount to the primary investment line instead of only the true surplus.
+
+Correct rule:
+
+- starting surplus for a new period is `fixed income budget - generated expense budget`
+- only the positive remainder should be assigned to the primary investment line
+
+Current behavior:
+
+- the generator now totals the new period expense budget explicitly before assigning surplus
+- an already-generated live period was corrected from `1135` down to `330` investment budget after the bug was identified
+
+Important product meaning:
+
+- projected savings now reflects actual planned surplus rather than raw income
+- future period planning is more trustworthy because the investment allocation follows the same budget logic shown in the summaries
 
 ## Budget Setup Page Direction
 
@@ -356,6 +499,9 @@ Future suggestions should respect the following:
 - Treat `Paid` as a meaningful finalized state, not just a cosmetic label.
 - Treat revision comments as important future reporting data.
 - Treat balance movement as an explainable outcome of transactions, not a freeform editable field.
+- Do not guess the destination of automatic savings allocation; it should be explicit through the primary investment line.
+- When changing date handling, be careful about timezone-aware versus timezone-naive values because period generation depends on exact date boundaries.
+- Keep savings and investment language deliberate and consistent; avoid letting the two concepts drift interchangeably without explanation.
 
 ## Future Development Ideas And Thought Process
 
@@ -366,11 +512,22 @@ These are active ideas or partially formed directions that may matter in later s
 - Balance details could evolve into a richer audit/reconciliation experience with running totals and source filtering.
 - The current `Current` vs `Historical` period grouping in the sidebar may later split future periods into their own explicit group if that becomes useful.
 - End-of-period reporting should eventually include revision comments and revision reasoning.
+- Existing future periods created during experimentation may need one-off cleanup tooling when product rules change midstream.
+- The current automatic surplus allocation only looks at fixed income budget and generated expense budget; future sessions may want to decide whether other budgeted inflows or allocations should participate.
+- Projected savings now leans on investment allocations; future design work should decide whether that is the permanent canonical meaning or whether savings should become its own clearer first-class concept.
 - Expense auto/manual flag behavior still needs deeper development and may influence later account logic.
 - Settings are expected to become a place for user-selected behavior flags and page layout preferences.
 - Settings should remain visible rather than hidden, even if they stay lower priority than core setup steps.
 - Navigation/sidebar polish should happen later, after core functional flows stabilize.
 - Naming refinement remains a possible future branding move once workflow and structure are more settled.
+
+## Outstanding Tasks
+
+- Review existing future periods for any stale investment budgets produced before the corrected surplus-allocation fix.
+- Consider adding validation or migration help for budgets that enable automatic surplus allocation but do not yet have an active primary investment line.
+- Add a `.dockerignore` to reduce Docker build context and speed up deploys.
+- Clean up the known frontend lint warnings in `Dashboard.jsx` and `PeriodDetailPage.jsx` when convenient.
+- Keep refining naming so `Savings`, `Investment`, and `Primary investment line` are used consistently across setup, summaries, and period detail screens.
 
 ## Technical Notes
 
@@ -379,6 +536,10 @@ These are active ideas or partially formed directions that may matter in later s
 - A centralized `periodtransactions` table now exists for period-level ledger activity.
 - Active-period transaction reconciliation/backfill now runs during startup migration flow.
 - A host-side SQLite backup was taken before the ledger migration for recovery safety.
+- A budget-level `auto_add_surplus_to_investment` flag now exists.
+- Investment items now have an `is_primary` flag with single-primary enforcement at the API layer.
+- Period summary data now includes cumulative projected savings.
+- Period generation now normalizes incoming dates before overlap checks.
 - Frontend builds currently succeed with some non-blocking lint warnings in unrelated files.
 - Those warnings are not currently blocking deployment, but can be cleaned up later.
 

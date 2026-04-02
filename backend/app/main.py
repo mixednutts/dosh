@@ -60,9 +60,11 @@ def seed_reference_data():
             "ALTER TABLE periodinvestments ADD COLUMN budgeted_amount NUMERIC(10,2) DEFAULT 0",
             "ALTER TABLE periodinvestments ADD COLUMN actualamount NUMERIC(10,2) DEFAULT 0",
             "ALTER TABLE investmentitems ADD COLUMN linked_account_desc VARCHAR",
+            "ALTER TABLE investmentitems ADD COLUMN is_primary INTEGER NOT NULL DEFAULT 0",
             "ALTER TABLE incometypes ADD COLUMN linked_account VARCHAR",
             "ALTER TABLE balancetypes ADD COLUMN is_primary INTEGER NOT NULL DEFAULT 0",
             "ALTER TABLE periodexpenses ADD COLUMN note VARCHAR",
+            "ALTER TABLE budgets ADD COLUMN auto_add_surplus_to_investment INTEGER NOT NULL DEFAULT 0",
         ]
         for sql in migrations:
             try:

@@ -188,7 +188,7 @@ export default function BudgetDetailPage() {
         title="Settings"
         summary="Optional controls that adjust budget behaviour and page layout."
       >
-        <SettingsTab />
+        <SettingsTab budgetId={id} budget={budget} />
       </SectionShell>
 
       {showReturnTop && (

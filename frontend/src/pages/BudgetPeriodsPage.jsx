@@ -1,15 +1,17 @@
 import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronRightIcon, PlusIcon, Cog6ToothIcon } from '@heroicons/react/24/outline'
-import { addDays, format, isWithinInterval, parseISO } from 'date-fns'
-import { getBudget, getExpenseItems, getIncomeTypes, getPeriodsForBudget, generatePeriod } from '../api/client'
+import { ChevronRightIcon, PlusIcon, Cog6ToothIcon, TrashIcon } from '@heroicons/react/24/outline'
+import { addDays, format, parseISO } from 'date-fns'
+import { deletePeriod, getBudget, getExpenseItems, getIncomeTypes, getPeriodSummariesForBudget, generatePeriod } from '../api/client'
 import Modal from '../components/Modal'
 import Spinner from '../components/Spinner'
 
 function formatApiError(error, fallback) {
   return error?.response?.data?.detail || fallback
 }
+
+const fmt = value => Number(value ?? 0).toLocaleString('en-AU', { style: 'currency', currency: 'AUD' })
 
 function toDateInputValue(value) {
   return format(value, 'yyyy-MM-dd')
@@ -61,12 +63,23 @@ function PeriodGenerateForm({ initialStartDate, onSubmit, onClose, loading, erro
   )
 }
 
-function PeriodCard({ period, status }) {
+function Metric({ label, value, tone = 'text-gray-700 dark:text-gray-300' }) {
   return (
-    <Link
-      to={`/periods/${period.finperiodid}`}
-      className="block rounded-xl border border-gray-200 bg-white p-4 transition-colors hover:border-dosh-300 hover:bg-dosh-50/50 dark:border-gray-800 dark:bg-gray-900 dark:hover:border-dosh-700 dark:hover:bg-dosh-900/10"
-    >
+    <div className="rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800/70">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{label}</p>
+      <p className={`mt-1 text-sm font-semibold ${tone}`}>{fmt(value)}</p>
+    </div>
+  )
+}
+
+function PeriodCard({ summary, onDelete }) {
+  const { period, period_status: periodStatus } = summary
+  const surplusBudgetTone = Number(summary.surplus_budget) >= 0 ? 'text-dosh-600 dark:text-dosh-400' : 'text-red-600 dark:text-red-400'
+  const surplusActualTone = Number(summary.surplus_actual) >= 0 ? 'text-dosh-600 dark:text-dosh-400' : 'text-red-600 dark:text-red-400'
+  const projectedSavingsTone = Number(summary.projected_savings) >= 0 ? 'text-dosh-700 dark:text-dosh-400' : 'text-red-600 dark:text-red-400'
+
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
@@ -77,12 +90,43 @@ function PeriodCard({ period, status }) {
           </p>
         </div>
         <div className="flex gap-2">
-          {status && <span className="badge-blue">{status}</span>}
+          {periodStatus && <span className="badge-blue">{periodStatus}</span>}
           {period.islocked && <span className="badge-amber">Locked</span>}
         </div>
       </div>
-      <p className="mt-3 text-sm text-dosh-700 dark:text-dosh-400">Open period details</p>
-    </Link>
+
+      <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+        <Metric label="Projected Savings" value={summary.projected_savings} tone={projectedSavingsTone} />
+        <Metric label="Income Budget" value={summary.income_budget} />
+        <Metric label="Income Actual" value={summary.income_actual} tone="text-dosh-700 dark:text-dosh-400" />
+        <Metric label="Expense Budget" value={summary.expense_budget} />
+        <Metric label="Expense Actual" value={summary.expense_actual} tone="text-red-600 dark:text-red-400" />
+        <Metric label="Investment Budget" value={summary.investment_budget} />
+        <Metric label="Investment Actual" value={summary.investment_actual} tone="text-dosh-700 dark:text-dosh-400" />
+        <Metric label="Surplus (Budget)" value={summary.surplus_budget} tone={surplusBudgetTone} />
+        <Metric label="Surplus (Actual)" value={summary.surplus_actual} tone={surplusActualTone} />
+      </div>
+
+      <div className="mt-3 flex items-center justify-between gap-3 flex-wrap">
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          {periodStatus === 'Future' ? 'Ready for planning and optional removal.' : 'Open the period to review full balances, transactions, and line details.'}
+        </p>
+        <div className="flex gap-2">
+          {summary.can_delete && (
+            <button
+              type="button"
+              className="btn-secondary text-red-600 hover:text-red-700 dark:text-red-300 dark:hover:text-red-200"
+              onClick={() => onDelete(summary)}
+            >
+              <TrashIcon className="h-4 w-4" /> Delete
+            </button>
+          )}
+          <Link to={`/periods/${period.finperiodid}`} className="btn-primary">
+            Open Period
+          </Link>
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -92,14 +136,15 @@ export default function BudgetPeriodsPage() {
   const qc = useQueryClient()
   const [showGenerate, setShowGenerate] = useState(false)
   const [generateError, setGenerateError] = useState('')
+  const [deleteTarget, setDeleteTarget] = useState(null)
 
   const { data: budget, isLoading: budgetLoading } = useQuery({
     queryKey: ['budget', id],
     queryFn: () => getBudget(id),
   })
-  const { data: periods = [], isLoading: periodsLoading } = useQuery({
-    queryKey: ['periods', id],
-    queryFn: () => getPeriodsForBudget(id),
+  const { data: periodSummaries = [], isLoading: periodsLoading } = useQuery({
+    queryKey: ['period-summaries', id],
+    queryFn: () => getPeriodSummariesForBudget(id),
     enabled: !!budget,
   })
   const { data: incomeTypes = [] } = useQuery({
@@ -118,27 +163,10 @@ export default function BudgetPeriodsPage() {
     [expenseItems]
   )
 
-  const now = new Date()
-  const currentPeriodId = useMemo(() => {
-    const current = periods.find(period => {
-      try {
-        return isWithinInterval(now, {
-          start: parseISO(period.startdate),
-          end: parseISO(period.enddate),
-        })
-      } catch {
-        return false
-      }
-    })
-    return current?.finperiodid ?? null
-  }, [now, periods])
-
-  const nextPeriodId = useMemo(() => {
-    const upcoming = [...periods]
-      .filter(period => parseISO(period.startdate) > now)
-      .sort((a, b) => parseISO(a.startdate) - parseISO(b.startdate))[0]
-    return upcoming?.finperiodid ?? null
-  }, [now, periods])
+  const periods = useMemo(
+    () => periodSummaries.map(summary => summary.period),
+    [periodSummaries]
+  )
 
   const suggestedStartDate = useMemo(() => {
     if (periods.length === 0) return toDateInputValue(new Date())
@@ -151,11 +179,12 @@ export default function BudgetPeriodsPage() {
   const createPeriod = useMutation({
     mutationFn: ({ startDate, count }) => generatePeriod({
       budgetid: id,
-      startdate: new Date(`${startDate}T00:00:00`).toISOString(),
+      startdate: `${startDate}T00:00:00`,
       count,
     }),
     onSuccess: created => {
       qc.invalidateQueries({ queryKey: ['periods', id] })
+      qc.invalidateQueries({ queryKey: ['period-summaries', id] })
       setGenerateError('')
       setShowGenerate(false)
       if (created?.finperiodid) {
@@ -164,6 +193,15 @@ export default function BudgetPeriodsPage() {
     },
     onError: error => {
       setGenerateError(formatApiError(error, 'Unable to generate period right now.'))
+    },
+  })
+
+  const removePeriod = useMutation({
+    mutationFn: periodId => deletePeriod(periodId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['periods', id] })
+      qc.invalidateQueries({ queryKey: ['period-summaries', id] })
+      setDeleteTarget(null)
     },
   })
 
@@ -246,13 +284,13 @@ export default function BudgetPeriodsPage() {
             </p>
           </div>
           <div className="grid gap-3">
-            {[...periods]
-              .sort((a, b) => parseISO(b.startdate) - parseISO(a.startdate))
-              .map(period => (
+            {[...periodSummaries]
+              .sort((a, b) => parseISO(b.period.startdate) - parseISO(a.period.startdate))
+              .map(summary => (
                 <PeriodCard
-                  key={period.finperiodid}
-                  period={period}
-                  status={period.finperiodid === currentPeriodId ? 'Current' : period.finperiodid === nextPeriodId ? 'Next' : null}
+                  key={summary.period.finperiodid}
+                  summary={summary}
+                  onDelete={setDeleteTarget}
                 />
               ))}
           </div>
@@ -268,6 +306,35 @@ export default function BudgetPeriodsPage() {
             loading={createPeriod.isPending}
             error={generateError}
           />
+        </Modal>
+      )}
+
+      {deleteTarget && (
+        <Modal title="Delete Future Period" onClose={() => setDeleteTarget(null)}>
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600 dark:text-gray-300">
+              Delete the future period from {format(parseISO(deleteTarget.period.startdate), 'dd MMM yyyy')} to {format(parseISO(deleteTarget.period.enddate), 'dd MMM yyyy')}?
+            </p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Only future periods without recorded actuals can be deleted.
+            </p>
+            {removePeriod.isError && (
+              <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300">
+                {formatApiError(removePeriod.error, 'Unable to delete this period right now.')}
+              </div>
+            )}
+            <div className="flex justify-end gap-2">
+              <button type="button" className="btn-secondary" onClick={() => setDeleteTarget(null)}>Cancel</button>
+              <button
+                type="button"
+                className="btn-primary"
+                disabled={removePeriod.isPending}
+                onClick={() => removePeriod.mutate(deleteTarget.period.finperiodid)}
+              >
+                {removePeriod.isPending ? 'Deleting…' : 'Delete Period'}
+              </button>
+            </div>
+          </div>
         </Modal>
       )}
     </div>

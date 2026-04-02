@@ -5,7 +5,7 @@ import { format, parseISO } from 'date-fns'
 import { getInvestmentItems, createInvestmentItem, updateInvestmentItem, deleteInvestmentItem, getBalanceTypes } from '../../api/client'
 import Modal from '../../components/Modal'
 
-const emptyForm = { investmentdesc: '', active: true, effectivedate: '', initial_value: '', linked_account_desc: '' }
+const emptyForm = { investmentdesc: '', active: true, effectivedate: '', initial_value: '', linked_account_desc: '', is_primary: false }
 
 function InvestmentForm({ initial = emptyForm, isEdit = false, onSubmit, onClose, loading, balanceTypes = [] }) {
   const [form, setForm] = useState(initial)
@@ -19,6 +19,7 @@ function InvestmentForm({ initial = emptyForm, isEdit = false, onSubmit, onClose
         effectivedate: form.effectivedate || null,
         initial_value: parseFloat(form.initial_value) || 0,
         linked_account_desc: form.linked_account_desc || null,
+        is_primary: !!form.is_primary,
       })
     }} className="space-y-4">
       <div>
@@ -51,6 +52,14 @@ function InvestmentForm({ initial = emptyForm, isEdit = false, onSubmit, onClose
           className="rounded border-gray-300 dark:border-gray-600 text-dosh-600 focus:ring-dosh-500" />
         Active
       </label>
+      <label className="flex items-center gap-2 text-sm cursor-pointer">
+        <input type="checkbox" checked={!!form.is_primary} onChange={e => set('is_primary', e.target.checked)}
+          className="rounded border-gray-300 dark:border-gray-600 text-dosh-600 focus:ring-dosh-500" />
+        Primary investment line
+      </label>
+      <p className="text-xs text-gray-400 -mt-2">
+        Auto-allocated savings budget will go to the active primary investment line.
+      </p>
       <div className="flex justify-end gap-2 pt-2">
         <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
         <button type="submit" className="btn-primary" disabled={loading}>
@@ -116,6 +125,9 @@ export default function InvestmentItemsTab({ budgetId }) {
                     seed: {Number(item.initial_value).toLocaleString('en-AU', { style: 'currency', currency: 'AUD' })}
                   </span>
                 )}
+                {item.is_primary && (
+                  <span className="ml-2 badge-blue">Primary</span>
+                )}
                 {item.linked_account_desc && (
                   <span className="ml-2 text-xs text-purple-600 dark:text-purple-400">→ {item.linked_account_desc}</span>
                 )}
@@ -143,6 +155,7 @@ export default function InvestmentItemsTab({ budgetId }) {
               effectivedate: modal.item.effectivedate ? format(parseISO(modal.item.effectivedate), 'yyyy-MM-dd') : '',
               initial_value: modal.item.initial_value ?? '',
               linked_account_desc: modal.item.linked_account_desc ?? '',
+              is_primary: !!modal.item.is_primary,
             } : emptyForm}
             isEdit={modal.mode === 'edit'}
             balanceTypes={balanceTypes}

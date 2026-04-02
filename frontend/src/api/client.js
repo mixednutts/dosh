@@ -46,6 +46,8 @@ export const deleteInvestmentItem = (budgetId, desc) =>
 // ── Periods ───────────────────────────────────────────────────────────────────
 export const getPeriodsForBudget = budgetId =>
   api.get(`/periods/budget/${budgetId}`).then(r => r.data)
+export const getPeriodSummariesForBudget = budgetId =>
+  api.get(`/periods/budget/${budgetId}/summary`).then(r => r.data)
 export const getPeriodDetail = periodId =>
   api.get(`/periods/${periodId}`).then(r => r.data)
 export const generatePeriod = data => api.post('/periods/generate', data).then(r => r.data)
