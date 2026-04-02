@@ -13,7 +13,7 @@ import {
   addExpenseToPeriod, addIncomeToPeriod, savingsTransfer,
   getExpenseItems, getIncomeTypes, createExpenseItem,
   getExpenseEntries, addExpenseEntry, deleteExpenseEntry,
-  reorderPeriodExpenses,
+  reorderPeriodExpenses, getBalanceTransactions,
   getInvestmentTransactions, addInvestmentTransaction, deleteInvestmentTransaction,
   setPeriodExpenseStatus, updatePeriodExpenseBudget, removePeriodExpense,
   updatePeriodInvestmentBudget, getBalanceTypes, updateExpenseNote, removePeriodIncome,
@@ -22,6 +22,34 @@ import Modal from '../components/Modal'
 import Spinner from '../components/Spinner'
 
 const fmt = v => Number(v ?? 0).toLocaleString('en-AU', { style: 'currency', currency: 'AUD' })
+
+function balanceTransactionDelta(tx, balancedesc) {
+  if (tx.source === 'transfer') {
+    if (tx.affected_account_desc === balancedesc) return Number(tx.amount ?? 0)
+    if (tx.related_account_desc === balancedesc) return -Number(tx.amount ?? 0)
+    return 0
+  }
+  if (tx.affected_account_desc !== balancedesc) return 0
+  if (tx.source === 'expense') return -Number(tx.amount ?? 0)
+  return Number(tx.amount ?? 0)
+}
+
+function balanceTransactionLabel(tx, balancedesc) {
+  if (tx.source === 'transfer') {
+    if (tx.affected_account_desc === balancedesc) {
+      return tx.related_account_desc ? `Transfer from ${tx.related_account_desc}` : 'Transfer in'
+    }
+    if (tx.related_account_desc === balancedesc) {
+      return tx.affected_account_desc ? `Transfer to ${tx.affected_account_desc}` : 'Transfer out'
+    }
+  }
+
+  if (tx.source === 'expense') return `Expense: ${tx.source_label || tx.source_key || 'Unknown'}`
+  if (tx.source === 'investment') return `Investment: ${tx.source_label || tx.source_key || 'Unknown'}`
+  if (tx.source === 'income') return `Income: ${tx.source_label || tx.source_key || 'Unknown'}`
+  if (tx.source === 'balance') return `System: ${tx.source_label || tx.source_key || 'Balance adjustment'}`
+  return tx.source_label || tx.source_key || tx.source
+}
 
 function calcNextDue(freqtype, frequencyValue, effectivedate) {
   const today = new Date(); today.setHours(0, 0, 0, 0)
@@ -90,6 +118,74 @@ function IncomeActualCell({ value, onSet, onAdd }) {
         <PlusIcon className="w-3 h-3" />
       </button>
     </span>
+  )
+}
+
+function BalanceTransactionsModal({ periodId, balancedesc, movementAmount }) {
+  const { data: transactions = [], isLoading } = useQuery({
+    queryKey: ['balance-transactions', periodId, balancedesc],
+    queryFn: () => getBalanceTransactions(periodId, balancedesc),
+  })
+
+  const runningTotal = transactions.reduce((sum, tx) => sum + balanceTransactionDelta(tx, balancedesc), 0)
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-2 text-xs text-center">
+        {[
+          { label: 'Movement', value: movementAmount, cls: Number(movementAmount ?? 0) >= 0 ? 'text-dosh-700 dark:text-dosh-400' : 'text-red-700 dark:text-red-400' },
+          { label: 'Transactions Total', value: runningTotal, cls: runningTotal >= 0 ? 'text-dosh-700 dark:text-dosh-400' : 'text-red-700 dark:text-red-400' },
+        ].map(({ label, value, cls }) => (
+          <div key={label} className="card p-2">
+            <p className="text-gray-400">{label}</p>
+            <p className={`font-semibold ${cls}`}>{fmt(value)}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="px-3 py-2 bg-gray-50 dark:bg-gray-800 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide flex justify-between">
+          <span>Movement Details</span>
+          <span>{transactions.length} rows</span>
+        </div>
+        {isLoading ? (
+          <div className="flex justify-center py-4"><Spinner className="w-4 h-4" /></div>
+        ) : transactions.length === 0 ? (
+          <p className="text-center text-sm text-gray-400 py-4 italic">No supporting transactions for this account in this period</p>
+        ) : (
+          <div className="divide-y divide-gray-100 dark:divide-gray-800 max-h-72 overflow-y-auto">
+            {transactions.map(tx => {
+              const delta = balanceTransactionDelta(tx, balancedesc)
+              const isPositive = delta >= 0
+              return (
+                <div key={tx.id} className="flex items-start gap-3 px-3 py-2">
+                  <span className={`mt-0.5 w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold ${
+                    isPositive
+                      ? 'bg-dosh-100 text-dosh-700 dark:bg-dosh-900/40 dark:text-dosh-400'
+                      : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400'
+                  }`}>
+                    {isPositive ? '+' : '−'}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{balanceTransactionLabel(tx, balancedesc)}</p>
+                      <span className="badge-gray">{tx.type}</span>
+                      {tx.is_system && <span className="badge-amber">System</span>}
+                    </div>
+                    {tx.system_reason && <p className="text-xs text-amber-700 dark:text-amber-400">{tx.system_reason}</p>}
+                    {tx.note && <p className="text-xs text-gray-500 dark:text-gray-400">{tx.note}</p>}
+                    <p className="text-xs text-gray-400">{format(parseISO(tx.entrydate), 'dd MMM yyyy HH:mm')}</p>
+                  </div>
+                  <div className={`text-sm font-semibold ${isPositive ? 'text-dosh-700 dark:text-dosh-400' : 'text-red-700 dark:text-red-400'}`}>
+                    {fmt(Math.abs(delta))}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    </div>
   )
 }
 
@@ -786,6 +882,7 @@ export default function PeriodDetailPage() {
   const [noteModal, setNoteModal] = useState(null) // { expensedesc, note }
   const [reviseModal, setReviseModal] = useState(null) // { expensedesc }
   const [confirmPaidModal, setConfirmPaidModal] = useState(null) // { expense }
+  const [balanceModal, setBalanceModal] = useState(null) // { balancedesc, movementAmount }
 
   const [investmentModal, setInvestmentModal] = useState(null)
 
@@ -1188,6 +1285,7 @@ export default function PeriodDetailPage() {
                   <span title="Calculated from account-linked transactions and transfers">Movement</span>
                 </th>
                 <th className="table-header-cell text-right">Closing</th>
+                <th className="table-header-cell text-center">Details</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
@@ -1205,6 +1303,17 @@ export default function PeriodDetailPage() {
                     </td>
                     <td className="table-cell text-right">
                       <span className={`font-medium ${closing >= 0 ? 'text-dosh-600 dark:text-dosh-400' : 'text-red-600 dark:text-red-400'}`}>{fmt(closing)}</span>
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="flex items-center justify-center">
+                        <button
+                          onClick={() => setBalanceModal({ balancedesc: b.balancedesc, movementAmount: b.movement_amount ?? 0 })}
+                          title="View supporting transactions"
+                          className="flex items-center justify-center w-7 h-7 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                        >
+                          <ListBulletIcon className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 )
@@ -1242,6 +1351,15 @@ export default function PeriodDetailPage() {
       {noteModal && (
         <Modal title="Expense Note" onClose={() => setNoteModal(null)}>
           <ExpenseNoteModal periodId={id} expensedesc={noteModal.expensedesc} initialNote={noteModal.note} readOnly={noteModal.readOnly} onClose={() => setNoteModal(null)} />
+        </Modal>
+      )}
+      {balanceModal && (
+        <Modal title={`Movement Details — ${balanceModal.balancedesc}`} onClose={() => setBalanceModal(null)} size="lg">
+          <BalanceTransactionsModal
+            periodId={id}
+            balancedesc={balanceModal.balancedesc}
+            movementAmount={balanceModal.movementAmount}
+          />
         </Modal>
       )}
       {reviseModal && (
