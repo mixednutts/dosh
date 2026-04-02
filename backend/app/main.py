@@ -52,6 +52,7 @@ def seed_reference_data():
         # so we catch OperationalError for "duplicate column name".
         migrations = [
             "ALTER TABLE periodexpenses ADD COLUMN status VARCHAR NOT NULL DEFAULT 'Current'",
+            "ALTER TABLE periodexpenses ADD COLUMN revision_comment VARCHAR",
             "ALTER TABLE periodbalances ADD COLUMN movement_amount NUMERIC(10,2) DEFAULT 0",
             "ALTER TABLE periodinvestment_transactions ADD COLUMN linked_incomedesc VARCHAR",
             "ALTER TABLE periodinvestments ADD COLUMN budgeted_amount NUMERIC(10,2) DEFAULT 0",

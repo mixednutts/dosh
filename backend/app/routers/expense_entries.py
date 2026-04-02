@@ -25,6 +25,11 @@ def _get_period_expense(finperiodid: int, expensedesc: str, db: Session) -> Peri
     return pe
 
 
+def _assert_expense_not_paid(pe: PeriodExpense) -> None:
+    if (getattr(pe, "status", "Current") or "Current") == "Paid":
+        raise HTTPException(423, "Expense is marked Paid — revise it before making changes")
+
+
 def _debit_primary_account(finperiodid: int, budgetid: int, delta: Decimal, db: Session) -> None:
     primary = (
         db.query(BalanceType)
@@ -82,8 +87,11 @@ def add_entry(
     period = db.get(FinancialPeriod, finperiodid)
     if not period:
         raise HTTPException(404, "Period not found")
+    if period.islocked:
+        raise HTTPException(423, "Period is locked")
 
     pe = _get_period_expense(finperiodid, expensedesc, db)
+    _assert_expense_not_paid(pe)
 
     entry = PeriodExpenseEntry(
         finperiodid=finperiodid,
@@ -120,6 +128,7 @@ def delete_entry(
         raise HTTPException(404, "Entry not found")
 
     pe = _get_period_expense(finperiodid, expensedesc, db)
+    _assert_expense_not_paid(pe)
     entry_amount = Decimal(str(entry.amount))
     db.delete(entry)
     db.flush()

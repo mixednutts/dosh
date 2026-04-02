@@ -238,18 +238,11 @@ function ExpenseEntriesModal({ periodId, budgetId, expensedesc, budgetamount, ac
 }
 
 // ── Investment Transaction Modal ──────────────────────────────────────────────
-function InvestmentTxModal({ periodId, budgetId, investmentdesc, openingValue, closingValue, budgetedAmount, locked, onClose }) {
+function InvestmentTxModal({ periodId, investmentdesc, openingValue, closingValue, budgetedAmount, locked, onClose, defaultType = 'increase' }) {
   const qc = useQueryClient()
   const [amount, setAmount] = useState('')
   const [note, setNote] = useState('')
-  const [type, setType] = useState('increase')
-  const [linkedIncome, setLinkedIncome] = useState('')
-
-  const { data: incomeTypes = [] } = useQuery({
-    queryKey: ['income-types', budgetId],
-    queryFn: () => getIncomeTypes(budgetId),
-  })
-  const savingsIncomes = incomeTypes.filter(i => i.issavings)
+  const [type, setType] = useState(defaultType)
 
   const { data: transactions = [], isLoading } = useQuery({
     queryKey: ['investment-tx', periodId, investmentdesc],
@@ -261,7 +254,8 @@ function InvestmentTxModal({ periodId, budgetId, investmentdesc, openingValue, c
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['investment-tx', periodId, investmentdesc] })
       qc.invalidateQueries({ queryKey: ['period', periodId] })
-      setAmount(''); setNote(''); setLinkedIncome('')
+      setAmount(''); setNote('')
+      onClose()
     },
   })
 
@@ -277,7 +271,7 @@ function InvestmentTxModal({ periodId, budgetId, investmentdesc, openingValue, c
     e.preventDefault()
     const n = parseFloat(amount)
     if (isNaN(n) || n <= 0) return
-    add.mutate({ amount: type === 'increase' ? n : -n, note: note || null, linked_incomedesc: linkedIncome || null })
+    add.mutate({ amount: type === 'increase' ? n : -n, note: note || null })
   }
 
   // Derive actual from transactions total for live display
@@ -341,35 +335,33 @@ function InvestmentTxModal({ periodId, budgetId, investmentdesc, openingValue, c
         <form onSubmit={handleAdd} className="space-y-3 pt-1 border-t border-gray-200 dark:border-gray-700">
           <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Add Transaction</p>
           <div className="flex rounded-md border border-gray-200 dark:border-gray-700 overflow-hidden text-sm">
-            {[['increase', 'Increase (+)', 'text-dosh-600'], ['decrease', 'Decrease (−)', 'text-red-600']].map(([val, label, cls]) => (
+            {[['increase', 'Add (+)'], ['decrease', 'Subtract (−)']].map(([val, label]) => (
               <button key={val} type="button" onClick={() => setType(val)}
                 className={`flex-1 py-1.5 font-medium transition-colors ${type === val ? (val === 'increase' ? 'bg-dosh-600 text-white' : 'bg-red-600 text-white') : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
                 {label}
               </button>
             ))}
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
             <input type="number" step="0.01" min="0.01" required value={amount}
               onChange={e => setAmount(e.target.value)} placeholder="Amount"
               className="input flex-1" />
+            {Number(budgetedAmount ?? 0) > 0 && (
+              <button type="button"
+                onClick={() => setAmount(String(Number(budgetedAmount ?? 0)))}
+                className="text-xs btn-secondary whitespace-nowrap"
+                title="Allocate full budget amount">
+                Full ({fmt(budgetedAmount ?? 0)})
+              </button>
+            )}
             <input type="text" value={note} onChange={e => setNote(e.target.value)}
               placeholder="Note (optional)" className="input flex-[2]" />
           </div>
-          {savingsIncomes.length > 0 && (
-            <div>
-              <label className="label">Link to Savings Income (optional)</label>
-              <select className="input" value={linkedIncome} onChange={e => setLinkedIncome(e.target.value)}>
-                <option value="">— none —</option>
-                {savingsIncomes.map(i => <option key={i.incomedesc} value={i.incomedesc}>{i.incomedesc}</option>)}
-              </select>
-              <p className="text-xs text-gray-400 mt-1">If selected, the linked income actual will also be updated.</p>
-            </div>
-          )}
           <div className="flex justify-end gap-2">
             <button type="button" className="btn-secondary" onClick={onClose}>Close</button>
             <button type="submit" disabled={add.isPending}
               className={type === 'increase' ? 'btn-primary' : 'btn-danger'}>
-              {add.isPending ? 'Saving…' : `Add ${type === 'increase' ? 'Increase' : 'Decrease'}`}
+              {add.isPending ? 'Saving…' : (type === 'increase' ? 'Add' : 'Subtract')}
             </button>
           </div>
         </form>
@@ -413,8 +405,67 @@ function BudgetEditCell({ value, onSave, allowNegative = false }) {
   )
 }
 
+function ExpenseStatusPill({ expense, onMarkPaid, onRevise }) {
+  const budget = Number(expense.budgetamount ?? 0)
+  const actual = Number(expense.actualamount ?? 0)
+  const remaining = Number(expense.remaining_amount ?? 0)
+  const rawPercent = budget > 0 ? (actual / budget) * 100 : 0
+  const clampedPercent = Math.max(0, Math.min(rawPercent, 100))
+  const isOver = rawPercent > 100
+  const isNearLimit = rawPercent >= 90 && rawPercent <= 100
+  const revisionComment = expense.revision_comment?.trim()
+  const title = budget > 0
+    ? `${Math.round(rawPercent)}% spent • ${fmt(actual)} of ${fmt(budget)} • Remaining ${fmt(remaining)}`
+    : `No budget set • Actual ${fmt(actual)}`
+
+  if (expense.status === 'Paid') {
+    const paidCls = isOver
+      ? 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/40 dark:text-red-300 dark:hover:bg-red-900/60'
+      : 'bg-dosh-100 text-dosh-700 hover:bg-dosh-200 dark:bg-dosh-900/40 dark:text-dosh-300 dark:hover:bg-dosh-900/60'
+    return (
+      <button
+        onClick={onRevise}
+        title={`${title} • Click to revise with a comment`}
+        className={`inline-flex min-w-[108px] items-center justify-center rounded-full px-2.5 py-1 text-xs font-semibold transition-colors ${paidCls}`}>
+        Paid
+      </button>
+    )
+  }
+
+  const trackCls = isOver
+    ? 'bg-red-100 dark:bg-red-900/30'
+    : isNearLimit
+      ? 'bg-amber-100 dark:bg-amber-900/30'
+      : 'bg-gray-200 dark:bg-gray-700'
+  const fillCls = isOver
+    ? 'bg-red-500'
+    : isNearLimit
+      ? 'bg-amber-500'
+      : 'bg-dosh-500'
+  const labelCls = isOver
+    ? 'text-red-700 dark:text-red-300'
+    : expense.status === 'Revised'
+      ? 'text-amber-700 dark:text-amber-300'
+      : 'text-gray-700 dark:text-gray-200'
+
+  return (
+    <button
+      onClick={onMarkPaid}
+      title={`${title}${revisionComment ? ` • Revision: ${revisionComment}` : ''} • Click to mark Paid`}
+      className="inline-flex min-w-[108px] items-center gap-2 rounded-full border border-gray-200 bg-white px-2 py-1 text-left text-xs transition-colors hover:border-dosh-300 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:border-dosh-700 dark:hover:bg-gray-700">
+      <span className={`w-10 flex-shrink-0 font-semibold ${labelCls}`}>
+        {expense.status === 'Revised' ? 'Rev' : 'Spent'}
+      </span>
+      <span className={`relative h-2 flex-1 overflow-hidden rounded-full ${trackCls}`}>
+        <span className={`absolute inset-y-0 left-0 rounded-full ${fillCls}`} style={{ width: `${clampedPercent}%` }} />
+        {isOver && <span className="absolute inset-y-0 right-0 w-1 bg-red-700 dark:bg-red-400" />}
+      </span>
+    </button>
+  )
+}
+
 // ── Expense Note Modal ────────────────────────────────────────────────────────
-function ExpenseNoteModal({ periodId, expensedesc, initialNote, onClose }) {
+function ExpenseNoteModal({ periodId, expensedesc, initialNote, readOnly = false, onClose }) {
   const qc = useQueryClient()
   const [note, setNote] = useState(initialNote ?? '')
 
@@ -429,16 +480,90 @@ function ExpenseNoteModal({ periodId, expensedesc, initialNote, onClose }) {
       <textarea
         className="input w-full resize-none"
         rows={5}
-        placeholder="Add a note…"
+        placeholder={readOnly ? 'No note' : 'Add a note…'}
         value={note}
         onChange={e => setNote(e.target.value)}
+        readOnly={readOnly}
         autoFocus
       />
       <div className="flex justify-end gap-2">
-        <button className="btn-secondary" onClick={onClose}>Cancel</button>
-        <button className="btn-primary" onClick={() => save.mutate()} disabled={save.isPending}>
-          {save.isPending ? 'Saving…' : 'Save'}
+        <button className="btn-secondary" onClick={onClose}>{readOnly ? 'Close' : 'Cancel'}</button>
+        {!readOnly && (
+          <button className="btn-primary" onClick={() => save.mutate()} disabled={save.isPending}>
+            {save.isPending ? 'Saving…' : 'Save'}
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function ReviseExpenseModal({ periodId, expensedesc, onClose }) {
+  const qc = useQueryClient()
+  const [comment, setComment] = useState('')
+  const [error, setError] = useState('')
+
+  const revise = useMutation({
+    mutationFn: () => setPeriodExpenseStatus(periodId, expensedesc, 'Revised', comment.trim()),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['period', periodId] })
+      onClose()
+    },
+    onError: err => setError(err.response?.data?.detail ?? 'Failed to revise expense'),
+  })
+
+  const handleSubmit = e => {
+    e.preventDefault()
+    if (!comment.trim()) {
+      setError('A revision comment is required')
+      return
+    }
+    setError('')
+    revise.mutate()
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-3">
+      <div>
+        <label className="label">Revision Comment</label>
+        <textarea
+          className="input w-full resize-none"
+          rows={4}
+          value={comment}
+          onChange={e => setComment(e.target.value)}
+          placeholder="Why does this paid expense need to be revised?"
+          autoFocus
+        />
+      </div>
+      {error && <p className="text-sm text-red-600">{error}</p>}
+      <div className="flex justify-end gap-2">
+        <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
+        <button type="submit" className="btn-primary" disabled={revise.isPending}>
+          {revise.isPending ? 'Saving…' : 'Revise Expense'}
         </button>
+      </div>
+    </form>
+  )
+}
+
+function ConfirmPaidExpenseModal({ expense, onConfirm, onClose }) {
+  const remaining = Number(expense.remaining_amount ?? 0)
+  const isOver = remaining < 0
+  const delta = fmt(Math.abs(remaining))
+
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-gray-700 dark:text-gray-200">
+        {isOver
+          ? `This expense is ${delta} over budget. Mark it as paid anyway?`
+          : `This expense still has ${delta} remaining against budget. Mark it as paid anyway?`}
+      </p>
+      <p className="text-xs text-gray-400 dark:text-gray-500">
+        Paid expenses are locked until revised.
+      </p>
+      <div className="flex justify-end gap-2">
+        <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
+        <button type="button" className="btn-primary" onClick={onConfirm}>Mark Paid</button>
       </div>
     </div>
   )
@@ -659,6 +784,8 @@ export default function PeriodDetailPage() {
   const [showAddIncome, setShowAddIncome] = useState(false)
   const [entriesModal, setEntriesModal] = useState(null) // { expensedesc, budgetamount, actualamount }
   const [noteModal, setNoteModal] = useState(null) // { expensedesc, note }
+  const [reviseModal, setReviseModal] = useState(null) // { expensedesc }
+  const [confirmPaidModal, setConfirmPaidModal] = useState(null) // { expense }
 
   const [investmentModal, setInvestmentModal] = useState(null)
 
@@ -677,7 +804,7 @@ export default function PeriodDetailPage() {
   const setIncome = useMutation({ mutationFn: ({ desc, val }) => updateIncomeActual(id, desc, val), onSuccess: () => qc.invalidateQueries({ queryKey: ['period', id] }) })
   const addIncome = useMutation({ mutationFn: ({ desc, val }) => addToIncomeActual(id, desc, val), onSuccess: () => qc.invalidateQueries({ queryKey: ['period', id] }) })
   const updateBalance = useMutation({ mutationFn: ({ desc, movement }) => updatePeriodBalance(id, desc, movement), onSuccess: () => qc.invalidateQueries({ queryKey: ['period', id] }) })
-  const setExpenseStatus = useMutation({ mutationFn: ({ desc, status }) => setPeriodExpenseStatus(id, desc, status), onSuccess: () => qc.invalidateQueries({ queryKey: ['period', id] }) })
+  const setExpenseStatus = useMutation({ mutationFn: ({ desc, status, revisionComment = null }) => setPeriodExpenseStatus(id, desc, status, revisionComment), onSuccess: () => qc.invalidateQueries({ queryKey: ['period', id] }) })
   const editExpenseBudget = useMutation({ mutationFn: ({ desc, budgetamount }) => updatePeriodExpenseBudget(id, desc, budgetamount), onSuccess: () => qc.invalidateQueries({ queryKey: ['period', id] }) })
   const deleteExpenseLine = useMutation({ mutationFn: desc => removePeriodExpense(id, desc), onSuccess: () => qc.invalidateQueries({ queryKey: ['period', id] }) })
   const deleteIncomeLine = useMutation({ mutationFn: desc => removePeriodIncome(id, desc), onSuccess: () => qc.invalidateQueries({ queryKey: ['period', id] }) })
@@ -704,6 +831,8 @@ export default function PeriodDetailPage() {
     const cur = [...expenses]
     const si = cur.findIndex(x => x.expensedesc === src)
     const ti = cur.findIndex(x => x.expensedesc === targetDesc)
+    if (si < 0 || ti < 0) return
+    if (locked || cur[si]?.status === 'Paid' || cur[ti]?.status === 'Paid') return
     const [moved] = cur.splice(si, 1)
     cur.splice(ti, 0, moved)
     setLocalExpenses(cur)
@@ -715,10 +844,21 @@ export default function PeriodDetailPage() {
   const totalIncomeBudget    = incomes.reduce((s, i) => s + Number(i.budgetamount), 0)
   const totalIncomeActual    = incomes.reduce((s, i) => s + Number(i.actualamount), 0)
   const totalExpenseBudget   = expenses.reduce((s, e) => s + Number(e.budgetamount), 0)
+  const effectiveExpenseBudget = expenses.reduce((s, e) => s + Number(e.status === 'Paid' ? e.actualamount : e.budgetamount), 0)
   const totalExpenseActual   = expenses.reduce((s, e) => s + Number(e.actualamount), 0)
+  const totalInvestmentBudget = investments.reduce((s, inv) => s + Number(inv.budgeted_amount ?? 0), 0)
   const totalExpenseRemaining = expenses.reduce((s, e) => s + Number(e.remaining_amount ?? 0), 0)
-  const surplusBudget = totalIncomeBudget - totalExpenseBudget
+  const surplusBudget = totalIncomeBudget - effectiveExpenseBudget - totalInvestmentBudget
   const surplusActual = totalIncomeActual - totalExpenseActual
+
+  const handleMarkPaid = expense => {
+    const remaining = Number(expense.remaining_amount ?? 0)
+    if (remaining !== 0) {
+      setConfirmPaidModal({ expense })
+      return
+    }
+    setExpenseStatus.mutate({ desc: expense.expensedesc, status: 'Paid' })
+  }
 
   return (
     <div className="space-y-5">
@@ -753,7 +893,7 @@ export default function PeriodDetailPage() {
         {[
           { label: 'Income Budget',  value: totalIncomeBudget,  cls: 'text-gray-700 dark:text-gray-300' },
           { label: 'Income Actual',  value: totalIncomeActual,  cls: 'text-dosh-700 dark:text-dosh-400' },
-          { label: 'Expense Budget', value: totalExpenseBudget, cls: 'text-gray-700 dark:text-gray-300' },
+          { label: 'Expense Budget', value: effectiveExpenseBudget, cls: 'text-gray-700 dark:text-gray-300' },
           { label: 'Expense Actual', value: totalExpenseActual, cls: 'text-red-700 dark:text-red-400' },
         ].map(({ label, value, cls }) => (
           <div key={label} className="card px-4 py-3">
@@ -863,29 +1003,28 @@ export default function PeriodDetailPage() {
                 const label = e.is_oneoff ? null : freqLabel(e.freqtype, e.frequency_value)
                 const nextDue = e.is_oneoff ? null : calcNextDue(e.freqtype, e.frequency_value, e.effectivedate)
                 const isOver = dragOver === e.expensedesc
+                const isPaid = e.status === 'Paid'
                 const canDelete = !locked && Number(e.actualamount) === 0 && Number(e.budgetamount) === 0
-                const canEditBudget = !locked && (e.freqtype === 'Always' || e.is_oneoff)
-                const nextStatus = e.status === 'Current' ? 'Paid' : e.status === 'Paid' ? 'Revised' : 'Current'
-                const statusCls = e.status === 'Paid' ? 'badge-green' : e.status === 'Revised' ? 'badge-amber' : 'badge-gray'
+                const canEditBudget = !locked && !isPaid && (e.freqtype === 'Always' || e.is_oneoff)
                 return (
                   <tr
                     key={e.expensedesc}
-                    draggable
+                    draggable={!locked && !isPaid}
                     onDragStart={() => handleDragStart(e.expensedesc)}
                     onDragOver={ev => handleDragOver(ev, e.expensedesc)}
                     onDragLeave={handleDragLeave}
                     onDrop={ev => handleDrop(ev, e.expensedesc)}
                     className={`table-row transition-colors ${isOver ? 'bg-dosh-50 dark:bg-dosh-900/20 border-t-2 border-dosh-400' : ''}`}
                   >
-                    <td className="w-6 px-2 text-gray-300 dark:text-gray-600 cursor-grab active:cursor-grabbing">
+                    <td className={`w-6 px-2 ${isPaid || locked ? 'text-gray-200 dark:text-gray-700 cursor-not-allowed' : 'text-gray-300 dark:text-gray-600 cursor-grab active:cursor-grabbing'}`}>
                       <Bars2Icon className="w-4 h-4" />
                     </td>
                     <td className="table-cell font-medium">
                       <div className="flex items-center gap-1.5">
                         <span>{e.expensedesc}</span>
                         <button
-                          onClick={() => setNoteModal({ expensedesc: e.expensedesc, note: e.note ?? '' })}
-                          title={e.note ? 'View/edit note' : 'Add note'}
+                          onClick={() => setNoteModal({ expensedesc: e.expensedesc, note: e.note ?? '', readOnly: locked || isPaid })}
+                          title={locked || isPaid ? 'View note' : e.note ? 'View/edit note' : 'Add note'}
                           className={`flex-shrink-0 transition-colors ${e.note ? 'text-dosh-500 dark:text-dosh-400 hover:text-dosh-700' : 'text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400'}`}>
                           <ChatBubbleOvalLeftEllipsisIcon className="w-4 h-4" />
                         </button>
@@ -916,33 +1055,32 @@ export default function PeriodDetailPage() {
                     </td>
                     <td className="px-3 py-2">
                       <div className="flex items-center justify-center gap-1 flex-wrap">
+                        <ExpenseStatusPill
+                          expense={e}
+                          onMarkPaid={() => handleMarkPaid(e)}
+                          onRevise={() => setReviseModal({ expensedesc: e.expensedesc })}
+                        />
                         <button
-                          onClick={() => setExpenseStatus.mutate({ desc: e.expensedesc, status: nextStatus })}
-                          title={`Status: ${e.status} → click to mark ${nextStatus}`}
-                          className={`text-xs px-1.5 py-0.5 rounded font-medium cursor-pointer ${statusCls}`}>
-                          {e.status}
-                        </button>
-                        <button
-                          disabled={locked}
+                          disabled={locked || isPaid}
                           onClick={() => setEntriesModal({ expensedesc: e.expensedesc, budgetamount: e.budgetamount, actualamount: e.actualamount, defaultType: 'debit' })}
                           title="Add expense transaction"
-                          className={`flex items-center justify-center w-7 h-7 rounded-full font-bold text-sm transition-colors ${locked ? 'opacity-30 cursor-not-allowed bg-gray-100 text-gray-400' : 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/40 dark:text-red-400 dark:hover:bg-red-900/60'}`}>
+                          className={`flex items-center justify-center w-7 h-7 rounded-full font-bold text-sm transition-colors ${locked || isPaid ? 'opacity-30 cursor-not-allowed bg-gray-100 text-gray-400' : 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/40 dark:text-red-400 dark:hover:bg-red-900/60'}`}>
                           <PlusIcon className="w-4 h-4" />
                         </button>
                         <button
-                          disabled={locked}
+                          disabled={locked || isPaid}
                           onClick={() => setEntriesModal({ expensedesc: e.expensedesc, budgetamount: e.budgetamount, actualamount: e.actualamount, defaultType: 'credit' })}
                           title="Add refund/credit"
-                          className={`flex items-center justify-center w-7 h-7 rounded-full font-bold text-sm transition-colors ${locked ? 'opacity-30 cursor-not-allowed bg-gray-100 text-gray-400' : 'bg-dosh-100 text-dosh-700 hover:bg-dosh-200 dark:bg-dosh-900/40 dark:text-dosh-400 dark:hover:bg-dosh-900/60'}`}>
+                          className={`flex items-center justify-center w-7 h-7 rounded-full font-bold text-sm transition-colors ${locked || isPaid ? 'opacity-30 cursor-not-allowed bg-gray-100 text-gray-400' : 'bg-dosh-100 text-dosh-700 hover:bg-dosh-200 dark:bg-dosh-900/40 dark:text-dosh-400 dark:hover:bg-dosh-900/60'}`}>
                           <MinusIcon className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => setEntriesModal({ expensedesc: e.expensedesc, budgetamount: e.budgetamount, actualamount: e.actualamount, defaultType: 'debit' })}
+                          onClick={() => setEntriesModal({ expensedesc: e.expensedesc, budgetamount: e.budgetamount, actualamount: e.actualamount, defaultType: 'debit', readOnly: locked || isPaid })}
                           title="View transactions"
                           className="flex items-center justify-center w-7 h-7 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
                           <ListBulletIcon className="w-4 h-4" />
                         </button>
-                        {canDelete && (
+                        {canDelete && !isPaid && (
                           <button
                             onClick={() => { if (window.confirm(`Remove "${e.expensedesc}" from this period?`)) deleteExpenseLine.mutate(e.expensedesc) }}
                             title="Remove from period (no actuals, zero budget)"
@@ -960,7 +1098,7 @@ export default function PeriodDetailPage() {
               <tr className="border-t-2 border-gray-200 dark:border-gray-700 font-semibold bg-gray-50 dark:bg-gray-800">
                 <td />
                 <td className="px-4 py-2 text-gray-700 dark:text-gray-300 text-sm">Total Expenses</td>
-                <td className="px-4 py-2 text-right text-gray-600 dark:text-gray-400 text-sm">{fmt(totalExpenseBudget)}</td>
+                <td className="px-4 py-2 text-right text-gray-600 dark:text-gray-400 text-sm">{fmt(effectiveExpenseBudget)}</td>
                 <td className="px-4 py-2 text-right text-red-700 dark:text-red-400 text-sm">{fmt(totalExpenseActual)}</td>
                 <td className="px-4 py-2 text-right text-sm">
                   <span className={`font-medium ${totalExpenseRemaining >= 0 ? 'text-dosh-600 dark:text-dosh-400' : 'text-red-600 dark:text-red-400'}`}>{fmt(totalExpenseRemaining)}</span>
@@ -1010,9 +1148,16 @@ export default function PeriodDetailPage() {
                         <button
                           disabled={locked}
                           onClick={() => setInvestmentModal({ investmentdesc: inv.investmentdesc, openingValue: inv.opening_value, closingValue: inv.closing_value, budgetedAmount: inv.budgeted_amount, defaultType: 'increase' })}
-                          title="Add contribution"
+                          title="Add investment transaction"
                           className={`flex items-center justify-center w-7 h-7 rounded-full font-bold text-sm transition-colors ${locked ? 'opacity-30 cursor-not-allowed bg-gray-100 text-gray-400' : 'bg-dosh-100 text-dosh-700 hover:bg-dosh-200 dark:bg-dosh-900/40 dark:text-dosh-400 dark:hover:bg-dosh-900/60'}`}>
                           <PlusIcon className="w-4 h-4" />
+                        </button>
+                        <button
+                          disabled={locked}
+                          onClick={() => setInvestmentModal({ investmentdesc: inv.investmentdesc, openingValue: inv.opening_value, closingValue: inv.closing_value, budgetedAmount: inv.budgeted_amount, defaultType: 'decrease' })}
+                          title="Add subtraction/withdrawal"
+                          className={`flex items-center justify-center w-7 h-7 rounded-full font-bold text-sm transition-colors ${locked ? 'opacity-30 cursor-not-allowed bg-gray-100 text-gray-400' : 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/40 dark:text-red-400 dark:hover:bg-red-900/60'}`}>
+                          <MinusIcon className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => setInvestmentModal({ investmentdesc: inv.investmentdesc, openingValue: inv.opening_value, closingValue: inv.closing_value, budgetedAmount: inv.budgeted_amount, defaultType: 'increase' })}
@@ -1077,7 +1222,7 @@ export default function PeriodDetailPage() {
             expensedesc={entriesModal.expensedesc}
             budgetamount={entriesModal.budgetamount}
             actualamount={entriesModal.actualamount}
-            locked={locked}
+            locked={locked || entriesModal.readOnly}
             defaultType={entriesModal.defaultType ?? 'debit'}
             onClose={() => setEntriesModal(null)}
           />
@@ -1095,19 +1240,36 @@ export default function PeriodDetailPage() {
       )}
       {noteModal && (
         <Modal title="Expense Note" onClose={() => setNoteModal(null)}>
-          <ExpenseNoteModal periodId={id} expensedesc={noteModal.expensedesc} initialNote={noteModal.note} onClose={() => setNoteModal(null)} />
+          <ExpenseNoteModal periodId={id} expensedesc={noteModal.expensedesc} initialNote={noteModal.note} readOnly={noteModal.readOnly} onClose={() => setNoteModal(null)} />
+        </Modal>
+      )}
+      {reviseModal && (
+        <Modal title={`Revise Expense — ${reviseModal.expensedesc}`} onClose={() => setReviseModal(null)}>
+          <ReviseExpenseModal periodId={id} expensedesc={reviseModal.expensedesc} onClose={() => setReviseModal(null)} />
+        </Modal>
+      )}
+      {confirmPaidModal && (
+        <Modal title="Mark Expense as Paid?" onClose={() => setConfirmPaidModal(null)}>
+          <ConfirmPaidExpenseModal
+            expense={confirmPaidModal.expense}
+            onClose={() => setConfirmPaidModal(null)}
+            onConfirm={() => {
+              setExpenseStatus.mutate({ desc: confirmPaidModal.expense.expensedesc, status: 'Paid' })
+              setConfirmPaidModal(null)
+            }}
+          />
         </Modal>
       )}
       {investmentModal && (
         <Modal title={`Transactions — ${investmentModal.investmentdesc}`} onClose={() => setInvestmentModal(null)} size="lg">
           <InvestmentTxModal
             periodId={id}
-            budgetId={period.budgetid}
             investmentdesc={investmentModal.investmentdesc}
             openingValue={investmentModal.openingValue}
             closingValue={investmentModal.closingValue}
             budgetedAmount={investmentModal.budgetedAmount}
             locked={locked}
+            defaultType={investmentModal.defaultType ?? 'increase'}
             onClose={() => setInvestmentModal(null)}
           />
         </Modal>

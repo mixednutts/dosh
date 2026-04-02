@@ -96,8 +96,8 @@ export const getPeriodBalances = periodId =>
 export const updatePeriodBalance = (periodId, desc, movement_amount) =>
   api.patch(`/periods/${periodId}/balances/${encodeURIComponent(desc)}`, { movement_amount }).then(r => r.data)
 
-export const setPeriodExpenseStatus = (periodId, desc, status) =>
-  api.patch(`/periods/${periodId}/expense/${encodeURIComponent(desc)}/status`, { status }).then(r => r.data)
+export const setPeriodExpenseStatus = (periodId, desc, status, revision_comment = null) =>
+  api.patch(`/periods/${periodId}/expense/${encodeURIComponent(desc)}/status`, { status, revision_comment }).then(r => r.data)
 
 export const updatePeriodExpenseBudget = (periodId, desc, budgetamount) =>
   api.patch(`/periods/${periodId}/expense/${encodeURIComponent(desc)}/budget`, { budgetamount }).then(r => r.data)

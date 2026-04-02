@@ -197,6 +197,7 @@ class PeriodExpenseOut(BaseModel):
     paytype: Optional[str] = None
     effectivedate: Optional[datetime] = None
     note: Optional[str] = None
+    revision_comment: Optional[str] = None
     model_config = {"from_attributes": True}
 
 
@@ -206,6 +207,7 @@ class PeriodExpenseNoteUpdate(BaseModel):
 
 class PeriodExpenseStatusUpdate(BaseModel):
     status: str
+    revision_comment: Optional[str] = None
 
 
 class PeriodExpenseBudgetUpdate(BaseModel):

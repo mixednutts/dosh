@@ -48,7 +48,6 @@ def _update_linked_account(finperiodid: int, budgetid: int, investmentdesc: str,
     pb.movement_amount = Decimal(str(pb.movement_amount)) + delta
     pb.closing_amount = Decimal(str(pb.opening_amount)) + Decimal(str(pb.movement_amount))
 
-
 @router.get("/", response_model=list[InvestmentTxOut])
 def list_transactions(finperiodid: int, investmentdesc: str, db: Session = Depends(get_db)):
     _get_period_investment(finperiodid, investmentdesc, db)

@@ -119,6 +119,7 @@ class PeriodExpense(Base):
 
     # Current | Paid | Revised
     status = Column(String, default='Current', nullable=False)
+    revision_comment = Column(String, nullable=True)
 
     period = relationship("FinancialPeriod", back_populates="period_expenses")
     expense_item = relationship(

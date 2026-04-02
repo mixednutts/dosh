@@ -194,6 +194,12 @@ Current backend routers are implemented for:
 - `balance_types`
 - `investment_transactions`
 
+## To Do
+
+- Evaluate user-facing terminology shift from `Budget` -> `Book` and `Period` -> `Chapter`.
+- Preferred direction: use `Book` and `Chapter` in frontend labels/navigation while keeping core finance terms such as `budget`, `actual`, `surplus`, `income`, and `expense` for clarity.
+- If adopted, keep backend/API/database naming unchanged initially and treat this as a frontend/content relabel pass first.
+
 ## Summary
 
 Dosh is currently a budget-and-period based personal finance app with:

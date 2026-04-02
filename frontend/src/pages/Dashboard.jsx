@@ -18,8 +18,10 @@ function PeriodRow({ budget, period }) {
   const incomeBudget  = data ? data.incomes.reduce((s, i) => s + Number(i.budgetamount), 0)  : null
   const incomeActual  = data ? data.incomes.reduce((s, i) => s + Number(i.actualamount), 0)  : null
   const expenseBudget = data ? data.expenses.reduce((s, e) => s + Number(e.budgetamount), 0) : null
+  const effectiveExpenseBudget = data ? data.expenses.reduce((s, e) => s + Number(e.status === 'Paid' ? e.actualamount : e.budgetamount), 0) : null
   const expenseActual = data ? data.expenses.reduce((s, e) => s + Number(e.actualamount), 0) : null
-  const surplusBudget = data ? incomeBudget - expenseBudget : null
+  const investmentBudget = data ? data.investments.reduce((s, inv) => s + Number(inv.budgeted_amount ?? 0), 0) : null
+  const surplusBudget = data ? incomeBudget - effectiveExpenseBudget - investmentBudget : null
   const surplusActual = data ? incomeActual - expenseActual : null
 
   const cell = (val, cls = '') => loading
@@ -45,7 +47,7 @@ function PeriodRow({ budget, period }) {
       </td>
       {cell(incomeBudget, 'text-gray-600 dark:text-gray-300')}
       {cell(incomeActual, 'text-dosh-700 dark:text-dosh-400')}
-      {cell(expenseBudget, 'text-gray-600 dark:text-gray-300')}
+      {cell(effectiveExpenseBudget, 'text-gray-600 dark:text-gray-300')}
       {cell(expenseActual, 'text-red-600 dark:text-red-400')}
       <td className={`table-cell text-right font-bold ${!loading && surplusBudget >= 0 ? 'text-dosh-600 dark:text-dosh-400' : 'text-red-600 dark:text-red-400'}`}>
         {loading ? <span className="inline-block w-16 h-4 rounded bg-gray-100 dark:bg-gray-800 animate-pulse" /> : fmt(surplusBudget)}

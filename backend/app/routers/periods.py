@@ -35,6 +35,11 @@ def _assert_unlocked(period: FinancialPeriod) -> None:
         raise HTTPException(423, "Period is locked — unlock it before making changes")
 
 
+def _assert_expense_not_paid(pe: PeriodExpense) -> None:
+    if (getattr(pe, "status", "Current") or "Current") == "Paid":
+        raise HTTPException(423, "Expense is marked Paid — revise it before making changes")
+
+
 def _enrich_expenses(expenses: list[PeriodExpense], db: Session) -> list[PeriodExpenseOut]:
     """Attach extra fields from ExpenseItem and compute remaining_amount."""
     out = []
@@ -395,6 +400,7 @@ def update_expense_actual(
     )
     if not pe:
         raise HTTPException(404, "Period expense entry not found")
+    _assert_expense_not_paid(pe)
     old_actual = Decimal(str(pe.actualamount or 0))
     pe.actualamount = payload.actualamount
     pe.varianceamount = pe.actualamount - pe.budgetamount
@@ -425,6 +431,7 @@ def add_expense_actual(
     )
     if not pe:
         raise HTTPException(404, "Period expense entry not found")
+    _assert_expense_not_paid(pe)
     pe.actualamount = (pe.actualamount or Decimal("0")) + payload.amount
     pe.varianceamount = pe.actualamount - pe.budgetamount
     _debit_primary_account(finperiodid, period.budgetid, payload.amount, db)
@@ -672,9 +679,13 @@ def set_expense_status(
     payload: PeriodExpenseStatusUpdate,
     db: Session = Depends(get_db),
 ):
+    period = _get_period_or_404(finperiodid, db)
+    _assert_unlocked(period)
     allowed = {'Current', 'Paid', 'Revised'}
     if payload.status not in allowed:
         raise HTTPException(422, f"status must be one of {allowed}")
+    if payload.status == 'Revised' and not (payload.revision_comment or '').strip():
+        raise HTTPException(422, "revision_comment is required when revising a paid expense")
     pe = (
         db.query(PeriodExpense)
         .filter(PeriodExpense.finperiodid == finperiodid, PeriodExpense.expensedesc == expensedesc)
@@ -682,7 +693,16 @@ def set_expense_status(
     )
     if not pe:
         raise HTTPException(404, "Period expense not found")
+    current_status = getattr(pe, 'status', 'Current') or 'Current'
+    if current_status != 'Paid' and payload.status == 'Revised':
+        raise HTTPException(409, "Only paid expenses can be revised")
+    if current_status == 'Paid' and payload.status == 'Current':
+        raise HTTPException(409, "Paid expenses must be revised before returning to Current")
+    if current_status == 'Revised' and payload.status == 'Current':
+        raise HTTPException(409, "Revised expenses must be marked Paid when edits are complete")
     pe.status = payload.status
+    if payload.status == 'Revised':
+        pe.revision_comment = payload.revision_comment.strip()
     db.commit()
     db.refresh(pe)
     return _enrich_expenses([pe], db)[0]
@@ -706,6 +726,7 @@ def update_expense_budget(
     )
     if not pe:
         raise HTTPException(404, "Period expense not found")
+    _assert_expense_not_paid(pe)
     pe.budgetamount = payload.budgetamount
     pe.varianceamount = pe.actualamount - pe.budgetamount
     db.commit()
@@ -722,7 +743,8 @@ def update_expense_note(
     payload: PeriodExpenseNoteUpdate,
     db: Session = Depends(get_db),
 ):
-    _get_period_or_404(finperiodid, db)
+    period = _get_period_or_404(finperiodid, db)
+    _assert_unlocked(period)
     pe = (
         db.query(PeriodExpense)
         .filter(PeriodExpense.finperiodid == finperiodid, PeriodExpense.expensedesc == expensedesc)
@@ -730,6 +752,7 @@ def update_expense_note(
     )
     if not pe:
         raise HTTPException(404, "Period expense not found")
+    _assert_expense_not_paid(pe)
     pe.note = payload.note or None
     db.commit()
     db.refresh(pe)
@@ -772,6 +795,7 @@ def remove_expense_from_period(
     )
     if not pe:
         raise HTTPException(404, "Period expense not found")
+    _assert_expense_not_paid(pe)
     if Decimal(str(pe.actualamount)) != Decimal("0"):
         raise HTTPException(409, "Cannot remove expense with recorded actuals")
     db.delete(pe)
