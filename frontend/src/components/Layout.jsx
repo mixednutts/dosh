@@ -10,6 +10,32 @@ import { useDarkMode } from '../hooks/useDarkMode'
 import { getBudgets, getPeriodDetail, getPeriodsForBudget } from '../api/client'
 import { format, parseISO } from 'date-fns'
 
+function PeriodGroup({ title, periods, activePeriodId, onNav }) {
+  if (periods.length === 0) return null
+
+  return (
+    <div className="space-y-0.5">
+      <span className="block px-2 py-1 text-[11px] uppercase tracking-wide text-dosh-400">{title}</span>
+      {periods.map(period => (
+        <Link
+          key={period.finperiodid}
+          to={`/periods/${period.finperiodid}`}
+          onClick={onNav}
+          className={clsx(
+            'flex items-center gap-1 truncate rounded px-2 py-1 text-xs transition-colors',
+            period.finperiodid === activePeriodId
+              ? 'bg-dosh-600 font-semibold text-white'
+              : 'text-dosh-300 hover:bg-dosh-800 hover:text-white'
+          )}
+        >
+          <ChevronRightIcon className="h-3 w-3 shrink-0" />
+          {format(parseISO(period.startdate), 'dd MMM')} - {format(parseISO(period.enddate), 'dd MMM')}
+        </Link>
+      ))}
+    </div>
+  )
+}
+
 function BudgetPeriodsNav({ budgetId, activePeriodId, defaultOpen, onNav }) {
   const [open, setOpen] = useState(defaultOpen)
 
@@ -22,6 +48,24 @@ function BudgetPeriodsNav({ budgetId, activePeriodId, defaultOpen, onNav }) {
     queryFn: () => getPeriodsForBudget(budgetId),
     staleTime: 60_000,
   })
+
+  const now = new Date()
+  const orderedPeriods = [...periods].sort((a, b) => parseISO(a.startdate) - parseISO(b.startdate))
+  const currentPeriods = orderedPeriods.filter(period => {
+    try {
+      return parseISO(period.enddate) >= now
+    } catch {
+      return false
+    }
+  })
+  const historicalPeriods = orderedPeriods.filter(period => {
+    try {
+      return parseISO(period.enddate) < now
+    } catch {
+      return false
+    }
+  })
+  const limitedHistoricalPeriods = historicalPeriods.slice(-10)
 
   return (
     <div className="ml-3 mt-0.5">
@@ -37,24 +81,20 @@ function BudgetPeriodsNav({ budgetId, activePeriodId, defaultOpen, onNav }) {
           {periods.length === 0 ? (
             <span className="block px-2 py-1 text-xs text-dosh-400">No periods yet</span>
           ) : (
-            [...periods]
-              .sort((a, b) => parseISO(b.startdate) - parseISO(a.startdate))
-              .map(period => (
-                <Link
-                  key={period.finperiodid}
-                  to={`/periods/${period.finperiodid}`}
-                  onClick={onNav}
-                  className={clsx(
-                    'flex items-center gap-1 truncate rounded px-2 py-1 text-xs transition-colors',
-                    period.finperiodid === activePeriodId
-                      ? 'bg-dosh-600 font-semibold text-white'
-                      : 'text-dosh-300 hover:bg-dosh-800 hover:text-white'
-                  )}
-                >
-                  <ChevronRightIcon className="h-3 w-3 shrink-0" />
-                  {format(parseISO(period.startdate), 'dd MMM')} - {format(parseISO(period.enddate), 'dd MMM')}
-                </Link>
-              ))
+            <>
+              <PeriodGroup
+                title="Current"
+                periods={currentPeriods}
+                activePeriodId={activePeriodId}
+                onNav={onNav}
+              />
+              <PeriodGroup
+                title="Historical"
+                periods={limitedHistoricalPeriods}
+                activePeriodId={activePeriodId}
+                onNav={onNav}
+              />
+            </>
           )}
         </div>
       )}
