@@ -428,3 +428,33 @@ class PeriodDetailOut(BaseModel):
     expenses: list[PeriodExpenseOut]
     investments: list[PeriodInvestmentOut] = []
     balances: list[PeriodBalanceOut] = []
+
+
+# ── Budget Health ─────────────────────────────────────────────────────────────
+
+class BudgetHealthEvidenceOut(BaseModel):
+    label: str
+    value: str
+    detail: Optional[str] = None
+
+
+class BudgetHealthPillarOut(BaseModel):
+    key: str
+    title: str
+    score: int
+    status: str
+    summary: str
+    evidence: list[BudgetHealthEvidenceOut]
+
+
+class BudgetHealthOut(BaseModel):
+    budgetid: int
+    score_version: str
+    evaluated_at: datetime
+    overall_score: int
+    overall_status: str
+    overall_summary: str
+    momentum_status: str
+    momentum_delta: int = 0
+    momentum_summary: str
+    pillars: list[BudgetHealthPillarOut]

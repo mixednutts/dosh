@@ -4,6 +4,8 @@ This document captures the key product and implementation changes made during re
 
 It is intended to complement [README.md](/home/ubuntu/dosh/README.md), not replace it.
 
+For staged budget health metrics direction, also read [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/BUDGET_HEALTH_ADDENDUM.md).
+
 Use this file in future sessions to understand:
 
 - what changed
@@ -400,6 +402,122 @@ Important product meaning:
 - projected savings now reflects actual planned surplus rather than raw income
 - future period planning is more trustworthy because the investment allocation follows the same budget logic shown in the summaries
 
+### 25. Budgets page is now the main landing page
+
+The app no longer treats the old dashboard as the primary entry point.
+
+Current behavior:
+
+- the root route now lands on the Budgets page
+- the old `/dashboard` path redirects to `/budgets`
+- clicking the Do$h brand mark also returns to the Budgets page
+- the standalone Dashboard navigation item was removed
+
+Important product meaning:
+
+- the main landing experience is now budget-centric rather than app-centric
+- budget overviews should carry the practical summary value users need first
+
+### 26. Budget list now carries budget-level summary cards
+
+The Budgets page now acts as the high-level summary surface for each budget instead of being a plain list.
+
+Current behavior:
+
+- each budget shows current period range when available
+- each budget shows days remaining in the active period
+- each budget shows counts for current, future, and historical periods
+
+Important product meaning:
+
+- users should be able to understand budget state before drilling into periods
+- overview information should feel useful without recreating a separate dashboard concept
+
+### 27. Period summaries were redesigned into grouped tables
+
+The budget period summary page moved away from stacked cards and toward grouped tabular sections.
+
+Current behavior:
+
+- periods are grouped into `Current`, `Future`, and `Historical`
+- `Future` and `Historical` are collapsed by default
+- groupings mirror the sidebar classification logic
+- summary rows now use a denser table layout with category headers for income, expenses, and investments
+
+Important product meaning:
+
+- period summaries should favor readable comparison and scanning over card-style presentation
+- the meaning of `Current`, `Future`, and `Historical` should stay consistent across navigation and summary views
+
+### 28. Budget health metrics Phase 1 is now implemented
+
+The first budget health implementation was added as a real product feature backed by current finance workflow data.
+
+Current behavior:
+
+- a backend metrics service computes budget health from current data
+- the API exposes budget health via `/api/budgets/{budgetid}/health`
+- current pillars are:
+  - `Setup Health`
+  - `Budget Discipline`
+  - `Planning Stability`
+- the response includes an overall score, momentum direction, explanatory summaries, and evidence items for inspection
+- the Budgets page shows a compact budget health visualization and a details modal
+
+Important product meaning:
+
+- budget health must be explainable from real product data
+- visible results should feel like guided indicators, not hidden magic scoring
+- development phase terminology belongs in docs, not in user-facing UI
+
+### 29. Budget health now uses a compact score-circle visualization
+
+The budget health presentation was refined from a text-heavy status block into a more compact visual indicator.
+
+Current behavior:
+
+- the budget health card now sits alongside the other budget summary cards
+- the main score is shown inside a large colored circle
+- a smaller overlapping circle shows the improvement/decline figure
+- momentum uses directional arrows and a signed delta instead of only text labels
+- visible `Strong`/`Watch`/`Needs Attention` labels were removed from the compact UI treatment
+
+Important product meaning:
+
+- the compact summary should feel motivating and immediately readable
+- detailed interpretation still belongs in the health details modal
+
+### 30. Timezone handling now aligns visible data with the app’s intended local time
+
+The app previously displayed some visible times using UTC-oriented behavior that did not match the intended local experience.
+
+Current behavior:
+
+- Docker services now set `TZ=Australia/Sydney`
+- budget health evaluation timestamps are generated using the app timezone
+- budget health details display local time rather than UTC
+- period status logic for summary grouping now uses app-local current time instead of `utcnow`
+
+Important product meaning:
+
+- visible time information should match the user’s expected local finance context
+- future/current/historical classification should not drift because of server-default UTC assumptions
+
+### 31. Focused Docker ignore files were added
+
+The repo now avoids sending unnecessary local files into Docker build contexts.
+
+Current behavior:
+
+- `frontend/.dockerignore` excludes `node_modules`, `build`, and other local noise
+- `backend/.dockerignore` excludes cache and environment artifacts
+- rebuilds now send much smaller contexts to Docker
+
+Important product meaning:
+
+- deploys should avoid unnecessary work where possible
+- local development artifacts should not influence container build performance
+
 ## Budget Setup Page Direction
 
 The budget detail page was reworked away from isolated tab panes and toward a scrollable setup flow.
@@ -507,17 +625,61 @@ Future suggestions should respect the following:
 
 These are active ideas or partially formed directions that may matter in later sessions:
 
+- Budget health metrics are now a tracked initiative. Phase 1 implementation exists today, while later close-out integration and settings-driven rule work are recorded in `BUDGET_HEALTH_ADDENDUM.md`.
+- When referring to budget health in future sessions, distinguish between the broader roadmap item `Budget Health Metrics` and the currently shipped `Phase 1` implementation.
+
+- The next major roadmap milestones should be treated as:
+  - Reporting & Analysis
+  - Reconciliation
+  - Period Close Out
 - The centralized ledger should likely become the canonical transaction reporting surface across the app, not just a backend support structure.
 - Expense and investment detail views may eventually converge on the centralized transaction model instead of feeling like separate subsystems.
 - Balance details could evolve into a richer audit/reconciliation experience with running totals and source filtering.
 - The current `Current` vs `Historical` period grouping in the sidebar may later split future periods into their own explicit group if that becomes useful.
 - End-of-period reporting should eventually include revision comments and revision reasoning.
-- Existing future periods created during experimentation may need one-off cleanup tooling when product rules change midstream.
 - The current automatic surplus allocation only looks at fixed income budget and generated expense budget; future sessions may want to decide whether other budgeted inflows or allocations should participate.
 - Projected savings now leans on investment allocations; future design work should decide whether that is the permanent canonical meaning or whether savings should become its own clearer first-class concept.
 - Expense auto/manual flag behavior still needs deeper development and may influence later account logic.
 - Settings are expected to become a place for user-selected behavior flags and page layout preferences.
 - Settings should remain visible rather than hidden, even if they stay lower priority than core setup steps.
+
+### Roadmap Milestone Notes
+
+#### Reporting & Analysis
+
+This milestone should focus on making the financial story of each period and budget easier to read, compare, and trust.
+
+Useful directions:
+
+- promote the centralized ledger into a clearer reporting surface
+- expand summaries beyond raw totals into more useful analysis
+- show how budget, actual, savings, and investment performance evolve over time
+
+#### Reconciliation
+
+This milestone should turn transaction-backed explanation into a fuller reconciliation workflow.
+
+Useful directions:
+
+- richer account movement audit views
+- running totals and discrepancy detection
+- filtering by transaction source and type
+- possible bank statement import or OCR-assisted matching if reliability is good enough
+
+Important caution:
+
+- OCR features should only be pursued if they improve trust and reduce manual effort without creating ambiguous financial history
+
+#### Period Close Out
+
+This milestone should support deliberate end-of-period review rather than leaving periods as passive records.
+
+Useful directions:
+
+- close-out performance metrics
+- end-of-period review and sign-off flow
+- commentary and reflection fields
+- use of revision comments and finalized status changes in later reporting
 - Navigation/sidebar polish should happen later, after core functional flows stabilize.
 - Naming refinement remains a possible future branding move once workflow and structure are more settled.
 

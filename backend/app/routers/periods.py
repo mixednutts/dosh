@@ -21,6 +21,7 @@ from ..schemas import (
     PeriodExpenseStatusUpdate, PeriodExpenseBudgetUpdate, PeriodExpenseNoteUpdate,
 )
 from ..period_logic import calc_period_end, periods_overlap, expense_occurs_in_period
+from ..time_utils import app_now_naive
 from ..transaction_ledger import build_expense_tx, build_income_tx, sync_period_state
 
 router = APIRouter(prefix="/periods", tags=["periods"])
@@ -339,7 +340,7 @@ def list_period_summaries_for_budget(budgetid: int, db: Session = Depends(get_db
     for row in investment_rows:
         investments_by_period[row.finperiodid].append(row)
 
-    now = datetime.utcnow()
+    now = app_now_naive()
     summaries: list[PeriodSummaryOut] = []
     cumulative_projected_savings = Decimal("0.00")
 
@@ -771,7 +772,7 @@ def delete_period(
     period = _get_period_or_404(finperiodid, db)
     _assert_unlocked(period)
 
-    if _period_status(period, datetime.utcnow()) != "Future":
+    if _period_status(period, app_now_naive()) != "Future":
         raise HTTPException(409, "Only future periods can be deleted")
 
     if not force:

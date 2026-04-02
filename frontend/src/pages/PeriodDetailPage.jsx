@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format, parseISO, addDays } from 'date-fns'
 import {
   LockClosedIcon, LockOpenIcon, ChevronRightIcon, PlusIcon,
-  MinusIcon, TrashIcon, ListBulletIcon, XMarkIcon, Bars2Icon,
+  MinusIcon, TrashIcon, ListBulletIcon, Bars2Icon,
   ChatBubbleOvalLeftEllipsisIcon,
 } from '@heroicons/react/24/outline'
 import {
@@ -939,7 +939,6 @@ export default function PeriodDetailPage() {
 
   const totalIncomeBudget    = incomes.reduce((s, i) => s + Number(i.budgetamount), 0)
   const totalIncomeActual    = incomes.reduce((s, i) => s + Number(i.actualamount), 0)
-  const totalExpenseBudget   = expenses.reduce((s, e) => s + Number(e.budgetamount), 0)
   const effectiveExpenseBudget = expenses.reduce((s, e) => s + Number(e.status === 'Paid' ? e.actualamount : e.budgetamount), 0)
   const totalExpenseActual   = expenses.reduce((s, e) => s + Number(e.actualamount), 0)
   const totalInvestmentBudget = investments.reduce((s, inv) => s + Number(inv.budgeted_amount ?? 0), 0)

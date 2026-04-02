@@ -17,7 +17,6 @@ function PeriodRow({ budget, period }) {
 
   const incomeBudget  = data ? data.incomes.reduce((s, i) => s + Number(i.budgetamount), 0)  : null
   const incomeActual  = data ? data.incomes.reduce((s, i) => s + Number(i.actualamount), 0)  : null
-  const expenseBudget = data ? data.expenses.reduce((s, e) => s + Number(e.budgetamount), 0) : null
   const effectiveExpenseBudget = data ? data.expenses.reduce((s, e) => s + Number(e.status === 'Paid' ? e.actualamount : e.budgetamount), 0) : null
   const expenseActual = data ? data.expenses.reduce((s, e) => s + Number(e.actualamount), 0) : null
   const investmentBudget = data ? data.investments.reduce((s, inv) => s + Number(inv.budgeted_amount ?? 0), 0) : null

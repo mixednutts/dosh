@@ -4,6 +4,8 @@ Dosh is a personal finance application with a FastAPI backend and a Create React
 
 This README reflects the repository as it exists now, not the originally intended design.
 
+For budget health scoring and roadmap context, also read [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/BUDGET_HEALTH_ADDENDUM.md).
+
 ## Current Repository Layout
 
 ```text
@@ -36,6 +38,7 @@ Implemented areas:
 
 - Budget CRUD
 - Budget settings for period-generation behavior
+- Budget health metrics Phase 1 endpoint with explainable evidence payload
 - Income type CRUD
 - Expense item CRUD and reordering
 - Investment item CRUD with primary-line support
@@ -59,8 +62,14 @@ The frontend is a React single-page app under `frontend/src`, currently built wi
 
 Visible pages and flows:
 
-- Dashboard
 - Budgets list/create/edit/delete
+- Budgets page as the main landing page and primary overview surface
+- budget-level summary cards including:
+- current period range
+- days remaining in the active period
+- current/future/historical period counts
+- budget health score and momentum indicator
+- budget health details modal with evidence breakdown
 - Budget periods page for:
 - viewing existing periods
 - viewing period-level financial summaries
@@ -129,6 +138,7 @@ Notes on the model:
 - Budgets can opt into automatically allocating new-period surplus to a primary investment line.
 - Expense actuals can be tracked either directly or through child transaction entries.
 - A centralized period transaction ledger now exists to support reconciliation and reporting.
+- Budget health is currently computed from existing budget, period, and expense data without additional schema.
 - Balance movement is intended to be explained through transactions rather than edited directly.
 - Investment periods track opening value, closing value, budgeted amount, and actual transaction totals.
 - Investment items can be marked as the single active primary line for automatic savings allocation.
@@ -165,6 +175,7 @@ Additional current generation rules:
 - If enabled in budget settings, positive starting surplus budget is automatically allocated to the active primary investment line.
 - Period generation now normalizes incoming start dates to avoid timezone-related overlap bugs.
 - Future period deletion is allowed only for unlocked future periods with no recorded actuals.
+- Period status and budget health evaluation now use the app timezone rather than UTC-only runtime defaults.
 
 ## Accounts and Investments
 
@@ -200,6 +211,7 @@ The repo includes:
 - a SQLite-backed named volume for backend data
 - a local `dosh-net` network
 - an external `frontend` network for Traefik
+- `TZ=Australia/Sydney` on both services so visible app time aligns with the expected local timezone
 
 The frontend service includes Traefik labels for TLS and basic auth.
 
@@ -210,9 +222,10 @@ The repository is not fully polished from an operations perspective. These are i
 - The frontend uses Create React App via `react-scripts`.
 - The frontend Dockerfile builds `/app/build`, which matches Create React App rather than Vite.
 - The frontend Dockerfile runs `npm install`, so it depends on `package-lock.json` behavior not being pinned in the repo.
-- The frontend Docker build context is larger than necessary because the repo does not yet use a focused `.dockerignore`.
-- Frontend builds currently pass with non-blocking lint warnings in `Dashboard.jsx` and `PeriodDetailPage.jsx`.
-- Existing future periods created before the corrected surplus-allocation fix may still need data cleanup if their investment budgets were overstated.
+- Focused `.dockerignore` files now exist for both frontend and backend build contexts.
+- Frontend builds currently pass cleanly without the earlier lint warnings.
+- Budget health is a Phase 1 implementation and should be treated as an explainable first slice rather than a finished scoring system.
+- The user-facing budget health presentation should stay free of internal development terminology such as phase labels.
 
 ## API Surface Overview
 
@@ -228,15 +241,69 @@ Current backend routers are implemented for:
 - `investment_transactions`
 - `period_transactions`
 
+Additional budget route surface now includes:
+
+- budget health summary/detail via `/budgets/{budgetid}/health`
+
 ## To Do
 
 - Evaluate user-facing terminology shift from `Budget` -> `Book` and `Period` -> `Chapter`.
 - Preferred direction: use `Book` and `Chapter` in frontend labels/navigation while keeping core finance terms such as `budget`, `actual`, `surplus`, `income`, and `expense` for clarity.
 - If adopted, keep backend/API/database naming unchanged initially and treat this as a frontend/content relabel pass first.
-- Consider a cleanup pass for already-generated future periods that were created before the corrected auto-surplus allocation logic.
-- Add a `.dockerignore` so deploys do not send unnecessary frontend build context.
 - Decide whether projected savings should stay investment-based everywhere or become a broader combined savings/planned-investment concept.
 - Continue normalizing user-facing language around `Savings`, `Investment`, and `Primary investment line`.
+- Continue refining budget health scoring semantics, weighting, and evidence language from real usage feedback.
+- Decide whether app timezone should remain deployment-driven through `TZ` or eventually become a user-configurable setting.
+- Extend the budget health momentum model so corrective action in future periods can influence the visible trend more directly.
+
+## Development Roadmap
+
+The next larger product milestones currently identified for Dosh are:
+
+- Reporting & Analysis
+- Reconciliation
+- Period Close Out
+
+Budget health metrics work is staged separately in [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/BUDGET_HEALTH_ADDENDUM.md) so future sessions can distinguish the current Phase 1 implementation from later close-out and configuration work.
+
+Current status:
+
+- `Budget Health Metrics` exists today as a roadmap item with an implemented `Phase 1` slice.
+- Phase 1 should be treated as the initial explainable metrics release, not the finished end-state.
+- The shipped UI should present budget health as a normal product feature, while phase terminology stays in development documentation only.
+
+### Reporting & Analysis
+
+This milestone should deepen the app's ability to explain financial activity and trends over time.
+
+Likely focus areas:
+
+- ledger-backed reporting views across periods
+- richer period and dashboard summaries
+- clearer surplus, savings, and investment trend analysis
+- reporting that helps users understand what changed and why
+
+### Reconciliation
+
+This milestone should build on the centralized ledger and balance movement detail work so reconciliation becomes a first-class workflow.
+
+Likely focus areas:
+
+- stronger account-by-account reconciliation views
+- clearer audit trails with filtering and source grouping
+- running totals and discrepancy detection
+- possible bank statement import and OCR-assisted matching, if that proves practical and reliable
+
+### Period Close Out
+
+This milestone should support end-of-period review and make each period feel complete before moving on.
+
+Likely focus areas:
+
+- close-out performance metrics
+- end-of-period review flow
+- commentary and notes on what happened during the period
+- use of revision comments and final-state indicators in later reporting
 
 ## Summary
 

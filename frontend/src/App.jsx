@@ -1,6 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout'
-import Dashboard from './pages/Dashboard'
 import BudgetsPage from './pages/BudgetsPage'
 import BudgetDetailPage from './pages/BudgetDetailPage'
 import BudgetPeriodsPage from './pages/BudgetPeriodsPage'
@@ -11,8 +10,8 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route element={<Layout />}>
-          <Route index element={<Navigate to="/dashboard" replace />} />
-          <Route path="dashboard" element={<Dashboard />} />
+          <Route index element={<Navigate to="/budgets" replace />} />
+          <Route path="dashboard" element={<Navigate to="/budgets" replace />} />
           <Route path="budgets" element={<BudgetsPage />} />
           <Route path="budgets/:budgetId" element={<BudgetPeriodsPage />} />
           <Route path="budgets/:budgetId/setup" element={<BudgetDetailPage />} />

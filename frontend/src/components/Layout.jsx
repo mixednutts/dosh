@@ -1,6 +1,6 @@
 import { Outlet, NavLink, Link, useMatch } from 'react-router-dom'
 import {
-  HomeIcon, WalletIcon, Bars3Icon, XMarkIcon, MoonIcon, SunIcon,
+  WalletIcon, Bars3Icon, XMarkIcon, MoonIcon, SunIcon,
   ChevronRightIcon, ChevronDownIcon,
 } from '@heroicons/react/24/outline'
 import { useState, useEffect } from 'react'
@@ -211,13 +211,13 @@ export default function Layout() {
         )}
       >
         <Link
-          to="/dashboard"
+          to="/budgets"
           onClick={() => setOpen(false)}
           className="flex items-center gap-3 border-b border-dosh-800 px-5 py-4 transition-colors hover:bg-dosh-800"
         >
           <img src="/icon.svg" alt="Dosh" className="h-8 w-8 rounded-full" />
           <div className="min-w-0">
-            <span className="block text-2xl font-black tracking-tight text-white">Dosh</span>
+            <span className="block text-2xl font-black tracking-tight text-white">Do$h</span>
             <span className="mt-1 block text-[10px] font-semibold uppercase leading-tight tracking-[0.18em] text-dosh-300">
               <span className="block">Personal</span>
               <span className="block">Finance</span>
@@ -227,20 +227,6 @@ export default function Layout() {
         </Link>
 
         <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-          <NavLink
-            to="/dashboard"
-            onClick={() => setOpen(false)}
-            className={({ isActive }) =>
-              clsx(
-                'flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors',
-                isActive ? 'bg-dosh-700 text-white' : 'text-dosh-200 hover:bg-dosh-800 hover:text-white'
-              )
-            }
-          >
-            <HomeIcon className="h-4 w-4 shrink-0" />
-            Dashboard
-          </NavLink>
-
           <div>
             <div className="flex items-center">
               <NavLink
@@ -274,7 +260,7 @@ export default function Layout() {
         </nav>
 
         <div className="flex items-center justify-between border-t border-dosh-800 px-4 py-3">
-          <span className="text-xs text-dosh-400">Dosh v1.0</span>
+          <span className="text-xs text-dosh-400">Do$h v1.0</span>
           <button
             onClick={() => setDark(d => !d)}
             title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
@@ -295,7 +281,7 @@ export default function Layout() {
             {open ? <XMarkIcon className="h-5 w-5" /> : <Bars3Icon className="h-5 w-5" />}
           </button>
           <img src="/icon.svg" alt="Dosh" className="h-6 w-6 rounded-full" />
-          <span className="font-bold text-dosh-700 dark:text-dosh-400">Dosh</span>
+          <span className="font-bold text-dosh-700 dark:text-dosh-400">Do$h</span>
           <button onClick={() => setDark(d => !d)} className="ml-auto rounded p-1 text-gray-500 dark:text-gray-400">
             {dark ? <SunIcon className="h-4 w-4" /> : <MoonIcon className="h-4 w-4" />}
           </button>

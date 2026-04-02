@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from ..budget_health import build_budget_health_payload
 from ..database import get_db
 from ..models import Budget
-from ..schemas import BudgetCreate, BudgetOut, BudgetUpdate
+from ..schemas import BudgetCreate, BudgetHealthOut, BudgetOut, BudgetUpdate
 
 router = APIRouter(prefix="/budgets", tags=["budgets"])
 
@@ -27,6 +28,14 @@ def get_budget(budgetid: int, db: Session = Depends(get_db)):
     if not budget:
         raise HTTPException(404, "Budget not found")
     return budget
+
+
+@router.get("/{budgetid}/health", response_model=BudgetHealthOut)
+def get_budget_health(budgetid: int, db: Session = Depends(get_db)):
+    payload = build_budget_health_payload(db, budgetid)
+    if not payload:
+        raise HTTPException(404, "Budget not found")
+    return payload
 
 
 @router.patch("/{budgetid}", response_model=BudgetOut)

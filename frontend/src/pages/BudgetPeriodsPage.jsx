@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronRightIcon, PlusIcon, Cog6ToothIcon, TrashIcon } from '@heroicons/react/24/outline'
+import { ChevronDownIcon, ChevronRightIcon, PlusIcon, Cog6ToothIcon, TrashIcon } from '@heroicons/react/24/outline'
 import { addDays, format, parseISO } from 'date-fns'
 import { deletePeriod, getBudget, getExpenseItems, getIncomeTypes, getPeriodSummariesForBudget, generatePeriod } from '../api/client'
+import clsx from 'clsx'
 import Modal from '../components/Modal'
 import Spinner from '../components/Spinner'
 
@@ -16,6 +17,22 @@ const fmt = value => Number(value ?? 0).toLocaleString('en-AU', { style: 'curren
 function toDateInputValue(value) {
   return format(value, 'yyyy-MM-dd')
 }
+
+const PERIOD_SUMMARY_COLGROUP = (
+  <colgroup>
+    <col style={{ width: '240px' }} />
+    <col style={{ width: '110px' }} />
+    <col style={{ width: '110px' }} />
+    <col style={{ width: '110px' }} />
+    <col style={{ width: '110px' }} />
+    <col style={{ width: '110px' }} />
+    <col style={{ width: '110px' }} />
+    <col style={{ width: '130px' }} />
+    <col style={{ width: '130px' }} />
+    <col style={{ width: '130px' }} />
+    <col style={{ width: '150px' }} />
+  </colgroup>
+)
 
 function PeriodGenerateForm({ initialStartDate, onSubmit, onClose, loading, error }) {
   const [startDate, setStartDate] = useState(initialStartDate)
@@ -63,70 +80,148 @@ function PeriodGenerateForm({ initialStartDate, onSubmit, onClose, loading, erro
   )
 }
 
-function Metric({ label, value, tone = 'text-gray-700 dark:text-gray-300' }) {
-  return (
-    <div className="rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800/70">
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{label}</p>
-      <p className={`mt-1 text-sm font-semibold ${tone}`}>{fmt(value)}</p>
-    </div>
-  )
+function getGroupedPeriodSummaries(periodSummaries) {
+  const now = new Date()
+  const ordered = [...periodSummaries].sort((a, b) => parseISO(a.period.startdate) - parseISO(b.period.startdate))
+
+  return {
+    current: ordered.filter(({ period }) => {
+      try {
+        const start = parseISO(period.startdate)
+        const end = parseISO(period.enddate)
+        return start <= now && end >= now
+      } catch {
+        return false
+      }
+    }),
+    future: ordered.filter(({ period }) => {
+      try {
+        return parseISO(period.startdate) > now
+      } catch {
+        return false
+      }
+    }),
+    historical: ordered.filter(({ period }) => {
+      try {
+        return parseISO(period.enddate) < now
+      } catch {
+        return false
+      }
+    }),
+  }
 }
 
-function PeriodCard({ summary, onDelete }) {
-  const { period, period_status: periodStatus } = summary
+function PeriodSummaryRow({ summary, onDelete }) {
+  const { period } = summary
   const surplusBudgetTone = Number(summary.surplus_budget) >= 0 ? 'text-dosh-600 dark:text-dosh-400' : 'text-red-600 dark:text-red-400'
   const surplusActualTone = Number(summary.surplus_actual) >= 0 ? 'text-dosh-600 dark:text-dosh-400' : 'text-red-600 dark:text-red-400'
   const projectedSavingsTone = Number(summary.projected_savings) >= 0 ? 'text-dosh-700 dark:text-dosh-400' : 'text-red-600 dark:text-red-400'
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-            {format(parseISO(period.startdate), 'dd MMM yyyy')} - {format(parseISO(period.enddate), 'dd MMM yyyy')}
-          </p>
-          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            Period ID {period.finperiodid}
-          </p>
+    <tr className="table-row align-top">
+      <td className="table-cell">
+        <div className="font-medium text-gray-900 dark:text-gray-100">
+          {format(parseISO(period.startdate), 'dd MMM yy')} - {format(parseISO(period.enddate), 'dd MMM yy')}
         </div>
-        <div className="flex gap-2">
-          {periodStatus && <span className="badge-blue">{periodStatus}</span>}
+        <div className="mt-1">
           {period.islocked && <span className="badge-amber">Locked</span>}
         </div>
-      </div>
-
-      <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-        <Metric label="Projected Savings" value={summary.projected_savings} tone={projectedSavingsTone} />
-        <Metric label="Income Budget" value={summary.income_budget} />
-        <Metric label="Income Actual" value={summary.income_actual} tone="text-dosh-700 dark:text-dosh-400" />
-        <Metric label="Expense Budget" value={summary.expense_budget} />
-        <Metric label="Expense Actual" value={summary.expense_actual} tone="text-red-600 dark:text-red-400" />
-        <Metric label="Investment Budget" value={summary.investment_budget} />
-        <Metric label="Investment Actual" value={summary.investment_actual} tone="text-dosh-700 dark:text-dosh-400" />
-        <Metric label="Surplus (Budget)" value={summary.surplus_budget} tone={surplusBudgetTone} />
-        <Metric label="Surplus (Actual)" value={summary.surplus_actual} tone={surplusActualTone} />
-      </div>
-
-      <div className="mt-3 flex items-center justify-between gap-3 flex-wrap">
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          {periodStatus === 'Future' ? 'Ready for planning and optional removal.' : 'Open the period to review full balances, transactions, and line details.'}
-        </p>
-        <div className="flex gap-2">
+      </td>
+      <td className="table-cell-muted text-right col-budget">{fmt(summary.income_budget)}</td>
+      <td className="table-cell text-right col-actual text-dosh-700 dark:text-dosh-400">{fmt(summary.income_actual)}</td>
+      <td className="table-cell-muted text-right col-budget">{fmt(summary.expense_budget)}</td>
+      <td className="table-cell text-right col-actual text-red-600 dark:text-red-400">{fmt(summary.expense_actual)}</td>
+      <td className="table-cell-muted text-right col-budget">{fmt(summary.investment_budget)}</td>
+      <td className="table-cell text-right col-actual text-dosh-700 dark:text-dosh-400">{fmt(summary.investment_actual)}</td>
+      <td className={clsx('table-cell text-right font-semibold', projectedSavingsTone)}>{fmt(summary.projected_savings)}</td>
+      <td className={clsx('table-cell text-right font-semibold', surplusBudgetTone)}>{fmt(summary.surplus_budget)}</td>
+      <td className={clsx('table-cell text-right font-semibold', surplusActualTone)}>{fmt(summary.surplus_actual)}</td>
+      <td className="table-cell">
+        <div className="flex flex-wrap justify-end gap-2">
+          <Link to={`/periods/${period.finperiodid}`} className="btn-primary">
+            Open
+          </Link>
           {summary.can_delete && (
             <button
               type="button"
-              className="btn-secondary text-red-600 hover:text-red-700 dark:text-red-300 dark:hover:text-red-200"
+              className="btn-danger"
               onClick={() => onDelete(summary)}
+              title="Delete period"
             >
-              <TrashIcon className="h-4 w-4" /> Delete
+              <TrashIcon className="h-4 w-4" />
             </button>
           )}
-          <Link to={`/periods/${period.finperiodid}`} className="btn-primary">
-            Open Period
-          </Link>
         </div>
+      </td>
+    </tr>
+  )
+}
+
+function PeriodSummaryGroup({ title, summaries, collapsed = false, collapsible = false, onDelete }) {
+  const [open, setOpen] = useState(!collapsed)
+
+  if (summaries.length === 0) return null
+
+  return (
+    <section className="card overflow-hidden">
+      <div className="border-b border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-800 dark:bg-gray-900/70">
+        <button
+          type="button"
+          className="flex items-center gap-2 text-left text-sm font-semibold uppercase tracking-wide text-gray-700 transition-colors hover:text-gray-900 dark:text-gray-200 dark:hover:text-white"
+          onClick={() => collapsible && setOpen(value => !value)}
+          title={collapsible ? (open ? `Collapse ${title.toLowerCase()} periods` : `Expand ${title.toLowerCase()} periods`) : undefined}
+        >
+          {collapsible ? (
+            open ? <ChevronDownIcon className="h-4 w-4 shrink-0" /> : <ChevronRightIcon className="h-4 w-4 shrink-0" />
+          ) : (
+            <ChevronDownIcon className="h-4 w-4 shrink-0 opacity-60" />
+          )}
+          <span>{title}</span>
+        </button>
       </div>
-    </div>
+
+      {open && (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[1020px] text-sm">
+            {PERIOD_SUMMARY_COLGROUP}
+            <thead>
+              <tr className="border-b border-gray-100 dark:border-gray-800">
+                <th className="table-header-cell text-left"></th>
+                <th className="table-header-cell text-center" colSpan="2">Income</th>
+                <th className="table-header-cell text-center" colSpan="2">Expenses</th>
+                <th className="table-header-cell text-center" colSpan="2">Investments</th>
+                <th className="table-header-cell"></th>
+                <th className="table-header-cell"></th>
+                <th className="table-header-cell"></th>
+                <th className="table-header-cell"></th>
+              </tr>
+              <tr className="border-b border-gray-200 dark:border-gray-800">
+                <th className="table-header-cell text-left">Period</th>
+                <th className="table-header-cell text-right col-budget">Budget</th>
+                <th className="table-header-cell text-right col-actual">Actual</th>
+                <th className="table-header-cell text-right col-budget">Budget</th>
+                <th className="table-header-cell text-right col-actual">Actual</th>
+                <th className="table-header-cell text-right col-budget">Budget</th>
+                <th className="table-header-cell text-right col-actual">Actual</th>
+                <th className="table-header-cell text-right">Projected Savings</th>
+                <th className="table-header-cell text-right">Surplus Budget</th>
+                <th className="table-header-cell text-right">Surplus Actual</th>
+                <th className="table-header-cell text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
+              {summaries.map(summary => (
+                <PeriodSummaryRow
+                  key={summary.period.finperiodid}
+                  summary={summary}
+                  onDelete={onDelete}
+                />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
   )
 }
 
@@ -165,6 +260,10 @@ export default function BudgetPeriodsPage() {
 
   const periods = useMemo(
     () => periodSummaries.map(summary => summary.period),
+    [periodSummaries]
+  )
+  const groupedSummaries = useMemo(
+    () => getGroupedPeriodSummaries(periodSummaries),
     [periodSummaries]
   )
 
@@ -239,21 +338,6 @@ export default function BudgetPeriodsPage() {
         </div>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-3">
-        <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/50">
-          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Existing Periods</p>
-          <p className="mt-1 text-sm font-medium text-gray-900 dark:text-gray-100">{periods.length}</p>
-        </div>
-        <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/50">
-          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Income Types Ready</p>
-          <p className="mt-1 text-sm font-medium text-gray-900 dark:text-gray-100">{incomeTypes.length}</p>
-        </div>
-        <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/50">
-          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Active Expense Items Ready</p>
-          <p className="mt-1 text-sm font-medium text-gray-900 dark:text-gray-100">{activeExpenseItems.length}</p>
-        </div>
-      </div>
-
       {!canGenerate && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-300">
           New periods require at least one income type and one active expense item. Finish the setup first, then come back here to generate periods.
@@ -277,22 +361,17 @@ export default function BudgetPeriodsPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Periods</h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Next suggested start: {suggestedStartDate}
-            </p>
-          </div>
-          <div className="grid gap-3">
-            {[...periodSummaries]
-              .sort((a, b) => parseISO(b.period.startdate) - parseISO(a.period.startdate))
-              .map(summary => (
-                <PeriodCard
-                  key={summary.period.finperiodid}
-                  summary={summary}
-                  onDelete={setDeleteTarget}
-                />
-              ))}
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Periods</h2>
+          <div className="space-y-4">
+            <PeriodSummaryGroup title="Current" summaries={groupedSummaries.current} collapsible onDelete={setDeleteTarget} />
+            <PeriodSummaryGroup title="Future" summaries={groupedSummaries.future} collapsed collapsible onDelete={setDeleteTarget} />
+            <PeriodSummaryGroup
+              title="Historical"
+              summaries={groupedSummaries.historical}
+              collapsed
+              collapsible
+              onDelete={setDeleteTarget}
+            />
           </div>
         </div>
       )}
