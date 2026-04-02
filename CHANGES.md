@@ -640,6 +640,7 @@ These are active ideas or partially formed directions that may matter in later s
 - The current automatic surplus allocation only looks at fixed income budget and generated expense budget; future sessions may want to decide whether other budgeted inflows or allocations should participate.
 - Projected savings now leans on investment allocations; future design work should decide whether that is the permanent canonical meaning or whether savings should become its own clearer first-class concept.
 - Expense auto/manual flag behavior still needs deeper development and may influence later account logic.
+- Revising an expense may later benefit from a reason code pick list in addition to free-text comments, especially for reporting and close-out analysis.
 - Settings are expected to become a place for user-selected behavior flags and page layout preferences.
 - Settings should remain visible rather than hidden, even if they stay lower priority than core setup steps.
 
