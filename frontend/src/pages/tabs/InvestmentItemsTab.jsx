@@ -1,0 +1,160 @@
+import { useState } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline'
+import { format, parseISO } from 'date-fns'
+import { getInvestmentItems, createInvestmentItem, updateInvestmentItem, deleteInvestmentItem, getBalanceTypes } from '../../api/client'
+import Modal from '../../components/Modal'
+
+const emptyForm = { investmentdesc: '', active: true, effectivedate: '', initial_value: '', linked_account_desc: '' }
+
+function InvestmentForm({ initial = emptyForm, isEdit = false, onSubmit, onClose, loading, balanceTypes = [] }) {
+  const [form, setForm] = useState(initial)
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  return (
+    <form onSubmit={e => {
+      e.preventDefault()
+      onSubmit({
+        ...form,
+        effectivedate: form.effectivedate || null,
+        initial_value: parseFloat(form.initial_value) || 0,
+        linked_account_desc: form.linked_account_desc || null,
+      })
+    }} className="space-y-4">
+      <div>
+        <label className="label">Description <span className="text-red-500">*</span></label>
+        <input required className="input" value={form.investmentdesc} onChange={e => set('investmentdesc', e.target.value)}
+          placeholder="e.g. ETF Portfolio" disabled={isEdit} />
+      </div>
+      <div>
+        <label className="label">Initial / Seed Value ($)</label>
+        <input type="number" step="0.01" min="0" className="input" value={form.initial_value}
+          onChange={e => set('initial_value', e.target.value)} placeholder="0.00" />
+        <p className="text-xs text-gray-400 mt-1">Starting balance or initial investment amount</p>
+      </div>
+      <div>
+        <label className="label">Effective Date</label>
+        <input type="date" className="input" value={form.effectivedate} onChange={e => set('effectivedate', e.target.value)} />
+      </div>
+      <div>
+        <label className="label">Linked Account</label>
+        <select className="input" value={form.linked_account_desc} onChange={e => set('linked_account_desc', e.target.value)}>
+          <option value="">— none —</option>
+          {balanceTypes.map(bt => (
+            <option key={bt.balancedesc} value={bt.balancedesc}>{bt.balancedesc}{bt.balance_type ? ` (${bt.balance_type})` : ''}</option>
+          ))}
+        </select>
+        <p className="text-xs text-gray-400 mt-1">Contributions to this investment will be credited to this account balance.</p>
+      </div>
+      <label className="flex items-center gap-2 text-sm cursor-pointer">
+        <input type="checkbox" checked={form.active} onChange={e => set('active', e.target.checked)}
+          className="rounded border-gray-300 dark:border-gray-600 text-dosh-600 focus:ring-dosh-500" />
+        Active
+      </label>
+      <div className="flex justify-end gap-2 pt-2">
+        <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
+        <button type="submit" className="btn-primary" disabled={loading}>
+          {loading ? 'Saving…' : 'Save'}
+        </button>
+      </div>
+    </form>
+  )
+}
+
+export default function InvestmentItemsTab({ budgetId }) {
+  const qc = useQueryClient()
+  const [modal, setModal] = useState(null)
+
+  const { data: items = [] } = useQuery({
+    queryKey: ['investment-items', budgetId],
+    queryFn: () => getInvestmentItems(budgetId),
+  })
+
+  const { data: balanceTypes = [] } = useQuery({
+    queryKey: ['balance-types', budgetId],
+    queryFn: () => getBalanceTypes(budgetId),
+  })
+
+  const create = useMutation({
+    mutationFn: data => createInvestmentItem(budgetId, data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['investment-items', budgetId] }); setModal(null) },
+  })
+
+  const update = useMutation({
+    mutationFn: ({ desc, data }) => updateInvestmentItem(budgetId, desc, data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['investment-items', budgetId] }); setModal(null) },
+  })
+
+  const remove = useMutation({
+    mutationFn: desc => deleteInvestmentItem(budgetId, desc),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['investment-items', budgetId] }),
+  })
+
+  return (
+    <div className="space-y-3">
+      <div className="flex justify-end">
+        <button className="btn-primary" onClick={() => setModal({ mode: 'create' })}>
+          <PlusIcon className="w-4 h-4" /> Add Investment
+        </button>
+      </div>
+
+      {items.length === 0 ? (
+        <div className="card p-8 text-center text-gray-500 dark:text-gray-400">No investments defined yet.</div>
+      ) : (
+        <div className="card divide-y divide-gray-100 dark:divide-gray-800">
+          {items.map(item => (
+            <div key={item.investmentdesc} className="flex items-center justify-between px-4 py-3 text-sm">
+              <div>
+                <span className="font-medium text-gray-800 dark:text-gray-100">{item.investmentdesc}</span>
+                {item.effectivedate && (
+                  <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
+                    from {format(parseISO(item.effectivedate), 'dd MMM yyyy')}
+                  </span>
+                )}
+                {Number(item.initial_value) > 0 && (
+                  <span className="ml-2 text-xs text-dosh-600 dark:text-dosh-400">
+                    seed: {Number(item.initial_value).toLocaleString('en-AU', { style: 'currency', currency: 'AUD' })}
+                  </span>
+                )}
+                {item.linked_account_desc && (
+                  <span className="ml-2 text-xs text-purple-600 dark:text-purple-400">→ {item.linked_account_desc}</span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {item.active ? <span className="badge-green">Active</span> : <span className="badge-gray">Inactive</span>}
+                <button className="btn-secondary" onClick={() => setModal({ mode: 'edit', item })}>
+                  <PencilIcon className="w-3 h-3" />
+                </button>
+                <button className="btn-danger" onClick={() => { if (window.confirm(`Delete "${item.investmentdesc}"?`)) remove.mutate(item.investmentdesc) }}>
+                  <TrashIcon className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {modal && (
+        <Modal title={modal.mode === 'create' ? 'Add Investment' : 'Edit Investment'} onClose={() => setModal(null)}>
+          <InvestmentForm
+            initial={modal.item ? {
+              investmentdesc: modal.item.investmentdesc,
+              active: modal.item.active,
+              effectivedate: modal.item.effectivedate ? format(parseISO(modal.item.effectivedate), 'yyyy-MM-dd') : '',
+              initial_value: modal.item.initial_value ?? '',
+              linked_account_desc: modal.item.linked_account_desc ?? '',
+            } : emptyForm}
+            isEdit={modal.mode === 'edit'}
+            balanceTypes={balanceTypes}
+            onSubmit={form => {
+              if (modal.mode === 'create') create.mutate(form)
+              else update.mutate({ desc: modal.item.investmentdesc, data: form })
+            }}
+            onClose={() => setModal(null)}
+            loading={create.isPending || update.isPending}
+          />
+        </Modal>
+      )}
+    </div>
+  )
+}

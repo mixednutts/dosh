@@ -1,9 +1,0 @@
-__pycache__/
-*.pyc
-*.db
-*.db-shm
-*.db-wal
-.env
-node_modules/
-dist/
-frontend/dist/

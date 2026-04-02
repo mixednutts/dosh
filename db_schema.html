@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dosh — Database Schema</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f8fafc;
+      color: #1e293b;
+      padding: 2rem;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 800;
+      margin-bottom: 0.25rem;
+      color: #0f172a;
+    }
+    .subtitle {
+      font-size: 0.85rem;
+      color: #64748b;
+      margin-bottom: 2rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 1.25rem;
+    }
+
+    .table-card {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,.06);
+    }
+
+    .table-header {
+      padding: 0.6rem 1rem;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .table-name {
+      font-size: 0.95rem;
+      font-weight: 700;
+      font-family: "SFMono-Regular", Consolas, monospace;
+      letter-spacing: 0;
+      text-transform: none;
+    }
+
+    .color-budget       { background: #dcfce7; color: #166534; }
+    .color-period       { background: #dbeafe; color: #1e40af; }
+    .color-expense      { background: #fee2e2; color: #991b1b; }
+    .color-income       { background: #fef9c3; color: #854d0e; }
+    .color-investment   { background: #f3e8ff; color: #6b21a8; }
+    .color-balance      { background: #ffedd5; color: #9a3412; }
+    .color-lookup       { background: #f1f5f9; color: #475569; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+    }
+
+    thead tr {
+      background: #f8fafc;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    th {
+      padding: 0.4rem 0.75rem;
+      text-align: left;
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    td {
+      padding: 0.4rem 0.75rem;
+      border-bottom: 1px solid #f1f5f9;
+      vertical-align: middle;
+    }
+
+    tr:last-child td { border-bottom: none; }
+
+    .col-name {
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-weight: 600;
+      color: #0f172a;
+    }
+
+    .col-type {
+      color: #7c3aed;
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 0.75rem;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.1rem 0.45rem;
+      border-radius: 999px;
+      font-size: 0.65rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+
+    .pk  { background: #fef08a; color: #713f12; }
+    .fk  { background: #bfdbfe; color: #1e40af; }
+    .nn  { background: #f1f5f9; color: #64748b; }
+    .def { background: #f0fdf4; color: #166534; }
+
+    .badges { display: flex; gap: 3px; flex-wrap: wrap; }
+
+    .notes {
+      padding: 0.5rem 0.75rem;
+      font-size: 0.75rem;
+      color: #64748b;
+      background: #f8fafc;
+      border-top: 1px solid #e2e8f0;
+    }
+
+    .fk-ref {
+      font-size: 0.72rem;
+      color: #64748b;
+      font-family: "SFMono-Regular", Consolas, monospace;
+    }
+
+    .section-label {
+      grid-column: 1 / -1;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #94a3b8;
+      padding: 0.5rem 0 0.25rem;
+      border-bottom: 1px solid #e2e8f0;
+      margin-bottom: 0.25rem;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Dosh — Database Schema</h1>
+<p class="subtitle">SQLite · SQLAlchemy 2.0 · 10 tables</p>
+
+<div class="grid">
+
+  <!-- ═══════════════════ BUDGETS ═══════════════════ -->
+  <div class="table-card">
+    <div class="table-header color-budget">
+      <span class="table-name">budgets</span>
+      <span>Core budget definition</span>
+    </div>
+    <table>
+      <thead><tr><th>Column</th><th>Type</th><th>Constraints</th></tr></thead>
+      <tbody>
+        <tr><td class="col-name">budgetid</td><td class="col-type">INTEGER</td><td><div class="badges"><span class="badge pk">PK</span><span class="badge nn">AUTO</span></div></td></tr>
+        <tr><td class="col-name">budgetowner</td><td class="col-type">VARCHAR</td><td><div class="badges"><span class="badge nn">NOT NULL</span></div></td></tr>
+        <tr><td class="col-name">description</td><td class="col-type">VARCHAR</td><td></td></tr>
+        <tr><td class="col-name">budget_frequency</td><td class="col-type">VARCHAR</td><td><div class="badges"><span class="badge nn">NOT NULL</span><span class="badge def">Weekly/Fortnightly/Monthly</span></div></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ═══════════════════ PAYTYPES ═══════════════════ -->
+  <div class="table-card">
+    <div class="table-header color-lookup">
+      <span class="table-name">paytypes</span>
+      <span>Lookup — payment method</span>
+    </div>
+    <table>
+      <thead><tr><th>Column</th><th>Type</th><th>Constraints</th></tr></thead>
+      <tbody>
+        <tr><td class="col-name">paytype</td><td class="col-type">VARCHAR</td><td><div class="badges"><span class="badge pk">PK</span><span class="badge def">AUTO / MANUAL</span></div></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ═══════════════════ APPINFO ═══════════════════ -->
+  <div class="table-card">
+    <div class="table-header color-lookup">
+      <span class="table-name">appinfo</span>
+      <span>Application metadata</span>
+    </div>
+    <table>
+      <thead><tr><th>Column</th><th>Type</th><th>Constraints</th></tr></thead>
+      <tbody>
+        <tr><td class="col-name">id</td><td class="col-type">INTEGER</td><td><div class="badges"><span class="badge pk">PK</span><span class="badge nn">AUTO</span></div></td></tr>
+        <tr><td class="col-name">versionnum</td><td class="col-type">VARCHAR</td><td><div class="badges"><span class="badge nn">NOT NULL</span></div></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ═══════════════════ FINANCIALPERIODS ═══════════════════ -->
+  <div class="table-card">
+    <div class="table-header color-period">
+      <span class="table-name">financialperiods</span>
+      <span>Budget period instances</span>
+    </div>
+    <table>
+      <thead><tr><th>Column</th><th>Type</th><th>Constraints</th></tr></thead>
+      <tbody>
+        <tr><td class="col-name">finperiodid</td><td class="col-type">INTEGER</td><td><div class="badges"><span class="badge pk">PK</span><span class="badge nn">AUTO</span></div></td></tr>
+        <tr><td class="col-name">budgetid</td><td class="col-type">INTEGER</td><td><div class="badges"><span class="badge fk">FK → budgets</span><span class="badge nn">NOT NULL</span></div></td></tr>
+        <tr><td class="col-name">startdate</td><td class="col-type">DATETIME</td><td><div class="badges"><span class="badge nn">NOT NULL</span></div></td></tr>
+        <tr><td class="col-name">enddate</td><td class="col-type">DATETIME</td><td><div class="badges"><span class="badge nn">NOT NULL</span></div></td></tr>
+        <tr><td class="col-name">budgetowner</td><td class="col-type">VARCHAR</td><td></td></tr>
+        <tr><td class="col-name">islocked</td><td class="col-type">BOOLEAN</td><td><div class="badges"><span class="badge nn">NOT NULL</span><span class="badge def">default: false</span></div></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ═══════════════════ INCOMETYPES ═══════════════════ -->
+  <div class="table-card">
+    <div class="table-header color-income">
+      <span class="table-name">incometypes</span>
+      <span>Income category definitions</span>
+    </div>
+    <table>
+      <thead><tr><th>Column</th><th>Type</th><th>Constraints</th></tr></thead>
+      <tbody>
+        <tr><td class="col-name">budgetid</td><td class="col-type">INTEGER</td><td><div class="badges"><span class="badge pk">PK</span><span class="badge fk">FK → budgets</span></div></td></tr>
+        <tr><td class="col-name">incomedesc</td><td class="col-type">VARCHAR</td><td><div class="badges"><span class="badge pk">PK</span></div></td></tr>
+        <tr><td class="col-name">issavings</td><td class="col-type">BOOLEAN</td><td><div class="badges"><span class="badge nn">NOT NULL</span><span class="badge def">default: false</span></div></td></tr>
+        <tr><td class="col-name">isfixed</td><td class="col-type">BOOLEAN</td><td><div class="badges"><span class="badge nn">NOT NULL</span><span class="badge def">default: false</span></div></td></tr>
+        <tr><td class="col-name">autoinclude</td><td class="col-type">BOOLEAN</td><td><div class="badges"><span class="badge nn">NOT NULL</span><span class="badge def">default: false</span></div></td></tr>
+        <tr><td class="col-name">amount</td><td class="col-type">NUMERIC(10,2)</td><td><div class="badges"><span class="badge def">default: 0</span></div></td></tr>
+      </tbody>
+    </table>
+    <div class="notes">Composite PK: (budgetid, incomedesc)</div>
+  </div>
+
+  <!-- ═══════════════════ PERIODINCOME ═══════════════════ -->
+  <div class="table-card">
+    <div class="table-header color-income">
+      <span class="table-name">periodincome</span>
+      <span>Income actuals per period</span>
+    </div>
+    <table>
+      <thead><tr><th>Column</th><th>Type</th><th>Constraints</th></tr></thead>
+      <tbody>
+        <tr><td class="col-name">finperiodid</td><td class="col-type">INTEGER</td><td><div class="badges"><span class="badge pk">PK</span><span class="badge fk">FK → financialperiods</span></div></td></tr>
+        <tr><td class="col-name">budgetid</td><td class="col-type">INTEGER</td><td><div class="badges"><span class="badge nn">NOT NULL</span></div></td></tr>
+        <tr><td class="col-name">incomedesc</td><td class="col-type">VARCHAR</td><td><div class="badges"><span class="badge pk">PK</span></div></td></tr>
+        <tr><td class="col-name">budgetamount</td><td class="col-type">NUMERIC(10,2)</td><td><div class="badges"><span class="badge def">default: 0</span></div></td></tr>
+        <tr><td class="col-name">actualamount</td><td class="col-type">NUMERIC(10,2)</td><td><div class="badges"><span class="badge def">default: 0</span></div></td></tr>
+        <tr><td class="col-name">varianceamount</td><td class="col-type">NUMERIC(10,2)</td><td><div class="badges"><span class="badge def">default: 0</span></div></td></tr>
+      </tbody>
+    </table>
+    <div class="notes">Composite PK: (finperiodid, incomedesc)</div>
+  </div>
+
+  <!-- ═══════════════════ EXPENSEITEMS ═══════════════════ -->
+  <div class="table-card">
+    <div class="table-header color-expense">
+      <span class="table-name">expenseitems</span>
+      <span>Expense category definitions</span>
+    </div>
+    <table>
+      <thead><tr><th>Column</th><th>Type</th><th>Constraints</th></tr></thead>
+      <tbody>
+        <tr><td class="col-name">budgetid</td><td class="col-type">INTEGER</td><td><div class="badges"><span class="badge pk">PK</span><span class="badge fk">FK → budgets</span></div></td></tr>
+        <tr><td class="col-name">expensedesc</td><td class="col-type">VARCHAR</td><td><div class="badges"><span class="badge pk">PK</span></div></td></tr>
+        <tr><td class="col-name">active</td><td class="col-type">BOOLEAN</td><td><div class="badges"><span class="badge nn">NOT NULL</span><span class="badge def">default: true</span></div></td></tr>
+        <tr><td class="col-name">freqtype</td><td class="col-type">VARCHAR</td><td><div class="badges"><span class="badge def">Fixed Day of Month / Days</span></div></td></tr>
+        <tr><td class="col-name">frequency_value</td><td class="col-type">INTEGER</td><td><div class="badges"><span class="badge def">day# or interval</span></div></td></tr>
+        <tr><td class="col-name">paytype</td><td class="col-type">VARCHAR</td><td><div class="badges"><span class="badge fk">FK → paytypes</span></div></td></tr>
+        <tr><td class="col-name">revisionnum</td><td class="col-type">INTEGER</td><td><div class="badges"><span class="badge nn">NOT NULL</span><span class="badge def">default: 0</span></div></td></tr>
+        <tr><td class="col-name">effectivedate</td><td class="col-type">DATETIME</td><td></td></tr>
+        <tr><td class="col-name">expenseamount</td><td class="col-type">NUMERIC(10,2)</td><td><div class="badges"><span class="badge def">default: 0</span></div></td></tr>
+      </tbody>
+    </table>
+    <div class="notes">Composite PK: (budgetid, expensedesc)</div>
+  </div>
+
+  <!-- ═══════════════════ PERIODEXPENSES ═══════════════════ -->
+  <div class="table-card">
+    <div class="table-header color-expense">
+      <span class="table-name">periodexpenses</span>
+      <span>Expense budgets/actuals per period</span>
+    </div>
+    <table>
+      <thead><tr><th>Column</th><th>Type</th><th>Constraints</th></tr></thead>
+      <tbody>
+        <tr><td class="col-name">finperiodid</td><td class="col-type">INTEGER</td><td><div class="badges"><span class="badge pk">PK</span><span class="badge fk">FK → financialperiods</span></div></td></tr>
+        <tr><td class="col-name">budgetid</td><td class="col-type">INTEGER</td><td><div class="badges"><span class="badge pk">PK</span></div></td></tr>
+        <tr><td class="col-name">expensedesc</td><td class="col-type">VARCHAR</td><td><div class="badges"><span class="badge pk">PK</span></div></td></tr>
+        <tr><td class="col-name">budgetamount</td><td class="col-type">NUMERIC(10,2)</td><td><div class="badges"><span class="badge def">default: 0</span></div></td></tr>
+        <tr><td class="col-name">actualamount</td><td class="col-type">NUMERIC(10,2)</td><td><div class="badges"><span class="badge def">computed from entries</span></div></td></tr>
+        <tr><td class="col-name">varianceamount</td><td class="col-type">NUMERIC(10,2)</td><td><div class="badges"><span class="badge def">default: 0</span></div></td></tr>
+        <tr><td class="col-name">is_oneoff</td><td class="col-type">BOOLEAN</td><td><div class="badges"><span class="badge nn">NOT NULL</span><span class="badge def">default: false</span></div></td></tr>
+      </tbody>
+    </table>
+    <div class="notes">
+      Composite PK: (finperiodid, budgetid, expensedesc)<br>
+      Composite FK: (budgetid, expensedesc) → expenseitems<br>
+      actualamount synced from SUM(periodexpense_entries.amount)
+    </div>
+  </div>
+
+  <!-- ═══════════════════ PERIODEXPENSE_ENTRIES ═══════════════════ -->
+  <div class="table-card">
+    <div class="table-header color-expense">
+      <span class="table-name">periodexpense_entries</span>
+      <span>Individual expense transactions</span>
+    </div>
+    <table>
+      <thead><tr><th>Column</th><th>Type</th><th>Constraints</th></tr></thead>
+      <tbody>
+        <tr><td class="col-name">id</td><td class="col-type">INTEGER</td><td><div class="badges"><span class="badge pk">PK</span><span class="badge nn">AUTO</span></div></td></tr>
+        <tr><td class="col-name">finperiodid</td><td class="col-type">INTEGER</td><td><div class="badges"><span class="badge nn">NOT NULL</span></div></td></tr>
+        <tr><td class="col-name">budgetid</td><td class="col-type">INTEGER</td><td><div class="badges"><span class="badge nn">NOT NULL</span></div></td></tr>
+        <tr><td class="col-name">expensedesc</td><td class="col-type">VARCHAR</td><td><div class="badges"><span class="badge nn">NOT NULL</span></div></td></tr>
+        <tr><td class="col-name">amount</td><td class="col-type">NUMERIC(10,2)</td><td><div class="badges"><span class="badge nn">NOT NULL</span><span class="badge def">+spend / −refund</span></div></td></tr>
+        <tr><td class="col-name">note</td><td class="col-type">VARCHAR</td><td></td></tr>
+        <tr><td class="col-name">entrydate</td><td class="col-type">DATETIME</td><td><div class="badges"><span class="badge def">default: utcnow</span></div></td></tr>
+      </tbody>
+    </table>
+    <div class="notes">
+      Composite FK: (finperiodid, budgetid, expensedesc) → periodexpenses
+    </div>
+  </div>
+
+  <!-- ═══════════════════ BALANCETYPES ═══════════════════ -->
+  <div class="table-card">
+    <div class="table-header color-balance">
+      <span class="table-name">balancetypes</span>
+      <span>Account definitions per budget</span>
+    </div>
+    <table>
+      <thead><tr><th>Column</th><th>Type</th><th>Constraints</th></tr></thead>
+      <tbody>
+        <tr><td class="col-name">budgetid</td><td class="col-type">INTEGER</td><td><div class="badges"><span class="badge pk">PK</span><span class="badge fk">FK → budgets</span></div></td></tr>
+        <tr><td class="col-name">balancedesc</td><td class="col-type">VARCHAR</td><td><div class="badges"><span class="badge pk">PK</span></div></td></tr>
+        <tr><td class="col-name">balance_type</td><td class="col-type">VARCHAR</td><td><div class="badges"><span class="badge def">Bank / Savings / Cash</span></div></td></tr>
+        <tr><td class="col-name">opening_balance</td><td class="col-type">NUMERIC(10,2)</td><td><div class="badges"><span class="badge def">default: 0</span></div></td></tr>
+        <tr><td class="col-name">active</td><td class="col-type">BOOLEAN</td><td><div class="badges"><span class="badge nn">NOT NULL</span><span class="badge def">default: true</span></div></td></tr>
+      </tbody>
+    </table>
+    <div class="notes">Composite PK: (budgetid, balancedesc)</div>
+  </div>
+
+  <!-- ═══════════════════ PERIODBALANCES ═══════════════════ -->
+  <div class="table-card">
+    <div class="table-header color-balance">
+      <span class="table-name">periodbalances</span>
+      <span>Opening/closing per account per period</span>
+    </div>
+    <table>
+      <thead><tr><th>Column</th><th>Type</th><th>Constraints</th></tr></thead>
+      <tbody>
+        <tr><td class="col-name">finperiodid</td><td class="col-type">INTEGER</td><td><div class="badges"><span class="badge pk">PK</span><span class="badge fk">FK → financialperiods</span></div></td></tr>
+        <tr><td class="col-name">budgetid</td><td class="col-type">INTEGER</td><td><div class="badges"><span class="badge nn">NOT NULL</span></div></td></tr>
+        <tr><td class="col-name">balancedesc</td><td class="col-type">VARCHAR</td><td><div class="badges"><span class="badge pk">PK</span></div></td></tr>
+        <tr><td class="col-name">opening_amount</td><td class="col-type">NUMERIC(10,2)</td><td><div class="badges"><span class="badge def">default: 0</span></div></td></tr>
+        <tr><td class="col-name">closing_amount</td><td class="col-type">NUMERIC(10,2)</td><td><div class="badges"><span class="badge def">default: 0</span></div></td></tr>
+      </tbody>
+    </table>
+    <div class="notes">
+      Composite PK: (finperiodid, balancedesc)<br>
+      Composite FK: (budgetid, balancedesc) → balancetypes<br>
+      opening_amount propagated from previous period's closing_amount
+    </div>
+  </div>
+
+  <!-- ═══════════════════ INVESTMENTITEMS ═══════════════════ -->
+  <div class="table-card">
+    <div class="table-header color-investment">
+      <span class="table-name">investmentitems</span>
+      <span>Investment/asset tracking</span>
+    </div>
+    <table>
+      <thead><tr><th>Column</th><th>Type</th><th>Constraints</th></tr></thead>
+      <tbody>
+        <tr><td class="col-name">budgetid</td><td class="col-type">INTEGER</td><td><div class="badges"><span class="badge pk">PK</span><span class="badge fk">FK → budgets</span></div></td></tr>
+        <tr><td class="col-name">investmentdesc</td><td class="col-type">VARCHAR</td><td><div class="badges"><span class="badge pk">PK</span></div></td></tr>
+        <tr><td class="col-name">active</td><td class="col-type">BOOLEAN</td><td><div class="badges"><span class="badge nn">NOT NULL</span><span class="badge def">default: true</span></div></td></tr>
+        <tr><td class="col-name">effectivedate</td><td class="col-type">DATETIME</td><td></td></tr>
+        <tr><td class="col-name">initial_value</td><td class="col-type">NUMERIC(10,2)</td><td><div class="badges"><span class="badge def">default: 0</span></div></td></tr>
+      </tbody>
+    </table>
+    <div class="notes">Composite PK: (budgetid, investmentdesc)</div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════ RELATIONSHIP LEGEND ═══════════════════ -->
+<div style="margin-top: 2rem; background:#fff; border:1px solid #e2e8f0; border-radius:10px; padding:1.25rem; max-width:640px; box-shadow:0 1px 3px rgba(0,0,0,.06);">
+  <p style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8;margin-bottom:0.75rem;">Key Relationships</p>
+  <div style="font-size:0.8rem;color:#475569;display:grid;gap:0.4rem;">
+    <div>budgets → financialperiods, incometypes, expenseitems, investmentitems, balancetypes</div>
+    <div>financialperiods → periodincome, periodexpenses, periodbalances</div>
+    <div>expenseitems (budgetid, expensedesc) → periodexpenses (composite FK)</div>
+    <div>periodexpenses (finperiodid, budgetid, expensedesc) → periodexpense_entries (composite FK)</div>
+    <div>balancetypes (budgetid, balancedesc) → periodbalances (composite FK)</div>
+    <div>paytypes → expenseitems.paytype</div>
+  </div>
+  <p style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8;margin:1rem 0 0.5rem;">Badge Legend</p>
+  <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+    <span class="badge pk">PK — Primary Key</span>
+    <span class="badge fk">FK — Foreign Key</span>
+    <span class="badge nn">NOT NULL / AUTO</span>
+    <span class="badge def">default / enum values</span>
+  </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,4 @@
+fastapi
+python-dateutil
+sqlalchemy
+uvicorn

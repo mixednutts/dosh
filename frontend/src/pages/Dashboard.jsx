@@ -1,0 +1,154 @@
+import { useQuery } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
+import { getBudgets, getPeriodsForBudget, getPeriodDetail } from '../api/client'
+import { format, isWithinInterval, parseISO } from 'date-fns'
+import Spinner from '../components/Spinner'
+
+const fmt = v => Number(v ?? 0).toLocaleString('en-AU', { style: 'currency', currency: 'AUD' })
+
+function PeriodRow({ budget, period }) {
+  const { data } = useQuery({
+    queryKey: ['period', period.finperiodid],
+    queryFn: () => getPeriodDetail(period.finperiodid),
+    staleTime: 60_000,
+  })
+
+  const loading = !data
+
+  const incomeBudget  = data ? data.incomes.reduce((s, i) => s + Number(i.budgetamount), 0)  : null
+  const incomeActual  = data ? data.incomes.reduce((s, i) => s + Number(i.actualamount), 0)  : null
+  const expenseBudget = data ? data.expenses.reduce((s, e) => s + Number(e.budgetamount), 0) : null
+  const expenseActual = data ? data.expenses.reduce((s, e) => s + Number(e.actualamount), 0) : null
+  const surplusBudget = data ? incomeBudget - expenseBudget : null
+  const surplusActual = data ? incomeActual - expenseActual : null
+
+  const cell = (val, cls = '') => loading
+    ? <td className="table-cell text-right"><span className="inline-block w-16 h-4 rounded bg-gray-100 dark:bg-gray-800 animate-pulse" /></td>
+    : <td className={`table-cell text-right font-medium ${cls}`}>{fmt(val)}</td>
+
+  return (
+    <tr className="table-row">
+      <td className="table-cell">
+        <Link to={`/budgets/${budget.budgetid}`} className="font-semibold text-dosh-700 dark:text-dosh-400 hover:underline">
+          {budget.description || 'Untitled'}
+        </Link>
+        <p className="text-xs text-gray-500 dark:text-gray-400">{budget.budgetowner}</p>
+      </td>
+      <td className="table-cell-muted">
+        <span className="badge-gray">{budget.budget_frequency}</span>
+      </td>
+      <td className="table-cell">
+        <div className="text-xs">
+          <p className="text-gray-700 dark:text-gray-200">{format(parseISO(period.startdate), 'dd MMM')} – {format(parseISO(period.enddate), 'dd MMM yyyy')}</p>
+          {period.islocked && <span className="badge-amber mt-0.5">Locked</span>}
+        </div>
+      </td>
+      {cell(incomeBudget, 'text-gray-600 dark:text-gray-300')}
+      {cell(incomeActual, 'text-dosh-700 dark:text-dosh-400')}
+      {cell(expenseBudget, 'text-gray-600 dark:text-gray-300')}
+      {cell(expenseActual, 'text-red-600 dark:text-red-400')}
+      <td className={`table-cell text-right font-bold ${!loading && surplusBudget >= 0 ? 'text-dosh-600 dark:text-dosh-400' : 'text-red-600 dark:text-red-400'}`}>
+        {loading ? <span className="inline-block w-16 h-4 rounded bg-gray-100 dark:bg-gray-800 animate-pulse" /> : fmt(surplusBudget)}
+      </td>
+      <td className={`table-cell text-right font-bold ${!loading && surplusActual >= 0 ? 'text-dosh-600 dark:text-dosh-400' : 'text-red-600 dark:text-red-400'}`}>
+        {loading ? <span className="inline-block w-16 h-4 rounded bg-gray-100 dark:bg-gray-800 animate-pulse" /> : fmt(surplusActual)}
+      </td>
+      <td className="table-cell text-right">
+        <Link to={`/periods/${period.finperiodid}`} className="badge-blue cursor-pointer whitespace-nowrap">Details →</Link>
+      </td>
+    </tr>
+  )
+}
+
+function BudgetTableRows({ budget }) {
+  const { data: periods = [] } = useQuery({
+    queryKey: ['periods', budget.budgetid],
+    queryFn: () => getPeriodsForBudget(budget.budgetid),
+  })
+
+  const now = new Date()
+  const current = periods.find(p => {
+    try { return isWithinInterval(now, { start: parseISO(p.startdate), end: parseISO(p.enddate) }) }
+    catch { return false }
+  })
+
+  if (periods.length === 0) {
+    return (
+      <tr className="table-row">
+        <td className="table-cell">
+          <Link to={`/budgets/${budget.budgetid}`} className="font-semibold text-dosh-700 dark:text-dosh-400 hover:underline">
+            {budget.description || 'Untitled'}
+          </Link>
+          <p className="text-xs text-gray-500 dark:text-gray-400">{budget.budgetowner}</p>
+        </td>
+        <td className="table-cell-muted"><span className="badge-gray">{budget.budget_frequency}</span></td>
+        <td colSpan={7} className="table-cell-muted italic">No periods — <Link to={`/budgets/${budget.budgetid}`} className="text-dosh-600 dark:text-dosh-400 hover:underline">set up budget</Link></td>
+      </tr>
+    )
+  }
+
+  if (!current) {
+    const upcoming = [...periods].filter(p => parseISO(p.startdate) > now).sort((a, b) => parseISO(a.startdate) - parseISO(b.startdate))[0]
+    return (
+      <tr className="table-row">
+        <td className="table-cell">
+          <Link to={`/budgets/${budget.budgetid}`} className="font-semibold text-dosh-700 dark:text-dosh-400 hover:underline">
+            {budget.description || 'Untitled'}
+          </Link>
+          <p className="text-xs text-gray-500 dark:text-gray-400">{budget.budgetowner}</p>
+        </td>
+        <td className="table-cell-muted"><span className="badge-gray">{budget.budget_frequency}</span></td>
+        <td colSpan={7} className="table-cell-muted italic">
+          No current period
+          {upcoming && <span className="ml-2 text-xs text-gray-400">Next: {format(parseISO(upcoming.startdate), 'dd MMM yyyy')}</span>}
+        </td>
+      </tr>
+    )
+  }
+
+  return <PeriodRow budget={budget} period={current} />
+}
+
+export default function Dashboard() {
+  const { data: budgets = [], isLoading } = useQuery({ queryKey: ['budgets'], queryFn: getBudgets })
+
+  if (isLoading) return <div className="flex justify-center pt-16"><Spinner /></div>
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Dashboard</h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400">{format(new Date(), 'EEEE d MMMM yyyy')}</p>
+      </div>
+
+      {budgets.length === 0 ? (
+        <div className="card p-8 text-center text-gray-500 dark:text-gray-400">
+          <p className="text-lg font-medium mb-2">No budgets yet</p>
+          <Link to="/budgets" className="btn-primary">Go to Budgets</Link>
+        </div>
+      ) : (
+        <div className="card overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-200 dark:border-gray-700">
+                <th className="table-header-cell text-left">Budget</th>
+                <th className="table-header-cell text-left">Frequency</th>
+                <th className="table-header-cell text-left">Current Period</th>
+                <th className="table-header-cell text-right col-budget">Inc Budget</th>
+                <th className="table-header-cell text-right col-actual">Inc Actual</th>
+                <th className="table-header-cell text-right col-budget">Exp Budget</th>
+                <th className="table-header-cell text-right col-actual">Exp Actual</th>
+                <th className="table-header-cell text-right">Surplus (B)</th>
+                <th className="table-header-cell text-right">Surplus (A)</th>
+                <th className="table-header-cell"></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
+              {budgets.map(b => <BudgetTableRows key={b.budgetid} budget={b} />)}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}

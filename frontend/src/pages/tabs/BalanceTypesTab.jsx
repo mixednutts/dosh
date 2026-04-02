@@ -1,0 +1,146 @@
+import { useState } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline'
+import { getBalanceTypes, createBalanceType, updateBalanceType, deleteBalanceType } from '../../api/client'
+import Modal from '../../components/Modal'
+
+const BALANCE_TYPE_OPTIONS = ['Bank', 'Savings', 'Cash']
+const emptyForm = { balancedesc: '', balance_type: 'Bank', opening_balance: '', active: true, is_primary: false }
+
+function BalanceTypeForm({ initial = emptyForm, onSubmit, onClose, loading }) {
+  const [form, setForm] = useState({ ...initial, opening_balance: initial.opening_balance ?? '' })
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  return (
+    <form onSubmit={e => { e.preventDefault(); onSubmit({ ...form, opening_balance: parseFloat(form.opening_balance) || 0 }) }} className="space-y-4">
+      <div>
+        <label className="label">Account Name <span className="text-red-500">*</span></label>
+        <input required className="input" value={form.balancedesc} onChange={e => set('balancedesc', e.target.value)} placeholder="e.g. Everyday Account" />
+      </div>
+      <div>
+        <label className="label">Account Type</label>
+        <select className="input" value={form.balance_type} onChange={e => set('balance_type', e.target.value)}>
+          {BALANCE_TYPE_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+        </select>
+      </div>
+      <div>
+        <label className="label">Opening Balance ($)</label>
+        <input type="number" step="0.01" className="input" value={form.opening_balance} onChange={e => set('opening_balance', e.target.value)} placeholder="0.00" />
+      </div>
+      <div className="space-y-2">
+        <label className="flex items-center gap-2 text-sm cursor-pointer">
+          <input type="checkbox" checked={!!form.active} onChange={e => set('active', e.target.checked)}
+            className="rounded border-gray-300 text-dosh-600 focus:ring-dosh-500" />
+          Active (include in new periods)
+        </label>
+        <label className="flex items-center gap-2 text-sm cursor-pointer">
+          <input type="checkbox" checked={!!form.is_primary} onChange={e => set('is_primary', e.target.checked)}
+            className="rounded border-gray-300 text-dosh-600 focus:ring-dosh-500" />
+          Primary account (expenses deducted from this account)
+        </label>
+      </div>
+      <div className="flex justify-end gap-2 pt-2">
+        <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
+        <button type="submit" className="btn-primary" disabled={loading}>
+          {loading ? 'Saving…' : 'Save'}
+        </button>
+      </div>
+    </form>
+  )
+}
+
+const fmt = v => Number(v ?? 0).toLocaleString('en-AU', { style: 'currency', currency: 'AUD' })
+
+const TYPE_BADGE = {
+  Bank:    'badge-blue',
+  Savings: 'badge-green',
+  Cash:    'badge-amber',
+}
+
+export default function BalanceTypesTab({ budgetId }) {
+  const qc = useQueryClient()
+  const [modal, setModal] = useState(null)
+
+  const { data: types = [], isLoading } = useQuery({
+    queryKey: ['balance-types', budgetId],
+    queryFn: () => getBalanceTypes(budgetId),
+  })
+
+  const create = useMutation({
+    mutationFn: data => createBalanceType(budgetId, data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['balance-types', budgetId] }); setModal(null) },
+  })
+
+  const update = useMutation({
+    mutationFn: ({ desc, data }) => updateBalanceType(budgetId, desc, data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['balance-types', budgetId] }); setModal(null) },
+  })
+
+  const remove = useMutation({
+    mutationFn: desc => deleteBalanceType(budgetId, desc),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['balance-types', budgetId] }),
+  })
+
+  const handleSubmit = form => {
+    if (modal.mode === 'create') create.mutate(form)
+    else update.mutate({ desc: modal.item.balancedesc, data: form })
+  }
+
+  if (isLoading) return null
+
+  return (
+    <div className="space-y-3">
+      <div className="flex justify-end">
+        <button className="btn-primary" onClick={() => setModal({ mode: 'create' })}>
+          <PlusIcon className="w-4 h-4" /> Add Account
+        </button>
+      </div>
+
+      {types.length === 0 ? (
+        <div className="card p-8 text-center text-gray-500 dark:text-gray-400">
+          No accounts defined yet. Add a bank, savings, or cash account to track balances.
+        </div>
+      ) : (
+        <div className="card divide-y divide-gray-100 dark:divide-gray-800">
+          <div className="grid grid-cols-[1fr_auto_auto_auto_auto_auto] gap-2 px-4 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+            <span>Account</span><span>Type</span><span>Opening Balance</span><span>Primary</span><span>Active</span><span></span>
+          </div>
+          {types.map(t => (
+            <div key={t.balancedesc} className="grid grid-cols-[1fr_auto_auto_auto_auto_auto] gap-2 items-center px-4 py-2.5 text-sm">
+              <span className="font-medium text-gray-800 dark:text-gray-100">{t.balancedesc}</span>
+              <span><span className={TYPE_BADGE[t.balance_type] ?? 'badge-gray'}>{t.balance_type}</span></span>
+              <span className="text-gray-600 dark:text-gray-300">{fmt(t.opening_balance)}</span>
+              <span>{t.is_primary ? <span className="badge-green">Yes</span> : <span className="badge-gray">—</span>}</span>
+              <span>{t.active ? <span className="badge-green">Active</span> : <span className="badge-gray">Inactive</span>}</span>
+              <div className="flex gap-1">
+                <button className="btn-secondary" onClick={() => setModal({ mode: 'edit', item: t })}>
+                  <PencilIcon className="w-3 h-3" />
+                </button>
+                <button className="btn-danger" onClick={() => { if (window.confirm(`Delete "${t.balancedesc}"?`)) remove.mutate(t.balancedesc) }}>
+                  <TrashIcon className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {modal && (
+        <Modal title={modal.mode === 'create' ? 'Add Account' : 'Edit Account'} onClose={() => setModal(null)}>
+          <BalanceTypeForm
+            initial={modal.item ? {
+              balancedesc: modal.item.balancedesc,
+              balance_type: modal.item.balance_type,
+              opening_balance: modal.item.opening_balance,
+              active: modal.item.active,
+              is_primary: modal.item.is_primary ?? false,
+            } : emptyForm}
+            onSubmit={handleSubmit}
+            onClose={() => setModal(null)}
+            loading={create.isPending || update.isPending}
+          />
+        </Modal>
+      )}
+    </div>
+  )
+}
