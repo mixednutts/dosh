@@ -3,7 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .database import Base, engine
 from .models import PayType  # noqa: F401 — ensure model is registered
-from .routers import budgets, periods, income_types, expense_items, investments, expense_entries, balance_types, investment_transactions
+from .routers import budgets, periods, income_types, expense_items, investments, expense_entries, balance_types, investment_transactions, period_transactions
+from .transaction_ledger import backfill_active_period_transactions, migrate_legacy_transactions
 
 # Create all tables on startup
 Base.metadata.create_all(bind=engine)
@@ -26,6 +27,7 @@ app.include_router(expense_entries.router, prefix="/api")
 app.include_router(balance_types.router, prefix="/api")
 app.include_router(balance_types.period_router, prefix="/api")
 app.include_router(investment_transactions.router, prefix="/api")
+app.include_router(period_transactions.router, prefix="/api")
 
 
 @app.on_event("startup")
@@ -75,6 +77,13 @@ def seed_reference_data():
                 "UPDATE periodbalances SET movement_amount = closing_amount - opening_amount "
                 "WHERE movement_amount = 0 AND closing_amount != opening_amount"
             ))
+            db.commit()
+        except Exception:
+            db.rollback()
+
+        try:
+            migrate_legacy_transactions(db)
+            backfill_active_period_transactions(db)
             db.commit()
         except Exception:
             db.rollback()

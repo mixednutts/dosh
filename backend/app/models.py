@@ -54,6 +54,7 @@ class FinancialPeriod(Base):
     period_expenses = relationship("PeriodExpense", back_populates="period", cascade="all, delete-orphan")
     period_balances = relationship("PeriodBalance", back_populates="period", cascade="all, delete-orphan")
     period_investments = relationship("PeriodInvestment", back_populates="period", cascade="all, delete-orphan")
+    period_transactions = relationship("PeriodTransaction", back_populates="period", cascade="all, delete-orphan")
 
 
 class IncomeType(Base):
@@ -291,4 +292,34 @@ class PeriodInvestmentTransaction(Base):
             ["finperiodid", "budgetid", "investmentdesc"],
             ["periodinvestments.finperiodid", "periodinvestments.budgetid", "periodinvestments.investmentdesc"],
         ),
+    )
+
+
+class PeriodTransaction(Base):
+    __tablename__ = "periodtransactions"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    finperiodid = Column(Integer, ForeignKey("financialperiods.finperiodid"), nullable=False)
+    budgetid = Column(Integer, nullable=False)
+    source = Column(String, nullable=False)
+    type = Column(String, nullable=False)
+    amount = Column(Numeric(10, 2), nullable=False)
+    note = Column(String, nullable=True)
+    entrydate = Column(DateTime, default=dt.utcnow, nullable=False)
+    is_system = Column(Boolean, default=False, nullable=False)
+    system_reason = Column(String, nullable=True)
+    source_key = Column(String, nullable=True)
+    source_label = Column(String, nullable=True)
+    affected_account_desc = Column(String, nullable=True)
+    related_account_desc = Column(String, nullable=True)
+    linked_incomedesc = Column(String, nullable=True)
+    legacy_table = Column(String, nullable=True)
+    legacy_id = Column(Integer, nullable=True)
+    dedupe_key = Column(String, nullable=True)
+
+    period = relationship("FinancialPeriod", back_populates="period_transactions")
+
+    __table_args__ = (
+        UniqueConstraint("legacy_table", "legacy_id", name="uq_periodtransactions_legacy"),
+        UniqueConstraint("dedupe_key", name="uq_periodtransactions_dedupe"),
     )

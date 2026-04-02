@@ -321,6 +321,25 @@ class InvestmentTxOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class PeriodTransactionOut(BaseModel):
+    id: int
+    finperiodid: int
+    budgetid: int
+    source: str
+    type: str
+    amount: Decimal
+    note: Optional[str] = None
+    entrydate: datetime
+    is_system: bool
+    system_reason: Optional[str] = None
+    source_key: Optional[str] = None
+    source_label: Optional[str] = None
+    affected_account_desc: Optional[str] = None
+    related_account_desc: Optional[str] = None
+    linked_incomedesc: Optional[str] = None
+    model_config = {"from_attributes": True}
+
+
 # ── PeriodExpenseEntry ────────────────────────────────────────────────────────
 
 class ExpenseEntryCreate(BaseModel):

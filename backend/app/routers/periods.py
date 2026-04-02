@@ -19,6 +19,7 @@ from ..schemas import (
     PeriodExpenseStatusUpdate, PeriodExpenseBudgetUpdate, PeriodExpenseNoteUpdate,
 )
 from ..period_logic import calc_period_end, periods_overlap, expense_occurs_in_period
+from ..transaction_ledger import build_expense_tx, build_income_tx, sync_period_state
 
 router = APIRouter(prefix="/periods", tags=["periods"])
 
@@ -291,40 +292,6 @@ def set_period_lock(finperiodid: int, payload: PeriodLockRequest, db: Session = 
     return period
 
 
-_TRANSFER_PREFIX = "Transfer from "
-
-
-def _update_balance(finperiodid: int, balancedesc: str, movement: Decimal, db: Session) -> None:
-    pb = db.get(PeriodBalance, (finperiodid, balancedesc))
-    if pb:
-        pb.movement_amount = Decimal(str(pb.movement_amount)) + movement
-        pb.closing_amount = Decimal(str(pb.opening_amount)) + Decimal(str(pb.movement_amount))
-
-
-def _apply_account_movement(finperiodid: int, incomedesc: str, budgetid: int, delta: Decimal, db: Session) -> None:
-    """Update linked account balances when income actuals change.
-
-    - Savings transfer lines ("Transfer from X"): debit savings, credit primary account.
-    - Regular income types with a linked_account: credit that account.
-    """
-    if incomedesc.startswith(_TRANSFER_PREFIX):
-        balancedesc = incomedesc[len(_TRANSFER_PREFIX):]
-        _update_balance(finperiodid, balancedesc, -delta, db)  # savings loses money
-        # Also credit the primary banking account
-        primary = (
-            db.query(BalanceType)
-            .filter(BalanceType.budgetid == budgetid, BalanceType.is_primary == True)  # noqa: E712
-            .first()
-        )
-        if primary:
-            _update_balance(finperiodid, primary.balancedesc, delta, db)  # primary gains money
-    else:
-        it = db.get(IncomeType, (budgetid, incomedesc))
-        if not it or not it.linked_account:
-            return
-        _update_balance(finperiodid, it.linked_account, delta, db)  # transaction account gains money
-
-
 # ── Update actual income (set) ────────────────────────────────────────────────
 
 @router.patch("/{finperiodid}/income/{incomedesc}", response_model=PeriodIncomeOut)
@@ -339,10 +306,18 @@ def update_income_actual(
     if not pi:
         raise HTTPException(404, "Period income entry not found")
     old_actual = Decimal(str(pi.actualamount or 0))
-    pi.actualamount = payload.actualamount
-    pi.varianceamount = pi.actualamount - pi.budgetamount
     delta = payload.actualamount - old_actual
-    _apply_account_movement(finperiodid, incomedesc, period.budgetid, delta, db)
+    build_income_tx(
+        finperiodid,
+        period.budgetid,
+        incomedesc,
+        delta,
+        db,
+        is_system=True,
+        system_reason="income_actual_set",
+        note="System adjustment from direct income actual update",
+    )
+    sync_period_state(finperiodid, db)
     db.commit()
     db.refresh(pi)
     return pi
@@ -361,23 +336,20 @@ def add_income_actual(
     pi = db.get(PeriodIncome, (finperiodid, incomedesc))
     if not pi:
         raise HTTPException(404, "Period income entry not found")
-    pi.actualamount = (pi.actualamount or Decimal("0")) + payload.amount
-    pi.varianceamount = pi.actualamount - pi.budgetamount
-    _apply_account_movement(finperiodid, incomedesc, period.budgetid, payload.amount, db)
+    build_income_tx(
+        finperiodid,
+        period.budgetid,
+        incomedesc,
+        payload.amount,
+        db,
+        is_system=True,
+        system_reason="income_actual_add",
+        note="System adjustment from direct income actual addition",
+    )
+    sync_period_state(finperiodid, db)
     db.commit()
     db.refresh(pi)
     return pi
-
-
-def _debit_primary_account(finperiodid: int, budgetid: int, delta: Decimal, db: Session) -> None:
-    """Deduct delta from the primary account's period balance (expenses reduce the account)."""
-    primary = (
-        db.query(BalanceType)
-        .filter(BalanceType.budgetid == budgetid, BalanceType.is_primary == True)  # noqa: E712
-        .first()
-    )
-    if primary:
-        _update_balance(finperiodid, primary.balancedesc, -delta, db)
 
 
 # ── Update actual expense (set) ───────────────────────────────────────────────
@@ -402,10 +374,18 @@ def update_expense_actual(
         raise HTTPException(404, "Period expense entry not found")
     _assert_expense_not_paid(pe)
     old_actual = Decimal(str(pe.actualamount or 0))
-    pe.actualamount = payload.actualamount
-    pe.varianceamount = pe.actualamount - pe.budgetamount
     delta = payload.actualamount - old_actual
-    _debit_primary_account(finperiodid, period.budgetid, delta, db)
+    build_expense_tx(
+        finperiodid,
+        period.budgetid,
+        expensedesc,
+        delta,
+        db,
+        is_system=True,
+        system_reason="expense_actual_set",
+        note="System adjustment from direct expense actual update",
+    )
+    sync_period_state(finperiodid, db)
     db.commit()
     db.refresh(pe)
     return _enrich_expenses([pe], db)[0]
@@ -432,9 +412,17 @@ def add_expense_actual(
     if not pe:
         raise HTTPException(404, "Period expense entry not found")
     _assert_expense_not_paid(pe)
-    pe.actualamount = (pe.actualamount or Decimal("0")) + payload.amount
-    pe.varianceamount = pe.actualamount - pe.budgetamount
-    _debit_primary_account(finperiodid, period.budgetid, payload.amount, db)
+    build_expense_tx(
+        finperiodid,
+        period.budgetid,
+        expensedesc,
+        payload.amount,
+        db,
+        is_system=True,
+        system_reason="expense_actual_add",
+        note="System adjustment from direct expense actual addition",
+    )
+    sync_period_state(finperiodid, db)
     db.commit()
     db.refresh(pe)
     return _enrich_expenses([pe], db)[0]
