@@ -145,6 +145,118 @@ This rule is now applied in:
 - dashboard budget expense totals
 - dashboard budget surplus
 
+### 9. Budget navigation now leads to period management first
+
+The main budget click path was changed so budget selection now lands on a budget-specific periods page rather than dropping directly into setup.
+
+Current behavior:
+
+- clicking a budget in the left navigation opens that budget's periods view
+- the budget periods view shows existing periods, setup readiness, and new period generation
+- budget setup still exists, but now lives behind a separate setup route and button
+
+Important product decision:
+
+- period management is a primary activity and should not be hidden behind setup
+- setup is still important, but should be secondary once a budget is already in use
+
+### 10. Left-hand budget drilldown now shows grouped periods
+
+The budget drilldown in the left navigation now exposes periods directly under each budget.
+
+Current behavior:
+
+- periods are grouped with `Current` first and `Historical` second
+- each group is ordered earliest to latest
+- historical periods are limited to the most recent 10 historical entries
+
+Important note:
+
+- in the current implementation, `Current` effectively means non-historical periods, so future periods may also appear in that group
+
+### 11. Balance movement is now read-only
+
+The manual edit path for account movement on the period balances section was removed.
+
+Current rule:
+
+- balance movement must be derived from transactions
+- users should not directly type a movement value
+
+Current behavior:
+
+- the movement column is read-only in the period balances table
+- the old direct patch route was intentionally blocked
+
+Important product meaning:
+
+- account movement should be explainable from financial activity
+- balance changes should not feel like arbitrary bookkeeping edits
+
+### 12. Centralized period transaction ledger introduced
+
+A major backend change introduced a centralized period transaction ledger intended to become the single source of truth for period transaction activity.
+
+Current direction:
+
+- expense transactions, investment transactions, direct actual adjustments, and transfers are now represented through a central ledger model
+- transaction types now include:
+  - `CREDIT`
+  - `DEBIT`
+  - `ADJUST`
+  - `TRANSFER`
+- transaction rows snapshot source and account context so later setup changes do not rewrite history
+
+Important design decision:
+
+- historical fidelity is preserved where possible by migrating existing source transactions
+- when historical activity cannot be reconstructed exactly, explicit system-generated rows are preferred over guessing
+
+### 13. Active periods are now backfilled to reconcile through transactions
+
+The migration work for the centralized ledger includes reconciliation logic for existing active periods.
+
+Current behavior:
+
+- existing expense and investment transaction rows are migrated into the central ledger
+- active periods with actuals or balance movement that cannot be explained by migrated rows receive explicit system-generated rows
+- ledger totals are then used to recompute period actuals, investment totals, and balance movement
+
+Important constraint:
+
+- active periods should be reconcilable from transactions alone after migration
+- system backfill rows are acceptable when older activity was previously stored only as rolled-up values
+
+### 14. Balance movement details can now be inspected from the period page
+
+The balances section on the period detail page now includes a details action that opens a ledger-backed movement breakdown.
+
+Current behavior:
+
+- each account row has a details/list action
+- clicking it opens a modal showing the supporting transaction rows for that account in the current period
+- the modal shows source label, transaction type, system flag, note/reason, timestamp, and signed contribution to movement
+- transfer rows are presented in an account-aware way so the displayed signed amount matches the selected account's movement
+
+Important product decision:
+
+- movement explanation should be visible where the movement is shown
+- the feature is intended for transparency and trust, not editing
+
+### 15. Database backup is now a required pre-migration safety step
+
+Before the ledger migration was applied, a full file-level backup of the live SQLite database was taken from the Docker-managed data volume.
+
+Important rule for future high-impact work:
+
+- back up the live SQLite database before any schema or data migration that could affect financial history
+- treat backup as a hard gate, not a nice-to-have
+
+Current backup pattern:
+
+- use a timestamped host-side file outside the container lifecycle
+- example naming: `dosh-pre-ledger-migration-YYYYMMDD-HHMMSS.db`
+
 ## Budget Setup Page Direction
 
 The budget detail page was reworked away from isolated tab panes and toward a scrollable setup flow.
@@ -236,17 +348,23 @@ Future suggestions should respect the following:
 
 - Avoid jargon and unexplained acronyms in user-facing text.
 - Prefer guided workflow over fragmented navigation when users are setting up a budget.
+- Prefer transaction-backed financial explanation over opaque derived numbers wherever practical.
 - Prefer concise, purposeful copy over over-explaining obvious actions.
 - Use warnings and confirmations when state transitions become meaningfully final.
 - Avoid introducing decorative redesigns that distract from core financial workflow.
 - Keep a clear rollback path when changing app structure.
 - Treat `Paid` as a meaningful finalized state, not just a cosmetic label.
 - Treat revision comments as important future reporting data.
+- Treat balance movement as an explainable outcome of transactions, not a freeform editable field.
 
 ## Future Development Ideas And Thought Process
 
 These are active ideas or partially formed directions that may matter in later sessions:
 
+- The centralized ledger should likely become the canonical transaction reporting surface across the app, not just a backend support structure.
+- Expense and investment detail views may eventually converge on the centralized transaction model instead of feeling like separate subsystems.
+- Balance details could evolve into a richer audit/reconciliation experience with running totals and source filtering.
+- The current `Current` vs `Historical` period grouping in the sidebar may later split future periods into their own explicit group if that becomes useful.
 - End-of-period reporting should eventually include revision comments and revision reasoning.
 - Expense auto/manual flag behavior still needs deeper development and may influence later account logic.
 - Settings are expected to become a place for user-selected behavior flags and page layout preferences.
@@ -258,6 +376,9 @@ These are active ideas or partially formed directions that may matter in later s
 
 - Backend startup currently performs lightweight SQLite schema migrations.
 - A new `revision_comment` field now exists on period expenses.
+- A centralized `periodtransactions` table now exists for period-level ledger activity.
+- Active-period transaction reconciliation/backfill now runs during startup migration flow.
+- A host-side SQLite backup was taken before the ledger migration for recovery safety.
 - Frontend builds currently succeed with some non-blocking lint warnings in unrelated files.
 - Those warnings are not currently blocking deployment, but can be cleaned up later.
 
@@ -268,6 +389,9 @@ This session pushed Dosh toward:
 - clearer finalization rules for expenses
 - better budget-side accounting after payment finalization
 - stronger setup flow for building a budget
+- period-first navigation for active budget work
+- transaction-backed account movement and reconciliation
+- more explainable balances through inline supporting details
 - better preservation of product intent for future sessions
 
 When making future suggestions, prioritize:
@@ -276,4 +400,6 @@ When making future suggestions, prioritize:
 - explicit state transitions
 - plain language
 - low-friction setup
+- transaction explainability
+- reconciliation-friendly financial history
 - preserving the meaning of finalized financial actions

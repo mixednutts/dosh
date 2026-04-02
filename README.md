@@ -43,7 +43,8 @@ Implemented areas:
 - Period income updates
 - Period expense updates
 - Expense transaction entries per period expense
-- Period balance viewing and movement updates
+- Centralized period transaction ledger and migration/backfill for active periods
+- Period balance viewing and transaction-backed movement details
 - Period investment budget updates
 - Investment transactions per period investment
 - Savings transfer support via period income records
@@ -58,18 +59,23 @@ Visible pages and flows:
 
 - Dashboard
 - Budgets list/create/edit/delete
-- Budget detail page with tabs for:
-- Periods
+- Budget periods page for:
+- viewing existing periods
+- generating new periods
+- jumping to budget setup
+- Budget setup page with scrollable sections for:
+- Budget Info
+- Accounts
 - Income Types
 - Expense Items
 - Investments
-- Accounts
 - Settings
 - Period detail page for working with:
 - Income actuals
 - Expense actuals and notes
 - Expense transactions
 - Account balances
+- Balance movement transaction details
 - Investment budgets
 - Investment transactions
 
@@ -107,6 +113,7 @@ The main SQLAlchemy models currently present are:
 - `InvestmentItem`
 - `PeriodInvestment`
 - `PeriodInvestmentTransaction`
+- `PeriodTransaction`
 - `PayType`
 - `AppInfo`
 
@@ -114,8 +121,10 @@ Notes on the model:
 
 - Period records are generated from budget configuration.
 - Expense actuals can be tracked either directly or through child transaction entries.
-- Balance movements can be updated manually and are also adjusted by some income, expense, and investment actions.
+- A centralized period transaction ledger now exists to support reconciliation and reporting.
+- Balance movement is intended to be explained through transactions rather than edited directly.
 - Investment periods track opening value, closing value, budgeted amount, and actual transaction totals.
+- Existing active periods are backfilled where possible so they can reconcile through transactions.
 
 ## Budgeting and Period Logic
 
@@ -153,6 +162,7 @@ The current implementation goes beyond simple budgeting:
 - Savings transfers create special period income lines and move value between accounts.
 - Investment items can optionally link to an account balance.
 - Investment transactions update both investment totals and, when linked, account balances.
+- Account balance movement can be inspected from the period page through supporting transaction details.
 
 ## Deployment Files Present
 
@@ -193,6 +203,7 @@ Current backend routers are implemented for:
 - `expense_entries`
 - `balance_types`
 - `investment_transactions`
+- `period_transactions`
 
 ## To Do
 
@@ -207,6 +218,6 @@ Dosh is currently a budget-and-period based personal finance app with:
 - a substantial FastAPI backend
 - a working Create React App frontend structure
 - SQLite persistence
-- support for budgets, periods, income, expenses, accounts, and investments
+- support for budgets, periods, income, expenses, accounts, investments, and transaction-backed balance reconciliation
 
 The product code is broader than a minimal budgeting tracker, but the repo still has some packaging and deployment inconsistencies that should be resolved before treating the Docker setup as production-ready.
