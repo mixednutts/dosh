@@ -4,7 +4,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from .database import Base, engine
 from .models import PayType  # noqa: F401 — ensure model is registered
 from .routers import budgets, periods, income_types, expense_items, investments, expense_entries, balance_types, investment_transactions, period_transactions
-from .transaction_ledger import backfill_active_period_transactions, migrate_legacy_transactions
 
 # Create all tables on startup
 Base.metadata.create_all(bind=engine)
@@ -34,7 +33,6 @@ app.include_router(period_transactions.router, prefix="/api")
 def seed_reference_data():
     from sqlalchemy.orm import Session
     from .database import SessionLocal
-    from sqlalchemy import text
 
     db: Session = SessionLocal()
     try:
@@ -49,52 +47,6 @@ def seed_reference_data():
             db.add(AppInfo(versionnum="1.0.0"))
 
         db.commit()
-
-        # Schema migrations — SQLite doesn't support IF NOT EXISTS on ALTER TABLE,
-        # so we catch OperationalError for "duplicate column name".
-        migrations = [
-            "ALTER TABLE periodexpenses ADD COLUMN status VARCHAR NOT NULL DEFAULT 'Current'",
-            "ALTER TABLE periodexpenses ADD COLUMN revision_comment VARCHAR",
-            "ALTER TABLE periodbalances ADD COLUMN movement_amount NUMERIC(10,2) DEFAULT 0",
-            "ALTER TABLE periodinvestment_transactions ADD COLUMN linked_incomedesc VARCHAR",
-            "ALTER TABLE periodinvestments ADD COLUMN budgeted_amount NUMERIC(10,2) DEFAULT 0",
-            "ALTER TABLE periodinvestments ADD COLUMN actualamount NUMERIC(10,2) DEFAULT 0",
-            "ALTER TABLE investmentitems ADD COLUMN linked_account_desc VARCHAR",
-            "ALTER TABLE investmentitems ADD COLUMN is_primary INTEGER NOT NULL DEFAULT 0",
-            "ALTER TABLE incometypes ADD COLUMN linked_account VARCHAR",
-            "ALTER TABLE balancetypes ADD COLUMN is_primary INTEGER NOT NULL DEFAULT 0",
-            "ALTER TABLE periodexpenses ADD COLUMN note VARCHAR",
-            "ALTER TABLE budgets ADD COLUMN auto_add_surplus_to_investment INTEGER NOT NULL DEFAULT 0",
-            "ALTER TABLE budgets ADD COLUMN acceptable_expense_overrun_pct INTEGER NOT NULL DEFAULT 10",
-            "ALTER TABLE budgets ADD COLUMN comfortable_surplus_buffer_pct INTEGER NOT NULL DEFAULT 5",
-            "ALTER TABLE budgets ADD COLUMN maximum_deficit_amount NUMERIC(10,2)",
-            "ALTER TABLE budgets ADD COLUMN revision_sensitivity INTEGER NOT NULL DEFAULT 50",
-            "ALTER TABLE budgets ADD COLUMN savings_priority INTEGER NOT NULL DEFAULT 50",
-            "ALTER TABLE budgets ADD COLUMN period_criticality_bias INTEGER NOT NULL DEFAULT 50",
-        ]
-        for sql in migrations:
-            try:
-                db.execute(text(sql))
-                db.commit()
-            except Exception:
-                db.rollback()
-
-        # Back-fill movement_amount = closing_amount - opening_amount for existing rows
-        try:
-            db.execute(text(
-                "UPDATE periodbalances SET movement_amount = closing_amount - opening_amount "
-                "WHERE movement_amount = 0 AND closing_amount != opening_amount"
-            ))
-            db.commit()
-        except Exception:
-            db.rollback()
-
-        try:
-            migrate_legacy_transactions(db)
-            backfill_active_period_transactions(db)
-            db.commit()
-        except Exception:
-            db.rollback()
 
     finally:
         db.close()
