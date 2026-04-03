@@ -9,10 +9,18 @@ Read this alongside:
 - [README.md](/home/ubuntu/dosh/README.md)
 - [CHANGES.md](/home/ubuntu/dosh/CHANGES.md)
 - [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/DEVELOPMENT_ACTIVITIES.md)
+- [TEST_STRATEGY.md](/home/ubuntu/dosh/TEST_STRATEGY.md)
+- [TEST_EXPANSION_PLAN.md](/home/ubuntu/dosh/TEST_EXPANSION_PLAN.md)
 
 ## Summary
 
 Implement explicit budget-cycle lifecycle with `PLANNED`, `ACTIVE`, and `CLOSED`, plus close-out, carry-forward, investment-line state parity, and safer delete/recreate behavior.
+
+Current implementation note:
+
+- the core lifecycle, close-out snapshot, carry-forward, delete continuity, and next-cycle activation behavior described here are now implemented
+- these areas now also have backend workflow coverage and initial Playwright end-to-end lifecycle smoke coverage
+- future work should focus less on introducing the model and more on hardening correction, reconciliation, and consequence visibility after close-out
 
 Latest decisions locked in:
 
@@ -119,6 +127,10 @@ Latest decisions locked in:
 - Add delete-prevalidation or guided-delete API behavior so the UI can present `Delete this and all upcoming cycles`.
 
 ## Test Plan
+
+Cross-reference:
+
+- [TEST_STRATEGY.md](/home/ubuntu/dosh/TEST_STRATEGY.md) for the broader staged testing approach and expanded case inventory
 
 - Lifecycle: only one `ACTIVE` cycle per budget.
 - Lifecycle: close-out activates the next cycle and closes the current one.
