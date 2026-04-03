@@ -174,6 +174,7 @@ Priority areas:
 - make the interaction between deficit percentage and maximum deficit amount clearer
 - check whether any remaining slider labels or helper text still feel abstract
 - decide whether some health evidence lines should mirror the personalisation wording more closely
+- align the overall budget health detail view with the dedicated current-period health check so the active-period story does not conflict between the two surfaces
 - keep the section lightweight rather than turning it into an intimidating settings panel
 
 ## Recommended Session Backlog
