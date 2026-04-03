@@ -231,6 +231,126 @@ def test_multi_transaction_setup_uses_primary_account_for_expense_activity(clien
     assert Decimal(balances["Joint Account"]["movement_amount"]) == Decimal("0.00")
 
 
+def test_multi_transaction_setup_routes_linked_income_to_non_primary_account(client, db_session):
+    budget = create_budget(db_session)
+    create_income_type(
+        db_session,
+        budgetid=budget.budgetid,
+        linked_account="Bills Account",
+    )
+    create_expense_item(db_session, budgetid=budget.budgetid)
+
+    main_balance = client.post(
+        f"/api/budgets/{budget.budgetid}/balance-types/",
+        json={
+            "balancedesc": "Main Account",
+            "balance_type": "Transaction",
+            "opening_balance": "1000.00",
+            "active": True,
+            "is_primary": True,
+        },
+    )
+    assert main_balance.status_code == 201, main_balance.text
+
+    bills_balance = client.post(
+        f"/api/budgets/{budget.budgetid}/balance-types/",
+        json={
+            "balancedesc": "Bills Account",
+            "balance_type": "Transaction",
+            "opening_balance": "250.00",
+            "active": True,
+            "is_primary": False,
+        },
+    )
+    assert bills_balance.status_code == 201, bills_balance.text
+
+    active_period = generate_periods(
+        client,
+        budgetid=budget.budgetid,
+        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        count=1,
+    )[0]
+
+    income_update = client.patch(
+        f"/api/periods/{active_period['finperiodid']}/income/Salary",
+        json={"actualamount": "1000.00"},
+    )
+    assert income_update.status_code == 200, income_update.text
+
+    balances_response = client.get(f"/api/periods/{active_period['finperiodid']}/balances")
+    assert balances_response.status_code == 200, balances_response.text
+    balances = {row["balancedesc"]: row for row in balances_response.json()}
+    assert Decimal(balances["Main Account"]["movement_amount"]) == Decimal("0.00")
+    assert Decimal(balances["Bills Account"]["movement_amount"]) == Decimal("1000.00")
+
+
+def test_reassigning_primary_account_changes_future_expense_activity_home(client, db_session):
+    budget = create_budget(db_session)
+    create_income_type(db_session, budgetid=budget.budgetid)
+    create_expense_item(db_session, budgetid=budget.budgetid)
+
+    main_balance = client.post(
+        f"/api/budgets/{budget.budgetid}/balance-types/",
+        json={
+            "balancedesc": "Main Account",
+            "balance_type": "Transaction",
+            "opening_balance": "1000.00",
+            "active": True,
+            "is_primary": True,
+        },
+    )
+    assert main_balance.status_code == 201, main_balance.text
+
+    bills_balance = client.post(
+        f"/api/budgets/{budget.budgetid}/balance-types/",
+        json={
+            "balancedesc": "Bills Account",
+            "balance_type": "Transaction",
+            "opening_balance": "350.00",
+            "active": True,
+            "is_primary": False,
+        },
+    )
+    assert bills_balance.status_code == 201, bills_balance.text
+
+    active_period = generate_periods(
+        client,
+        budgetid=budget.budgetid,
+        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        count=1,
+    )[0]
+
+    primary_reassignment = client.patch(
+        f"/api/budgets/{budget.budgetid}/balance-types/Main%20Account",
+        json={"is_primary": False},
+    )
+    assert primary_reassignment.status_code == 200, primary_reassignment.text
+
+    bills_reassignment = client.patch(
+        f"/api/budgets/{budget.budgetid}/balance-types/Bills%20Account",
+        json={"is_primary": True},
+    )
+    assert bills_reassignment.status_code == 200, bills_reassignment.text
+
+    balances_config_response = client.get(f"/api/budgets/{budget.budgetid}/balance-types/")
+    assert balances_config_response.status_code == 200, balances_config_response.text
+    configured_balances = {row["balancedesc"]: row for row in balances_config_response.json()}
+    assert configured_balances["Main Account"]["is_primary"] is False
+    assert configured_balances["Bills Account"]["is_primary"] is True
+
+    expense_entry = client.post(
+        f"/api/periods/{active_period['finperiodid']}/expenses/Rent/entries/",
+        json={"amount": "80.00", "note": "Updated default account"},
+    )
+    assert expense_entry.status_code == 201, expense_entry.text
+
+    balances_response = client.get(f"/api/periods/{active_period['finperiodid']}/balances")
+    assert balances_response.status_code == 200, balances_response.text
+    balances = {row["balancedesc"]: row for row in balances_response.json()}
+    assert Decimal(balances["Main Account"]["movement_amount"]) == Decimal("0.00")
+    assert Decimal(balances["Bills Account"]["movement_amount"]) == Decimal("-80.00")
+
+
 def test_auto_surplus_allocation_targets_only_primary_investment_line(client, db_session):
     budget = create_budget(db_session)
     create_income_type(db_session, budgetid=budget.budgetid, amount=Decimal("2000.00"))

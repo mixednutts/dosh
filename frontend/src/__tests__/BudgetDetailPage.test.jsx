@@ -84,6 +84,36 @@ describe('BudgetDetailPage', () => {
     expect(screen.queryByText(/Set one account as the primary account so expense movements have a default home\./)).toBeNull()
   })
 
+  it('treats a single-account setup as valid without account-foundation warnings', async () => {
+    client.getBudget.mockResolvedValue({
+      budgetid: 1,
+      budgetowner: 'Alex',
+      description: 'Home Budget',
+      budget_frequency: 'Monthly',
+    })
+    client.getBalanceTypes.mockResolvedValue([
+      { balancedesc: 'Everyday', balance_type: 'Bank', active: true, is_primary: true },
+    ])
+    client.getIncomeTypes.mockResolvedValue([
+      { incomedesc: 'Salary' },
+    ])
+    client.getExpenseItems.mockResolvedValue([
+      { expensedesc: 'Rent', active: true },
+    ])
+    client.getInvestmentItems.mockResolvedValue([])
+
+    renderWithProviders(<BudgetDetailPage />, {
+      route: '/budgets/1/setup',
+      path: '/budgets/:budgetId/setup',
+    })
+
+    expect(await screen.findByText(/1 account, 1 income type, 1 active expense item, 0 investments/)).toBeTruthy()
+    expect(screen.queryByText(/Create at least one account first so account-linked income options are ready when you need them\./)).toBeNull()
+    expect(screen.queryByText(/Create at least one account first so expense tracking has an account structure in place as that behaviour develops\./)).toBeNull()
+    expect(screen.queryByText(/Create at least one account first so linked investment accounts are available when needed\./)).toBeNull()
+    expect(screen.queryByText(/Set one account as the primary account so expense movements have a default home\./)).toBeNull()
+  })
+
   it('prompts for a primary account when accounts exist but none is selected', async () => {
     client.getBudget.mockResolvedValue({
       budgetid: 1,

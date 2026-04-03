@@ -47,6 +47,86 @@ Important scope note:
 - migration-era ledger backfill was a one-off alignment activity for older data, not a normal recurring workflow feature
 - ongoing test emphasis should stay on live transaction behavior, balance movement, continuity, and historical integrity rather than repeatedly treating one-time migration backfill as product behavior
 
+## Testing Context Snapshot
+
+This section is the quick-start project context for testing work.
+
+It consolidates the testing-relevant product meaning currently spread across:
+
+- [README.md](/home/ubuntu/dosh/README.md)
+- [CHANGES.md](/home/ubuntu/dosh/CHANGES.md)
+- [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/DEVELOPMENT_ACTIVITIES.md)
+- [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/BUDGET_CYCLE_LIFECYCLE_PLAN.md)
+- [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/BUDGET_HEALTH_ADDENDUM.md)
+- [TEST_EXPANSION_PLAN.md](/home/ubuntu/dosh/TEST_EXPANSION_PLAN.md)
+
+### Product shape under test
+
+Dosh is now a workflow-driven personal finance application rather than a collection of isolated CRUD screens.
+
+The highest-value test context is:
+
+- budgets have setup dependencies that determine whether downstream generation and activity are valid
+- budget cycles have explicit lifecycle state: `PLANNED`, `ACTIVE`, `CLOSED`
+- close-out is a first-class workflow that freezes historical state and activates the next cycle
+- account balances and movement explanations are intended to be transaction-derived rather than freely edited
+- savings and investment planning are part of normal cycle behavior, not optional side experiments
+- budget health is an explainable indicator built from real product data, with per-budget personalisation that changes interpretation
+
+### Core financial invariants
+
+The most important business rules to preserve are:
+
+- exactly one `ACTIVE` cycle should exist per budget
+- cycle chains should remain continuous with no overlaps and no silent retained gaps
+- `CLOSED` cycles are historical and read-only through ordinary workflow paths
+- close-out must preserve point-in-time snapshot data rather than recomputing history from later settings
+- carry-forward and next-cycle opening rebasing must stay synchronized
+- guided delete behavior must protect continuity, especially for non-trailing cycles
+- expense and investment lifecycle behavior should remain aligned
+- paid lines should be treated as finalized unless explicitly revised through the supported workflow
+- balance movement trust should come from ledger-backed transactions, not manual drift
+
+### Testing-sensitive feature areas
+
+These areas deserve extra caution whenever product work touches them:
+
+- cycle generation and lifecycle assignment
+- close-out preview, completion, and next-cycle activation
+- `Carried Forward` creation, protection, and recalculation after delete or regenerate flows
+- delete continuity options such as `Delete this and all upcoming cycles`
+- transaction-backed expense, balance, and investment behavior
+- post-paid revise flows and read-only guards on closed cycles
+- health scoring, evidence payloads, and historical snapshot integrity
+- setup edits whose consequences show up only in later workflows
+
+### Budget health context for tests
+
+Budget health should be tested as guided, explainable scoring, not as absolute financial truth.
+
+Tests should preserve these expectations:
+
+- visible results should be backed by inspectable evidence payloads
+- current-period health is a distinct live layer and also contributes to the overall score
+- personalisation changes should affect future interpretation without rewriting closed-cycle history
+- timestamps, date-sensitive classification, and rendered evidence should stay aligned with intended local timezone behavior
+
+### Active engineering direction that should influence testing
+
+Current development direction makes the following test emphasis especially useful:
+
+- reporting and reconciliation are likely to expand next, so ledger integrity and discrepancy behavior should stay well protected
+- close-out and reconciliation handoff still need hardening, so correction-after-close expectations remain a live risk area
+- localisation and regional-fit work is expected later, so tests should avoid depending on unnecessary hard-coded locale assumptions where possible
+- startup schema evolution still uses transitional bootstrap logic, so tests should focus on runtime workflow behavior rather than treating startup schema patching as product functionality
+
+### Practical rule for future sessions
+
+If a behavior is described in the Markdown docs as a user-facing workflow rule, continuity rule, or historical-integrity constraint, it should either:
+
+- already be covered by an automated test, or
+- be called out explicitly here as a known remaining gap
+
 ## User Scenarios
 
 Dosh should no longer be treated as if there is only one meaningful account shape.
@@ -81,6 +161,33 @@ Scenario guidance for future tests:
 - setup and transaction tests should gradually be expanded to cover `Single Account` and `Multi Transaction`
 - where a feature depends on optional setup data, tests should verify both behavior when the reference data exists and failure or fallback behavior when it does not
 - new scenario coverage should be added intentionally rather than assuming one default account model forever
+
+### Current setup-shape coverage matrix
+
+The following setup-shape combinations are currently covered by automated tests.
+
+| Setup shape | Accounts shape | Coverage focus | Current coverage |
+| --- | --- | --- | --- |
+| `No Accounts` | no accounts, no income, no expenses, no investments | setup guidance and blocked first-cycle generation | frontend |
+| `Single Account` | 1 primary transaction account, no savings account | valid setup rendering without false missing-account guidance | frontend |
+| `Single Account` | 1 primary transaction account, no savings account | reject savings-transfer behavior that depends on a real savings account | backend |
+| `Accounts Present, No Primary` | accounts exist but none selected as primary | prompt for primary-account selection before expense movement assumptions | frontend |
+| `Multi Transaction` | 2 transaction accounts with 1 primary | route expense activity to the primary account by default | backend |
+| `Multi Transaction With Linked Income` | 2 transaction accounts with income linked to a non-primary account | route income movement to the linked account rather than the primary account | backend |
+| `Multi Transaction After Primary Reassignment` | 2 transaction accounts with primary changed after setup | route later expense activity to the newly primary account | backend |
+| `Mixed Accounts` | multiple transaction accounts plus savings account | reflect richer setup summary without no-account guidance | frontend |
+| `Mixed Accounts With Savings Transfer` | transaction account plus savings account | support savings-transfer activity and route movement correctly | backend |
+| `Mixed Accounts With Linked Investment` | transaction accounts plus savings account plus linked investment account | route income, investment, and savings-transfer movement to the correct accounts | backend |
+| `No Investment Lines With Auto-Surplus Enabled` | valid generation setup with no investments present | still allow cycle generation without failing surplus-allocation logic | backend |
+| `Multiple Investment Lines` | more than one investment with exactly one primary | keep primary selection unique and allocate auto-surplus only to the primary line | backend |
+| `Primary Investment Reassigned` | multiple investments with primary line changed before generation | route future auto-surplus allocation to the new primary investment | backend |
+| `Missing Period Investment Reference` | no generated period investment line for attempted downstream activity | fail clearly when dependent investment activity is attempted | backend |
+
+Notes:
+
+- `frontend` means the setup state, guidance, or page-level rendering is covered in React tests.
+- `backend` means the downstream financial behavior, routing, or validation consequence is covered in API tests.
+- some shapes are intentionally covered in more than one row because the setup itself is valid, but different downstream consequences need separate protection
 
 ## Testing Principles
 
@@ -209,8 +316,8 @@ Backend scaffold now present:
 - initial reconciliation and health-matrix coverage in [backend/tests/test_transactions_and_balances.py](/home/ubuntu/dosh/backend/tests/test_transactions_and_balances.py) and [backend/tests/test_budget_health_matrix.py](/home/ubuntu/dosh/backend/tests/test_budget_health_matrix.py)
 - additional live-ledger and advanced health coverage in [backend/tests/test_live_ledger_behavior.py](/home/ubuntu/dosh/backend/tests/test_live_ledger_behavior.py) and [backend/tests/test_budget_health_advanced.py](/home/ubuntu/dosh/backend/tests/test_budget_health_advanced.py)
 - initial setup and scenario coverage in [backend/tests/test_budget_setup_workflows.py](/home/ubuntu/dosh/backend/tests/test_budget_setup_workflows.py)
-- initial frontend workflow coverage in [BudgetPeriodsPage.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/BudgetPeriodsPage.test.jsx), [PeriodDetailPage.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/PeriodDetailPage.test.jsx), and [BudgetDetailPage.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/BudgetDetailPage.test.jsx), with shared render utilities in [testUtils.jsx](/home/ubuntu/dosh/frontend/src/testUtils.jsx)
-  This now includes delete continuity messaging, non-deletable delete-state gating, closed-cycle read-only rendering, close-out modal confirmation gating, expense and investment paid-confirmation flows, expense and investment revise-comment workflows, locked-cycle guardrail messaging, settings guidance for primary investment allocation, manual cycle lock setting changes, account primary-selection setup plus edit, deactivation, and delete behavior, income setup auto-include behavior plus linked-account removal through edit, investment setup with and without linked accounts, investment primary/edit/deactivation/delete behavior, backend coverage for primary-investment reassignment affecting future auto-surplus generation, setup-shape visibility for richer account configurations, setup states where accounts exist but no primary account is selected, setup-to-generation readiness gating, successful generation handoff with suggested next start date, generate failure feedback, and setup guidance when account foundations are missing.
+- initial frontend workflow coverage in [BudgetPeriodsPage.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/BudgetPeriodsPage.test.jsx), [PeriodDetailPage.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/PeriodDetailPage.test.jsx), [BudgetDetailPage.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/BudgetDetailPage.test.jsx), [BalanceTypesTab.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/BalanceTypesTab.test.jsx), [IncomeTypesTab.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/IncomeTypesTab.test.jsx), [InvestmentItemsTab.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/InvestmentItemsTab.test.jsx), and [SettingsTab.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/SettingsTab.test.jsx), with shared render utilities in [testUtils.jsx](/home/ubuntu/dosh/frontend/src/testUtils.jsx)
+  This now includes delete continuity messaging, non-deletable delete-state gating, closed-cycle read-only rendering, close-out modal confirmation gating, expense and investment paid-confirmation flows, expense and investment revise-comment workflows, locked-cycle guardrail messaging, settings guidance for primary investment allocation, manual cycle lock setting changes, account primary-selection setup plus edit, deactivation, and delete behavior, income setup auto-include behavior plus linked-account removal through edit, investment setup with and without linked accounts, investment primary/edit/deactivation/delete behavior, backend coverage for primary-investment reassignment affecting future auto-surplus generation, setup-shape visibility for richer account configurations, setup states where accounts exist but no primary account is selected, valid single-account setup states without false missing-account warnings, setup-to-generation readiness gating, successful generation handoff with suggested next start date, generate failure feedback, and setup guidance when account foundations are missing.
 - initial Playwright end-to-end scaffold in [playwright.config.js](/home/ubuntu/dosh/frontend/playwright.config.js) and [budget-smoke.spec.js](/home/ubuntu/dosh/frontend/e2e/budget-smoke.spec.js)
   The current smoke paths now run successfully in Chromium locally, covering blocked setup handoff, minimum-setup first-cycle generation, first expense-transaction activity with linked account movement, and close-out into the next active cycle.
 
@@ -242,7 +349,7 @@ Current backend scaffold proves:
 - tests can drive API requests through FastAPI `TestClient`
 - tests can seed reusable domain fixtures without touching the real app database
 - the repository now has a stable place to add lifecycle, close-out, and continuity regression tests
-- the repository now has initial regression coverage for close-out transitions, carry-forward persistence, continuity-aware deletion, regeneration, paid or revised status guards, closed-cycle write rejection, delete blockers after recorded activity, lifecycle normalization, historical health snapshot preservation, live ledger-driven balance movement, system-generated transaction rows, early health-scoring matrix behavior, and setup-driven scenario assumptions
+- the repository now has initial regression coverage for close-out transitions, carry-forward persistence, continuity-aware deletion, regeneration, paid or revised status guards, closed-cycle write rejection, delete blockers after recorded activity, lifecycle normalization, historical health snapshot preservation, live ledger-driven balance movement, system-generated transaction rows, early health-scoring matrix behavior, and setup-driven scenario assumptions including non-primary linked-income routing, primary-account reassignment effects on later expense activity, and mixed-account movement routing
 
 Current limitation:
 
