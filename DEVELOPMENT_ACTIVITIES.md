@@ -25,6 +25,14 @@ Dosh is beyond initial scaffolding. It already has a working FastAPI backend, Re
 
 The project is now in the stage where the biggest wins are less about adding isolated CRUD and more about making the financial workflow feel complete, trustworthy, and reviewable.
 
+Recent progress worth carrying forward:
+
+- the Budgets page now includes a dedicated current-period health check with its own detail modal and direct link into the active period
+- budget setup now has a `Personalisation` section above `Settings`
+- budget health can now be tuned per budget through persistent personalisation values
+- deficit concern logic now supports both a percentage threshold and an optional dollar threshold
+- budget info and personalisation now autosave quietly instead of relying on save buttons
+
 ## Active Development Streams
 
 ### 1. Reporting and Analysis
@@ -93,16 +101,17 @@ Focus areas:
 
 - improve trend credibility
 - connect future corrective action to visible momentum
-- add current-period warning signals
+- refine current-period warning signals
 - prepare for close-out metrics integration
 - continue refining evidence language
 
 Suggested implementation slices:
 
-- current period health warning card
 - better momentum logic across completed periods
 - more direct explanation of score movement
 - health detail links into supporting records
+- tests and refinement around personalised threshold behavior
+- continued copy refinement so health evidence reads naturally in budget terms
 
 ## Near-Term Engineering Work
 
@@ -119,6 +128,7 @@ Priority areas:
 - expense paid/revised workflow
 - investment budget and surplus calculations
 - budget health scoring and evidence payloads
+- personalisation threshold combinations, especially percentage-plus-dollar deficit logic
 
 ### 2. Formalize Database Migration Strategy
 
@@ -150,9 +160,21 @@ The product direction is getting more workflow-driven, so consistency matters mo
 Priority areas:
 
 - standardize terminology around savings and investments
+- standardize health terminology around surplus, deficit, tolerance, threshold, and escalation
 - preserve backend naming stability while refining frontend wording
 - keep balance movement read-only and transaction-derived
 - avoid introducing edit paths that weaken ledger trust
+
+### 5. Refine Budget Health Personalisation Experience
+
+The first personalisation pass is implemented, but it still needs usability refinement from real use.
+
+Priority areas:
+
+- make the interaction between deficit percentage and maximum deficit amount clearer
+- check whether any remaining slider labels or helper text still feel abstract
+- decide whether some health evidence lines should mirror the personalisation wording more closely
+- keep the section lightweight rather than turning it into an intimidating settings panel
 
 ## Recommended Session Backlog
 
@@ -161,7 +183,7 @@ If we want a practical order of work rather than just a thematic roadmap, this i
 1. Add backend tests around ledger, period, and surplus rules.
 2. Add a reporting summary endpoint that rolls up period and ledger data.
 3. Surface a budget-level reporting card set in the frontend.
-4. Add current-period health warnings tied to real conditions.
+4. Add tests and cleanup around health personalisation and current-period threshold behavior.
 5. Design the first reconciliation screen around account movement explanation.
 6. Introduce a period close-out model and basic close-out status flow.
 7. Replace ad hoc startup migrations with a proper migration system.
@@ -176,6 +198,8 @@ These project rules already emerge clearly from the existing docs and implementa
 - paid expenses should stay protected until explicitly revised
 - budget health should stay supportive and explainable, not overly authoritative
 - user-facing health and warning messages should use warm, practical, reassuring language rather than clinical finance wording
+- when health preferences assess deficit risk, the wording should say `deficit` clearly rather than implying that zero surplus is itself a problem
+- autosave is preferred for lightweight setup and personalisation edits when validation is simple and failures can be surfaced clearly
 - backend and database naming should remain stable unless a change is clearly worth the cost
 
 ## What Future Sessions Should Check First

@@ -52,6 +52,7 @@ Implemented areas:
 - Budget CRUD
 - Budget settings for period-generation behavior
 - Budget health metrics Phase 1 endpoint with explainable evidence payload
+- Budget-level health personalisation values that tune thresholds and weighting
 - Income type CRUD
 - Expense item CRUD and reordering
 - Investment item CRUD with primary-line support
@@ -80,8 +81,9 @@ Visible pages and flows:
 - budget-level summary cards including:
 - current period range
 - days remaining in the active period
-- current/future/historical period counts
+- future/historical period counts
 - budget health score and momentum indicator
+- current-period health check with traffic-light status and detail modal
 - budget health details modal with evidence breakdown
 - Budget periods page for:
 - viewing existing periods
@@ -96,8 +98,10 @@ Visible pages and flows:
 - Income Types
 - Expense Items
 - Investments
+- Personalisation
 - Settings
 - including auto-allocation of surplus budget into a primary investment line
+- with quiet autosave for Budget Info and Personalisation updates
 - Period detail page for working with:
 - Income actuals
 - Expense actuals and notes
@@ -149,6 +153,7 @@ Notes on the model:
 
 - Period records are generated from budget configuration.
 - Budgets can opt into automatically allocating new-period surplus to a primary investment line.
+- Budgets now also store health personalisation values including expense tolerance, deficit thresholds, revision sensitivity, savings priority, and period criticality preference.
 - Expense actuals can be tracked either directly or through child transaction entries.
 - A centralized period transaction ledger now exists to support reconciliation and reporting.
 - Budget health is currently computed from existing budget, period, and expense data without additional schema.
@@ -208,6 +213,7 @@ Current terminology guidance:
 - Use `Savings` for the user-facing idea of setting money aside.
 - Use `Investment` for the technical record type and setup area already established in the codebase.
 - Use `Primary investment line` when referring to the destination for automatic surplus allocation.
+- In budget health wording, be explicit when the value being assessed is deficit rather than positive surplus.
 
 ## Deployment Files Present
 
@@ -239,6 +245,7 @@ The repository is not fully polished from an operations perspective. These are i
 - Frontend builds currently pass cleanly without the earlier lint warnings.
 - Budget health is a Phase 1 implementation and should be treated as an explainable first slice rather than a finished scoring system.
 - The user-facing budget health presentation should stay free of internal development terminology such as phase labels.
+- Budget health personalisation exists today, but the wording and explanation of threshold interaction should keep being refined from real usage.
 
 ## API Surface Overview
 
@@ -266,10 +273,11 @@ Additional budget route surface now includes:
 - Decide whether projected savings should stay investment-based everywhere or become a broader combined savings/planned-investment concept.
 - Continue normalizing user-facing language around `Savings`, `Investment`, and `Primary investment line`.
 - Continue refining budget health scoring semantics, weighting, and evidence language from real usage feedback.
+- Continue refining health personalisation wording so each control clearly names the exact financial value being assessed.
+- Decide whether the deficit concern controls need an even clearer combined explanation when both percentage and dollar thresholds are set.
 - Decide whether app timezone should remain deployment-driven through `TZ` or eventually become a user-configurable setting.
 - Extend the budget health momentum model so corrective action in future periods can influence the visible trend more directly.
 - Assess a revision reason code pick list when revising an expense item, especially if revision reporting becomes more structured later.
-- Consider a `Health Check for Current Period` card on the budget summary page to surface immediate issues such as negative surplus or other active-period warning signals.
 
 ## Development Roadmap
 

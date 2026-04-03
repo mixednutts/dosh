@@ -524,6 +524,124 @@ Important product meaning:
 - deploys should avoid unnecessary work where possible
 - local development artifacts should not influence container build performance
 
+### 32. Budgets page now includes a dedicated current-period health check
+
+The Budgets page now includes a specific `Health Check for Current Period` surface alongside the broader budget health summary.
+
+Current behavior:
+
+- the current-period card shows a traffic-light style result
+- the card has its own details modal
+- the old standalone current-period count card was removed
+- the current-period card includes a direct link to the active period details page
+
+Important product decision:
+
+- active-period issues should be visible separately from the broader health pillars
+- current-period health should still reuse the same underlying health engine rather than becoming a disconnected side feature
+
+### 33. Budget health Phase 1 now returns current-period assessment data
+
+The health service was extended so it now returns a `current_period_check` payload alongside the main pillars and momentum data.
+
+Current behavior:
+
+- current-period health evaluates live-period conditions separately from setup, discipline, and planning stability
+- negative `Surplus (Budget)` is now treated as a meaningful active-period signal
+- the current-period payload includes evidence for surplus values, expense tolerance, revision sensitivity, and timing preference
+
+Important design decision:
+
+- the health engine should expand in one coherent direction rather than splitting into unrelated rule systems
+
+### 34. Budget setup now includes Personalisation above Settings
+
+The budget setup page was reorganized so `Personalisation` now sits above `Settings` and has its own top-page navigation tab.
+
+Current behavior:
+
+- `Settings` remains the home for budget behavior switches
+- `Personalisation` is the home for health-check preference inputs
+- budget owner and description editing remain in `Budget Info`
+
+Important product decision:
+
+- keep operational settings separate from health-preference tuning
+- put the more reflective budget-health section above lower-level settings
+
+### 35. Health personalisation is now budget-specific and persistent
+
+Budget records now store health preference inputs that influence scoring.
+
+Current behavior:
+
+- personalisation inputs save automatically after change
+- percentage-based controls stay on percentage scales
+- preference-weight controls use a 1-10 presentation
+- a `Default` marker is shown on sliders
+- manual text entry is available for slider values without spinner arrows
+
+Current stored preferences include:
+
+- acceptable expense overrun percentage
+- deficit concern percentage threshold
+- maximum deficit amount
+- revision sensitivity
+- savings priority
+- period criticality bias
+
+Important constraint:
+
+- autosave should stay quiet by default and only surface feedback when saving fails
+
+### 36. Deficit concern logic now supports percentage and dollar thresholds together
+
+The deficit-related personalisation control was clarified and extended so it can use both a percentage threshold and an optional dollar limit.
+
+Current behavior:
+
+- entering a dollar value such as `50` means health issues escalate once `Surplus (Budget)` moves past `-50`
+- when both a percentage deficit threshold and a dollar amount are set, the lower threshold is used
+- the value is persisted on the budget as `maximum_deficit_amount`
+
+Important product meaning:
+
+- a zero-surplus budget can still be healthy
+- concern is intended to begin when the budget moves into deficit beyond the user’s acceptable threshold
+- one-off income spikes should not automatically make the deficit warning unrealistically loose
+
+### 37. Budget health wording was deliberately softened and clarified
+
+Several rounds of wording changes were made to keep health language supportive and precise.
+
+Current decisions:
+
+- avoid the word `judge` in user-facing health and personalisation copy
+- prefer calm, practical phrasing over formal finance language
+- use `budget health concern` where plain `concern` would be too ambiguous
+- when a control is really about deficit tolerance, say `deficit` rather than leaning on vague `buffer` wording
+
+Examples of adopted direction:
+
+- `This period is currently planning to spend more than it brings in, so it would be worth taking another look.`
+- `At what point will a budget deficit start raising a budget health concern?`
+- `When in the budget cycle should health issues escalate?`
+
+### 38. Budget edit flow now routes through the setup page
+
+The old small edit modal from the Budgets page was removed from the main budget-edit path.
+
+Current behavior:
+
+- the pencil/edit action on the Budgets page now takes the user to budget setup
+- owner and description are edited in the `Budget Info` section instead of the old modal
+- `Budget Info` now autosaves quietly rather than using save/reset buttons
+
+Important product meaning:
+
+- budget editing should happen in the fuller setup context rather than a disconnected mini-form
+- once a budget is in use, the main edit experience should align with the broader setup workflow
+
 ## Budget Setup Page Direction
 
 The budget detail page was reworked away from isolated tab panes and toward a scrollable setup flow.
@@ -537,7 +655,8 @@ Current section order:
 3. Income Types
 4. Expense Items
 5. Investments
-6. Settings
+6. Personalisation
+7. Settings
 
 Important decisions:
 
@@ -626,6 +745,8 @@ Future suggestions should respect the following:
 - Do not guess the destination of automatic savings allocation; it should be explicit through the primary investment line.
 - When changing date handling, be careful about timezone-aware versus timezone-naive values because period generation depends on exact date boundaries.
 - Keep savings and investment language deliberate and consistent; avoid letting the two concepts drift interchangeably without explanation.
+- Keep health language warm and practical, but still precise about whether the value being discussed is surplus, deficit, tolerance, or threshold.
+- Prefer autosave for lightweight tuning and inline setup edits when the behavior is predictable and validation is simple.
 
 ## Future Development Ideas And Thought Process
 
@@ -647,9 +768,10 @@ These are active ideas or partially formed directions that may matter in later s
 - Projected savings now leans on investment allocations; future design work should decide whether that is the permanent canonical meaning or whether savings should become its own clearer first-class concept.
 - Expense auto/manual flag behavior still needs deeper development and may influence later account logic.
 - Revising an expense may later benefit from a reason code pick list in addition to free-text comments, especially for reporting and close-out analysis.
-- The Budgets page may later benefit from a dedicated `Health Check for Current Period` card that surfaces immediate active-period issues such as negative surplus.
 - Settings are expected to become a place for user-selected behavior flags and page layout preferences.
 - Settings should remain visible rather than hidden, even if they stay lower priority than core setup steps.
+- Health personalisation may later benefit from a clearer grouped explanation of how percentage and dollar deficit thresholds interact.
+- The current health timing preference may later benefit from even more intuitive labels or visuals if users still find the escalation curve hard to interpret.
 
 ### Roadmap Milestone Notes
 
@@ -695,9 +817,9 @@ Useful directions:
 
 - Review existing future periods for any stale investment budgets produced before the corrected surplus-allocation fix.
 - Consider adding validation or migration help for budgets that enable automatic surplus allocation but do not yet have an active primary investment line.
-- Add a `.dockerignore` to reduce Docker build context and speed up deploys.
-- Clean up the known frontend lint warnings in `Dashboard.jsx` and `PeriodDetailPage.jsx` when convenient.
 - Keep refining naming so `Savings`, `Investment`, and `Primary investment line` are used consistently across setup, summaries, and period detail screens.
+- Add tests around health personalisation, current-period scoring, and the combined percentage/dollar deficit threshold behavior.
+- Replace startup schema mutation for the newer budget personalisation fields with a proper migration path once migrations are introduced.
 
 ## Technical Notes
 
@@ -707,11 +829,11 @@ Useful directions:
 - Active-period transaction reconciliation/backfill now runs during startup migration flow.
 - A host-side SQLite backup was taken before the ledger migration for recovery safety.
 - A budget-level `auto_add_surplus_to_investment` flag now exists.
+- Budget records now also include multiple health personalisation fields, including `maximum_deficit_amount`.
 - Investment items now have an `is_primary` flag with single-primary enforcement at the API layer.
 - Period summary data now includes cumulative projected savings.
 - Period generation now normalizes incoming dates before overlap checks.
-- Frontend builds currently succeed with some non-blocking lint warnings in unrelated files.
-- Those warnings are not currently blocking deployment, but can be cleaned up later.
+- Budget PATCH handling now uses `exclude_unset=True` so optional fields such as `maximum_deficit_amount` can be explicitly cleared.
 
 ## Summary
 
@@ -723,6 +845,8 @@ This session pushed Dosh toward:
 - period-first navigation for active budget work
 - transaction-backed account movement and reconciliation
 - more explainable balances through inline supporting details
+- more actionable current-period health guidance
+- more user-specific health interpretation through budget personalisation
 - better preservation of product intent for future sessions
 
 When making future suggestions, prioritize:

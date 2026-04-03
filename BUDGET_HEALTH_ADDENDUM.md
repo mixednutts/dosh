@@ -30,6 +30,11 @@ Current pillars:
 - Budget Discipline
 - Planning Stability
 
+Additional current-period layer:
+
+- a dedicated `Health Check for Current Period` is now returned alongside the pillar set
+- it is intended to surface live-period issues without replacing the broader budget-health view
+
 Current user experience direction:
 
 - Show a concise health summary at the budget level.
@@ -37,6 +42,7 @@ Current user experience direction:
 - Use supportive language that points users toward improvement rather than judgment.
 - Keep internal phase terminology out of the user-facing UI.
 - Prefer compact visualization in the summary surface and reserve fuller explanation for the modal.
+- Let the current-period summary link users directly into the active period when deeper inspection is needed.
 
 Important Phase 1 constraint:
 
@@ -50,6 +56,8 @@ Current presentation notes:
 - The large circle shows the current health score.
 - A smaller overlapping circle shows the improvement/decline delta.
 - Detailed interpretation remains in the modal rather than the compact card.
+- The current-period summary currently uses a traffic-light treatment on the Budgets page.
+- Current-period evidence now reflects live-period surplus, deficit concern thresholds, revision pressure, expense tolerance, and timing sensitivity.
 
 ## Phase 2
 
@@ -77,6 +85,8 @@ Planned direction:
 - support configurable lookback windows and tolerance thresholds
 - let users choose whether some pillars are emphasized more than others
 - keep scoring versioned so old explanations remain understandable when rules change
+- continue budget-specific personalisation only where the user can reasonably understand what a control changes
+- phrase personalisation around the financial value being assessed, such as deficit concern thresholds, rather than abstract scoring language
 
 Important caution:
 
@@ -92,3 +102,5 @@ Future work on budget health should preserve these principles:
 - Budget health should measure planning and workflow quality, not just whether money was tight.
 - Improvement indicators should reward meaningful corrective action.
 - The metric system should remain supportive, practical, and explainable.
+- Personalisation should tune interpretation, not turn scoring into a black box.
+- When thresholds are configurable, the UI copy should clearly state whether Dosh is assessing surplus strength, deficit size, tolerance, or timing sensitivity.
