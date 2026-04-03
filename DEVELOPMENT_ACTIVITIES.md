@@ -32,6 +32,10 @@ Recent progress worth carrying forward:
 - budget health can now be tuned per budget through persistent personalisation values
 - deficit concern logic now supports both a percentage threshold and an optional dollar threshold
 - budget info and personalisation now autosave quietly instead of relying on save buttons
+- the overall budget score now explicitly includes the current-period health assessment
+- the Budgets page now shows a current balance summary card with per-account closing balances and total
+- the sidebar is now a focused current-budget workflow nav with compact and collapsible desktop behavior
+- the visual direction has shifted to muted teal branding with separate green success semantics
 
 ## Active Development Streams
 
@@ -102,6 +106,7 @@ Focus areas:
 - improve trend credibility
 - connect future corrective action to visible momentum
 - refine current-period warning signals
+- validate whether the current-period weighting inside the overall score feels proportionate in real use
 - prepare for close-out metrics integration
 - continue refining evidence language
 
@@ -110,6 +115,7 @@ Suggested implementation slices:
 - better momentum logic across completed periods
 - more direct explanation of score movement
 - health detail links into supporting records
+- test the new overall-score weighting so current-period influence is visible but not overly volatile
 - tests and refinement around personalised threshold behavior
 - continued copy refinement so health evidence reads naturally in budget terms
 
@@ -177,6 +183,28 @@ Priority areas:
 - align the overall budget health detail view with the dedicated current-period health check so the active-period story does not conflict between the two surfaces
 - keep the section lightweight rather than turning it into an intimidating settings panel
 
+### 6. Continue Navigation And Information Architecture Cleanup
+
+The sidebar redesign has created a much stronger structure, but it also established some navigation rules that future work should preserve.
+
+Priority areas:
+
+- keep the sidebar centered on one active budget context at a time
+- add new first-class sections carefully so the nav does not grow back into a crowded tree
+- preserve the compact/collapsible desktop mode as new features arrive
+- keep overflow affordances honest when the user is already on the destination page
+- avoid duplicate edit or setup entry points on the same screen unless they serve clearly different purposes
+
+### 7. Expand Budget Summary Reporting Value
+
+The Budgets page is now the main landing surface and already carries health and current balance context, so it is a strong candidate for the first reporting-oriented summaries.
+
+Priority areas:
+
+- add richer historical and trend summaries without turning the page into a dashboard clone
+- continue favoring live money position and practical status over repeated setup actions
+- identify the next summary card that best complements current balance and health without duplicating period-listing data
+
 ## Recommended Session Backlog
 
 If we want a practical order of work rather than just a thematic roadmap, this is the strongest current sequence:
@@ -186,8 +214,9 @@ If we want a practical order of work rather than just a thematic roadmap, this i
 3. Surface a budget-level reporting card set in the frontend.
 4. Add tests and cleanup around health personalisation and current-period threshold behavior.
 5. Design the first reconciliation screen around account movement explanation.
-6. Introduce a period close-out model and basic close-out status flow.
-7. Replace ad hoc startup migrations with a proper migration system.
+6. Review sidebar and budget-summary polish after real use, especially around future first-class sections.
+7. Introduce a period close-out model and basic close-out status flow.
+8. Replace ad hoc startup migrations with a proper migration system.
 
 ## Guardrails For Future Work
 
@@ -202,6 +231,10 @@ These project rules already emerge clearly from the existing docs and implementa
 - when health preferences assess deficit risk, the wording should say `deficit` clearly rather than implying that zero surplus is itself a problem
 - autosave is preferred for lightweight setup and personalisation edits when validation is simple and failures can be surfaced clearly
 - backend and database naming should remain stable unless a change is clearly worth the cost
+- there should only ever be one `Current` period for a budget; overflow patterns belong only to `Future` and `Historical`
+- if a sidebar affordance points to the page the user is already viewing, it should be muted or otherwise downgraded rather than appearing broken
+- the main budget summary page should avoid duplicate edit/setup actions when one clear path already exists
+- brand accent color and positive/success color should remain distinct so navigation and financial meaning do not blur together
 
 ## What Future Sessions Should Check First
 

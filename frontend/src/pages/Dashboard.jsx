@@ -45,13 +45,13 @@ function PeriodRow({ budget, period }) {
         </div>
       </td>
       {cell(incomeBudget, 'text-gray-600 dark:text-gray-300')}
-      {cell(incomeActual, 'text-dosh-700 dark:text-dosh-400')}
+      {cell(incomeActual, 'text-success-700 dark:text-success-400')}
       {cell(effectiveExpenseBudget, 'text-gray-600 dark:text-gray-300')}
       {cell(expenseActual, 'text-red-600 dark:text-red-400')}
-      <td className={`table-cell text-right font-bold ${!loading && surplusBudget >= 0 ? 'text-dosh-600 dark:text-dosh-400' : 'text-red-600 dark:text-red-400'}`}>
+      <td className={`table-cell text-right font-bold ${!loading && surplusBudget >= 0 ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'}`}>
         {loading ? <span className="inline-block w-16 h-4 rounded bg-gray-100 dark:bg-gray-800 animate-pulse" /> : fmt(surplusBudget)}
       </td>
-      <td className={`table-cell text-right font-bold ${!loading && surplusActual >= 0 ? 'text-dosh-600 dark:text-dosh-400' : 'text-red-600 dark:text-red-400'}`}>
+      <td className={`table-cell text-right font-bold ${!loading && surplusActual >= 0 ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'}`}>
         {loading ? <span className="inline-block w-16 h-4 rounded bg-gray-100 dark:bg-gray-800 animate-pulse" /> : fmt(surplusActual)}
       </td>
       <td className="table-cell text-right">

@@ -987,7 +987,7 @@ export default function PeriodDetailPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
           { label: 'Income Budget',  value: totalIncomeBudget,  cls: 'text-gray-700 dark:text-gray-300' },
-          { label: 'Income Actual',  value: totalIncomeActual,  cls: 'text-dosh-700 dark:text-dosh-400' },
+          { label: 'Income Actual',  value: totalIncomeActual,  cls: 'text-success-700 dark:text-success-400' },
           { label: 'Expense Budget', value: effectiveExpenseBudget, cls: 'text-gray-700 dark:text-gray-300' },
           { label: 'Expense Actual', value: totalExpenseActual, cls: 'text-red-700 dark:text-red-400' },
         ].map(({ label, value, cls }) => (
@@ -1001,7 +1001,7 @@ export default function PeriodDetailPage() {
         {[{ label: 'Surplus (Budget)', value: surplusBudget }, { label: 'Surplus (Actual)', value: surplusActual }].map(({ label, value }) => (
           <div key={label} className="card px-4 py-3">
             <p className="text-xs text-gray-500 dark:text-gray-400">{label}</p>
-            <p className={`text-lg font-bold ${value >= 0 ? 'text-dosh-600 dark:text-dosh-400' : 'text-red-600 dark:text-red-400'}`}>{fmt(value)}</p>
+            <p className={`text-lg font-bold ${value >= 0 ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'}`}>{fmt(value)}</p>
           </div>
         ))}
       </div>
@@ -1036,7 +1036,7 @@ export default function PeriodDetailPage() {
                   <IncomeActualCell value={i.actualamount} onSet={val => setIncome.mutate({ desc: i.incomedesc, val })} onAdd={val => addIncome.mutate({ desc: i.incomedesc, val })} />
                 </td>
                 <td className="table-cell text-right">
-                  <span className={`font-medium ${Number(i.actualamount) >= Number(i.budgetamount) ? 'text-dosh-600 dark:text-dosh-400' : 'text-red-600 dark:text-red-400'}`}>
+                  <span className={`font-medium ${Number(i.actualamount) >= Number(i.budgetamount) ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'}`}>
                     {fmt(Number(i.actualamount) - Number(i.budgetamount))}
                   </span>
                 </td>
@@ -1057,9 +1057,9 @@ export default function PeriodDetailPage() {
             <tr className="border-t-2 border-gray-200 dark:border-gray-700 font-semibold bg-gray-50 dark:bg-gray-800">
               <td className="px-4 py-2 text-gray-700 dark:text-gray-300 text-sm">Total Income</td>
               <td className="px-4 py-2 text-right text-gray-600 dark:text-gray-400 text-sm">{fmt(totalIncomeBudget)}</td>
-              <td className="px-4 py-2 text-right text-dosh-700 dark:text-dosh-400 text-sm">{fmt(totalIncomeActual)}</td>
+              <td className="px-4 py-2 text-right text-success-700 dark:text-success-400 text-sm">{fmt(totalIncomeActual)}</td>
               <td className="px-4 py-2 text-right text-sm">
-                <span className={totalIncomeActual >= totalIncomeBudget ? 'text-dosh-600 dark:text-dosh-400' : 'text-red-600 dark:text-red-400'}>{fmt(totalIncomeActual - totalIncomeBudget)}</span>
+                <span className={totalIncomeActual >= totalIncomeBudget ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'}>{fmt(totalIncomeActual - totalIncomeBudget)}</span>
               </td>
             </tr>
           </tfoot>
@@ -1135,9 +1135,9 @@ export default function PeriodDetailPage() {
                     </td>
                     <td className="table-cell text-right">
                       {e.status === 'Paid' ? (
-                        <span className="font-medium text-dosh-600 dark:text-dosh-400">Paid</span>
+                        <span className="font-medium text-success-600 dark:text-success-400">Paid</span>
                       ) : (
-                        <span className={`font-medium ${remaining >= 0 ? 'text-dosh-600 dark:text-dosh-400' : 'text-red-600 dark:text-red-400'}`}>
+                        <span className={`font-medium ${remaining >= 0 ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'}`}>
                           {fmt(remaining)}
                         </span>
                       )}
@@ -1196,7 +1196,7 @@ export default function PeriodDetailPage() {
                 <td className="px-4 py-2 text-right text-gray-600 dark:text-gray-400 text-sm">{fmt(effectiveExpenseBudget)}</td>
                 <td className="px-4 py-2 text-right text-red-700 dark:text-red-400 text-sm">{fmt(totalExpenseActual)}</td>
                 <td className="px-4 py-2 text-right text-sm">
-                  <span className={`font-medium ${totalExpenseRemaining >= 0 ? 'text-dosh-600 dark:text-dosh-400' : 'text-red-600 dark:text-red-400'}`}>{fmt(totalExpenseRemaining)}</span>
+                  <span className={`font-medium ${totalExpenseRemaining >= 0 ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'}`}>{fmt(totalExpenseRemaining)}</span>
                 </td>
                 <td colSpan={2} />
               </tr>
@@ -1233,7 +1233,7 @@ export default function PeriodDetailPage() {
                     </td>
                     <td className="table-cell text-right col-actual font-semibold text-gray-800 dark:text-gray-200">{fmt(inv.actualamount)}</td>
                     <td className="table-cell text-right">
-                      <span className={`font-medium ${remaining >= 0 ? 'text-dosh-600 dark:text-dosh-400' : 'text-red-600 dark:text-red-400'}`}>{fmt(remaining)}</span>
+                      <span className={`font-medium ${remaining >= 0 ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'}`}>{fmt(remaining)}</span>
                     </td>
                     <td className="table-cell-muted text-sm">
                       {inv.linked_account_desc ? <span className="text-purple-600 dark:text-purple-400">{inv.linked_account_desc}</span> : <span className="text-gray-300 dark:text-gray-600">—</span>}
@@ -1296,12 +1296,12 @@ export default function PeriodDetailPage() {
                     <td className="table-cell-muted">{b.balance_type || '—'}</td>
                     <td className="table-cell-muted text-right">{fmt(b.opening_amount)}</td>
                     <td className="table-cell text-right col-actual">
-                      <span className={`font-medium ${Number(b.movement_amount ?? 0) >= 0 ? 'text-dosh-600 dark:text-dosh-400' : 'text-red-600 dark:text-red-400'}`}>
+                      <span className={`font-medium ${Number(b.movement_amount ?? 0) >= 0 ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'}`}>
                         {fmt(b.movement_amount ?? 0)}
                       </span>
                     </td>
                     <td className="table-cell text-right">
-                      <span className={`font-medium ${closing >= 0 ? 'text-dosh-600 dark:text-dosh-400' : 'text-red-600 dark:text-red-400'}`}>{fmt(closing)}</span>
+                      <span className={`font-medium ${closing >= 0 ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'}`}>{fmt(closing)}</span>
                     </td>
                     <td className="px-3 py-2">
                       <div className="flex items-center justify-center">

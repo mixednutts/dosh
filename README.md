@@ -81,17 +81,19 @@ Visible pages and flows:
 - budget-level summary cards including:
 - current period range
 - days remaining in the active period
-- future/historical period counts
+- current balance summary showing each active-period account closing balance and total
+- historical period counts
 - budget health score and momentum indicator
 - current-period health check with traffic-light status and detail modal
 - budget health details modal with evidence breakdown
+- inline edit and delete actions without duplicate setup links
 - Budget periods page for:
 - viewing existing periods
 - viewing period-level financial summaries
 - viewing cumulative projected savings
 - deleting eligible future periods
 - generating new periods
-- jumping to budget setup
+- showing period ranges in a fixed two-line format for consistent scanning
 - Budget setup page with scrollable sections for:
 - Budget Info
 - Accounts
@@ -157,6 +159,7 @@ Notes on the model:
 - Expense actuals can be tracked either directly or through child transaction entries.
 - A centralized period transaction ledger now exists to support reconciliation and reporting.
 - Budget health is currently computed from existing budget, period, and expense data without additional schema.
+- The overall budget health score now includes the dedicated current-period assessment as an explicit weighted input.
 - Balance movement is intended to be explained through transactions rather than edited directly.
 - Investment periods track opening value, closing value, budgeted amount, and actual transaction totals.
 - Investment items can be marked as the single active primary line for automatic savings allocation.
@@ -194,6 +197,29 @@ Additional current generation rules:
 - Period generation now normalizes incoming start dates to avoid timezone-related overlap bugs.
 - Future period deletion is allowed only for unlocked future periods with no recorded actuals.
 - Period status and budget health evaluation now use the app timezone rather than UTC-only runtime defaults.
+- There should only ever be one `Current` period for a budget; overflow handling is only relevant to `Future` and `Historical` groupings.
+
+## Current Navigation And Visual Direction
+
+The current sidebar is no longer an all-budgets drilldown tree. It now follows a focused workflow pattern:
+
+- a single global `Budgets` entry
+- a compact budget chooser
+- a `Current Budget` context panel when working inside a budget
+- period shortcuts for `Current`, `Upcoming`, and `Recent`
+- a desktop collapse mode to reclaim screen width
+
+Important current interaction rules:
+
+- the sidebar should emphasize the budget the user is actively working in rather than expanding every budget at once
+- the `More` affordance for hidden period shortcuts is contextual and should be muted when the user is already on that budget's period listing page
+- duplicate setup or edit affordances on the same screen should be avoided when one clear path already exists
+
+The current visual system has also shifted away from all-purpose green branding:
+
+- muted teal is now the primary navigation and brand accent
+- green is reserved for positive or success meaning
+- dark mode uses slate and ink surfaces rather than dark emerald fills
 
 ## Accounts and Investments
 

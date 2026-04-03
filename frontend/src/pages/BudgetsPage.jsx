@@ -3,34 +3,35 @@ import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/rea
 import { Link, useNavigate } from 'react-router-dom'
 import { ArrowTrendingDownIcon, ArrowTrendingUpIcon, MinusIcon, PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline'
 import { differenceInCalendarDays, format, isWithinInterval, parseISO } from 'date-fns'
-import { getBudgets, createBudget, deleteBudget, getPeriodsForBudget, getBudgetHealth } from '../api/client'
+import { getBudgets, createBudget, deleteBudget, getPeriodsForBudget, getBudgetHealth, getPeriodDetail } from '../api/client'
 import Modal from '../components/Modal'
 import Spinner from '../components/Spinner'
 
 const FREQUENCIES = ['Weekly', 'Fortnightly', 'Monthly']
 
 const emptyForm = { description: '', budgetowner: '', budget_frequency: 'Fortnightly' }
+const fmtCurrency = value => Number(value ?? 0).toLocaleString('en-AU', { style: 'currency', currency: 'AUD' })
 
 function healthDotClass(status) {
-  if (status === 'Strong') return 'bg-dosh-500'
+  if (status === 'Strong') return 'bg-success-500'
   if (status === 'Watch') return 'bg-amber-400'
   return 'bg-red-500'
 }
 
 function healthToneClass(status) {
-  if (status === 'Strong') return 'text-dosh-700 dark:text-dosh-300'
+  if (status === 'Strong') return 'text-success-700 dark:text-success-300'
   if (status === 'Watch') return 'text-amber-700 dark:text-amber-300'
   return 'text-red-700 dark:text-red-300'
 }
 
 function healthCircleClass(status) {
-  if (status === 'Strong') return 'bg-dosh-500 text-white'
+  if (status === 'Strong') return 'bg-success-500 text-white'
   if (status === 'Watch') return 'bg-amber-400 text-white'
   return 'bg-red-500 text-white'
 }
 
 function momentumToneClass(status) {
-  if (status === 'Improving') return 'text-dosh-600 dark:text-dosh-400'
+  if (status === 'Improving') return 'text-success-600 dark:text-success-400'
   if (status === 'Declining') return 'text-red-600 dark:text-red-400'
   return 'text-gray-500 dark:text-gray-400'
 }
@@ -114,24 +115,73 @@ function TrafficLight({ status }) {
   )
 }
 
-function BudgetStats({ periods = [], health, onOpenHealth, onOpenCurrentPeriodCheck }) {
+function BalanceSummaryCard({ currentPeriod, currentPeriodDetail, isLoading }) {
+  if (!currentPeriod) {
+    return (
+      <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 dark:border-gray-700 dark:bg-gray-800/50">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Current Balance</p>
+        <p className="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">No active period</p>
+        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Generate a period to start tracking balances</p>
+      </div>
+    )
+  }
+
+  if (isLoading || !currentPeriodDetail) {
+    return (
+      <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 dark:border-gray-700 dark:bg-gray-800/50">
+        <div className="h-3 w-24 rounded bg-gray-200 dark:bg-gray-700" />
+        <div className="mt-2 h-4 w-28 rounded bg-gray-200 dark:bg-gray-700" />
+        <div className="mt-2 h-3 w-36 rounded bg-gray-200 dark:bg-gray-700" />
+      </div>
+    )
+  }
+
+  const balances = currentPeriodDetail.balances ?? []
+  const totalClosing = balances.reduce((sum, balance) => sum + Number(balance.closing_amount ?? 0), 0)
+
+  if (balances.length === 0) {
+    return (
+      <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 dark:border-gray-700 dark:bg-gray-800/50">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Current Balance</p>
+        <p className="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">No accounts yet</p>
+        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Add account balances in setup to see a summary here</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 dark:border-gray-700 dark:bg-gray-800/50">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Current Balance</p>
+      <div className="mt-2 space-y-1.5">
+        {balances.map(balance => (
+          <div key={balance.balancedesc} className="flex items-center justify-between gap-3 text-xs">
+            <span className="min-w-0 truncate text-gray-600 dark:text-gray-300">{balance.balancedesc}</span>
+            <span className="shrink-0 font-semibold text-gray-900 dark:text-gray-100">
+              {fmtCurrency(balance.closing_amount)}
+            </span>
+          </div>
+        ))}
+      </div>
+      <div className="mt-3 flex items-center justify-between gap-3 border-t border-gray-200 pt-2 dark:border-gray-700">
+        <span className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Total</span>
+        <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">{fmtCurrency(totalClosing)}</span>
+      </div>
+    </div>
+  )
+}
+
+function BudgetStats({ periods = [], currentPeriodDetail, currentPeriodDetailLoading, health, onOpenHealth, onOpenCurrentPeriodCheck }) {
   const grouped = useMemo(() => groupPeriods(periods), [periods])
   const currentPeriod = grouped.current[0] ?? null
   const daysRemaining = currentPeriod
     ? Math.max(0, differenceInCalendarDays(parseISO(currentPeriod.enddate), new Date()) + 1)
     : null
+  const currentPeriodValue = currentPeriod ? formatPeriodRange(currentPeriod) : 'No active period'
+  const currentPeriodDetailText = currentPeriod
+    ? `${daysRemaining} day${daysRemaining === 1 ? '' : 's'} remaining`
+    : 'Generate a period to begin tracking'
 
   const stats = [
-    {
-      label: 'Current Period',
-      value: currentPeriod ? formatPeriodRange(currentPeriod) : 'No active period',
-      detail: currentPeriod ? `${daysRemaining} day${daysRemaining === 1 ? '' : 's'} remaining` : 'Generate a period to begin tracking',
-    },
-    {
-      label: 'Future',
-      value: grouped.future.length,
-      detail: grouped.future.length === 1 ? 'planned period' : 'planned periods',
-    },
     {
       label: 'Historical',
       value: grouped.historical.length,
@@ -145,8 +195,8 @@ function BudgetStats({ periods = [], health, onOpenHealth, onOpenCurrentPeriodCh
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Current Period</p>
-            <p className="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">{stats[0].value}</p>
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{stats[0].detail}</p>
+            <p className="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">{currentPeriodValue}</p>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{currentPeriodDetailText}</p>
             {currentPeriod ? (
               <Link
                 to={`/periods/${currentPeriod.finperiodid}`}
@@ -176,7 +226,12 @@ function BudgetStats({ periods = [], health, onOpenHealth, onOpenCurrentPeriodCh
           </div>
         )}
       </div>
-      {stats.slice(1).map(stat => (
+      <BalanceSummaryCard
+        currentPeriod={currentPeriod}
+        currentPeriodDetail={currentPeriodDetail}
+        isLoading={currentPeriodDetailLoading}
+      />
+      {stats.map(stat => (
         <div key={stat.label} className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 dark:border-gray-700 dark:bg-gray-800/50">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{stat.label}</p>
           <p className="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">{stat.value}</p>
@@ -378,6 +433,19 @@ export default function BudgetsPage() {
       staleTime: 60_000,
     })),
   })
+  const currentPeriodDetailQueries = useQueries({
+    queries: budgets.map((budget, index) => {
+      const periods = periodQueries[index]?.data ?? []
+      const currentPeriod = groupPeriods(periods).current[0]
+
+      return {
+        queryKey: ['budget-current-period-detail', budget.budgetid, currentPeriod?.finperiodid ?? 'none'],
+        queryFn: () => getPeriodDetail(currentPeriod.finperiodid),
+        enabled: Boolean(currentPeriod?.finperiodid),
+        staleTime: 60_000,
+      }
+    }),
+  })
 
   const create = useMutation({
     mutationFn: createBudget,
@@ -424,9 +492,6 @@ export default function BudgetsPage() {
                     {b.description || 'Untitled'}
                   </Link>
                   <p className="text-xs text-gray-500 dark:text-gray-400">{b.budgetowner} · {b.budget_frequency}</p>
-                  <Link to={`/budgets/${b.budgetid}/setup`} className="mt-1 inline-block text-xs text-gray-500 hover:text-dosh-700 dark:text-gray-400 dark:hover:text-dosh-400">
-                    Open setup
-                  </Link>
                 </div>
                 <div className="flex gap-2">
                   <button className="btn-secondary" onClick={() => navigate(`/budgets/${b.budgetid}/setup`)}>
@@ -450,6 +515,8 @@ export default function BudgetsPage() {
               ) : (
                 <BudgetStats
                   periods={periodQueries[index]?.data ?? []}
+                  currentPeriodDetail={currentPeriodDetailQueries[index]?.data ?? null}
+                  currentPeriodDetailLoading={currentPeriodDetailQueries[index]?.isLoading}
                   health={healthQueries[index]?.data ?? null}
                   onOpenHealth={() => healthQueries[index]?.data && setHealthModal({ budget: b, health: healthQueries[index].data })}
                   onOpenCurrentPeriodCheck={() => healthQueries[index]?.data && setCurrentCheckModal({

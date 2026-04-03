@@ -113,26 +113,29 @@ function getGroupedPeriodSummaries(periodSummaries) {
 
 function PeriodSummaryRow({ summary, onDelete }) {
   const { period } = summary
-  const surplusBudgetTone = Number(summary.surplus_budget) >= 0 ? 'text-dosh-600 dark:text-dosh-400' : 'text-red-600 dark:text-red-400'
-  const surplusActualTone = Number(summary.surplus_actual) >= 0 ? 'text-dosh-600 dark:text-dosh-400' : 'text-red-600 dark:text-red-400'
-  const projectedSavingsTone = Number(summary.projected_savings) >= 0 ? 'text-dosh-700 dark:text-dosh-400' : 'text-red-600 dark:text-red-400'
+  const surplusBudgetTone = Number(summary.surplus_budget) >= 0 ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'
+  const surplusActualTone = Number(summary.surplus_actual) >= 0 ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'
+  const projectedSavingsTone = Number(summary.projected_savings) >= 0 ? 'text-success-700 dark:text-success-400' : 'text-red-600 dark:text-red-400'
+  const startLabel = format(parseISO(period.startdate), 'dd MMM yy')
+  const endLabel = format(parseISO(period.enddate), 'dd MMM yy')
 
   return (
     <tr className="table-row align-top">
       <td className="table-cell">
-        <div className="font-medium text-gray-900 dark:text-gray-100">
-          {format(parseISO(period.startdate), 'dd MMM yy')} - {format(parseISO(period.enddate), 'dd MMM yy')}
+        <div className="font-medium leading-snug text-gray-900 dark:text-gray-100">
+          <span className="block whitespace-nowrap">{startLabel} -</span>
+          <span className="block whitespace-nowrap">{endLabel}</span>
         </div>
         <div className="mt-1">
           {period.islocked && <span className="badge-amber">Locked</span>}
         </div>
       </td>
       <td className="table-cell-muted text-right col-budget">{fmt(summary.income_budget)}</td>
-      <td className="table-cell text-right col-actual text-dosh-700 dark:text-dosh-400">{fmt(summary.income_actual)}</td>
+      <td className="table-cell text-right col-actual text-success-700 dark:text-success-400">{fmt(summary.income_actual)}</td>
       <td className="table-cell-muted text-right col-budget">{fmt(summary.expense_budget)}</td>
       <td className="table-cell text-right col-actual text-red-600 dark:text-red-400">{fmt(summary.expense_actual)}</td>
       <td className="table-cell-muted text-right col-budget">{fmt(summary.investment_budget)}</td>
-      <td className="table-cell text-right col-actual text-dosh-700 dark:text-dosh-400">{fmt(summary.investment_actual)}</td>
+      <td className="table-cell text-right col-actual text-success-700 dark:text-success-400">{fmt(summary.investment_actual)}</td>
       <td className={clsx('table-cell text-right font-semibold', projectedSavingsTone)}>{fmt(summary.projected_savings)}</td>
       <td className={clsx('table-cell text-right font-semibold', surplusBudgetTone)}>{fmt(summary.surplus_budget)}</td>
       <td className={clsx('table-cell text-right font-semibold', surplusActualTone)}>{fmt(summary.surplus_actual)}</td>

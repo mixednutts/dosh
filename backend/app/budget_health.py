@@ -8,7 +8,7 @@ from .models import Budget, ExpenseItem, FinancialPeriod, IncomeType
 from .time_utils import app_now, app_now_naive
 
 
-PHASE1_HEALTH_VERSION = "phase1-v1"
+PHASE1_HEALTH_VERSION = "phase1-v2"
 HEALTH_STRONG = "Strong"
 HEALTH_WATCH = "Watch"
 HEALTH_ATTENTION = "Needs Attention"
@@ -589,19 +589,20 @@ def build_budget_health_payload(db: Session, budgetid: int) -> dict | None:
     pillars = [setup_pillar, discipline_pillar, stability_pillar]
 
     overall_score = _clamp_score(
-        (setup_pillar["score"] * 0.30)
-        + (discipline_pillar["score"] * 0.40)
-        + (stability_pillar["score"] * 0.30)
+        (current_period_check["score"] * 0.35)
+        + (setup_pillar["score"] * 0.20)
+        + (discipline_pillar["score"] * 0.25)
+        + (stability_pillar["score"] * 0.20)
     )
     overall_status = _health_status(overall_score)
     momentum_status, momentum_summary, momentum_delta = _build_momentum(historical_periods)
 
     if overall_status == HEALTH_STRONG:
-        overall_summary = "Budget health is in a strong place across setup, discipline, and planning stability."
+        overall_summary = "Budget health is in a strong place overall, with the current period and broader budget signals both looking steady."
     elif overall_status == HEALTH_WATCH:
-        overall_summary = "Budget health is usable, but one or more areas need attention to keep periods on track."
+        overall_summary = "Budget health is usable, though the current period or another budget area is showing enough pressure to justify a check-in."
     else:
-        overall_summary = "Budget health needs attention, with visible pressure in planning or completed period discipline."
+        overall_summary = "Budget health needs attention, with the current period or broader budget pattern showing meaningful pressure."
 
     return {
         "budgetid": budgetid,

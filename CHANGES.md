@@ -558,6 +558,133 @@ Important design decision:
 
 The budget setup page was reorganized so `Personalisation` now sits above `Settings` and has its own top-page navigation tab.
 
+### 35. Overall budget health now explicitly includes current-period health
+
+The overall budget health score was adjusted so the dedicated current-period assessment now feeds the main summary score rather than living only as a side check.
+
+Current behavior:
+
+- `current_period_check` now contributes directly to `overall_score`
+- the scoring version moved from `phase1-v1` to `phase1-v2`
+- the overall summary copy now reflects both active-period condition and broader budget patterns
+
+Important product meaning:
+
+- the overall score should feel anchored in the user's live period, not only in broader setup and trend factors
+- the dedicated current-period check still remains its own surface, even though it now influences the main score
+
+### 36. Budget summary now favors live balance visibility over future-period count
+
+The old future planned periods summary card on the Budgets page was replaced with a current balance summary card.
+
+Current behavior:
+
+- the card lists each active-period account shown in the current period
+- each row shows the account description and closing/current balance
+- the card includes a total across all displayed account balances
+- duplicate supporting links were removed so the card stays summary-focused
+
+Important product meaning:
+
+- current balances are more useful on the main budget surface than repeating future planning counts already visible elsewhere
+- the budget overview should help users orient to live money position before they drill into details
+
+### 37. Budget summary now avoids duplicate setup entry points
+
+The Budgets page previously exposed more than one way to edit the same budget from the same summary surface.
+
+Current behavior:
+
+- the standalone `Open setup` link was removed from the budget summary card
+- budget editing now relies on the existing edit action instead of repeating the path in text form
+
+Important product meaning:
+
+- summary surfaces should avoid duplicate calls to the same destination when one clear edit affordance already exists
+- fewer competing actions makes the budget card easier to scan
+
+### 38. Sidebar navigation was redesigned around active budget context
+
+The left-hand navigation moved away from a deep all-budgets tree and toward a focused workflow sidebar.
+
+Current behavior:
+
+- `Budgets` remains the single global navigation item
+- a compact budget list acts as the context switcher
+- active budget navigation is shown through a focused `Current Budget` panel
+- the panel prioritizes period management and trimmed period shortcuts instead of exposing every nested item at once
+- the old sidebar `Setup` shortcut was removed after the budget summary page became the clearer edit entry point
+
+Important product meaning:
+
+- navigation should privilege the budget currently in use rather than asking users to parse the entire budget hierarchy at once
+- setup should not compete with period workflow unless the user intentionally chooses to edit budget configuration
+
+### 39. Sidebar shortcut overflow is now contextual and non-misleading
+
+The shortened period lists in the sidebar gained a more deliberate overflow treatment.
+
+Current behavior:
+
+- there should only ever be one `Current` period
+- only `Upcoming` and `Recent` can exceed the visible shortcut limit
+- hidden periods are signaled with a small `More` affordance using breadcrumb-style chevrons
+- when the user is already on that budget's period listing page, the `More` affordance becomes muted non-clickable text rather than an active link
+
+Important product meaning:
+
+- truncated navigation should indicate continuation without pretending to navigate somewhere new when the user is already there
+- route affordances that appear to do nothing should be visually downgraded rather than left looking broken
+
+### 40. Sidebar now supports a compact collapsible desktop mode
+
+The left navigation was adjusted to give back more horizontal space during day-to-day use.
+
+Current behavior:
+
+- the expanded sidebar is narrower than before
+- desktop users can collapse it into a compact icon-focused mode
+- the collapse control was repositioned so it no longer reads as part of the Do$h banner
+- the chevron direction now matches the action being offered
+- collapse state is persisted across sessions
+
+Important product meaning:
+
+- navigation chrome should not take more space than the active financial work requires
+- collapse and expand controls need to communicate action clearly and stay visually separate from branding
+
+### 41. Dosh visual direction now separates brand accent from success meaning
+
+The app moved away from the earlier saturated green-heavy treatment.
+
+Current behavior:
+
+- muted teal is now the main brand and navigation accent
+- green is reserved for positive and success meaning
+- dark mode surfaces use slate and ink tones instead of dark green fills
+- prominent budget, period, and navigation surfaces were retuned to follow the new palette
+
+Important product meaning:
+
+- one color should not carry brand, active, positive, and status semantics all at once
+- separating accent from financial meaning improves clarity in both dark and light modes
+
+### 42. Period range formatting is now fixed for consistent table scanning
+
+The period listing page no longer relies on browser wrapping behavior to decide how the period range appears.
+
+Current behavior:
+
+- period ranges are rendered intentionally across two lines
+- the first line ends with the dash after the start date
+- the second line begins with the end date
+- the layout now stays stable across zoom levels
+
+Important product meaning:
+
+- critical tabular labels should not change shape based on zoom or incidental wrapping
+- period summaries benefit from predictable, scannable rhythm
+
 Current behavior:
 
 - `Settings` remains the home for budget behavior switches
