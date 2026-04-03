@@ -19,6 +19,8 @@ It complements:
 - [CHANGES.md](/home/ubuntu/dosh/CHANGES.md) for recorded product decisions and recent implementation history
 - [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/BUDGET_HEALTH_ADDENDUM.md) for staged budget health direction
 - [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/BUDGET_CYCLE_LIFECYCLE_PLAN.md) for the detailed cycle lifecycle and close-out plan that is now partially implemented
+- [TEST_STRATEGY.md](/home/ubuntu/dosh/TEST_STRATEGY.md) for the current proposed testing approach, priorities, and case inventory
+- [TEST_EXPANSION_PLAN.md](/home/ubuntu/dosh/TEST_EXPANSION_PLAN.md) for the current testing follow-up plan and next coverage slices
 
 ## Current Product Stage
 
@@ -42,6 +44,7 @@ Recent progress worth carrying forward:
 - investment lines now mirror expense lifecycle status with `Current`, `Paid`, and `Revised`
 - period deletion now has guided continuity-aware options, including `Delete this and all upcoming cycles`
 - budget settings now include a dedicated manual cycle-lock control separate from lifecycle state
+- the repository now has a credible automated regression harness across backend, frontend, and initial Playwright end-to-end lifecycle smoke flows
 
 ## Active Development Streams
 
@@ -193,24 +196,26 @@ Suggested implementation slices:
 
 These activities are not necessarily flashy product milestones, but they are the most obvious engineering tasks that would reduce friction for future development.
 
-### 1. Add Basic Automated Tests
+### 1. Expand And Maintain Automated Regression Coverage
 
-The repo currently does not show a real test harness for backend or frontend workflows.
+The repo now has a meaningful automated test harness across backend, frontend, and initial end-to-end workflows.
+
+Reference:
+
+- [TEST_STRATEGY.md](/home/ubuntu/dosh/TEST_STRATEGY.md)
+- [TEST_EXPANSION_PLAN.md](/home/ubuntu/dosh/TEST_EXPANSION_PLAN.md)
 
 Priority areas:
+- keep new feature work under a test-with-change discipline rather than treating testing as a later cleanup phase
+- extend Playwright from the current happy-path lifecycle smoke into reconciliation, correction, and broader scenario-shaped flows
+- continue expanding setup-shape consequence coverage where technically valid configuration changes can still weaken later workflows
+- deepen ledger and reconciliation coverage without treating one-off migration backfill as normal product behavior
+- continue broadening budget health coverage as scoring and reporting evolve
 
-- period generation rules
-- lifecycle status assignment rules
-- close-out preview and close-out execution
-- carry-forward recalculation after close, delete, and regenerate
-- guided delete behavior including `delete this and all upcoming cycles`
-- investment paid/revised workflow parity
-- ledger migration/backfill behavior
-- expense paid/revised workflow
-- investment budget and surplus calculations
-- budget health scoring and evidence payloads
-- close-out health snapshot persistence and historical readback
-- personalisation threshold combinations, especially percentage-plus-dollar deficit logic
+Scenario note:
+
+- future setup and workflow testing should expand beyond the original `1 transaction + 1 savings` assumption
+- bookmark named scenarios such as `Single Account` and `Multi Transaction` so future sessions can deliberately test differing account shapes rather than relying on one default personal setup model
 
 ### 2. Formalize Database Migration Strategy
 
@@ -259,6 +264,7 @@ Priority areas:
 - make closed-cycle read-only behavior consistent across all remaining write paths
 - decide which historical views should show close-out comments, goals, and snapshotted health data
 - determine whether additional sign-off or audit fields are needed once user identity exists
+- extend end-to-end coverage from the current close-out happy path into post-close correction and reconciliation workflows
 
 ### 6. Refine Budget Health Personalisation Experience
 

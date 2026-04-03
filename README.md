@@ -1,6 +1,6 @@
 # Dosh
 
-Dosh is a personal finance application with a FastAPI backend and a Create React App frontend. The current codebase supports guided budget setup, period planning, income and expense tracking, account balance tracking, savings/investment planning, and transaction-backed reconciliation.
+Dosh is a personal finance application with a FastAPI backend and a Create React App frontend. The current codebase supports guided budget setup, period planning, income and expense tracking, account balance tracking, savings and investment planning, transaction-backed reconciliation, and an established automated regression layer for the highest-risk workflows.
 
 This README reflects the repository as it exists now, not the originally intended design.
 
@@ -20,6 +20,10 @@ For budget health scoring and roadmap context, also read [BUDGET_HEALTH_ADDENDUM
 For a focused view of current and near-term work, read [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/DEVELOPMENT_ACTIVITIES.md).
 
 For the detailed budget-cycle lifecycle and close-out workflow plan that now informs period management, read [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/BUDGET_CYCLE_LIFECYCLE_PLAN.md).
+
+For the current recommended automated testing approach, priorities, and case inventory, read [TEST_STRATEGY.md](/home/ubuntu/dosh/TEST_STRATEGY.md).
+
+For the current testing expansion roadmap and planned next coverage slices, read [TEST_EXPANSION_PLAN.md](/home/ubuntu/dosh/TEST_EXPANSION_PLAN.md).
 
 ## Current Repository Layout
 
@@ -124,6 +128,7 @@ Visible pages and flows:
 - investment paid and revised status controls
 - active-cycle close-out preview and completion
 - historical close-out snapshot review for closed cycles
+- a first end-to-end lifecycle path from budget creation through setup, first activity, close-out, and next-cycle activation
 
 The frontend talks to the backend through `/api` using Axios.
 
@@ -140,6 +145,9 @@ Based on the checked-in code, the project currently uses:
 - React Router
 - Axios
 - Tailwind CSS
+- Pytest
+- React Testing Library
+- Playwright
 - Docker Compose
 - Traefik labels on the frontend service
 
@@ -262,6 +270,24 @@ Current terminology guidance:
 - Use `Budget Cycle` in the UI where that wording makes the workflow clearer, while preserving backend `period` naming unless a stronger reason emerges.
 - Use `Primary investment line` when referring to the destination for automatic surplus allocation.
 - In budget health wording, be explicit when the value being assessed is deficit rather than positive surplus.
+
+## Current Testing State
+
+Dosh now has a real automated test foundation rather than only a proposed test strategy.
+
+Current coverage shape:
+
+- backend `pytest` coverage protects lifecycle, close-out, delete continuity, ledger behavior, setup-driven scenarios, and budget health rules
+- frontend Jest and React Testing Library coverage protects setup workflows, close-out and locked-cycle behavior, delete guidance, paid or revised flows, and setup-to-generation handoff states
+- Playwright now runs local Chromium smoke flows for:
+- create-budget to incomplete-setup gating
+- minimum setup and first cycle generation
+- first expense transaction and linked account movement
+- close-out snapshot visibility and next-cycle activation
+
+Important working rule:
+
+- future feature work should continue under a test-with-change discipline, especially where setup shape, lifecycle rules, ledger trust, or historical integrity are involved
 
 ## Deployment Files Present
 

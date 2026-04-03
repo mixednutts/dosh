@@ -297,16 +297,15 @@ class PeriodInvestmentTransaction(Base):
     period_investment = relationship(
         "PeriodInvestment",
         primaryjoin="and_(PeriodInvestmentTransaction.finperiodid == PeriodInvestment.finperiodid, "
-                    "PeriodInvestmentTransaction.budgetid == PeriodInvestment.budgetid, "
                     "PeriodInvestmentTransaction.investmentdesc == PeriodInvestment.investmentdesc)",
-        foreign_keys="[PeriodInvestmentTransaction.finperiodid, PeriodInvestmentTransaction.budgetid, PeriodInvestmentTransaction.investmentdesc]",
+        foreign_keys="[PeriodInvestmentTransaction.finperiodid, PeriodInvestmentTransaction.investmentdesc]",
         back_populates="transactions",
     )
 
     __table_args__ = (
         ForeignKeyConstraint(
-            ["finperiodid", "budgetid", "investmentdesc"],
-            ["periodinvestments.finperiodid", "periodinvestments.budgetid", "periodinvestments.investmentdesc"],
+            ["finperiodid", "investmentdesc"],
+            ["periodinvestments.finperiodid", "periodinvestments.investmentdesc"],
         ),
     )
 

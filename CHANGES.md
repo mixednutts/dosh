@@ -19,6 +19,31 @@ For staged budget health metrics direction, also read [BUDGET_HEALTH_ADDENDUM.md
 
 For the detailed budget-cycle lifecycle and close-out plan that informed this session's implementation, read [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/BUDGET_CYCLE_LIFECYCLE_PLAN.md).
 
+For the current consolidated testing approach and case inventory, read [TEST_STRATEGY.md](/home/ubuntu/dosh/TEST_STRATEGY.md).
+
+## Latest Session: Test Harness Expansion And Initial End-To-End Lifecycle Coverage
+
+This session moved the project from “testing strategy exists” to “the repo now has a usable multi-layer regression harness”.
+
+Important direction now in place:
+
+- Dosh now has a dedicated testing strategy reference in [TEST_STRATEGY.md](/home/ubuntu/dosh/TEST_STRATEGY.md) plus a separate forward-looking coverage roadmap in [TEST_EXPANSION_PLAN.md](/home/ubuntu/dosh/TEST_EXPANSION_PLAN.md)
+- backend `pytest` coverage now exists across lifecycle, close-out, continuity-aware deletion, ledger behavior, setup scenarios, and budget health
+- frontend workflow coverage now exists across setup tabs, scenario-shaped setup states, close-out gating, closed-cycle behavior, paid or revised flows, and setup-to-generation handoff
+- Playwright now runs local Chromium smoke flows for:
+- create-budget to incomplete-setup gating
+- minimum setup and first cycle generation
+- first expense transaction and linked account movement
+- close-out snapshot visibility and next-cycle activation
+- the testing strategy now explicitly treats named user scenarios as a long-lived concept so future work does not silently assume only `1 transaction + 1 savings`
+- the strategy now treats one-off transaction backfill as migration history rather than normal product behavior that needs recurring workflow coverage
+- the repo is now in a test-with-change stage rather than a “build features first, add tests later” stage
+- the new delete continuity tests exposed and helped fix a real schema bug in the `PeriodInvestmentTransaction` foreign key definition
+
+Important user-facing product fix from this session:
+
+- the budget-cycles empty state no longer says a budget is “ready to start using” when required setup is still incomplete; it now tells the user to complete setup first, and that corrected behavior is protected by tests
+
 ## How To Use This File
 
 - Read this alongside `README.md` before proposing major changes.

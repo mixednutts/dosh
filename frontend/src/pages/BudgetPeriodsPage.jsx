@@ -346,7 +346,9 @@ export default function BudgetPeriodsPage() {
         <div className="card p-8 text-center">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">No budget cycles yet</h2>
           <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            This budget is ready to start using once you generate the first budget cycle.
+            {canGenerate
+              ? 'This budget is ready to start using once you generate the first budget cycle.'
+              : 'Complete the setup steps first, then come back here to generate the first budget cycle.'}
           </p>
           <div className="mt-4 flex justify-center gap-2">
             <Link to={`/budgets/${id}/setup`} className="btn-secondary">
