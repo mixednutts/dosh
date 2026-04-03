@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { getBudgets, getPeriodsForBudget, getPeriodDetail } from '../api/client'
-import { format, isWithinInterval, parseISO } from 'date-fns'
+import { format, parseISO } from 'date-fns'
 import Spinner from '../components/Spinner'
 
 const fmt = v => Number(v ?? 0).toLocaleString('en-AU', { style: 'currency', currency: 'AUD' })
@@ -67,11 +67,7 @@ function BudgetTableRows({ budget }) {
     queryFn: () => getPeriodsForBudget(budget.budgetid),
   })
 
-  const now = new Date()
-  const current = periods.find(p => {
-    try { return isWithinInterval(now, { start: parseISO(p.startdate), end: parseISO(p.enddate) }) }
-    catch { return false }
-  })
+  const current = periods.find(p => p.cycle_status === 'ACTIVE')
 
   if (periods.length === 0) {
     return (
@@ -89,7 +85,7 @@ function BudgetTableRows({ budget }) {
   }
 
   if (!current) {
-    const upcoming = [...periods].filter(p => parseISO(p.startdate) > now).sort((a, b) => parseISO(a.startdate) - parseISO(b.startdate))[0]
+    const upcoming = [...periods].filter(p => p.cycle_status === 'PLANNED').sort((a, b) => parseISO(a.startdate) - parseISO(b.startdate))[0]
     return (
       <tr className="table-row">
         <td className="table-cell">

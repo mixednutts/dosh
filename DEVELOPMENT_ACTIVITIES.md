@@ -18,6 +18,7 @@ It complements:
 - [README.md](/home/ubuntu/dosh/README.md) for current-state product and technical overview
 - [CHANGES.md](/home/ubuntu/dosh/CHANGES.md) for recorded product decisions and recent implementation history
 - [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/BUDGET_HEALTH_ADDENDUM.md) for staged budget health direction
+- [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/BUDGET_CYCLE_LIFECYCLE_PLAN.md) for the detailed cycle lifecycle and close-out plan that is now partially implemented
 
 ## Current Product Stage
 
@@ -36,6 +37,11 @@ Recent progress worth carrying forward:
 - the Budgets page now shows a current balance summary card with per-account closing balances and total
 - the sidebar is now a focused current-budget workflow nav with compact and collapsible desktop behavior
 - the visual direction has shifted to muted teal branding with separate green success semantics
+- budget cycles now have explicit persisted lifecycle state with `PLANNED`, `ACTIVE`, and `CLOSED`
+- close-out workflow foundations now exist, including preview, historical snapshot storage, and carry-forward handling
+- investment lines now mirror expense lifecycle status with `Current`, `Paid`, and `Revised`
+- period deletion now has guided continuity-aware options, including `Delete this and all upcoming cycles`
+- budget settings now include a dedicated manual cycle-lock control separate from lifecycle state
 
 ## Active Development Streams
 
@@ -80,22 +86,26 @@ Suggested implementation slices:
 
 ### 3. Period Close Out
 
-This is the most workflow-oriented milestone and likely the one that will make the app feel most complete in daily use.
+This is now an active implementation stream rather than just a future milestone.
+
+Reference:
+
+- [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/BUDGET_CYCLE_LIFECYCLE_PLAN.md)
 
 Focus areas:
 
-- explicit end-of-period review flow
-- close-out metrics and completion state
-- final commentary on the period
-- stronger use of revision comments in reporting
-- clearer handoff from active period to historical record
+- validate and harden the new explicit lifecycle rules
+- finish the end-of-cycle review experience so it feels complete and trustworthy
+- make close-out commentary and goals visible in the right historical views
+- ensure carry-forward and opening rebasing stay aligned after delete and regenerate flows
+- strengthen the handoff from `ACTIVE` to `CLOSED` to next `ACTIVE`
 
 Suggested implementation slices:
 
-- close-out checklist and completion status
-- end-of-period summary card or modal
-- close-out notes/commentary field
-- close-out metrics feeding later health scoring
+- backend and frontend tests around close-out, carry-forward, and delete continuity
+- refinement of the close-out modal and summary surfaces
+- clearer read-only and reconciliation messaging on closed cycles
+- reporting surfaces that use stored close-out snapshots rather than live recomputation
 
 ### 4. Budget Health Phase 2 Preparation
 
@@ -190,15 +200,21 @@ The repo currently does not show a real test harness for backend or frontend wor
 Priority areas:
 
 - period generation rules
+- lifecycle status assignment rules
+- close-out preview and close-out execution
+- carry-forward recalculation after close, delete, and regenerate
+- guided delete behavior including `delete this and all upcoming cycles`
+- investment paid/revised workflow parity
 - ledger migration/backfill behavior
 - expense paid/revised workflow
 - investment budget and surplus calculations
 - budget health scoring and evidence payloads
+- close-out health snapshot persistence and historical readback
 - personalisation threshold combinations, especially percentage-plus-dollar deficit logic
 
 ### 2. Formalize Database Migration Strategy
 
-The backend currently applies schema changes during startup with raw `ALTER TABLE` statements and exception swallowing.
+The backend currently applies schema changes during startup with targeted raw `ALTER TABLE` statements for newer lifecycle-related fields.
 
 That approach has helped the project move quickly, but it will become fragile as schema work grows.
 
@@ -207,6 +223,7 @@ Priority areas:
 - introduce proper versioned migrations
 - make startup behavior safer and more observable
 - separate one-time migration work from normal app startup
+- migrate current cycle-lifecycle and close-out schema bootstrap logic into the real migration path
 
 ### 3. Tighten Deployment and Build Reliability
 
@@ -226,12 +243,24 @@ The product direction is getting more workflow-driven, so consistency matters mo
 Priority areas:
 
 - standardize terminology around savings and investments
+- standardize where the UI says `Budget Cycle` while backend and API continue using `period`
 - standardize health terminology around surplus, deficit, tolerance, threshold, and escalation
 - preserve backend naming stability while refining frontend wording
 - keep balance movement read-only and transaction-derived
 - avoid introducing edit paths that weaken ledger trust
 
-### 5. Refine Budget Health Personalisation Experience
+### 5. Close Out And Reconciliation Handoff
+
+The app now has the foundation for closing a cycle, but the correction path after closure still needs deliberate design.
+
+Priority areas:
+
+- define the reconciliation workflow for fixing issues discovered after a cycle is closed
+- make closed-cycle read-only behavior consistent across all remaining write paths
+- decide which historical views should show close-out comments, goals, and snapshotted health data
+- determine whether additional sign-off or audit fields are needed once user identity exists
+
+### 6. Refine Budget Health Personalisation Experience
 
 The first personalisation pass is implemented, but it still needs usability refinement from real use.
 
@@ -243,7 +272,7 @@ Priority areas:
 - align the overall budget health detail view with the dedicated current-period health check so the active-period story does not conflict between the two surfaces
 - keep the section lightweight rather than turning it into an intimidating settings panel
 
-### 6. Continue Navigation And Information Architecture Cleanup
+### 7. Continue Navigation And Information Architecture Cleanup
 
 The sidebar redesign has created a much stronger structure, but it also established some navigation rules that future work should preserve.
 
@@ -255,7 +284,7 @@ Priority areas:
 - keep overflow affordances honest when the user is already on the destination page
 - avoid duplicate edit or setup entry points on the same screen unless they serve clearly different purposes
 
-### 7. Expand Budget Summary Reporting Value
+### 8. Expand Budget Summary Reporting Value
 
 The Budgets page is now the main landing surface and already carries health and current balance context, so it is a strong candidate for the first reporting-oriented summaries.
 
@@ -265,7 +294,7 @@ Priority areas:
 - continue favoring live money position and practical status over repeated setup actions
 - identify the next summary card that best complements current balance and health without duplicating period-listing data
 
-### 8. Establish Localisation Foundations
+### 9. Establish Localisation Foundations
 
 The product already carries regional assumptions in formatting and cadence, so localisation should become an explicit engineering concern before those assumptions spread further.
 
@@ -277,7 +306,7 @@ Priority areas:
 - identify backend responses that should stay neutral versus pre-formatted for display
 - add tests around locale-sensitive display and period-boundary assumptions where practical
 
-### 9. Define Cash Management Foundations
+### 10. Define Cash Management Foundations
 
 Balances, transfers, and planned outflows already exist in the model, but the app still needs a clear foundation for turning those records into a trustworthy cash management workflow.
 
@@ -289,7 +318,7 @@ Priority areas:
 - design the first cash management review surface before adding more balance-related UI fragments
 - add tests around cash-position calculations once the workflow definition is settled
 
-### 10. Prepare Export and Backup Foundations
+### 11. Prepare Export and Backup Foundations
 
 Export and backup do not need to be immediate release blockers, but they should be planned before the data model and operational assumptions become harder to untangle.
 
@@ -306,14 +335,14 @@ Priority areas:
 If we want a practical order of work rather than just a thematic roadmap, this is the strongest current sequence:
 
 1. Add backend tests around ledger, period, and surplus rules.
-2. Add a reporting summary endpoint that rolls up period and ledger data.
-3. Surface a budget-level reporting card set in the frontend.
-4. Introduce shared localisation utilities and decide how locale, currency, and timezone preferences are stored.
-5. Define the cash management workflow and the first summary model for available, committed, and reserved cash.
-6. Add tests and cleanup around health personalisation and current-period threshold behavior.
-7. Design the first reconciliation screen around account movement explanation.
-8. Review sidebar and budget-summary polish after real use, especially around future first-class sections.
-9. Introduce a period close-out model and basic close-out status flow.
+2. Add focused tests around budget-cycle lifecycle, close-out, carry-forward, and guided delete flows.
+3. Design the reconciliation handoff for closed cycles and close remaining write-path gaps.
+4. Add a reporting summary endpoint that rolls up period and ledger data.
+5. Surface a budget-level reporting card set in the frontend.
+6. Introduce shared localisation utilities and decide how locale, currency, and timezone preferences are stored.
+7. Define the cash management workflow and the first summary model for available, committed, and reserved cash.
+8. Add tests and cleanup around health personalisation and current-period threshold behavior.
+9. Review sidebar and budget-summary polish after real use, especially around future first-class sections.
 10. Replace ad hoc startup migrations with a proper migration system.
 11. Define the first export and backup scope, including format and restore expectations.
 
@@ -325,15 +354,20 @@ These project rules already emerge clearly from the existing docs and implementa
 - workflow meaning should take priority over isolated CRUD convenience
 - balance movement should remain explainable from transactions
 - paid expenses should stay protected until explicitly revised
+- paid investments should follow the same protection and revision model as paid expenses
 - budget health should stay supportive and explainable, not overly authoritative
 - user-facing health and warning messages should use warm, practical, reassuring language rather than clinical finance wording
 - when health preferences assess deficit risk, the wording should say `deficit` clearly rather than implying that zero surplus is itself a problem
 - autosave is preferred for lightweight setup and personalisation edits when validation is simple and failures can be surfaced clearly
 - backend and database naming should remain stable unless a change is clearly worth the cost
+- user-facing `Budget Cycle` wording can evolve independently of backend `period` naming when that improves clarity
 - localisation should be explicit and centrally managed rather than emerging from scattered hard-coded formatting choices
 - cash management views should reflect trustworthy underlying money movement rather than introducing separate shadow balances
 - export and backup should preserve user trust by being understandable, complete enough to be useful, and compatible with ledger integrity
-- there should only ever be one `Current` period for a budget; overflow patterns belong only to `Future` and `Historical`
+- there should only ever be one active or current cycle for a budget
+- closing a cycle should create a trustworthy point-in-time historical record, not a view that can drift later
+- carry-forward and next-cycle opening rebasing should be recalculated together so continuity does not drift or double count
+- deleting a cycle must not leave retained gaps; guided delete-and-regenerate is preferred over ambiguous continuity
 - if a sidebar affordance points to the page the user is already viewing, it should be muted or otherwise downgraded rather than appearing broken
 - the main budget summary page should avoid duplicate edit/setup actions when one clear path already exists
 - brand accent color and positive/success color should remain distinct so navigation and financial meaning do not blur together

@@ -112,32 +112,11 @@ function CurrentBudgetPanel({ budget, activePeriodId, onNav }) {
     staleTime: 60_000,
   })
 
-  const now = new Date()
   const orderedPeriods = [...periods].sort((a, b) => parseISO(a.startdate) - parseISO(b.startdate))
-  const currentPeriods = orderedPeriods.filter(period => {
-    try {
-      const start = parseISO(period.startdate)
-      const end = parseISO(period.enddate)
-      return start <= now && end >= now
-    } catch {
-      return false
-    }
-  })
-  const allFuturePeriods = orderedPeriods.filter(period => {
-    try {
-      return parseISO(period.startdate) > now
-    } catch {
-      return false
-    }
-  })
+  const currentPeriods = orderedPeriods.filter(period => period.cycle_status === 'ACTIVE')
+  const allFuturePeriods = orderedPeriods.filter(period => period.cycle_status === 'PLANNED')
   const futurePeriods = allFuturePeriods.slice(0, 2)
-  const allHistoricalPeriods = orderedPeriods.filter(period => {
-    try {
-      return parseISO(period.enddate) < now
-    } catch {
-      return false
-    }
-  })
+  const allHistoricalPeriods = orderedPeriods.filter(period => period.cycle_status === 'CLOSED')
   const historicalPeriods = allHistoricalPeriods.slice(-4).reverse()
   const hasMoreFuturePeriods = allFuturePeriods.length > futurePeriods.length
   const hasMoreHistoricalPeriods = allHistoricalPeriods.length > historicalPeriods.length

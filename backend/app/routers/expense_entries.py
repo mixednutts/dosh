@@ -3,6 +3,7 @@ Expense entry transactions — the child records that drive actualamount on peri
 """
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from ..cycle_constants import CLOSED, PAID
 from ..database import get_db
 from ..models import FinancialPeriod, PeriodExpense, PeriodTransaction
 from ..schemas import ExpenseEntryCreate, ExpenseEntryOut
@@ -38,7 +39,7 @@ def _get_period_expense(finperiodid: int, expensedesc: str, db: Session) -> Peri
 
 
 def _assert_expense_not_paid(pe: PeriodExpense) -> None:
-    if (getattr(pe, "status", "Current") or "Current") == "Paid":
+    if (getattr(pe, "status", "Current") or "Current") == PAID:
         raise HTTPException(423, "Expense is marked Paid — revise it before making changes")
 
 
@@ -68,8 +69,8 @@ def add_entry(
     period = db.get(FinancialPeriod, finperiodid)
     if not period:
         raise HTTPException(404, "Period not found")
-    if period.islocked:
-        raise HTTPException(423, "Period is locked")
+    if getattr(period, "cycle_status", None) == CLOSED:
+        raise HTTPException(423, "Budget cycle is closed")
 
     pe = _get_period_expense(finperiodid, expensedesc, db)
     _assert_expense_not_paid(pe)
@@ -98,8 +99,8 @@ def delete_entry(
     period = db.get(FinancialPeriod, finperiodid)
     if not period:
         raise HTTPException(404, "Period not found")
-    if period.islocked:
-        raise HTTPException(423, "Period is locked")
+    if getattr(period, "cycle_status", None) == CLOSED:
+        raise HTTPException(423, "Budget cycle is closed")
 
     entry = db.get(PeriodTransaction, entry_id)
     if not entry or entry.finperiodid != finperiodid or entry.source != "expense" or entry.source_key != expensedesc:

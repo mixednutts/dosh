@@ -1,0 +1,10 @@
+PLANNED = "PLANNED"
+ACTIVE = "ACTIVE"
+CLOSED = "CLOSED"
+
+CARRIED_FORWARD_DESC = "Carried Forward"
+CARRIED_FORWARD_SYSTEM_KEY = "carry_forward"
+
+WORKING = "Current"
+PAID = "Paid"
+REVISED = "Revised"

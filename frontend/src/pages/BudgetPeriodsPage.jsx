@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronDownIcon, ChevronRightIcon, PlusIcon, Cog6ToothIcon, TrashIcon } from '@heroicons/react/24/outline'
 import { addDays, format, parseISO } from 'date-fns'
-import { deletePeriod, getBudget, getExpenseItems, getIncomeTypes, getPeriodSummariesForBudget, generatePeriod } from '../api/client'
+import { deletePeriod, getBudget, getExpenseItems, getIncomeTypes, getPeriodDeleteOptions, getPeriodSummariesForBudget, generatePeriod } from '../api/client'
 import clsx from 'clsx'
 import Modal from '../components/Modal'
 import Spinner from '../components/Spinner'
@@ -81,33 +81,12 @@ function PeriodGenerateForm({ initialStartDate, onSubmit, onClose, loading, erro
 }
 
 function getGroupedPeriodSummaries(periodSummaries) {
-  const now = new Date()
   const ordered = [...periodSummaries].sort((a, b) => parseISO(a.period.startdate) - parseISO(b.period.startdate))
 
   return {
-    current: ordered.filter(({ period }) => {
-      try {
-        const start = parseISO(period.startdate)
-        const end = parseISO(period.enddate)
-        return start <= now && end >= now
-      } catch {
-        return false
-      }
-    }),
-    future: ordered.filter(({ period }) => {
-      try {
-        return parseISO(period.startdate) > now
-      } catch {
-        return false
-      }
-    }),
-    historical: ordered.filter(({ period }) => {
-      try {
-        return parseISO(period.enddate) < now
-      } catch {
-        return false
-      }
-    }),
+    current: ordered.filter(({ period }) => period.cycle_status === 'ACTIVE'),
+    future: ordered.filter(({ period }) => period.cycle_status === 'PLANNED'),
+    historical: ordered.filter(({ period }) => period.cycle_status === 'CLOSED'),
   }
 }
 
@@ -131,6 +110,16 @@ function PeriodSummaryRow({ summary, onDelete }) {
           <span className="block whitespace-nowrap">{endLabel}</span>
         </Link>
         <div className="mt-1">
+          <span className={clsx(
+            'mr-1.5',
+            period.cycle_status === 'ACTIVE'
+              ? 'badge-blue'
+              : period.cycle_status === 'CLOSED'
+                ? 'badge-gray'
+                : 'badge-green'
+          )}>
+            {period.cycle_status}
+          </span>
           {period.islocked && <span className="badge-amber">Locked</span>}
         </div>
       </td>
@@ -239,6 +228,7 @@ export default function BudgetPeriodsPage() {
   const [showGenerate, setShowGenerate] = useState(false)
   const [generateError, setGenerateError] = useState('')
   const [deleteTarget, setDeleteTarget] = useState(null)
+  const [deleteMode, setDeleteMode] = useState('single')
 
   const { data: budget, isLoading: budgetLoading } = useQuery({
     queryKey: ['budget', id],
@@ -303,11 +293,12 @@ export default function BudgetPeriodsPage() {
   })
 
   const removePeriod = useMutation({
-    mutationFn: periodId => deletePeriod(periodId),
+    mutationFn: ({ periodId, mode }) => deletePeriod(periodId, mode),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['periods', id] })
       qc.invalidateQueries({ queryKey: ['period-summaries', id] })
       setDeleteTarget(null)
+      setDeleteMode('single')
     },
   })
 
@@ -370,14 +361,14 @@ export default function BudgetPeriodsPage() {
         <div className="space-y-4">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Budget Cycles</h2>
           <div className="space-y-4">
-            <PeriodSummaryGroup title="Current" summaries={groupedSummaries.current} collapsible onDelete={setDeleteTarget} />
-            <PeriodSummaryGroup title="Future" summaries={groupedSummaries.future} collapsed collapsible onDelete={setDeleteTarget} />
+            <PeriodSummaryGroup title="Current" summaries={groupedSummaries.current} collapsible onDelete={summary => { setDeleteMode(summary.delete_mode || 'single'); setDeleteTarget(summary) }} />
+            <PeriodSummaryGroup title="Future" summaries={groupedSummaries.future} collapsed collapsible onDelete={summary => { setDeleteMode(summary.delete_mode || 'single'); setDeleteTarget(summary) }} />
             <PeriodSummaryGroup
               title="Historical"
               summaries={groupedSummaries.historical}
               collapsed
               collapsible
-              onDelete={setDeleteTarget}
+              onDelete={summary => { setDeleteMode(summary.delete_mode || 'single'); setDeleteTarget(summary) }}
             />
           </div>
         </div>
@@ -396,33 +387,64 @@ export default function BudgetPeriodsPage() {
       )}
 
       {deleteTarget && (
-        <Modal title="Delete Future Budget Cycle" onClose={() => setDeleteTarget(null)}>
-          <div className="space-y-4">
-            <p className="text-sm text-gray-600 dark:text-gray-300">
-              Delete the future budget cycle from {format(parseISO(deleteTarget.period.startdate), 'dd MMM yyyy')} to {format(parseISO(deleteTarget.period.enddate), 'dd MMM yyyy')}?
-            </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Only future budget cycles without recorded actuals can be deleted.
-            </p>
-            {removePeriod.isError && (
-              <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300">
-                {formatApiError(removePeriod.error, 'Unable to delete this budget cycle right now.')}
-              </div>
-            )}
-            <div className="flex justify-end gap-2">
-              <button type="button" className="btn-secondary" onClick={() => setDeleteTarget(null)}>Cancel</button>
-              <button
-                type="button"
-                className="btn-primary"
-                disabled={removePeriod.isPending}
-                onClick={() => removePeriod.mutate(deleteTarget.period.finperiodid)}
-              >
-                {removePeriod.isPending ? 'Deleting…' : 'Delete Budget Cycle'}
-              </button>
-            </div>
-          </div>
-        </Modal>
+        <DeleteCycleModal
+          deleteTarget={deleteTarget}
+          deleteMode={deleteMode}
+          setDeleteMode={setDeleteMode}
+          removePeriod={removePeriod}
+          onClose={() => setDeleteTarget(null)}
+        />
       )}
     </div>
+  )
+}
+
+function DeleteCycleModal({ deleteTarget, deleteMode, setDeleteMode, removePeriod, onClose }) {
+  const { data: deleteOptions } = useQuery({
+    queryKey: ['period-delete-options', deleteTarget.period.finperiodid],
+    queryFn: () => getPeriodDeleteOptions(deleteTarget.period.finperiodid),
+  })
+
+  return (
+    <Modal title="Delete Budget Cycle" onClose={onClose}>
+      <div className="space-y-4">
+        <p className="text-sm text-gray-600 dark:text-gray-300">
+          Delete the budget cycle from {format(parseISO(deleteTarget.period.startdate), 'dd MMM yyyy')} to {format(parseISO(deleteTarget.period.enddate), 'dd MMM yyyy')}?
+        </p>
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          {deleteOptions?.delete_reason || 'Only cycles without actuals or transactions can be removed.'}
+        </p>
+        {deleteOptions?.can_delete_future_chain && (
+          <div className="space-y-2 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/50">
+            {deleteOptions.can_delete_single && (
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input type="radio" checked={deleteMode === 'single'} onChange={() => setDeleteMode('single')} />
+                Delete only this budget cycle
+              </label>
+            )}
+            <label className="flex items-center gap-2 text-sm cursor-pointer">
+              <input type="radio" checked={deleteMode === 'future_chain'} onChange={() => setDeleteMode('future_chain')} />
+              Delete this cycle and all upcoming cycles ({deleteOptions.future_chain_count})
+            </label>
+          </div>
+        )}
+        {removePeriod.isError && (
+          <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300">
+            {formatApiError(removePeriod.error, 'Unable to delete this budget cycle right now.')}
+          </div>
+        )}
+        <div className="flex justify-end gap-2">
+          <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
+          <button
+            type="button"
+            className="btn-primary"
+            disabled={removePeriod.isPending || !(deleteOptions?.can_delete_single || deleteOptions?.can_delete_future_chain)}
+            onClick={() => removePeriod.mutate({ periodId: deleteTarget.period.finperiodid, mode: deleteMode })}
+          >
+            {removePeriod.isPending ? 'Deleting…' : 'Delete Budget Cycle'}
+          </button>
+        </div>
+      </div>
+    </Modal>
   )
 }

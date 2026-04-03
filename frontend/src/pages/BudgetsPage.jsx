@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArrowTrendingDownIcon, ArrowTrendingUpIcon, MinusIcon, PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline'
-import { differenceInCalendarDays, format, isWithinInterval, parseISO } from 'date-fns'
+import { differenceInCalendarDays, format, parseISO } from 'date-fns'
 import { getBudgets, createBudget, deleteBudget, getPeriodsForBudget, getBudgetHealth, getPeriodDetail } from '../api/client'
 import Modal from '../components/Modal'
 import Spinner from '../components/Spinner'
@@ -54,30 +54,11 @@ function healthStatusLabel(status) {
 }
 
 function groupPeriods(periods) {
-  const now = new Date()
   const ordered = [...periods].sort((a, b) => parseISO(a.startdate) - parseISO(b.startdate))
 
-  const current = ordered.filter(period => {
-    try {
-      return isWithinInterval(now, { start: parseISO(period.startdate), end: parseISO(period.enddate) })
-    } catch {
-      return false
-    }
-  })
-  const future = ordered.filter(period => {
-    try {
-      return parseISO(period.startdate) > now
-    } catch {
-      return false
-    }
-  })
-  const historical = ordered.filter(period => {
-    try {
-      return parseISO(period.enddate) < now
-    } catch {
-      return false
-    }
-  })
+  const current = ordered.filter(period => period.cycle_status === 'ACTIVE')
+  const future = ordered.filter(period => period.cycle_status === 'PLANNED')
+  const historical = ordered.filter(period => period.cycle_status === 'CLOSED')
 
   return { current, future, historical }
 }

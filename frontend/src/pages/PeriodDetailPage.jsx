@@ -17,6 +17,7 @@ import {
   getInvestmentTransactions, addInvestmentTransaction, deleteInvestmentTransaction,
   setPeriodExpenseStatus, updatePeriodExpenseBudget, removePeriodExpense,
   updatePeriodInvestmentBudget, getBalanceTypes, updateExpenseNote, removePeriodIncome,
+  setPeriodInvestmentStatus, getPeriodCloseoutPreview, closeOutPeriod,
 } from '../api/client'
 import Modal from '../components/Modal'
 import Spinner from '../components/Spinner'
@@ -81,7 +82,7 @@ function freqLabel(freqtype, frequencyValue) {
 }
 
 // ── Income actual cell (set or add) ──────────────────────────────────────────
-function IncomeActualCell({ value, onSet, onAdd }) {
+function IncomeActualCell({ value, onSet, onAdd, disabled = false }) {
   const [mode, setMode] = useState(null)
   const [draft, setDraft] = useState('')
 
@@ -107,12 +108,13 @@ function IncomeActualCell({ value, onSet, onAdd }) {
 
   return (
     <span className="inline-flex items-center gap-1 group">
-      <span onClick={() => { setDraft(String(Number(value ?? 0))); setMode('set') }}
-        className="cursor-pointer rounded px-1.5 py-0.5 bg-dosh-50 border border-dosh-200 hover:border-dosh-400 text-dosh-800 font-medium transition-colors dark:bg-dosh-900/30 dark:border-dosh-700 dark:text-dosh-300"
+      <span onClick={() => { if (!disabled) { setDraft(String(Number(value ?? 0))); setMode('set') } }}
+        className={`${disabled ? 'cursor-default opacity-70' : 'cursor-pointer'} rounded px-1.5 py-0.5 bg-dosh-50 border border-dosh-200 hover:border-dosh-400 text-dosh-800 font-medium transition-colors dark:bg-dosh-900/30 dark:border-dosh-700 dark:text-dosh-300`}
         title="Click to set">
         {fmt(value ?? 0)}
       </span>
-      <button onClick={() => { setDraft(''); setMode('add') }}
+      <button onClick={() => { if (!disabled) { setDraft(''); setMode('add') } }}
+        disabled={disabled}
         className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded text-dosh-500 hover:bg-dosh-100 dark:hover:bg-dosh-900/40"
         title="Add to total">
         <PlusIcon className="w-3 h-3" />
@@ -665,6 +667,171 @@ function ConfirmPaidExpenseModal({ expense, onConfirm, onClose }) {
   )
 }
 
+function InvestmentStatusPill({ investment, onMarkPaid, onRevise }) {
+  const budget = Number(investment.budgeted_amount ?? 0)
+  const actual = Number(investment.actualamount ?? 0)
+  const remaining = Number(investment.remaining_amount ?? 0)
+  const rawPercent = budget > 0 ? (actual / budget) * 100 : 0
+  const clampedPercent = Math.max(0, Math.min(rawPercent, 100))
+  const isOver = rawPercent > 100
+
+  if (investment.status === 'Paid') {
+    return (
+      <button
+        onClick={onRevise}
+        className={`inline-flex min-w-[108px] items-center justify-center rounded-full px-2.5 py-1 text-xs font-semibold transition-colors ${isOver ? 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/40 dark:text-red-300 dark:hover:bg-red-900/60' : 'bg-dosh-100 text-dosh-700 hover:bg-dosh-200 dark:bg-dosh-900/40 dark:text-dosh-300 dark:hover:bg-dosh-900/60'}`}
+      >
+        Paid
+      </button>
+    )
+  }
+
+  return (
+    <button
+      onClick={onMarkPaid}
+      className="inline-flex min-w-[108px] items-center gap-2 rounded-full border border-gray-200 bg-white px-2 py-1 text-left text-xs transition-colors hover:border-dosh-300 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:border-dosh-700 dark:hover:bg-gray-700"
+    >
+      <span className={`w-10 flex-shrink-0 font-semibold ${investment.status === 'Revised' ? 'text-amber-700 dark:text-amber-300' : 'text-gray-700 dark:text-gray-200'}`}>
+        {investment.status === 'Revised' ? 'Rev' : 'Spent'}
+      </span>
+      <span className="relative h-2 flex-1 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+        <span className={`absolute inset-y-0 left-0 rounded-full ${isOver ? 'bg-red-500' : 'bg-dosh-500'}`} style={{ width: `${clampedPercent}%` }} />
+      </span>
+      <span className={`text-[10px] font-semibold ${remaining >= 0 ? 'text-dosh-700 dark:text-dosh-300' : 'text-red-700 dark:text-red-300'}`}>
+        {fmt(remaining)}
+      </span>
+    </button>
+  )
+}
+
+function ReviseInvestmentModal({ periodId, investmentdesc, onClose }) {
+  const qc = useQueryClient()
+  const [comment, setComment] = useState('')
+  const [error, setError] = useState('')
+
+  const revise = useMutation({
+    mutationFn: () => setPeriodInvestmentStatus(periodId, investmentdesc, 'Revised', comment.trim()),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['period', periodId] })
+      onClose()
+    },
+    onError: err => setError(err.response?.data?.detail ?? 'Failed to revise investment'),
+  })
+
+  return (
+    <form onSubmit={e => {
+      e.preventDefault()
+      if (!comment.trim()) {
+        setError('A revision comment is required')
+        return
+      }
+      revise.mutate()
+    }} className="space-y-3">
+      <div>
+        <label className="label">Revision Comment</label>
+        <textarea className="input w-full resize-none" rows={4} value={comment} onChange={e => setComment(e.target.value)} />
+      </div>
+      {error && <p className="text-sm text-red-600">{error}</p>}
+      <div className="flex justify-end gap-2">
+        <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
+        <button type="submit" className="btn-primary" disabled={revise.isPending}>{revise.isPending ? 'Saving…' : 'Revise Investment'}</button>
+      </div>
+    </form>
+  )
+}
+
+function ConfirmPaidInvestmentModal({ investment, onConfirm, onClose }) {
+  const remaining = Number(investment.remaining_amount ?? 0)
+  const isOver = remaining < 0
+  const delta = fmt(Math.abs(remaining))
+
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-gray-700 dark:text-gray-200">
+        {isOver
+          ? `This investment is ${delta} over budget. Mark it as paid anyway?`
+          : `This investment still has ${delta} remaining against budget. Mark it as paid anyway?`}
+      </p>
+      <p className="text-xs text-gray-400 dark:text-gray-500">Paid investments are locked until revised.</p>
+      <div className="flex justify-end gap-2">
+        <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
+        <button type="button" className="btn-primary" onClick={onConfirm}>Mark Paid</button>
+      </div>
+    </div>
+  )
+}
+
+function CloseoutModal({ periodId, onClose }) {
+  const qc = useQueryClient()
+  const [comments, setComments] = useState('')
+  const [goals, setGoals] = useState('')
+  const [createNextCycle, setCreateNextCycle] = useState(false)
+  const { data: preview, isLoading } = useQuery({
+    queryKey: ['period-closeout-preview', periodId],
+    queryFn: () => getPeriodCloseoutPreview(periodId),
+  })
+
+  const closeout = useMutation({
+    mutationFn: () => closeOutPeriod(periodId, { comments, goals, create_next_cycle: createNextCycle }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['period', periodId] })
+      qc.invalidateQueries({ queryKey: ['periods'] })
+      qc.invalidateQueries({ queryKey: ['period-summaries'] })
+      qc.invalidateQueries({ queryKey: ['budgets'] })
+      onClose()
+    },
+  })
+
+  if (isLoading || !preview) {
+    return <div className="flex justify-center py-8"><Spinner /></div>
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-3">
+        {Object.entries(preview.totals).map(([label, value]) => (
+          <div key={label} className="card p-3">
+            <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">{label.replaceAll('_', ' ')}</p>
+            <p className="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">{fmt(value)}</p>
+          </div>
+        ))}
+      </div>
+      <div className="rounded-xl border border-dosh-200 bg-dosh-50 px-4 py-3 text-sm text-dosh-900 dark:border-dosh-800 dark:bg-dosh-900/20 dark:text-dosh-100">
+        <p className="font-semibold">Carry Forward</p>
+        <p className="mt-1">{fmt(preview.carry_forward_amount)} will be placed into the next cycle as a `Carried Forward` income budget line.</p>
+      </div>
+      <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/50">
+        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{preview.health.summary}</p>
+        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Score {preview.health.score} • {preview.health.status}</p>
+      </div>
+      {!preview.next_cycle_exists && (
+        <label className="flex items-center gap-2 text-sm cursor-pointer">
+          <input type="checkbox" checked={createNextCycle} onChange={e => setCreateNextCycle(e.target.checked)} />
+          Create the next budget cycle automatically during close-out
+        </label>
+      )}
+      <div>
+        <label className="label">Comments / Observations</label>
+        <textarea className="input w-full resize-none" rows={4} value={comments} onChange={e => setComments(e.target.value)} />
+      </div>
+      <div>
+        <label className="label">Goals Going Forward</label>
+        <textarea className="input w-full resize-none" rows={4} value={goals} onChange={e => setGoals(e.target.value)} />
+      </div>
+      <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-300">
+        Closing this cycle makes it read-only. Any later corrections should be handled through reconciliation.
+      </div>
+      {closeout.isError && <p className="text-sm text-red-600">{closeout.error?.response?.data?.detail || 'Unable to close out this cycle right now.'}</p>}
+      <div className="flex justify-end gap-2">
+        <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
+        <button type="button" className="btn-primary" disabled={closeout.isPending || (!preview.next_cycle_exists && !createNextCycle)} onClick={() => closeout.mutate()}>
+          {closeout.isPending ? 'Closing…' : 'Close Out Cycle'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 
 // ── Add Income Modal ──────────────────────────────────────────────────────────
 function AddIncomeModal({ periodId, budgetId, existingDescs, onClose }) {
@@ -882,7 +1049,10 @@ export default function PeriodDetailPage() {
   const [noteModal, setNoteModal] = useState(null) // { expensedesc, note }
   const [reviseModal, setReviseModal] = useState(null) // { expensedesc }
   const [confirmPaidModal, setConfirmPaidModal] = useState(null) // { expense }
+  const [reviseInvestmentModal, setReviseInvestmentModal] = useState(null)
+  const [confirmPaidInvestmentModal, setConfirmPaidInvestmentModal] = useState(null)
   const [balanceModal, setBalanceModal] = useState(null) // { balancedesc, movementAmount }
+  const [showCloseout, setShowCloseout] = useState(false)
 
   const [investmentModal, setInvestmentModal] = useState(null)
 
@@ -901,6 +1071,7 @@ export default function PeriodDetailPage() {
   const setIncome = useMutation({ mutationFn: ({ desc, val }) => updateIncomeActual(id, desc, val), onSuccess: () => qc.invalidateQueries({ queryKey: ['period', id] }) })
   const addIncome = useMutation({ mutationFn: ({ desc, val }) => addToIncomeActual(id, desc, val), onSuccess: () => qc.invalidateQueries({ queryKey: ['period', id] }) })
   const setExpenseStatus = useMutation({ mutationFn: ({ desc, status, revisionComment = null }) => setPeriodExpenseStatus(id, desc, status, revisionComment), onSuccess: () => qc.invalidateQueries({ queryKey: ['period', id] }) })
+  const setInvestmentStatus = useMutation({ mutationFn: ({ desc, status, revisionComment = null }) => setPeriodInvestmentStatus(id, desc, status, revisionComment), onSuccess: () => qc.invalidateQueries({ queryKey: ['period', id] }) })
   const editExpenseBudget = useMutation({ mutationFn: ({ desc, budgetamount }) => updatePeriodExpenseBudget(id, desc, budgetamount), onSuccess: () => qc.invalidateQueries({ queryKey: ['period', id] }) })
   const deleteExpenseLine = useMutation({ mutationFn: desc => removePeriodExpense(id, desc), onSuccess: () => qc.invalidateQueries({ queryKey: ['period', id] }) })
   const deleteIncomeLine = useMutation({ mutationFn: desc => removePeriodIncome(id, desc), onSuccess: () => qc.invalidateQueries({ queryKey: ['period', id] }) })
@@ -915,6 +1086,16 @@ export default function PeriodDetailPage() {
 
   const { period, incomes, balances = [], investments = [] } = data
   const expenses = localExpenses ?? data.expenses
+  let closeoutHealth = null
+  try {
+    closeoutHealth = data.closeout_snapshot?.health_snapshot_json ? JSON.parse(data.closeout_snapshot.health_snapshot_json) : null
+  } catch {
+    closeoutHealth = null
+  }
+  const budgetLockEnabled = budget?.allow_cycle_lock !== false
+  const locked = budgetLockEnabled && period.islocked
+  const closed = period.cycle_status === 'CLOSED'
+  const activeCycle = period.cycle_status === 'ACTIVE'
 
   const handleDragStart = (desc) => { dragSrc.current = desc }
   const handleDragOver  = (e, desc) => { e.preventDefault(); setDragOver(desc) }
@@ -928,23 +1109,22 @@ export default function PeriodDetailPage() {
     const si = cur.findIndex(x => x.expensedesc === src)
     const ti = cur.findIndex(x => x.expensedesc === targetDesc)
     if (si < 0 || ti < 0) return
-    if (locked || cur[si]?.status === 'Paid' || cur[ti]?.status === 'Paid') return
+    if (locked || closed || cur[si]?.status === 'Paid' || cur[ti]?.status === 'Paid') return
     const [moved] = cur.splice(si, 1)
     cur.splice(ti, 0, moved)
     setLocalExpenses(cur)
     const items = cur.map((x, i) => ({ expensedesc: x.expensedesc, sort_order: i }))
     reorderPeriodExpenses(id, items).catch(() => setLocalExpenses(null))
   }
-  const locked = period.islocked
-
   const totalIncomeBudget    = incomes.reduce((s, i) => s + Number(i.budgetamount), 0)
   const totalIncomeActual    = incomes.reduce((s, i) => s + Number(i.actualamount), 0)
   const effectiveExpenseBudget = expenses.reduce((s, e) => s + Number(e.status === 'Paid' ? e.actualamount : e.budgetamount), 0)
   const totalExpenseActual   = expenses.reduce((s, e) => s + Number(e.actualamount), 0)
-  const totalInvestmentBudget = investments.reduce((s, inv) => s + Number(inv.budgeted_amount ?? 0), 0)
+  const effectiveInvestmentBudget = investments.reduce((s, inv) => s + Number(inv.status === 'Paid' ? inv.actualamount : inv.budgeted_amount ?? 0), 0)
+  const totalInvestmentActual = investments.reduce((s, inv) => s + Number(inv.actualamount ?? 0), 0)
   const totalExpenseRemaining = expenses.reduce((s, e) => s + Number(e.remaining_amount ?? 0), 0)
-  const surplusBudget = totalIncomeBudget - effectiveExpenseBudget - totalInvestmentBudget
-  const surplusActual = totalIncomeActual - totalExpenseActual
+  const surplusBudget = totalIncomeBudget - effectiveExpenseBudget - effectiveInvestmentBudget
+  const surplusActual = totalIncomeActual - totalExpenseActual - totalInvestmentActual
 
   const handleMarkPaid = expense => {
     const remaining = Number(expense.remaining_amount ?? 0)
@@ -953,6 +1133,15 @@ export default function PeriodDetailPage() {
       return
     }
     setExpenseStatus.mutate({ desc: expense.expensedesc, status: 'Paid' })
+  }
+
+  const handleMarkInvestmentPaid = investment => {
+    const remaining = Number(investment.remaining_amount ?? 0)
+    if (remaining !== 0) {
+      setConfirmPaidInvestmentModal({ investment })
+      return
+    }
+    setInvestmentStatus.mutate({ desc: investment.investmentdesc, status: 'Paid' })
   }
 
   return (
@@ -970,16 +1159,48 @@ export default function PeriodDetailPage() {
           <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
             {format(parseISO(period.startdate), 'dd MMM yyyy')} – {format(parseISO(period.enddate), 'dd MMM yyyy')}
           </h1>
-          {budget && <p className="text-sm text-gray-500 dark:text-gray-400">{budget.budget_frequency} · {budget.budgetowner}</p>}
+          {budget && <p className="text-sm text-gray-500 dark:text-gray-400">{budget.budget_frequency} · {budget.budgetowner} · {period.cycle_status}</p>}
         </div>
-        <button className="btn-secondary" onClick={() => lock.mutate(!locked)} title={locked ? 'Unlock' : 'Lock'}>
-          {locked ? <><LockClosedIcon className="w-4 h-4 text-amber-500" /> Locked</> : <><LockOpenIcon className="w-4 h-4" /> Unlocked</>}
-        </button>
+        <div className="flex gap-2">
+          {activeCycle && !closed && (
+            <button className="btn-primary" onClick={() => setShowCloseout(true)}>
+              Close Out
+            </button>
+          )}
+          {budgetLockEnabled && !closed && (
+            <button className="btn-secondary" onClick={() => lock.mutate(!locked)} title={locked ? 'Unlock' : 'Lock'}>
+              {locked ? <><LockClosedIcon className="w-4 h-4 text-amber-500" /> Locked</> : <><LockOpenIcon className="w-4 h-4" /> Unlocked</>}
+            </button>
+          )}
+        </div>
       </div>
 
-      {locked && (
+      {closed && (
+        <div className="rounded-md bg-slate-100 border border-slate-200 dark:bg-slate-900/30 dark:border-slate-700 px-4 py-2 text-sm text-slate-700 dark:text-slate-300">
+          This budget cycle is closed. Values are frozen for historical reporting, and later corrections should happen through reconciliation.
+        </div>
+      )}
+
+      {locked && !closed && (
         <div className="rounded-md bg-amber-50 border border-amber-200 dark:bg-amber-900/20 dark:border-amber-700 px-4 py-2 text-sm text-amber-800 dark:text-amber-300">
-          Budget cycle is locked. Income actuals can still be updated. To add expense transactions, unlock first.
+          Budget cycle is locked. You can still record actuals and transactions, but budget amounts and cycle line structure are protected until you unlock it.
+        </div>
+      )}
+
+      {closed && data.closeout_snapshot && (
+        <div className="card p-4 space-y-3">
+          <div>
+            <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Close-out Snapshot</p>
+            <p className="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">Carry Forward: {fmt(data.closeout_snapshot.carry_forward_amount)}</p>
+          </div>
+          {closeoutHealth && (
+            <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/50">
+              <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{closeoutHealth.summary}</p>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Health snapshot: {closeoutHealth.score} • {closeoutHealth.status}</p>
+            </div>
+          )}
+          {data.closeout_snapshot.comments && <p className="text-sm text-gray-600 dark:text-gray-300">{data.closeout_snapshot.comments}</p>}
+          {data.closeout_snapshot.goals && <p className="text-sm text-dosh-700 dark:text-dosh-300">Next cycle goals: {data.closeout_snapshot.goals}</p>}
         </div>
       )}
 
@@ -1010,7 +1231,7 @@ export default function PeriodDetailPage() {
       <div className="card">
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800">
           <span className="font-semibold text-gray-700 dark:text-gray-200 text-sm">Income</span>
-          {!locked && (
+          {!locked && !closed && (
             <button className="btn-secondary text-xs" onClick={() => setShowAddIncome(true)}>
               <PlusIcon className="w-3.5 h-3.5" /> Add New Income Line Item
             </button>
@@ -1030,10 +1251,15 @@ export default function PeriodDetailPage() {
             {incomes.length === 0 && <tr><td colSpan={5} className="px-4 py-4 text-center text-gray-400 italic text-sm">No income entries</td></tr>}
             {incomes.map(i => (
               <tr key={i.incomedesc} className="table-row">
-                <td className="table-cell font-medium">{i.incomedesc}</td>
+                <td className="table-cell font-medium">
+                  <div className="flex items-center gap-2">
+                    <span>{i.incomedesc}</span>
+                    {i.system_key === 'carry_forward' && <span className="badge-blue">System</span>}
+                  </div>
+                </td>
                 <td className="table-cell-muted text-right col-budget">{fmt(i.budgetamount)}</td>
                 <td className="table-cell text-right col-actual">
-                  <IncomeActualCell value={i.actualamount} onSet={val => setIncome.mutate({ desc: i.incomedesc, val })} onAdd={val => addIncome.mutate({ desc: i.incomedesc, val })} />
+                  <IncomeActualCell disabled={closed} value={i.actualamount} onSet={val => setIncome.mutate({ desc: i.incomedesc, val })} onAdd={val => addIncome.mutate({ desc: i.incomedesc, val })} />
                 </td>
                 <td className="table-cell text-right">
                   <span className={`font-medium ${Number(i.actualamount) >= Number(i.budgetamount) ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'}`}>
@@ -1041,7 +1267,7 @@ export default function PeriodDetailPage() {
                   </span>
                 </td>
                 <td className="px-3 py-2">
-                  {!locked && (
+                  {!locked && !closed && i.system_key !== 'carry_forward' && (
                     <button
                       onClick={() => { if (window.confirm(`Remove "${i.incomedesc}" from this budget cycle?`)) deleteIncomeLine.mutate(i.incomedesc) }}
                       title="Remove from budget cycle"
@@ -1070,7 +1296,7 @@ export default function PeriodDetailPage() {
       <div className="card">
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800">
           <span className="font-semibold text-gray-700 dark:text-gray-200 text-sm">Expenses</span>
-          {!locked && (
+          {!locked && !closed && (
             <button className="btn-secondary text-xs" onClick={() => setShowAddExpense(true)}>
               <PlusIcon className="w-3.5 h-3.5" /> Add New Expense Line Item
             </button>
@@ -1099,27 +1325,27 @@ export default function PeriodDetailPage() {
                 const nextDue = e.is_oneoff ? null : calcNextDue(e.freqtype, e.frequency_value, e.effectivedate)
                 const isOver = dragOver === e.expensedesc
                 const isPaid = e.status === 'Paid'
-                const canDelete = !locked && Number(e.actualamount) === 0 && Number(e.budgetamount) === 0
-                const canEditBudget = !locked && !isPaid && (e.freqtype === 'Always' || e.is_oneoff)
+                const canDelete = !locked && !closed && Number(e.actualamount) === 0 && Number(e.budgetamount) === 0
+                const canEditBudget = !locked && !closed && !isPaid && (e.freqtype === 'Always' || e.is_oneoff)
                 return (
                   <tr
                     key={e.expensedesc}
-                    draggable={!locked && !isPaid}
+                    draggable={!locked && !closed && !isPaid}
                     onDragStart={() => handleDragStart(e.expensedesc)}
                     onDragOver={ev => handleDragOver(ev, e.expensedesc)}
                     onDragLeave={handleDragLeave}
                     onDrop={ev => handleDrop(ev, e.expensedesc)}
                     className={`table-row transition-colors ${isOver ? 'bg-dosh-50 dark:bg-dosh-900/20 border-t-2 border-dosh-400' : ''}`}
                   >
-                    <td className={`w-6 px-2 ${isPaid || locked ? 'text-gray-200 dark:text-gray-700 cursor-not-allowed' : 'text-gray-300 dark:text-gray-600 cursor-grab active:cursor-grabbing'}`}>
+                    <td className={`w-6 px-2 ${isPaid || locked || closed ? 'text-gray-200 dark:text-gray-700 cursor-not-allowed' : 'text-gray-300 dark:text-gray-600 cursor-grab active:cursor-grabbing'}`}>
                       <Bars2Icon className="w-4 h-4" />
                     </td>
                     <td className="table-cell font-medium">
                       <div className="flex items-center gap-1.5">
                         <span>{e.expensedesc}</span>
                         <button
-                          onClick={() => setNoteModal({ expensedesc: e.expensedesc, note: e.note ?? '', readOnly: locked || isPaid })}
-                          title={locked || isPaid ? 'View note' : e.note ? 'View/edit note' : 'Add note'}
+                          onClick={() => setNoteModal({ expensedesc: e.expensedesc, note: e.note ?? '', readOnly: locked || closed || isPaid })}
+                          title={locked || closed || isPaid ? 'View note' : e.note ? 'View/edit note' : 'Add note'}
                           className={`flex-shrink-0 transition-colors ${e.note ? 'text-dosh-500 dark:text-dosh-400 hover:text-dosh-700' : 'text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400'}`}>
                           <ChatBubbleOvalLeftEllipsisIcon className="w-4 h-4" />
                         </button>
@@ -1156,21 +1382,21 @@ export default function PeriodDetailPage() {
                           onRevise={() => setReviseModal({ expensedesc: e.expensedesc })}
                         />
                         <button
-                          disabled={locked || isPaid}
+                          disabled={closed || locked || isPaid}
                           onClick={() => setEntriesModal({ expensedesc: e.expensedesc, budgetamount: e.budgetamount, actualamount: e.actualamount, defaultType: 'debit' })}
                           title="Add expense transaction"
-                          className={`flex items-center justify-center w-7 h-7 rounded-full font-bold text-sm transition-colors ${locked || isPaid ? 'opacity-30 cursor-not-allowed bg-gray-100 text-gray-400' : 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/40 dark:text-red-400 dark:hover:bg-red-900/60'}`}>
+                          className={`flex items-center justify-center w-7 h-7 rounded-full font-bold text-sm transition-colors ${closed || locked || isPaid ? 'opacity-30 cursor-not-allowed bg-gray-100 text-gray-400' : 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/40 dark:text-red-400 dark:hover:bg-red-900/60'}`}>
                           <PlusIcon className="w-4 h-4" />
                         </button>
                         <button
-                          disabled={locked || isPaid}
+                          disabled={closed || locked || isPaid}
                           onClick={() => setEntriesModal({ expensedesc: e.expensedesc, budgetamount: e.budgetamount, actualamount: e.actualamount, defaultType: 'credit' })}
                           title="Add refund/credit"
-                          className={`flex items-center justify-center w-7 h-7 rounded-full font-bold text-sm transition-colors ${locked || isPaid ? 'opacity-30 cursor-not-allowed bg-gray-100 text-gray-400' : 'bg-dosh-100 text-dosh-700 hover:bg-dosh-200 dark:bg-dosh-900/40 dark:text-dosh-400 dark:hover:bg-dosh-900/60'}`}>
+                          className={`flex items-center justify-center w-7 h-7 rounded-full font-bold text-sm transition-colors ${closed || locked || isPaid ? 'opacity-30 cursor-not-allowed bg-gray-100 text-gray-400' : 'bg-dosh-100 text-dosh-700 hover:bg-dosh-200 dark:bg-dosh-900/40 dark:text-dosh-400 dark:hover:bg-dosh-900/60'}`}>
                           <MinusIcon className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => setEntriesModal({ expensedesc: e.expensedesc, budgetamount: e.budgetamount, actualamount: e.actualamount, defaultType: 'debit', readOnly: locked || isPaid })}
+                          onClick={() => setEntriesModal({ expensedesc: e.expensedesc, budgetamount: e.budgetamount, actualamount: e.actualamount, defaultType: 'debit', readOnly: closed || locked || isPaid })}
                           title="View transactions"
                           className="flex items-center justify-center w-7 h-7 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
                           <ListBulletIcon className="w-4 h-4" />
@@ -1227,7 +1453,7 @@ export default function PeriodDetailPage() {
                   <tr key={inv.investmentdesc} className="table-row">
                     <td className="table-cell font-medium">{inv.investmentdesc}</td>
                     <td className="table-cell-muted text-right col-budget">
-                      {!locked ? (
+                      {!locked && !closed ? (
                         <BudgetEditCell value={inv.budgeted_amount} onSave={val => editInvBudget.mutate({ desc: inv.investmentdesc, budgetamount: val })} />
                       ) : fmt(inv.budgeted_amount)}
                     </td>
@@ -1239,23 +1465,28 @@ export default function PeriodDetailPage() {
                       {inv.linked_account_desc ? <span className="text-purple-600 dark:text-purple-400">{inv.linked_account_desc}</span> : <span className="text-gray-300 dark:text-gray-600">—</span>}
                     </td>
                     <td className="px-3 py-2">
-                      <div className="flex items-center justify-center gap-1">
+                      <div className="flex items-center justify-center gap-1 flex-wrap">
+                        <InvestmentStatusPill
+                          investment={inv}
+                          onMarkPaid={() => handleMarkInvestmentPaid(inv)}
+                          onRevise={() => setReviseInvestmentModal({ investmentdesc: inv.investmentdesc })}
+                        />
                         <button
-                          disabled={locked}
+                          disabled={closed || locked || inv.status === 'Paid'}
                           onClick={() => setInvestmentModal({ investmentdesc: inv.investmentdesc, openingValue: inv.opening_value, closingValue: inv.closing_value, budgetedAmount: inv.budgeted_amount, defaultType: 'increase' })}
                           title="Add investment transaction"
-                          className={`flex items-center justify-center w-7 h-7 rounded-full font-bold text-sm transition-colors ${locked ? 'opacity-30 cursor-not-allowed bg-gray-100 text-gray-400' : 'bg-dosh-100 text-dosh-700 hover:bg-dosh-200 dark:bg-dosh-900/40 dark:text-dosh-400 dark:hover:bg-dosh-900/60'}`}>
+                          className={`flex items-center justify-center w-7 h-7 rounded-full font-bold text-sm transition-colors ${closed || locked || inv.status === 'Paid' ? 'opacity-30 cursor-not-allowed bg-gray-100 text-gray-400' : 'bg-dosh-100 text-dosh-700 hover:bg-dosh-200 dark:bg-dosh-900/40 dark:text-dosh-400 dark:hover:bg-dosh-900/60'}`}>
                           <PlusIcon className="w-4 h-4" />
                         </button>
                         <button
-                          disabled={locked}
+                          disabled={closed || locked || inv.status === 'Paid'}
                           onClick={() => setInvestmentModal({ investmentdesc: inv.investmentdesc, openingValue: inv.opening_value, closingValue: inv.closing_value, budgetedAmount: inv.budgeted_amount, defaultType: 'decrease' })}
                           title="Add subtraction/withdrawal"
-                          className={`flex items-center justify-center w-7 h-7 rounded-full font-bold text-sm transition-colors ${locked ? 'opacity-30 cursor-not-allowed bg-gray-100 text-gray-400' : 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/40 dark:text-red-400 dark:hover:bg-red-900/60'}`}>
+                          className={`flex items-center justify-center w-7 h-7 rounded-full font-bold text-sm transition-colors ${closed || locked || inv.status === 'Paid' ? 'opacity-30 cursor-not-allowed bg-gray-100 text-gray-400' : 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/40 dark:text-red-400 dark:hover:bg-red-900/60'}`}>
                           <MinusIcon className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => setInvestmentModal({ investmentdesc: inv.investmentdesc, openingValue: inv.opening_value, closingValue: inv.closing_value, budgetedAmount: inv.budgeted_amount, defaultType: 'increase' })}
+                          onClick={() => setInvestmentModal({ investmentdesc: inv.investmentdesc, openingValue: inv.opening_value, closingValue: inv.closing_value, budgetedAmount: inv.budgeted_amount, defaultType: 'increase', readOnly: closed || locked || inv.status === 'Paid' })}
                           title="View transactions"
                           className="flex items-center justify-center w-7 h-7 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
                           <ListBulletIcon className="w-4 h-4" />
@@ -1378,6 +1609,23 @@ export default function PeriodDetailPage() {
           />
         </Modal>
       )}
+      {reviseInvestmentModal && (
+        <Modal title={`Revise Investment — ${reviseInvestmentModal.investmentdesc}`} onClose={() => setReviseInvestmentModal(null)}>
+          <ReviseInvestmentModal periodId={id} investmentdesc={reviseInvestmentModal.investmentdesc} onClose={() => setReviseInvestmentModal(null)} />
+        </Modal>
+      )}
+      {confirmPaidInvestmentModal && (
+        <Modal title="Mark Investment as Paid?" onClose={() => setConfirmPaidInvestmentModal(null)}>
+          <ConfirmPaidInvestmentModal
+            investment={confirmPaidInvestmentModal.investment}
+            onClose={() => setConfirmPaidInvestmentModal(null)}
+            onConfirm={() => {
+              setInvestmentStatus.mutate({ desc: confirmPaidInvestmentModal.investment.investmentdesc, status: 'Paid' })
+              setConfirmPaidInvestmentModal(null)
+            }}
+          />
+        </Modal>
+      )}
       {investmentModal && (
         <Modal title={`Transactions — ${investmentModal.investmentdesc}`} onClose={() => setInvestmentModal(null)} size="lg">
           <InvestmentTxModal
@@ -1386,10 +1634,15 @@ export default function PeriodDetailPage() {
             openingValue={investmentModal.openingValue}
             closingValue={investmentModal.closingValue}
             budgetedAmount={investmentModal.budgetedAmount}
-            locked={locked}
+            locked={investmentModal.readOnly || locked || closed}
             defaultType={investmentModal.defaultType ?? 'increase'}
             onClose={() => setInvestmentModal(null)}
           />
+        </Modal>
+      )}
+      {showCloseout && (
+        <Modal title="Close Out Budget Cycle" onClose={() => setShowCloseout(false)} size="lg">
+          <CloseoutModal periodId={id} onClose={() => setShowCloseout(false)} />
         </Modal>
       )}
     </div>

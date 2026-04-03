@@ -4,6 +4,7 @@ optionally update the linked account balance.
 """
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from ..cycle_constants import CLOSED, PAID
 from ..database import get_db
 from ..models import (
     FinancialPeriod, PeriodInvestment,
@@ -37,6 +38,11 @@ def _get_period_investment(finperiodid: int, investmentdesc: str, db: Session) -
         raise HTTPException(404, "Investment line item not found in this period")
     return pi
 
+
+def _assert_investment_not_paid(pi: PeriodInvestment) -> None:
+    if (getattr(pi, "status", "Current") or "Current") == PAID:
+        raise HTTPException(423, "Investment is marked Paid — revise it before making changes")
+
 @router.get("/", response_model=list[InvestmentTxOut])
 def list_transactions(finperiodid: int, investmentdesc: str, db: Session = Depends(get_db)):
     _get_period_investment(finperiodid, investmentdesc, db)
@@ -63,10 +69,11 @@ def add_transaction(
     period = db.get(FinancialPeriod, finperiodid)
     if not period:
         raise HTTPException(404, "Period not found")
-    if period.islocked:
-        raise HTTPException(423, "Period is locked")
+    if getattr(period, "cycle_status", None) == CLOSED:
+        raise HTTPException(423, "Budget cycle is closed")
 
     pi = _get_period_investment(finperiodid, investmentdesc, db)
+    _assert_investment_not_paid(pi)
 
     tx = build_investment_tx(
         finperiodid,
@@ -93,14 +100,15 @@ def delete_transaction(
     period = db.get(FinancialPeriod, finperiodid)
     if not period:
         raise HTTPException(404, "Period not found")
-    if period.islocked:
-        raise HTTPException(423, "Period is locked")
+    if getattr(period, "cycle_status", None) == CLOSED:
+        raise HTTPException(423, "Budget cycle is closed")
 
     tx = db.get(PeriodTransaction, tx_id)
     if not tx or tx.finperiodid != finperiodid or tx.source != "investment" or tx.source_key != investmentdesc:
         raise HTTPException(404, "Transaction not found")
 
     pi = _get_period_investment(finperiodid, investmentdesc, db)
+    _assert_investment_not_paid(pi)
 
     db.delete(tx)
     db.flush()

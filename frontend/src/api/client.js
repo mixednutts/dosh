@@ -51,10 +51,17 @@ export const getPeriodSummariesForBudget = budgetId =>
   api.get(`/periods/budget/${budgetId}/summary`).then(r => r.data)
 export const getPeriodDetail = periodId =>
   api.get(`/periods/${periodId}`).then(r => r.data)
+export const getPeriodDeleteOptions = periodId =>
+  api.get(`/periods/${periodId}/delete-options`).then(r => r.data)
+export const getPeriodCloseoutPreview = periodId =>
+  api.get(`/periods/${periodId}/closeout-preview`).then(r => r.data)
 export const generatePeriod = data => api.post('/periods/generate', data).then(r => r.data)
 export const setPeriodLock = (periodId, islocked) =>
   api.patch(`/periods/${periodId}/lock`, { islocked }).then(r => r.data)
-export const deletePeriod = periodId => api.delete(`/periods/${periodId}`)
+export const closeOutPeriod = (periodId, data) =>
+  api.post(`/periods/${periodId}/closeout`, data).then(r => r.data)
+export const deletePeriod = (periodId, deleteMode = 'single') =>
+  api.delete(`/periods/${periodId}?delete_mode=${deleteMode}`)
 
 export const updateIncomeActual = (periodId, desc, actualamount) =>
   api.patch(`/periods/${periodId}/income/${encodeURIComponent(desc)}`, { actualamount }).then(r => r.data)
@@ -114,6 +121,8 @@ export const updateExpenseNote = (periodId, desc, note) =>
 
 export const updatePeriodInvestmentBudget = (periodId, desc, budgetamount) =>
   api.patch(`/periods/${periodId}/investment/${encodeURIComponent(desc)}/budget`, { budgetamount }).then(r => r.data)
+export const setPeriodInvestmentStatus = (periodId, desc, status, revision_comment = null) =>
+  api.patch(`/periods/${periodId}/investment/${encodeURIComponent(desc)}/status`, { status, revision_comment }).then(r => r.data)
 
 // ── Investment Transactions ───────────────────────────────────────────────────
 export const getInvestmentTransactions = (periodId, desc) =>

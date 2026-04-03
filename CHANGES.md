@@ -17,6 +17,8 @@ Its purpose is to preserve decision-making context so future sessions can unders
 
 For staged budget health metrics direction, also read [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/BUDGET_HEALTH_ADDENDUM.md).
 
+For the detailed budget-cycle lifecycle and close-out plan that informed this session's implementation, read [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/BUDGET_CYCLE_LIFECYCLE_PLAN.md).
+
 ## How To Use This File
 
 - Read this alongside `README.md` before proposing major changes.
@@ -40,6 +42,154 @@ Important product flavor and direction:
 - Workflow-driven design is preferred over isolated screens when the user is completing a setup process.
 - Metaphorical naming ideas such as `Book` and `Chapter` have appeal, but are not yet adopted.
 - Existing backend/API naming should remain stable unless there is a strong reason to change it.
+
+## Latest Session: Budget Cycle Lifecycle Foundation
+
+This session focused on turning period management into a more explicit budget-cycle workflow.
+
+Important user-facing direction now in place:
+
+- the UI is increasingly using `Budget Cycle` language where it improves clarity
+- the periods summary page now uses `Details` rather than `Open`
+- the period column itself now links into the detail view
+- cycle close-out is now treated as a first-class workflow rather than an implied end-date state
+
+Important implementation direction now in place:
+
+- lifecycle is now modeled explicitly with `PLANNED`, `ACTIVE`, and `CLOSED`
+- `islocked` remains a separate manual budget-edit lock and should not be treated as a lifecycle substitute
+- close-out is the event that freezes a cycle for ordinary workflow use
+- historical health and close-out context should be preserved as point-in-time snapshot data
+- `Carried Forward` is a reserved system-managed income line, not a normal reusable income type
+- delete protection now prefers guided options over generic rejection when continuity is at stake
+
+### 1. Budget cycles now have explicit persisted lifecycle state
+
+Financial periods now carry explicit lifecycle meaning rather than relying only on date-based grouping.
+
+Current rule:
+
+- cycles are modeled as `PLANNED`, `ACTIVE`, or `CLOSED`
+- only one cycle should be `ACTIVE` for a budget
+- `CLOSED` cycles are treated as historical and read-only through normal workflow paths
+
+Important product meaning:
+
+- cycle state is now part of the budgeting workflow, not just a display grouping
+- close-out and future activation can now be reasoned about explicitly
+
+### 2. Close-out snapshot data now exists as a dedicated historical record
+
+Close-out data is not stored only as loose fields on the cycle itself.
+
+Current design:
+
+- core lifecycle markers stay on `financialperiods`
+- detailed close-out artifact data is stored in a separate one-to-one snapshot record
+
+Snapshot direction now includes:
+
+- comments and observations
+- goals for the next cycle
+- carry-forward result
+- health snapshot JSON
+- totals snapshot JSON
+
+Important product meaning:
+
+- historical close-out review should show what the user saw at close time, not whatever current calculations would produce later
+
+### 3. Investment lines now mirror expense lifecycle behavior
+
+Investment lines were extended to follow the same workflow model already established for expenses.
+
+Current behavior:
+
+- investments can be `Current`, `Paid`, or `Revised`
+- paid investments are treated as finalized
+- revising a paid investment requires a comment
+- close-out finalizes remaining open investment lines
+
+Important product meaning:
+
+- users now have one mental model for finalizing outflows across both expenses and investments
+
+### 4. Budget-side totals now treat paid investments as finalized at actual amount
+
+This mirrors the previously established expense rule.
+
+Current rule:
+
+- `Current` and `Revised` investments contribute their `budgeted_amount` to budget-side totals
+- `Paid` investments contribute their `actualamount`
+
+This affects:
+
+- period detail totals
+- period surplus calculations
+- budget health calculations
+- close-out previews
+
+### 5. Carry-forward now has a concrete planning representation
+
+Closing a cycle can now populate the next cycle with a system-managed `Carried Forward` income line.
+
+Current rule:
+
+- `Carried Forward` is populated in `budgetamount`
+- actuals for that line remain user-entered later if needed
+- the line should be protected from ordinary rename or delete paths
+
+Important design constraint:
+
+- carry-forward recalculation and opening-balance rebasing must be kept in sync so continuity does not drift
+
+### 6. Guided delete behavior now protects continuity
+
+Period deletion is no longer just a yes or no validation.
+
+Current direction:
+
+- `CLOSED` cycles should not be deletable
+- `ACTIVE` cycles may be deletable only when they have no actuals or ledger-backed activity
+- when deleting a cycle in the middle of the remaining chain would create a gap, the supported guided action is `Delete this and all upcoming cycles`
+
+Important product meaning:
+
+- continuity matters more than preserving a one-click delete path
+- regeneration after deletion is preferred over leaving ambiguous chain state behind
+
+### 7. Manual cycle locking is now a distinct budget setting
+
+Locking and lifecycle are now separated more clearly.
+
+Current rule:
+
+- locking is a user-protection feature to avoid accidental budget-structure edits
+- closing is the lifecycle event that freezes a cycle historically
+
+Current lock intent:
+
+- lock adding new income, expense, or investment lines
+- lock editing budget amounts
+- do not use lock state as a substitute for close-out state
+
+### 8. Close-out now becomes a budget-health data source
+
+Budget health is still primarily a live computed feature, but closed cycles now preserve the health payload shown at close time.
+
+Important implication:
+
+- later changes to personalisation settings should not rewrite the close-out story for historical cycles
+
+### 9. Startup schema evolution is again handling current lifecycle additions
+
+Although a previous cleanup removed broader startup migration processes, the current state now includes targeted startup schema evolution for the new lifecycle and snapshot-related columns.
+
+Current implication:
+
+- the app still needs a proper versioned migration strategy
+- future sessions should treat startup `ALTER TABLE` behavior as transitional, not a finished long-term design
 
 ## Key Functional Changes
 

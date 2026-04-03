@@ -4,6 +4,28 @@ from decimal import Decimal
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
+from ..budget_health import _build_current_period_check, _current_period_totals
+from ..cycle_constants import (
+    ACTIVE,
+    CARRIED_FORWARD_DESC,
+    CARRIED_FORWARD_SYSTEM_KEY,
+    CLOSED,
+    PAID,
+    PLANNED,
+    REVISED,
+    WORKING,
+)
+from ..cycle_management import (
+    assign_period_lifecycle_states,
+    build_closeout_preview,
+    close_cycle,
+    cycle_status,
+    has_cycle_actuals,
+    has_cycle_transactions,
+    next_period_for,
+    ordered_budget_periods,
+    recalculate_budget_chain,
+)
 from ..database import get_db
 from ..models import (
     Budget, FinancialPeriod, IncomeType,
@@ -19,6 +41,8 @@ from ..schemas import (
     SavingsTransferRequest,
     PeriodBalanceOut, PeriodExpenseReorderRequest, PeriodInvestmentOut,
     PeriodExpenseStatusUpdate, PeriodExpenseBudgetUpdate, PeriodExpenseNoteUpdate,
+    PeriodCloseoutPreviewOut, PeriodCloseoutRequest, PeriodDeleteOptionsOut,
+    PeriodInvestmentStatusUpdate,
 )
 from ..period_logic import calc_period_end, periods_overlap, expense_occurs_in_period
 from ..time_utils import app_now_naive
@@ -39,9 +63,25 @@ def _assert_unlocked(period: FinancialPeriod) -> None:
         raise HTTPException(423, "Period is locked — unlock it before making changes")
 
 
+def _assert_not_closed(period: FinancialPeriod) -> None:
+    if cycle_status(period) == CLOSED:
+        raise HTTPException(423, "Budget cycle is closed — corrections must be handled through reconciliation")
+
+
+def _assert_budget_editable(period: FinancialPeriod, budget: Budget) -> None:
+    _assert_not_closed(period)
+    if budget.allow_cycle_lock and period.islocked:
+        raise HTTPException(423, "Budget cycle is locked — unlock it before changing budget structure")
+
+
 def _assert_expense_not_paid(pe: PeriodExpense) -> None:
-    if (getattr(pe, "status", "Current") or "Current") == "Paid":
+    if (getattr(pe, "status", WORKING) or WORKING) == PAID:
         raise HTTPException(423, "Expense is marked Paid — revise it before making changes")
+
+
+def _assert_investment_not_paid(pi: PeriodInvestment) -> None:
+    if (getattr(pi, "status", WORKING) or WORKING) == PAID:
+        raise HTTPException(423, "Investment is marked Paid — revise it before making changes")
 
 
 def _enrich_expenses(expenses: list[PeriodExpense], db: Session) -> list[PeriodExpenseOut]:
@@ -56,9 +96,9 @@ def _enrich_expenses(expenses: list[PeriodExpense], db: Session) -> list[PeriodE
             d.paytype = ei.paytype
             d.effectivedate = ei.effectivedate
         # remaining_amount: 0 when Paid, else budget - actual
-        status = getattr(pe, 'status', 'Current') or 'Current'
+        status = getattr(pe, 'status', WORKING) or WORKING
         d.status = status
-        if status == 'Paid':
+        if status == PAID:
             d.remaining_amount = Decimal("0")
         else:
             d.remaining_amount = Decimal(str(pe.budgetamount)) - Decimal(str(pe.actualamount))
@@ -75,15 +115,20 @@ def _enrich_investments(investments: list, db) -> list[PeriodInvestmentOut]:
         d = PeriodInvestmentOut.model_validate(pi)
         if ii:
             d.linked_account_desc = ii.linked_account_desc
-        d.remaining_amount = Decimal(str(pi.budgeted_amount)) - Decimal(str(pi.actualamount))
+        d.status = getattr(pi, "status", WORKING) or WORKING
+        if d.status == PAID:
+            d.remaining_amount = Decimal("0")
+        else:
+            d.remaining_amount = Decimal(str(pi.budgeted_amount)) - Decimal(str(pi.actualamount))
         out.append(d)
     return out
 
 
 def _period_status(period: FinancialPeriod, now: datetime) -> str:
-    if period.startdate <= now <= period.enddate:
+    status = cycle_status(period)
+    if status == ACTIVE:
         return "Current"
-    if period.startdate > now:
+    if status == PLANNED:
         return "Future"
     return "Historical"
 
@@ -176,6 +221,7 @@ def generate_period(payload: PeriodGenerateRequest, db: Session = Depends(get_db
             enddate=current_end,
             budgetowner=budget.budgetowner,
             islocked=False,
+            cycle_status=PLANNED,
         )
         db.add(period)
         db.flush()
@@ -221,7 +267,7 @@ def generate_period(payload: PeriodGenerateRequest, db: Session = Depends(get_db
                     is_oneoff=False,
                     sort_order=ei.sort_order,
                     revision_snapshot=ei.revisionnum,
-                    status='Current',
+                    status=WORKING,
                 ))
 
         # Find the period immediately before current_start (includes ones flushed earlier)
@@ -274,11 +320,15 @@ def generate_period(payload: PeriodGenerateRequest, db: Session = Depends(get_db
                 closing_value=opening,
                 budgeted_amount=budgeted_amount,
                 actualamount=Decimal("0.00"),
+                status=WORKING,
             ))
 
         last_period = period
         current_start = current_end + timedelta(days=1)
 
+    db.commit()
+    assign_period_lifecycle_states(payload.budgetid, db)
+    recalculate_budget_chain(payload.budgetid, db)
     db.commit()
     db.refresh(last_period)
     return last_period
@@ -352,24 +402,41 @@ def list_period_summaries_for_budget(budgetid: int, db: Session = Depends(get_db
         income_budget = sum((Decimal(str(row.budgetamount or 0)) for row in incomes), Decimal("0.00"))
         income_actual = sum((Decimal(str(row.actualamount or 0)) for row in incomes), Decimal("0.00"))
         expense_budget = sum((
-            Decimal(str(row.actualamount if (getattr(row, "status", "Current") or "Current") == "Paid" else row.budgetamount or 0))
+            Decimal(str(row.actualamount if (getattr(row, "status", WORKING) or WORKING) == PAID else row.budgetamount or 0))
             for row in expenses
         ), Decimal("0.00"))
         expense_actual = sum((Decimal(str(row.actualamount or 0)) for row in expenses), Decimal("0.00"))
-        investment_budget = sum((Decimal(str(row.budgeted_amount or 0)) for row in investments), Decimal("0.00"))
+        investment_budget = sum((
+            Decimal(str(row.actualamount if (getattr(row, "status", WORKING) or WORKING) == PAID else row.budgeted_amount or 0))
+            for row in investments
+        ), Decimal("0.00"))
         investment_actual = sum((Decimal(str(row.actualamount or 0)) for row in investments), Decimal("0.00"))
 
         savings_budget = investment_budget
         savings_actual = investment_actual
 
         period_status = _period_status(period, now)
-        can_delete = (
-            period_status == "Future"
-            and not period.islocked
-            and income_actual == Decimal("0.00")
-            and expense_actual == Decimal("0.00")
-            and investment_actual == Decimal("0.00")
+        later_periods = [candidate for candidate in periods if candidate.startdate > period.startdate]
+        single_delete_allowed = (
+            cycle_status(period) != CLOSED
+            and not later_periods
+            and not has_cycle_actuals(period.finperiodid, db)
+            and not has_cycle_transactions(period.finperiodid, db)
         )
+        future_chain_allowed = (
+            cycle_status(period) != CLOSED
+            and all(
+                not has_cycle_actuals(candidate.finperiodid, db) and not has_cycle_transactions(candidate.finperiodid, db)
+                for candidate in [period, *later_periods]
+            )
+        )
+        can_delete = single_delete_allowed or future_chain_allowed
+        delete_mode = "single" if single_delete_allowed else ("future_chain" if future_chain_allowed else None)
+        delete_reason = None
+        if not can_delete:
+            delete_reason = "Cycles with actuals, transactions, or closed history cannot be deleted."
+        elif delete_mode == "future_chain":
+            delete_reason = "Deleting this cycle requires deleting it and all upcoming cycles to preserve continuity."
 
         cumulative_projected_savings += _projected_savings(period_status, savings_budget, savings_actual)
 
@@ -383,9 +450,11 @@ def list_period_summaries_for_budget(budgetid: int, db: Session = Depends(get_db
             investment_budget=investment_budget,
             investment_actual=investment_actual,
             surplus_budget=income_budget - expense_budget - investment_budget,
-            surplus_actual=income_actual - expense_actual,
+            surplus_actual=income_actual - expense_actual - investment_actual,
             projected_savings=cumulative_projected_savings,
             can_delete=can_delete,
+            delete_mode=delete_mode,
+            delete_reason=delete_reason,
         ))
 
     return summaries
@@ -419,6 +488,7 @@ def get_period_detail(finperiodid: int, db: Session = Depends(get_db)):
         expenses=_enrich_expenses(expenses, db),
         investments=_enrich_investments(investments, db),
         balances=enriched_balances,
+        closeout_snapshot=period.closeout_snapshot,
     )
 
 
@@ -427,6 +497,11 @@ def get_period_detail(finperiodid: int, db: Session = Depends(get_db)):
 @router.patch("/{finperiodid}/lock", response_model=PeriodOut)
 def set_period_lock(finperiodid: int, payload: PeriodLockRequest, db: Session = Depends(get_db)):
     period = _get_period_or_404(finperiodid, db)
+    budget = db.get(Budget, period.budgetid)
+    if cycle_status(period) == CLOSED:
+        raise HTTPException(423, "Closed cycles cannot be unlocked")
+    if not budget.allow_cycle_lock:
+        raise HTTPException(409, "Manual cycle locking is disabled for this budget")
     period.islocked = payload.islocked
     db.commit()
     db.refresh(period)
@@ -443,6 +518,7 @@ def update_income_actual(
     db: Session = Depends(get_db),
 ):
     period = _get_period_or_404(finperiodid, db)
+    _assert_not_closed(period)
     pi = db.get(PeriodIncome, (finperiodid, incomedesc))
     if not pi:
         raise HTTPException(404, "Period income entry not found")
@@ -474,6 +550,7 @@ def add_income_actual(
     db: Session = Depends(get_db),
 ):
     period = _get_period_or_404(finperiodid, db)
+    _assert_not_closed(period)
     pi = db.get(PeriodIncome, (finperiodid, incomedesc))
     if not pi:
         raise HTTPException(404, "Period income entry not found")
@@ -503,6 +580,7 @@ def update_expense_actual(
     db: Session = Depends(get_db),
 ):
     period = _get_period_or_404(finperiodid, db)
+    _assert_not_closed(period)
     pe = (
         db.query(PeriodExpense)
         .filter(
@@ -542,6 +620,7 @@ def add_expense_actual(
     db: Session = Depends(get_db),
 ):
     period = _get_period_or_404(finperiodid, db)
+    _assert_not_closed(period)
     pe = (
         db.query(PeriodExpense)
         .filter(
@@ -578,7 +657,8 @@ def add_expense_to_period(
     db: Session = Depends(get_db),
 ):
     period = _get_period_or_404(finperiodid, db)
-    _assert_unlocked(period)
+    budget = db.get(Budget, period.budgetid)
+    _assert_budget_editable(period, budget)
 
     ei = db.get(ExpenseItem, (payload.budgetid, payload.expensedesc))
     if not ei:
@@ -606,7 +686,7 @@ def add_expense_to_period(
         actualamount=Decimal("0.00"),
         varianceamount=Decimal("0.00"),
         is_oneoff=is_oneoff,
-        status='Current',
+        status=WORKING,
     )
     db.add(pe)
 
@@ -653,6 +733,7 @@ def add_expense_to_period(
                     actualamount=Decimal("0.00"),
                     varianceamount=Decimal("0.00"),
                     is_oneoff=False,
+                    status=WORKING,
                 ))
 
     db.commit()
@@ -669,11 +750,14 @@ def add_income_to_period(
     db: Session = Depends(get_db),
 ):
     period = _get_period_or_404(finperiodid, db)
-    _assert_unlocked(period)
+    budget = db.get(Budget, period.budgetid)
+    _assert_budget_editable(period, budget)
 
     it = db.get(IncomeType, (payload.budgetid, payload.incomedesc))
     if not it:
         raise HTTPException(404, "Income type not found")
+    if payload.incomedesc == CARRIED_FORWARD_DESC:
+        raise HTTPException(409, "Carried Forward is a system-managed income line")
 
     existing = db.get(PeriodIncome, (finperiodid, payload.incomedesc))
     if existing:
@@ -729,7 +813,7 @@ def savings_transfer(
     db: Session = Depends(get_db),
 ):
     period = _get_period_or_404(finperiodid, db)
-    _assert_unlocked(period)
+    _assert_not_closed(period)
 
     bt = db.get(BalanceType, (payload.budgetid, payload.balancedesc))
     if not bt:
@@ -763,50 +847,64 @@ def savings_transfer(
 
 # ── Delete period ─────────────────────────────────────────────────────────────
 
+@router.get("/{finperiodid}/delete-options", response_model=PeriodDeleteOptionsOut)
+def get_period_delete_options(finperiodid: int, db: Session = Depends(get_db)):
+    period = _get_period_or_404(finperiodid, db)
+    periods = ordered_budget_periods(period.budgetid, db)
+    later_periods = [candidate for candidate in periods if candidate.startdate > period.startdate]
+    single_delete_allowed = (
+        cycle_status(period) != CLOSED
+        and not later_periods
+        and not has_cycle_actuals(finperiodid, db)
+        and not has_cycle_transactions(finperiodid, db)
+    )
+    future_chain_allowed = (
+        cycle_status(period) != CLOSED
+        and all(
+            not has_cycle_actuals(candidate.finperiodid, db) and not has_cycle_transactions(candidate.finperiodid, db)
+            for candidate in [period, *later_periods]
+        )
+    )
+    reason = None
+    if cycle_status(period) == CLOSED:
+        reason = "Closed cycles cannot be deleted."
+    elif not future_chain_allowed:
+        reason = "Cycles with actuals or transactions cannot be deleted."
+    elif not single_delete_allowed:
+        reason = "Delete this cycle and all upcoming cycles to preserve continuity."
+    return PeriodDeleteOptionsOut(
+        can_delete_single=single_delete_allowed,
+        can_delete_future_chain=future_chain_allowed,
+        future_chain_count=len(later_periods) + 1,
+        delete_reason=reason,
+        cycle_status=cycle_status(period),
+    )
+
+
 @router.delete("/{finperiodid}", status_code=204)
 def delete_period(
     finperiodid: int,
-    force: bool = Query(False),
+    delete_mode: str = Query("single"),
     db: Session = Depends(get_db),
 ):
     period = _get_period_or_404(finperiodid, db)
-    _assert_unlocked(period)
+    _assert_not_closed(period)
+    options = get_period_delete_options(finperiodid, db)
+    periods = ordered_budget_periods(period.budgetid, db)
+    targets = [candidate for candidate in periods if candidate.startdate >= period.startdate] if delete_mode == "future_chain" else [period]
 
-    if _period_status(period, app_now_naive()) != "Future":
-        raise HTTPException(409, "Only future periods can be deleted")
+    if delete_mode == "single" and not options.can_delete_single:
+        raise HTTPException(409, options.delete_reason or "This cycle cannot be deleted on its own.")
+    if delete_mode == "future_chain" and not options.can_delete_future_chain:
+        raise HTTPException(409, options.delete_reason or "This cycle chain cannot be deleted.")
+    if delete_mode not in {"single", "future_chain"}:
+        raise HTTPException(422, "delete_mode must be 'single' or 'future_chain'")
 
-    if not force:
-        has_expense_actuals = (
-            db.query(PeriodExpense)
-            .filter(
-                PeriodExpense.finperiodid == finperiodid,
-                PeriodExpense.actualamount != 0,
-            )
-            .first()
-        )
-        has_income_actuals = (
-            db.query(PeriodIncome)
-            .filter(
-                PeriodIncome.finperiodid == finperiodid,
-                PeriodIncome.actualamount != 0,
-            )
-            .first()
-        )
-        has_investment_actuals = (
-            db.query(PeriodInvestment)
-            .filter(
-                PeriodInvestment.finperiodid == finperiodid,
-                PeriodInvestment.actualamount != 0,
-            )
-            .first()
-        )
-        if has_expense_actuals or has_income_actuals or has_investment_actuals:
-            raise HTTPException(
-                409,
-                "Period has recorded actual values. Pass ?force=true to delete anyway."
-            )
-
-    db.delete(period)
+    for target in targets:
+        db.delete(target)
+    db.commit()
+    assign_period_lifecycle_states(period.budgetid, db)
+    recalculate_budget_chain(period.budgetid, db)
     db.commit()
 
 
@@ -820,11 +918,11 @@ def set_expense_status(
     db: Session = Depends(get_db),
 ):
     period = _get_period_or_404(finperiodid, db)
-    _assert_unlocked(period)
-    allowed = {'Current', 'Paid', 'Revised'}
+    _assert_not_closed(period)
+    allowed = {WORKING, PAID, REVISED}
     if payload.status not in allowed:
         raise HTTPException(422, f"status must be one of {allowed}")
-    if payload.status == 'Revised' and not (payload.revision_comment or '').strip():
+    if payload.status == REVISED and not (payload.revision_comment or '').strip():
         raise HTTPException(422, "revision_comment is required when revising a paid expense")
     pe = (
         db.query(PeriodExpense)
@@ -833,16 +931,20 @@ def set_expense_status(
     )
     if not pe:
         raise HTTPException(404, "Period expense not found")
-    current_status = getattr(pe, 'status', 'Current') or 'Current'
-    if current_status != 'Paid' and payload.status == 'Revised':
+    current_status = getattr(pe, 'status', WORKING) or WORKING
+    if current_status != PAID and payload.status == REVISED:
         raise HTTPException(409, "Only paid expenses can be revised")
-    if current_status == 'Paid' and payload.status == 'Current':
+    if current_status == PAID and payload.status == WORKING:
         raise HTTPException(409, "Paid expenses must be revised before returning to Current")
-    if current_status == 'Revised' and payload.status == 'Current':
+    if current_status == REVISED and payload.status == WORKING:
         raise HTTPException(409, "Revised expenses must be marked Paid when edits are complete")
     pe.status = payload.status
-    if payload.status == 'Revised':
+    if payload.status == REVISED:
         pe.revision_comment = payload.revision_comment.strip()
+    elif payload.status == PAID:
+        pe.revision_comment = pe.revision_comment
+    else:
+        pe.revision_comment = None
     db.commit()
     db.refresh(pe)
     return _enrich_expenses([pe], db)[0]
@@ -858,7 +960,8 @@ def update_expense_budget(
     db: Session = Depends(get_db),
 ):
     period = _get_period_or_404(finperiodid, db)
-    _assert_unlocked(period)
+    budget = db.get(Budget, period.budgetid)
+    _assert_budget_editable(period, budget)
     pe = (
         db.query(PeriodExpense)
         .filter(PeriodExpense.finperiodid == finperiodid, PeriodExpense.expensedesc == expensedesc)
@@ -884,7 +987,7 @@ def update_expense_note(
     db: Session = Depends(get_db),
 ):
     period = _get_period_or_404(finperiodid, db)
-    _assert_unlocked(period)
+    _assert_not_closed(period)
     pe = (
         db.query(PeriodExpense)
         .filter(PeriodExpense.finperiodid == finperiodid, PeriodExpense.expensedesc == expensedesc)
@@ -908,10 +1011,13 @@ def remove_income_from_period(
     db: Session = Depends(get_db),
 ):
     period = _get_period_or_404(finperiodid, db)
-    _assert_unlocked(period)
+    budget = db.get(Budget, period.budgetid)
+    _assert_budget_editable(period, budget)
     pi = db.get(PeriodIncome, (finperiodid, incomedesc))
     if not pi:
         raise HTTPException(404, "Period income entry not found")
+    if pi.system_key == CARRIED_FORWARD_SYSTEM_KEY:
+        raise HTTPException(409, "System-managed carried forward income cannot be removed")
     if Decimal(str(pi.actualamount)) != Decimal("0"):
         raise HTTPException(409, "Cannot remove income with recorded actuals")
     db.delete(pi)
@@ -927,7 +1033,8 @@ def remove_expense_from_period(
     db: Session = Depends(get_db),
 ):
     period = _get_period_or_404(finperiodid, db)
-    _assert_unlocked(period)
+    budget = db.get(Budget, period.budgetid)
+    _assert_budget_editable(period, budget)
     pe = (
         db.query(PeriodExpense)
         .filter(PeriodExpense.finperiodid == finperiodid, PeriodExpense.expensedesc == expensedesc)
@@ -952,14 +1059,83 @@ def update_investment_budget(
     db: Session = Depends(get_db),
 ):
     period = _get_period_or_404(finperiodid, db)
-    _assert_unlocked(period)
+    budget = db.get(Budget, period.budgetid)
+    _assert_budget_editable(period, budget)
     pi = db.get(PeriodInvestment, (finperiodid, investmentdesc))
     if not pi:
         raise HTTPException(404, "Period investment not found")
+    _assert_investment_not_paid(pi)
     pi.budgeted_amount = payload.budgetamount
     db.commit()
     db.refresh(pi)
     return _enrich_investments([pi], db)[0]
+
+
+@router.patch("/{finperiodid}/investment/{investmentdesc}/status", response_model=PeriodInvestmentOut)
+def set_investment_status(
+    finperiodid: int,
+    investmentdesc: str,
+    payload: PeriodInvestmentStatusUpdate,
+    db: Session = Depends(get_db),
+):
+    period = _get_period_or_404(finperiodid, db)
+    _assert_not_closed(period)
+    allowed = {WORKING, PAID, REVISED}
+    if payload.status not in allowed:
+        raise HTTPException(422, f"status must be one of {allowed}")
+    if payload.status == REVISED and not (payload.revision_comment or "").strip():
+        raise HTTPException(422, "revision_comment is required when revising a paid investment")
+
+    pi = db.get(PeriodInvestment, (finperiodid, investmentdesc))
+    if not pi:
+        raise HTTPException(404, "Period investment not found")
+
+    current_status = getattr(pi, "status", WORKING) or WORKING
+    if current_status != PAID and payload.status == REVISED:
+        raise HTTPException(409, "Only paid investments can be revised")
+    if current_status == PAID and payload.status == WORKING:
+        raise HTTPException(409, "Paid investments must be revised before returning to Current")
+    if current_status == REVISED and payload.status == WORKING:
+        raise HTTPException(409, "Revised investments must be marked Paid when edits are complete")
+
+    pi.status = payload.status
+    if payload.status == REVISED:
+        pi.revision_comment = payload.revision_comment.strip()
+    elif payload.status == WORKING:
+        pi.revision_comment = None
+
+    db.commit()
+    db.refresh(pi)
+    return _enrich_investments([pi], db)[0]
+
+
+@router.get("/{finperiodid}/closeout-preview", response_model=PeriodCloseoutPreviewOut)
+def get_closeout_preview(finperiodid: int, db: Session = Depends(get_db)):
+    period = _get_period_or_404(finperiodid, db)
+    budget = db.get(Budget, period.budgetid)
+    if cycle_status(period) != ACTIVE:
+        raise HTTPException(409, "Only the active cycle can be closed")
+    preview = build_closeout_preview(period, budget, db)
+    return PeriodCloseoutPreviewOut(**preview)
+
+
+@router.post("/{finperiodid}/closeout", response_model=PeriodDetailOut)
+def close_out_period(
+    finperiodid: int,
+    payload: PeriodCloseoutRequest,
+    db: Session = Depends(get_db),
+):
+    period = _get_period_or_404(finperiodid, db)
+    budget = db.get(Budget, period.budgetid)
+    if cycle_status(period) != ACTIVE:
+        raise HTTPException(409, "Only the active cycle can be closed")
+    try:
+        close_cycle(period, budget, payload.comments, payload.goals, payload.create_next_cycle, db)
+    except ValueError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    db.commit()
+    db.refresh(period)
+    return get_period_detail(finperiodid, db)
 
 
 # ── Reorder expenses in a period ──────────────────────────────────────────────
@@ -970,7 +1146,9 @@ def reorder_period_expenses(
     payload: PeriodExpenseReorderRequest,
     db: Session = Depends(get_db),
 ):
-    _get_period_or_404(finperiodid, db)
+    period = _get_period_or_404(finperiodid, db)
+    budget = db.get(Budget, period.budgetid)
+    _assert_budget_editable(period, budget)
     for item in payload.items:
         pe = (
             db.query(PeriodExpense)

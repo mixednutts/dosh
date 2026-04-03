@@ -4,6 +4,7 @@ from decimal import Decimal, ROUND_HALF_UP
 
 from sqlalchemy.orm import Session, selectinload
 
+from .cycle_constants import ACTIVE, CLOSED, PLANNED
 from .models import Budget, ExpenseItem, FinancialPeriod, IncomeType
 from .time_utils import app_now, app_now_naive
 
@@ -74,17 +75,19 @@ def _health_status(score: int) -> str:
 
 
 def _current_future_historical(periods: list[FinancialPeriod]) -> tuple[list[FinancialPeriod], list[FinancialPeriod], list[FinancialPeriod]]:
-    now = app_now_naive()
-    current = [period for period in periods if period.startdate <= now <= period.enddate]
-    future = [period for period in periods if period.startdate > now]
-    historical = [period for period in periods if period.enddate < now]
+    current = [period for period in periods if getattr(period, "cycle_status", None) == ACTIVE]
+    future = [period for period in periods if getattr(period, "cycle_status", None) == PLANNED]
+    historical = [period for period in periods if getattr(period, "cycle_status", None) == CLOSED]
     return current, future, historical
 
 
 def _historical_outflow_metrics(period: FinancialPeriod) -> tuple[Decimal, Decimal, Decimal]:
     expense_budget = sum((_to_decimal(expense.budgetamount) for expense in period.period_expenses), Decimal("0"))
     expense_actual = sum((_to_decimal(expense.actualamount) for expense in period.period_expenses), Decimal("0"))
-    investment_budget = sum((_to_decimal(investment.budgeted_amount) for investment in period.period_investments), Decimal("0"))
+    investment_budget = sum((
+        _to_decimal(investment.actualamount if (getattr(investment, "status", "Current") or "Current") == "Paid" else investment.budgeted_amount)
+        for investment in period.period_investments
+    ), Decimal("0"))
     investment_actual = sum((_to_decimal(investment.actualamount) for investment in period.period_investments), Decimal("0"))
     budget_outflow = expense_budget + investment_budget
     actual_outflow = expense_actual + investment_actual
@@ -100,7 +103,10 @@ def _current_period_totals(period: FinancialPeriod) -> dict[str, Decimal]:
         for expense in period.period_expenses
     ), Decimal("0"))
     expense_actual = sum((_to_decimal(expense.actualamount) for expense in period.period_expenses), Decimal("0"))
-    investment_budget = sum((_to_decimal(investment.budgeted_amount) for investment in period.period_investments), Decimal("0"))
+    investment_budget = sum((
+        _to_decimal(investment.actualamount if (getattr(investment, "status", "Current") or "Current") == "Paid" else investment.budgeted_amount)
+        for investment in period.period_investments
+    ), Decimal("0"))
     investment_actual = sum((_to_decimal(investment.actualamount) for investment in period.period_investments), Decimal("0"))
     return {
         "income_budget": income_budget,
@@ -110,7 +116,7 @@ def _current_period_totals(period: FinancialPeriod) -> dict[str, Decimal]:
         "investment_budget": investment_budget,
         "investment_actual": investment_actual,
         "surplus_budget": income_budget - expense_budget - investment_budget,
-        "surplus_actual": income_actual - expense_actual,
+        "surplus_actual": income_actual - expense_actual - investment_actual,
     }
 
 

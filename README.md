@@ -19,6 +19,8 @@ For budget health scoring and roadmap context, also read [BUDGET_HEALTH_ADDENDUM
 
 For a focused view of current and near-term work, read [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/DEVELOPMENT_ACTIVITIES.md).
 
+For the detailed budget-cycle lifecycle and close-out workflow plan that now informs period management, read [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/BUDGET_CYCLE_LIFECYCLE_PLAN.md).
+
 ## Current Repository Layout
 
 ```text
@@ -58,6 +60,9 @@ Implemented areas:
 - Investment item CRUD with primary-line support
 - Balance/account type CRUD
 - Financial period generation, listing, detail view, locking, and deletion
+- Explicit budget cycle lifecycle management with `PLANNED`, `ACTIVE`, and `CLOSED` states
+- Period close-out preview and close-out completion workflow
+- Close-out snapshot storage for historical health and totals
 - Period income updates
 - Period expense updates
 - Expense transaction entries per period expense
@@ -65,8 +70,10 @@ Implemented areas:
 - Period balance viewing and transaction-backed movement details
 - Period investment budget updates
 - Investment transactions per period investment
+- Investment status workflow matching expenses with `Current`, `Paid`, and `Revised`
 - Savings transfer support via period income records
 - Period summary endpoint with cumulative projected savings
+- Guided period deletion options including `delete this and all upcoming cycles`
 
 The API is mounted under `/api`, with a health endpoint at `/api/health`.
 
@@ -91,9 +98,11 @@ Visible pages and flows:
 - viewing existing periods
 - viewing period-level financial summaries
 - viewing cumulative projected savings
-- deleting eligible future periods
+- deleting eligible planned or active periods through guided delete options
 - generating new periods
 - showing period ranges in a fixed two-line format for consistent scanning
+- showing budget-cycle lifecycle state and linking directly to the cycle details from the period column
+- using `Details` rather than `Open` for the primary period action
 - Budget setup page with scrollable sections for:
 - Budget Info
 - Accounts
@@ -112,6 +121,9 @@ Visible pages and flows:
 - Balance movement transaction details
 - Investment budgets
 - Investment transactions
+- investment paid and revised status controls
+- active-cycle close-out preview and completion
+- historical close-out snapshot review for closed cycles
 
 The frontend talks to the backend through `/api` using Axios.
 
@@ -156,12 +168,16 @@ Notes on the model:
 - Period records are generated from budget configuration.
 - Budgets can opt into automatically allocating new-period surplus to a primary investment line.
 - Budgets now also store health personalisation values including expense tolerance, deficit thresholds, revision sensitivity, savings priority, and period criticality preference.
+- Budgets now also store whether manual budget-cycle locking is enabled for structural budget edits.
 - Expense actuals can be tracked either directly or through child transaction entries.
 - A centralized period transaction ledger now exists to support reconciliation and reporting.
-- Budget health is currently computed from existing budget, period, and expense data without additional schema.
+- Budget health is currently computed from existing budget, period, and expense data, and closed cycles now also persist a point-in-time close-out health snapshot.
 - The overall budget health score now includes the dedicated current-period assessment as an explicit weighted input.
 - Balance movement is intended to be explained through transactions rather than edited directly.
-- Investment periods track opening value, closing value, budgeted amount, and actual transaction totals.
+- Financial periods now persist explicit cycle state and closed timestamp.
+- Investment periods track opening value, closing value, budgeted amount, actual transaction totals, and lifecycle status matching expense workflow.
+- Period income rows can now include protected system-managed lines such as `Carried Forward`.
+- A dedicated close-out snapshot table stores comments, goals, carry-forward result, health snapshot data, and totals snapshot data for each closed cycle.
 - Investment items can be marked as the single active primary line for automatic savings allocation.
 - Existing active periods are backfilled where possible so they can reconcile through transactions.
 
@@ -195,9 +211,14 @@ Additional current generation rules:
 
 - If enabled in budget settings, positive starting surplus budget is automatically allocated to the active primary investment line.
 - Period generation now normalizes incoming start dates to avoid timezone-related overlap bugs.
-- Future period deletion is allowed only for unlocked future periods with no recorded actuals.
+- User-facing terminology is now trending toward `budget cycle` while backend naming still uses `period` for stability.
+- The app now treats lifecycle state as explicit persisted data rather than deriving everything from dates alone.
+- There should only ever be one `ACTIVE` cycle for a budget.
+- `CLOSED` cycles are intended to be read-only from normal workflow paths.
+- Closing a cycle can create or update a protected `Carried Forward` income line in the next cycle using budget-side values only.
+- Guided deletion can require deleting a selected cycle and all upcoming cycles in order to preserve continuity.
 - Period status and budget health evaluation now use the app timezone rather than UTC-only runtime defaults.
-- There should only ever be one `Current` period for a budget; overflow handling is only relevant to `Future` and `Historical` groupings.
+- There should only ever be one user-facing current cycle for a budget; overflow handling is only relevant to future and historical groupings.
 
 ## Current Navigation And Visual Direction
 
@@ -238,6 +259,7 @@ Current terminology guidance:
 
 - Use `Savings` for the user-facing idea of setting money aside.
 - Use `Investment` for the technical record type and setup area already established in the codebase.
+- Use `Budget Cycle` in the UI where that wording makes the workflow clearer, while preserving backend `period` naming unless a stronger reason emerges.
 - Use `Primary investment line` when referring to the destination for automatic surplus allocation.
 - In budget health wording, be explicit when the value being assessed is deficit rather than positive surplus.
 

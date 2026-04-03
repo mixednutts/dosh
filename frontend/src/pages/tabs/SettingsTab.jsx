@@ -20,8 +20,8 @@ export default function SettingsTab({ budgetId, budget }) {
     },
   })
 
-  const handleToggle = checked => {
-    saveSettings.mutate({ auto_add_surplus_to_investment: checked })
+  const handleToggle = (field, checked) => {
+    saveSettings.mutate({ [field]: checked })
   }
 
   return (
@@ -37,7 +37,7 @@ export default function SettingsTab({ budgetId, budget }) {
             type="checkbox"
             checked={!!budget?.auto_add_surplus_to_investment}
             disabled={saveSettings.isPending}
-            onChange={e => handleToggle(e.target.checked)}
+            onChange={e => handleToggle('auto_add_surplus_to_investment', e.target.checked)}
             className="mt-0.5 rounded border-gray-300 text-dosh-600 focus:ring-dosh-500 dark:border-gray-600"
           />
           <span className="space-y-1">
@@ -68,6 +68,24 @@ export default function SettingsTab({ budgetId, budget }) {
             </span>
             <span className="block text-xs text-gray-500 dark:text-gray-400">
               Set one active investment line as primary to control where this automatic allocation goes.
+            </span>
+          </span>
+        </label>
+
+        <label className="mt-4 flex items-start gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-800/50">
+          <input
+            type="checkbox"
+            checked={budget?.allow_cycle_lock !== false}
+            disabled={saveSettings.isPending}
+            onChange={e => handleToggle('allow_cycle_lock', e.target.checked)}
+            className="mt-0.5 rounded border-gray-300 text-dosh-600 focus:ring-dosh-500 dark:border-gray-600"
+          />
+          <span className="space-y-1">
+            <span className="block font-medium text-gray-900 dark:text-gray-100">
+              Allow manual lock/unlock on budget cycles?
+            </span>
+            <span className="block text-gray-600 dark:text-gray-400">
+              When enabled, locking a cycle protects budgeted amounts and blocks adding or removing income, expense, and investment lines without closing the cycle.
             </span>
           </span>
         </label>

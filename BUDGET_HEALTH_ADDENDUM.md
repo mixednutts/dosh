@@ -12,6 +12,7 @@ Read this alongside:
 
 - [README.md](/home/ubuntu/dosh/README.md)
 - [CHANGES.md](/home/ubuntu/dosh/CHANGES.md)
+- [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/BUDGET_CYCLE_LIFECYCLE_PLAN.md)
 
 ## Phase 1
 
@@ -70,6 +71,7 @@ Planned direction:
 - use revision comments and close-out commentary as richer source data
 - make end-of-period reporting and budget health reinforce each other
 - improve trend logic with clearer before/after comparisons across close-out windows
+- prefer reading historical close-out health from stored snapshots rather than recomputing from current settings
 
 Important note:
 

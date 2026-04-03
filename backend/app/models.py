@@ -1,7 +1,7 @@
 from datetime import datetime as dt
 from sqlalchemy import (
     Boolean, Column, DateTime, ForeignKey, ForeignKeyConstraint, Integer,
-    Numeric, String, UniqueConstraint, func,
+    Numeric, String, Text, UniqueConstraint, func,
 )
 from sqlalchemy.orm import relationship
 from .database import Base
@@ -31,6 +31,7 @@ class Budget(Base):
     revision_sensitivity = Column(Integer, nullable=False, default=50)
     savings_priority = Column(Integer, nullable=False, default=50)
     period_criticality_bias = Column(Integer, nullable=False, default=50)
+    allow_cycle_lock = Column(Boolean, nullable=False, default=True)
 
     periods = relationship("FinancialPeriod", back_populates="budget", cascade="all, delete-orphan")
     income_types = relationship("IncomeType", back_populates="budget", cascade="all, delete-orphan")
@@ -55,6 +56,8 @@ class FinancialPeriod(Base):
     enddate = Column(DateTime, nullable=False)
     budgetowner = Column(String)
     islocked = Column(Boolean, default=False, nullable=False)
+    cycle_status = Column(String, nullable=False, default="PLANNED")
+    closed_at = Column(DateTime, nullable=True)
 
     budget = relationship("Budget", back_populates="periods")
     period_incomes = relationship("PeriodIncome", back_populates="period", cascade="all, delete-orphan")
@@ -62,6 +65,7 @@ class FinancialPeriod(Base):
     period_balances = relationship("PeriodBalance", back_populates="period", cascade="all, delete-orphan")
     period_investments = relationship("PeriodInvestment", back_populates="period", cascade="all, delete-orphan")
     period_transactions = relationship("PeriodTransaction", back_populates="period", cascade="all, delete-orphan")
+    closeout_snapshot = relationship("PeriodCloseoutSnapshot", back_populates="period", uselist=False, cascade="all, delete-orphan")
 
 
 class IncomeType(Base):
@@ -87,6 +91,8 @@ class PeriodIncome(Base):
     budgetamount = Column(Numeric(10, 2), default=0)
     actualamount = Column(Numeric(10, 2), default=0)
     varianceamount = Column(Numeric(10, 2), default=0)
+    is_system = Column(Boolean, nullable=False, default=False)
+    system_key = Column(String, nullable=True)
 
     period = relationship("FinancialPeriod", back_populates="period_incomes")
 
@@ -252,6 +258,8 @@ class PeriodInvestment(Base):
     # budget/actual tracking (like expense items)
     budgeted_amount = Column(Numeric(10, 2), default=0)
     actualamount = Column(Numeric(10, 2), default=0)
+    status = Column(String, default='Current', nullable=False)
+    revision_comment = Column(String, nullable=True)
 
     period = relationship("FinancialPeriod", back_populates="period_investments")
     investment_item = relationship(
@@ -331,3 +339,17 @@ class PeriodTransaction(Base):
         UniqueConstraint("legacy_table", "legacy_id", name="uq_periodtransactions_legacy"),
         UniqueConstraint("dedupe_key", name="uq_periodtransactions_dedupe"),
     )
+
+
+class PeriodCloseoutSnapshot(Base):
+    __tablename__ = "periodcloseouts"
+
+    finperiodid = Column(Integer, ForeignKey("financialperiods.finperiodid"), primary_key=True)
+    comments = Column(Text, nullable=True)
+    goals = Column(Text, nullable=True)
+    carry_forward_amount = Column(Numeric(10, 2), nullable=False, default=0)
+    health_snapshot_json = Column(Text, nullable=False, default="{}")
+    totals_snapshot_json = Column(Text, nullable=False, default="{}")
+    created_at = Column(DateTime, default=dt.utcnow, nullable=False)
+
+    period = relationship("FinancialPeriod", back_populates="closeout_snapshot")

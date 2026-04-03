@@ -43,6 +43,7 @@ class BudgetUpdate(BaseModel):
     revision_sensitivity: Optional[int] = None
     savings_priority: Optional[int] = None
     period_criticality_bias: Optional[int] = None
+    allow_cycle_lock: Optional[bool] = None
 
     @field_validator(
         "acceptable_expense_overrun_pct",
@@ -79,6 +80,7 @@ class BudgetOut(BudgetBase):
     revision_sensitivity: int = 50
     savings_priority: int = 50
     period_criticality_bias: int = 50
+    allow_cycle_lock: bool = True
     model_config = {"from_attributes": True}
 
 
@@ -192,6 +194,8 @@ class PeriodOut(BaseModel):
     enddate: datetime
     budgetowner: Optional[str] = None
     islocked: bool
+    cycle_status: str = "PLANNED"
+    closed_at: Optional[datetime] = None
     model_config = {"from_attributes": True}
 
 
@@ -212,6 +216,16 @@ class PeriodSummaryOut(BaseModel):
     surplus_actual: Decimal = Decimal("0")
     projected_savings: Decimal = Decimal("0")
     can_delete: bool = False
+    delete_mode: Optional[str] = None
+    delete_reason: Optional[str] = None
+
+
+class PeriodDeleteOptionsOut(BaseModel):
+    can_delete_single: bool = False
+    can_delete_future_chain: bool = False
+    future_chain_count: int = 0
+    delete_reason: Optional[str] = None
+    cycle_status: str
 
 
 # ── PeriodIncome ──────────────────────────────────────────────────────────────
@@ -223,6 +237,8 @@ class PeriodIncomeOut(BaseModel):
     budgetamount: Decimal
     actualamount: Decimal
     varianceamount: Decimal
+    is_system: bool = False
+    system_key: Optional[str] = None
     model_config = {"from_attributes": True}
 
 
@@ -353,7 +369,40 @@ class PeriodInvestmentOut(BaseModel):
     actualamount: Decimal = Decimal("0")
     remaining_amount: Decimal = Decimal("0")
     linked_account_desc: Optional[str] = None
+    status: str = "Current"
+    revision_comment: Optional[str] = None
     model_config = {"from_attributes": True}
+
+
+class PeriodInvestmentStatusUpdate(BaseModel):
+    status: str
+    revision_comment: Optional[str] = None
+
+
+class PeriodCloseoutSnapshotOut(BaseModel):
+    comments: Optional[str] = None
+    goals: Optional[str] = None
+    carry_forward_amount: Decimal = Decimal("0")
+    health_snapshot_json: str
+    totals_snapshot_json: str
+    created_at: datetime
+    model_config = {"from_attributes": True}
+
+
+class PeriodCloseoutPreviewOut(BaseModel):
+    period: PeriodOut
+    next_period: Optional[PeriodOut] = None
+    carry_forward_amount: Decimal = Decimal("0")
+    totals: dict
+    health: dict
+    next_cycle_exists: bool = False
+    can_close_early: bool = False
+
+
+class PeriodCloseoutRequest(BaseModel):
+    create_next_cycle: bool = False
+    comments: Optional[str] = None
+    goals: Optional[str] = None
 
 
 # ── PeriodInvestmentTransaction ───────────────────────────────────────────────
@@ -464,6 +513,7 @@ class PeriodDetailOut(BaseModel):
     expenses: list[PeriodExpenseOut]
     investments: list[PeriodInvestmentOut] = []
     balances: list[PeriodBalanceOut] = []
+    closeout_snapshot: Optional[PeriodCloseoutSnapshotOut] = None
 
 
 # ── Budget Health ─────────────────────────────────────────────────────────────
