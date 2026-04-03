@@ -65,6 +65,12 @@ def seed_reference_data():
             "ALTER TABLE balancetypes ADD COLUMN is_primary INTEGER NOT NULL DEFAULT 0",
             "ALTER TABLE periodexpenses ADD COLUMN note VARCHAR",
             "ALTER TABLE budgets ADD COLUMN auto_add_surplus_to_investment INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE budgets ADD COLUMN acceptable_expense_overrun_pct INTEGER NOT NULL DEFAULT 10",
+            "ALTER TABLE budgets ADD COLUMN comfortable_surplus_buffer_pct INTEGER NOT NULL DEFAULT 5",
+            "ALTER TABLE budgets ADD COLUMN maximum_deficit_amount NUMERIC(10,2)",
+            "ALTER TABLE budgets ADD COLUMN revision_sensitivity INTEGER NOT NULL DEFAULT 50",
+            "ALTER TABLE budgets ADD COLUMN savings_priority INTEGER NOT NULL DEFAULT 50",
+            "ALTER TABLE budgets ADD COLUMN period_criticality_bias INTEGER NOT NULL DEFAULT 50",
         ]
         for sql in migrations:
             try:

@@ -37,12 +37,48 @@ class BudgetUpdate(BaseModel):
     budget_frequency: Optional[str] = None
     variance_mode: Optional[str] = None
     auto_add_surplus_to_investment: Optional[bool] = None
+    acceptable_expense_overrun_pct: Optional[int] = None
+    comfortable_surplus_buffer_pct: Optional[int] = None
+    maximum_deficit_amount: Optional[Decimal] = None
+    revision_sensitivity: Optional[int] = None
+    savings_priority: Optional[int] = None
+    period_criticality_bias: Optional[int] = None
+
+    @field_validator(
+        "acceptable_expense_overrun_pct",
+        "comfortable_surplus_buffer_pct",
+        "revision_sensitivity",
+        "savings_priority",
+        "period_criticality_bias",
+    )
+    @classmethod
+    def validate_percentage_preference(cls, v: Optional[int]) -> Optional[int]:
+        if v is None:
+            return v
+        if v < 0 or v > 100:
+            raise ValueError("Personalisation values must be between 0 and 100")
+        return v
+
+    @field_validator("maximum_deficit_amount")
+    @classmethod
+    def validate_maximum_deficit_amount(cls, v: Optional[Decimal]) -> Optional[Decimal]:
+        if v is None:
+            return v
+        if v < 0:
+            raise ValueError("Maximum deficit amount must be 0 or more")
+        return v.quantize(Decimal("0.01"))
 
 
 class BudgetOut(BudgetBase):
     budgetid: int
     variance_mode: str = "always"
     auto_add_surplus_to_investment: bool = False
+    acceptable_expense_overrun_pct: int = 10
+    comfortable_surplus_buffer_pct: int = 5
+    maximum_deficit_amount: Optional[Decimal] = None
+    revision_sensitivity: int = 50
+    savings_priority: int = 50
+    period_criticality_bias: int = 50
     model_config = {"from_attributes": True}
 
 
@@ -457,4 +493,5 @@ class BudgetHealthOut(BaseModel):
     momentum_status: str
     momentum_delta: int = 0
     momentum_summary: str
+    current_period_check: BudgetHealthPillarOut
     pillars: list[BudgetHealthPillarOut]

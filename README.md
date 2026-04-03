@@ -4,7 +4,20 @@ Dosh is a personal finance application with a FastAPI backend and a Create React
 
 This README reflects the repository as it exists now, not the originally intended design.
 
+## Purpose
+
+This document is the main current-state overview for Dosh.
+
+Its purpose is to give future sessions and contributors a reliable snapshot of:
+
+- what the app currently is
+- what features already exist
+- what technical shape the codebase currently has
+- what broader roadmap areas are visible from the repo today
+
 For budget health scoring and roadmap context, also read [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/BUDGET_HEALTH_ADDENDUM.md).
+
+For a focused view of current and near-term work, read [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/DEVELOPMENT_ACTIVITIES.md).
 
 ## Current Repository Layout
 

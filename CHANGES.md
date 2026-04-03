@@ -4,15 +4,18 @@ This document captures the key product and implementation changes made during re
 
 It is intended to complement [README.md](/home/ubuntu/dosh/README.md), not replace it.
 
-For staged budget health metrics direction, also read [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/BUDGET_HEALTH_ADDENDUM.md).
+## Purpose
 
-Use this file in future sessions to understand:
+This document is the running product and implementation history for Dosh.
+
+Its purpose is to preserve decision-making context so future sessions can understand:
 
 - what changed
 - why it changed
 - what constraints or product rules now exist
-- what design direction the project is leaning toward
-- what ideas are intentionally deferred
+- what ideas were intentionally deferred rather than forgotten
+
+For staged budget health metrics direction, also read [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/BUDGET_HEALTH_ADDENDUM.md).
 
 ## How To Use This File
 
@@ -30,6 +33,9 @@ Important product flavor and direction:
 - The app should feel practical and personal, not overly corporate or accounting-heavy.
 - Plain language is preferred over technical shorthand.
   Example: prefer `page layout` over `UI`.
+- User-facing health and warning copy should sound calm, supportive, and practical rather than formal or clinical.
+- Prefer phrasing that sounds like a helpful check-in.
+  Example: `This period is currently planning to spend more than it brings in, so it would be worth taking another look.`
 - Functional clarity comes before visual polish.
 - Workflow-driven design is preferred over isolated screens when the user is completing a setup process.
 - Metaphorical naming ideas such as `Book` and `Chapter` have appeal, but are not yet adopted.

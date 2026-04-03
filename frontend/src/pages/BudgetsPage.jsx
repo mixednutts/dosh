@@ -3,7 +3,7 @@ import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/rea
 import { Link, useNavigate } from 'react-router-dom'
 import { ArrowTrendingDownIcon, ArrowTrendingUpIcon, MinusIcon, PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline'
 import { differenceInCalendarDays, format, isWithinInterval, parseISO } from 'date-fns'
-import { getBudgets, createBudget, updateBudget, deleteBudget, getPeriodsForBudget, getBudgetHealth } from '../api/client'
+import { getBudgets, createBudget, deleteBudget, getPeriodsForBudget, getBudgetHealth } from '../api/client'
 import Modal from '../components/Modal'
 import Spinner from '../components/Spinner'
 
@@ -15,6 +15,12 @@ function healthDotClass(status) {
   if (status === 'Strong') return 'bg-dosh-500'
   if (status === 'Watch') return 'bg-amber-400'
   return 'bg-red-500'
+}
+
+function healthToneClass(status) {
+  if (status === 'Strong') return 'text-dosh-700 dark:text-dosh-300'
+  if (status === 'Watch') return 'text-amber-700 dark:text-amber-300'
+  return 'text-red-700 dark:text-red-300'
 }
 
 function healthCircleClass(status) {
@@ -38,6 +44,12 @@ function MomentumIcon({ status }) {
 function formatMomentumDelta(value) {
   if (!value) return '0'
   return value > 0 ? `+${value}` : `${value}`
+}
+
+function healthStatusLabel(status) {
+  if (status === 'Strong') return 'Tracking ok'
+  if (status === 'Watch') return 'Check now'
+  return 'Action needed'
 }
 
 function groupPeriods(periods) {
@@ -73,7 +85,36 @@ function formatPeriodRange(period) {
   return `${format(parseISO(period.startdate), 'dd MMM yy')} - ${format(parseISO(period.enddate), 'dd MMM yy')}`
 }
 
-function BudgetStats({ periods = [], health, onOpenHealth }) {
+function TrafficLight({ status }) {
+  const lights = [
+    { key: 'Strong', label: 'Green' },
+    { key: 'Watch', label: 'Amber' },
+    { key: 'Needs Attention', label: 'Red' },
+  ]
+
+  return (
+    <div className="inline-flex items-center gap-3 rounded-full border border-gray-200 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-900">
+      <div className="flex items-center gap-2">
+        {lights.map(light => (
+          <span
+            key={light.key}
+            title={light.label}
+            className={`h-3.5 w-3.5 rounded-full border ${
+              status === light.key
+                ? `${healthDotClass(light.key)} border-transparent shadow-sm`
+                : 'border-gray-300 bg-gray-200 dark:border-gray-600 dark:bg-gray-700'
+            }`}
+          />
+        ))}
+      </div>
+      <span className={`text-xs font-semibold uppercase tracking-wide ${healthToneClass(status)}`}>
+        {healthStatusLabel(status)}
+      </span>
+    </div>
+  )
+}
+
+function BudgetStats({ periods = [], health, onOpenHealth, onOpenCurrentPeriodCheck }) {
   const grouped = useMemo(() => groupPeriods(periods), [periods])
   const currentPeriod = grouped.current[0] ?? null
   const daysRemaining = currentPeriod
@@ -85,11 +126,6 @@ function BudgetStats({ periods = [], health, onOpenHealth }) {
       label: 'Current Period',
       value: currentPeriod ? formatPeriodRange(currentPeriod) : 'No active period',
       detail: currentPeriod ? `${daysRemaining} day${daysRemaining === 1 ? '' : 's'} remaining` : 'Generate a period to begin tracking',
-    },
-    {
-      label: 'Current',
-      value: grouped.current.length,
-      detail: grouped.current.length === 1 ? 'active period' : 'active periods',
     },
     {
       label: 'Future',
@@ -104,8 +140,43 @@ function BudgetStats({ periods = [], health, onOpenHealth }) {
   ]
 
   return (
-    <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-      {stats.map(stat => (
+    <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 dark:border-gray-700 dark:bg-gray-800/50">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Current Period</p>
+            <p className="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">{stats[0].value}</p>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{stats[0].detail}</p>
+            {currentPeriod ? (
+              <Link
+                to={`/periods/${currentPeriod.finperiodid}`}
+                className="mt-2 inline-block text-xs font-medium text-dosh-700 hover:underline dark:text-dosh-400"
+              >
+                Open current period
+              </Link>
+            ) : null}
+          </div>
+          {health?.current_period_check ? (
+            <button type="button" className="btn-secondary" onClick={onOpenCurrentPeriodCheck}>
+              Details
+            </button>
+          ) : null}
+        </div>
+        {health?.current_period_check ? (
+          <div className="mt-3 space-y-2">
+            <TrafficLight status={health.current_period_check.status} />
+            <p className={`text-sm font-medium ${healthToneClass(health.current_period_check.status)}`}>
+              {health.current_period_check.summary}
+            </p>
+          </div>
+        ) : (
+          <div className="mt-3 space-y-2">
+            <div className="h-10 w-36 rounded-full bg-gray-200 dark:bg-gray-700" />
+            <div className="h-3 w-full rounded bg-gray-200 dark:bg-gray-700" />
+          </div>
+        )}
+      </div>
+      {stats.slice(1).map(stat => (
         <div key={stat.label} className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 dark:border-gray-700 dark:bg-gray-800/50">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{stat.label}</p>
           <p className="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">{stat.value}</p>
@@ -146,6 +217,50 @@ function BudgetStats({ periods = [], health, onOpenHealth }) {
         )}
       </div>
     </div>
+  )
+}
+
+function CurrentPeriodCheckModal({ budget, assessment, evaluatedAt, onClose }) {
+  return (
+    <Modal title={`Current Period Check — ${budget.description || 'Untitled Budget'}`} onClose={onClose} size="lg">
+      <div className="space-y-5">
+        <div className="rounded-lg border border-gray-200 bg-gradient-to-r from-gray-50 to-white px-4 py-4 dark:border-gray-700 dark:bg-gray-900 dark:bg-none">
+          <div className="flex items-start justify-between gap-4">
+            <div className="space-y-2">
+              <TrafficLight status={assessment.status} />
+              <p className={`text-sm font-semibold ${healthToneClass(assessment.status)}`}>{assessment.summary}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Evaluated {format(parseISO(evaluatedAt), 'dd MMM yyyy HH:mm')} local time
+              </p>
+            </div>
+            <div className={`flex h-16 w-16 items-center justify-center rounded-full text-xl font-light shadow-sm ${healthCircleClass(assessment.status)}`}>
+              {assessment.score}
+            </div>
+          </div>
+        </div>
+
+        <section className="space-y-3 rounded-lg border border-gray-200 bg-white px-4 py-4 dark:border-gray-700 dark:bg-gray-900">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{assessment.title}</h3>
+            <span className={`h-3.5 w-3.5 rounded-full ${healthDotClass(assessment.status)}`} />
+            <span className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Score {assessment.score}</span>
+          </div>
+          <div className="space-y-2">
+            {assessment.evidence.map(item => (
+              <div key={`${assessment.key}-${item.label}`} className="rounded-md border border-gray-100 bg-gray-50 px-3 py-2 dark:border-gray-800 dark:bg-gray-800/80">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{item.label}</p>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{item.value}</p>
+                </div>
+                {item.detail ? (
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{item.detail}</p>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+    </Modal>
   )
 }
 
@@ -246,6 +361,7 @@ export default function BudgetsPage() {
   const navigate = useNavigate()
   const [modal, setModal] = useState(null)
   const [healthModal, setHealthModal] = useState(null)
+  const [currentCheckModal, setCurrentCheckModal] = useState(null)
 
   const { data: budgets = [], isLoading } = useQuery({ queryKey: ['budgets'], queryFn: getBudgets })
   const periodQueries = useQueries({
@@ -271,19 +387,13 @@ export default function BudgetsPage() {
     },
   })
 
-  const update = useMutation({
-    mutationFn: ({ id, data }) => updateBudget(id, data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['budgets'] }); setModal(null) },
-  })
-
   const remove = useMutation({
     mutationFn: deleteBudget,
     onSuccess: () => qc.invalidateQueries({ queryKey: ['budgets'] }),
   })
 
   const handleSubmit = form => {
-    if (modal.mode === 'create') create.mutate(form)
-    else update.mutate({ id: modal.budget.budgetid, data: form })
+    create.mutate(form)
   }
 
   if (isLoading) return <div className="flex justify-center pt-16"><Spinner /></div>
@@ -319,7 +429,7 @@ export default function BudgetsPage() {
                   </Link>
                 </div>
                 <div className="flex gap-2">
-                  <button className="btn-secondary" onClick={() => setModal({ mode: 'edit', budget: b })}>
+                  <button className="btn-secondary" onClick={() => navigate(`/budgets/${b.budgetid}/setup`)}>
                     <PencilIcon className="w-3.5 h-3.5" />
                   </button>
                   <button className="btn-danger" onClick={() => { if (window.confirm(`Delete "${b.description}"?`)) remove.mutate(b.budgetid) }}>
@@ -342,6 +452,11 @@ export default function BudgetsPage() {
                   periods={periodQueries[index]?.data ?? []}
                   health={healthQueries[index]?.data ?? null}
                   onOpenHealth={() => healthQueries[index]?.data && setHealthModal({ budget: b, health: healthQueries[index].data })}
+                  onOpenCurrentPeriodCheck={() => healthQueries[index]?.data && setCurrentCheckModal({
+                    budget: b,
+                    assessment: healthQueries[index].data.current_period_check,
+                    evaluatedAt: healthQueries[index].data.evaluated_at,
+                  })}
                 />
               )}
             </div>
@@ -350,16 +465,12 @@ export default function BudgetsPage() {
       )}
 
       {modal && (
-        <Modal title={modal.mode === 'create' ? 'New Budget' : 'Edit Budget'} onClose={() => setModal(null)}>
+        <Modal title="New Budget" onClose={() => setModal(null)}>
           <BudgetForm
-            initial={modal.budget ? {
-              description: modal.budget.description ?? '',
-              budgetowner: modal.budget.budgetowner,
-              budget_frequency: modal.budget.budget_frequency,
-            } : emptyForm}
+            initial={emptyForm}
             onSubmit={handleSubmit}
             onClose={() => setModal(null)}
-            loading={create.isPending || update.isPending}
+            loading={create.isPending}
           />
         </Modal>
       )}
@@ -369,6 +480,15 @@ export default function BudgetsPage() {
           budget={healthModal.budget}
           health={healthModal.health}
           onClose={() => setHealthModal(null)}
+        />
+      )}
+
+      {currentCheckModal && (
+        <CurrentPeriodCheckModal
+          budget={currentCheckModal.budget}
+          assessment={currentCheckModal.assessment}
+          evaluatedAt={currentCheckModal.evaluatedAt}
+          onClose={() => setCurrentCheckModal(null)}
         />
       )}
     </div>

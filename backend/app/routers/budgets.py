@@ -43,7 +43,7 @@ def update_budget(budgetid: int, payload: BudgetUpdate, db: Session = Depends(ge
     budget = db.get(Budget, budgetid)
     if not budget:
         raise HTTPException(404, "Budget not found")
-    for field, value in payload.model_dump(exclude_none=True).items():
+    for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(budget, field, value)
     db.commit()
     db.refresh(budget)

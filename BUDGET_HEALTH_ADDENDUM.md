@@ -2,12 +2,16 @@
 
 This addendum captures the staged direction for Dosh budget health metrics work.
 
+## Purpose
+
+This document is the focused roadmap for the budget health feature.
+
+Its purpose is to keep the staged health-scoring direction clear without overloading the broader project documents.
+
 Read this alongside:
 
 - [README.md](/home/ubuntu/dosh/README.md)
 - [CHANGES.md](/home/ubuntu/dosh/CHANGES.md)
-
-The goal is to keep the phase-based metrics design visible for future sessions without overloading the main product summary documents.
 
 ## Phase 1
 

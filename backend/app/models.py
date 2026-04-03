@@ -25,6 +25,12 @@ class Budget(Base):
     # always | overspend_only
     variance_mode = Column(String, nullable=False, default="always")
     auto_add_surplus_to_investment = Column(Boolean, nullable=False, default=False)
+    acceptable_expense_overrun_pct = Column(Integer, nullable=False, default=10)
+    comfortable_surplus_buffer_pct = Column(Integer, nullable=False, default=5)
+    maximum_deficit_amount = Column(Numeric(10, 2), nullable=True)
+    revision_sensitivity = Column(Integer, nullable=False, default=50)
+    savings_priority = Column(Integer, nullable=False, default=50)
+    period_criticality_bias = Column(Integer, nullable=False, default=50)
 
     periods = relationship("FinancialPeriod", back_populates="budget", cascade="all, delete-orphan")
     income_types = relationship("IncomeType", back_populates="budget", cascade="all, delete-orphan")

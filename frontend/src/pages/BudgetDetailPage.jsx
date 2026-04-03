@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronRightIcon, ArrowUpIcon } from '@heroicons/react/24/outline'
-import { getBudget, getIncomeTypes, getExpenseItems, getInvestmentItems, getBalanceTypes } from '../api/client'
+import { getBudget, getIncomeTypes, getExpenseItems, getInvestmentItems, getBalanceTypes, updateBudget } from '../api/client'
 import Spinner from '../components/Spinner'
 import IncomeTypesTab from './tabs/IncomeTypesTab'
 import ExpenseItemsTab from './tabs/ExpenseItemsTab'
 import InvestmentItemsTab from './tabs/InvestmentItemsTab'
 import BalanceTypesTab from './tabs/BalanceTypesTab'
+import PersonalisationTab from './tabs/PersonalisationTab'
 import SettingsTab from './tabs/SettingsTab'
 
 const SECTIONS = [
@@ -16,6 +17,7 @@ const SECTIONS = [
   { id: 'income-types', label: 'Income Types' },
   { id: 'expense-items', label: 'Expense Items' },
   { id: 'investments', label: 'Investments' },
+  { id: 'personalisation', label: 'Personalisation' },
   { id: 'settings', label: 'Settings' },
 ]
 
@@ -44,6 +46,87 @@ function SectionShell({ id, title, summary, helper, children, badge }) {
         {children}
       </div>
     </section>
+  )
+}
+
+function BudgetInfoForm({ budgetId, budget }) {
+  const qc = useQueryClient()
+  const [form, setForm] = useState({
+    description: budget.description ?? '',
+    budgetowner: budget.budgetowner ?? '',
+  })
+
+  useEffect(() => {
+    setForm({
+      description: budget.description ?? '',
+      budgetowner: budget.budgetowner ?? '',
+    })
+  }, [budget])
+
+  const saveBudget = useMutation({
+    mutationFn: data => updateBudget(budgetId, data),
+    onSuccess: data => {
+      qc.setQueryData(['budget', budgetId], data)
+      qc.invalidateQueries({ queryKey: ['budgets'] })
+    },
+  })
+
+  useEffect(() => {
+    const currentDescription = budget.description ?? ''
+    const currentOwner = budget.budgetowner ?? ''
+    const isDirty = form.description !== currentDescription || form.budgetowner !== currentOwner
+    if (!isDirty) return
+    if (!form.budgetowner.trim()) return
+
+    const timeoutId = window.setTimeout(() => {
+      saveBudget.mutate({
+        description: form.description,
+        budgetowner: form.budgetowner.trim(),
+      })
+    }, 400)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [budget, form, saveBudget])
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 sm:grid-cols-3">
+        <label className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/50">
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Budget Name</p>
+          <input
+            className="mt-2 w-full border-0 bg-transparent p-0 text-sm font-medium text-gray-900 outline-none focus:ring-0 dark:text-gray-100"
+            value={form.description}
+            onChange={e => setForm(current => ({ ...current, description: e.target.value }))}
+            placeholder="Untitled Budget"
+          />
+        </label>
+        <label className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/50">
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Budget Owner</p>
+          <input
+            className="mt-2 w-full border-0 bg-transparent p-0 text-sm font-medium text-gray-900 outline-none focus:ring-0 dark:text-gray-100"
+            value={form.budgetowner}
+            onChange={e => setForm(current => ({ ...current, budgetowner: e.target.value }))}
+            placeholder="Budget owner"
+          />
+        </label>
+        <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/50">
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Frequency</p>
+          <p className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">{budget.budget_frequency}</p>
+        </div>
+      </div>
+
+      {saveBudget.isError ? (
+        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300">
+          {saveBudget.error?.response?.data?.detail || 'Unable to save budget details right now.'}
+        </div>
+      ) : null}
+
+      {!form.budgetowner.trim() ? (
+        <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+          Budget Owner can&apos;t be blank, so that change won&apos;t be saved until a name is entered.
+        </div>
+      ) : null}
+    </div>
   )
 }
 
@@ -122,15 +205,8 @@ export default function BudgetDetailPage() {
         title="Budget Info"
         summary="Review the core details for this budget before working through the setup steps below."
       >
-        <div className="grid gap-3 sm:grid-cols-3">
-          <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/50">
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Budget Owner</p>
-            <p className="mt-1 text-sm font-medium text-gray-900 dark:text-gray-100">{budget.budgetowner}</p>
-          </div>
-          <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/50">
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Frequency</p>
-            <p className="mt-1 text-sm font-medium text-gray-900 dark:text-gray-100">{budget.budget_frequency}</p>
-          </div>
+        <BudgetInfoForm budgetId={id} budget={budget} />
+        <div className="mt-4 grid gap-3 sm:grid-cols-1">
           <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/50">
             <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Current Setup</p>
             <p className="mt-1 text-sm font-medium text-gray-900 dark:text-gray-100">
@@ -184,9 +260,17 @@ export default function BudgetDetailPage() {
       </SectionShell>
 
       <SectionShell
+        id="personalisation"
+        title="Personalisation"
+        summary="Tell Dosh what feels important to you so the health checks can be a little more aligned with your budgeting style."
+      >
+        <PersonalisationTab budgetId={id} budget={budget} />
+      </SectionShell>
+
+      <SectionShell
         id="settings"
         title="Settings"
-        summary="Optional controls that adjust budget behaviour and page layout."
+        summary="Optional controls that adjust budget behaviour and other setup preferences."
       >
         <SettingsTab budgetId={id} budget={budget} />
       </SectionShell>

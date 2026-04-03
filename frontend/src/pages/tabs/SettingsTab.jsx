@@ -16,6 +16,7 @@ export default function SettingsTab({ budgetId, budget }) {
     onSuccess: data => {
       qc.setQueryData(['budget', budgetId], data)
       qc.invalidateQueries({ queryKey: ['budgets'] })
+      qc.invalidateQueries({ queryKey: ['budget-health', budgetId] })
     },
   })
 
@@ -28,7 +29,7 @@ export default function SettingsTab({ budgetId, budget }) {
       <div className="card p-5">
         <h3 className="mb-2 font-semibold text-gray-800 dark:text-gray-100">Settings</h3>
         <p className="mb-4 text-sm text-gray-500 dark:text-gray-400">
-          Use these options to control how future periods are prepared before you start working in them.
+          Use these options to control how future periods are prepared and how this budget behaves.
         </p>
 
         <label className="flex items-start gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-800/50">
