@@ -119,6 +119,26 @@ Suggested implementation slices:
 - tests and refinement around personalised threshold behavior
 - continued copy refinement so health evidence reads naturally in budget terms
 
+### 5. Localisation and Regional Fit
+
+Dosh already shows signs of regional fit, but localisation is not yet being treated as a deliberate product capability.
+
+Focus areas:
+
+- move locale, currency, and date formatting out of hard-coded UI assumptions
+- support regional budgeting cadence and terminology without fragmenting the core model
+- make health language, labels, and helper copy adaptable by locale
+- prepare for country-specific conventions such as fortnightly budgeting, date ordering, and currency display
+- keep localisation practical and product-led rather than introducing translation plumbing with no user-facing value
+
+Suggested implementation slices:
+
+- introduce shared frontend formatting utilities for currency, number, and date presentation
+- add budget-level or user-level locale and currency preferences
+- audit hard-coded `en-AU` assumptions and replace them with explicit formatting settings
+- identify user-facing finance terminology that may need regional variants
+- document which localisation decisions belong in product copy versus data model behavior
+
 ## Near-Term Engineering Work
 
 These activities are not necessarily flashy product milestones, but they are the most obvious engineering tasks that would reduce friction for future development.
@@ -205,6 +225,18 @@ Priority areas:
 - continue favoring live money position and practical status over repeated setup actions
 - identify the next summary card that best complements current balance and health without duplicating period-listing data
 
+### 8. Establish Localisation Foundations
+
+The product already carries regional assumptions in formatting and cadence, so localisation should become an explicit engineering concern before those assumptions spread further.
+
+Priority areas:
+
+- centralize frontend currency, date, and number formatting
+- decide where locale, timezone, and currency preferences are stored and resolved
+- separate copy decisions from calculation rules wherever regional behavior may differ
+- identify backend responses that should stay neutral versus pre-formatted for display
+- add tests around locale-sensitive display and period-boundary assumptions where practical
+
 ## Recommended Session Backlog
 
 If we want a practical order of work rather than just a thematic roadmap, this is the strongest current sequence:
@@ -212,11 +244,12 @@ If we want a practical order of work rather than just a thematic roadmap, this i
 1. Add backend tests around ledger, period, and surplus rules.
 2. Add a reporting summary endpoint that rolls up period and ledger data.
 3. Surface a budget-level reporting card set in the frontend.
-4. Add tests and cleanup around health personalisation and current-period threshold behavior.
-5. Design the first reconciliation screen around account movement explanation.
-6. Review sidebar and budget-summary polish after real use, especially around future first-class sections.
-7. Introduce a period close-out model and basic close-out status flow.
-8. Replace ad hoc startup migrations with a proper migration system.
+4. Introduce shared localisation utilities and decide how locale, currency, and timezone preferences are stored.
+5. Add tests and cleanup around health personalisation and current-period threshold behavior.
+6. Design the first reconciliation screen around account movement explanation.
+7. Review sidebar and budget-summary polish after real use, especially around future first-class sections.
+8. Introduce a period close-out model and basic close-out status flow.
+9. Replace ad hoc startup migrations with a proper migration system.
 
 ## Guardrails For Future Work
 
@@ -231,6 +264,7 @@ These project rules already emerge clearly from the existing docs and implementa
 - when health preferences assess deficit risk, the wording should say `deficit` clearly rather than implying that zero surplus is itself a problem
 - autosave is preferred for lightweight setup and personalisation edits when validation is simple and failures can be surfaced clearly
 - backend and database naming should remain stable unless a change is clearly worth the cost
+- localisation should be explicit and centrally managed rather than emerging from scattered hard-coded formatting choices
 - there should only ever be one `Current` period for a budget; overflow patterns belong only to `Future` and `Historical`
 - if a sidebar affordance points to the page the user is already viewing, it should be muted or otherwise downgraded rather than appearing broken
 - the main budget summary page should avoid duplicate edit/setup actions when one clear path already exists
