@@ -120,8 +120,8 @@ function BalanceSummaryCard({ currentPeriod, currentPeriodDetail, isLoading }) {
     return (
       <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 dark:border-gray-700 dark:bg-gray-800/50">
         <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Current Balance</p>
-        <p className="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">No active period</p>
-        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Generate a period to start tracking balances</p>
+        <p className="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">No active budget cycle</p>
+        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Generate a budget cycle to start tracking balances</p>
       </div>
     )
   }
@@ -176,16 +176,16 @@ function BudgetStats({ periods = [], currentPeriodDetail, currentPeriodDetailLoa
   const daysRemaining = currentPeriod
     ? Math.max(0, differenceInCalendarDays(parseISO(currentPeriod.enddate), new Date()) + 1)
     : null
-  const currentPeriodValue = currentPeriod ? formatPeriodRange(currentPeriod) : 'No active period'
+  const currentPeriodValue = currentPeriod ? formatPeriodRange(currentPeriod) : 'No active budget cycle'
   const currentPeriodDetailText = currentPeriod
     ? `${daysRemaining} day${daysRemaining === 1 ? '' : 's'} remaining`
-    : 'Generate a period to begin tracking'
+    : 'Generate a budget cycle to begin tracking'
 
   const stats = [
     {
       label: 'Historical',
       value: grouped.historical.length,
-      detail: grouped.historical.length === 1 ? 'completed period' : 'completed periods',
+      detail: grouped.historical.length === 1 ? 'completed budget cycle' : 'completed budget cycles',
     },
   ]
 
@@ -194,7 +194,7 @@ function BudgetStats({ periods = [], currentPeriodDetail, currentPeriodDetailLoa
       <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 dark:border-gray-700 dark:bg-gray-800/50">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Current Period</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Current Budget Cycle</p>
             <p className="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">{currentPeriodValue}</p>
             <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{currentPeriodDetailText}</p>
             {currentPeriod ? (
@@ -202,7 +202,7 @@ function BudgetStats({ periods = [], currentPeriodDetail, currentPeriodDetailLoa
                 to={`/periods/${currentPeriod.finperiodid}`}
                 className="mt-2 inline-block text-xs font-medium text-dosh-700 hover:underline dark:text-dosh-400"
               >
-                Open current period
+                Open current budget cycle
               </Link>
             ) : null}
           </div>
@@ -277,7 +277,7 @@ function BudgetStats({ periods = [], currentPeriodDetail, currentPeriodDetailLoa
 
 function CurrentPeriodCheckModal({ budget, assessment, evaluatedAt, onClose }) {
   return (
-    <Modal title={`Current Period Check — ${budget.description || 'Untitled Budget'}`} onClose={onClose} size="lg">
+    <Modal title={`Current Budget Cycle Check — ${budget.description || 'Untitled Budget'}`} onClose={onClose} size="lg">
       <div className="space-y-5">
         <div className="rounded-lg border border-gray-200 bg-gradient-to-r from-gray-50 to-white px-4 py-4 dark:border-gray-700 dark:bg-gray-900 dark:bg-none">
           <div className="flex items-start justify-between gap-4">

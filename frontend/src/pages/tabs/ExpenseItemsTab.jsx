@@ -111,17 +111,17 @@ function ExpenseItemForm({ initial = emptyForm, isEdit = false, onSubmit, onClos
       </div>
       {isAlways && (
         <p className="text-xs text-dosh-600 dark:text-dosh-400 bg-dosh-50 dark:bg-dosh-900/20 rounded px-3 py-2">
-          "Always" — this expense is included in every period at the set amount, regardless of dates.
+          "Always" — this expense is included in every budget cycle at the set amount, regardless of dates.
         </p>
       )}
       <label className="flex items-center gap-2 text-sm cursor-pointer">
         <input type="checkbox" checked={form.active} onChange={e => set('active', e.target.checked)}
           className="rounded border-gray-300 dark:border-gray-600 text-dosh-600 focus:ring-dosh-500" />
-        <span className="text-gray-700 dark:text-gray-300">Active (include in future generated periods)</span>
+        <span className="text-gray-700 dark:text-gray-300">Active (include in future generated budget cycles)</span>
       </label>
       {isEdit && (
         <p className="text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded px-3 py-2">
-          Saving changes to frequency, amount, or dates will automatically apply a revision and update budget amounts on future unlocked periods.
+          Saving changes to frequency, amount, or dates will automatically apply a revision and update budget amounts on future unlocked budget cycles.
         </p>
       )}
       <div className="flex justify-end gap-2 pt-2">

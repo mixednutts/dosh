@@ -31,7 +31,7 @@ function BalanceTypeForm({ initial = emptyForm, onSubmit, onClose, loading }) {
         <label className="flex items-center gap-2 text-sm cursor-pointer">
           <input type="checkbox" checked={!!form.active} onChange={e => set('active', e.target.checked)}
             className="rounded border-gray-300 text-dosh-600 focus:ring-dosh-500" />
-          Active (include in new periods)
+          Active (include in new budget cycles)
         </label>
         <label className="flex items-center gap-2 text-sm cursor-pointer">
           <input type="checkbox" checked={!!form.is_primary} onChange={e => set('is_primary', e.target.checked)}

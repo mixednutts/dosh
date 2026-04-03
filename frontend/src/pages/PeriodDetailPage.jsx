@@ -151,7 +151,7 @@ function BalanceTransactionsModal({ periodId, balancedesc, movementAmount }) {
         {isLoading ? (
           <div className="flex justify-center py-4"><Spinner className="w-4 h-4" /></div>
         ) : transactions.length === 0 ? (
-          <p className="text-center text-sm text-gray-400 py-4 italic">No supporting transactions for this account in this period</p>
+          <p className="text-center text-sm text-gray-400 py-4 italic">No supporting transactions for this account in this budget cycle</p>
         ) : (
           <div className="divide-y divide-gray-100 dark:divide-gray-800 max-h-72 overflow-y-auto">
             {transactions.map(tx => {
@@ -734,7 +734,7 @@ function AddIncomeModal({ periodId, budgetId, existingDescs, onClose }) {
         <label className="label">{mode === 'savings' ? 'Savings Account' : 'Income Type'}</label>
         {currentList.length === 0
           ? <p className="text-sm text-gray-500 italic">
-              {mode === 'savings' ? 'No savings accounts available. Add a Savings account in budget settings.' : 'All income types already in this period.'}
+              {mode === 'savings' ? 'No savings accounts available. Add a Savings account in budget settings.' : 'All income types already in this budget cycle.'}
             </p>
           : <select required className="input" value={selected} onChange={e => {
               setSelected(e.target.value)
@@ -757,7 +757,7 @@ function AddIncomeModal({ periodId, budgetId, existingDescs, onClose }) {
         <div>
           <label className="label">Include in</label>
           <div className="space-y-1.5 mt-1">
-            {[['oneoff', 'This period only'], ['future', 'This + future unlocked periods']].map(([val, label]) => (
+            {[['oneoff', 'This budget cycle only'], ['future', 'This + future unlocked budget cycles']].map(([val, label]) => (
               <label key={val} className="flex items-center gap-2 text-sm cursor-pointer">
                 <input type="radio" name="income-scope" value={val} checked={scope === val} onChange={() => setScope(val)} className="text-dosh-600" />
                 {label}
@@ -831,7 +831,7 @@ function AddExpenseModal({ periodId, budgetId, existingDescs, onClose }) {
         <div>
           <label className="label">Expense Item</label>
           {available.length === 0
-            ? <p className="text-sm text-gray-500 italic">All items already in this period. Use "New item".</p>
+            ? <p className="text-sm text-gray-500 italic">All items already in this budget cycle. Use "New item".</p>
             : <select required className="input" value={selected} onChange={e => { setSelected(e.target.value); const ei = expenseItems.find(i => i.expensedesc === e.target.value); if (ei) setAmount(String(ei.expenseamount)) }}>
                 <option value="">— select —</option>
                 {available.map(e => <option key={e.expensedesc} value={e.expensedesc}>{e.expensedesc}</option>)}
@@ -854,7 +854,7 @@ function AddExpenseModal({ periodId, budgetId, existingDescs, onClose }) {
       <div>
         <label className="label">Include in</label>
         <div className="space-y-1.5 mt-1">
-          {[['oneoff', 'This period only (one-off)'], ['future', 'This + future unlocked periods']].map(([val, label]) => (
+          {[['oneoff', 'This budget cycle only (one-off)'], ['future', 'This + future unlocked budget cycles']].map(([val, label]) => (
             <label key={val} className="flex items-center gap-2 text-sm cursor-pointer">
               <input type="radio" name="exp-scope" value={val} checked={scope === val} onChange={() => setScope(val)} className="text-dosh-600" />
               {label}
@@ -910,8 +910,8 @@ export default function PeriodDetailPage() {
   useEffect(() => { setLocalExpenses(null) }, [data])
 
   if (isLoading) return <div className="flex justify-center pt-16"><Spinner /></div>
-  if (isError) return <p className="text-red-500 p-4">Failed to load period. <Link to="/budgets" className="underline">Back to Budgets</Link></p>
-  if (!data) return <p className="text-gray-500">Period not found.</p>
+  if (isError) return <p className="text-red-500 p-4">Failed to load budget cycle. <Link to="/budgets" className="underline">Back to Budgets</Link></p>
+  if (!data) return <p className="text-gray-500">Budget cycle not found.</p>
 
   const { period, incomes, balances = [], investments = [] } = data
   const expenses = localExpenses ?? data.expenses
@@ -965,7 +965,7 @@ export default function PeriodDetailPage() {
             <ChevronRightIcon className="w-3 h-3" />
             {budget && <Link to={`/budgets/${budget.budgetid}`} className="hover:underline">{budget.description}</Link>}
             <ChevronRightIcon className="w-3 h-3" />
-            <span className="text-gray-800 dark:text-gray-200">Period Details</span>
+            <span className="text-gray-800 dark:text-gray-200">Budget Cycle Details</span>
           </div>
           <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
             {format(parseISO(period.startdate), 'dd MMM yyyy')} – {format(parseISO(period.enddate), 'dd MMM yyyy')}
@@ -979,7 +979,7 @@ export default function PeriodDetailPage() {
 
       {locked && (
         <div className="rounded-md bg-amber-50 border border-amber-200 dark:bg-amber-900/20 dark:border-amber-700 px-4 py-2 text-sm text-amber-800 dark:text-amber-300">
-          Period is locked. Income actuals can still be updated. To add expense transactions, unlock first.
+          Budget cycle is locked. Income actuals can still be updated. To add expense transactions, unlock first.
         </div>
       )}
 
@@ -1043,8 +1043,8 @@ export default function PeriodDetailPage() {
                 <td className="px-3 py-2">
                   {!locked && (
                     <button
-                      onClick={() => { if (window.confirm(`Remove "${i.incomedesc}" from this period?`)) deleteIncomeLine.mutate(i.incomedesc) }}
-                      title="Remove from period"
+                      onClick={() => { if (window.confirm(`Remove "${i.incomedesc}" from this budget cycle?`)) deleteIncomeLine.mutate(i.incomedesc) }}
+                      title="Remove from budget cycle"
                       className="flex items-center justify-center w-7 h-7 rounded-full text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
                       <TrashIcon className="w-4 h-4" />
                     </button>
@@ -1177,8 +1177,8 @@ export default function PeriodDetailPage() {
                         </button>
                         {canDelete && !isPaid && (
                           <button
-                            onClick={() => { if (window.confirm(`Remove "${e.expensedesc}" from this period?`)) deleteExpenseLine.mutate(e.expensedesc) }}
-                            title="Remove from period (no actuals, zero budget)"
+                            onClick={() => { if (window.confirm(`Remove "${e.expensedesc}" from this budget cycle?`)) deleteExpenseLine.mutate(e.expensedesc) }}
+                            title="Remove from budget cycle (no actuals, zero budget)"
                             className="flex items-center justify-center w-7 h-7 rounded-full text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
                             <TrashIcon className="w-4 h-4" />
                           </button>
@@ -1338,12 +1338,12 @@ export default function PeriodDetailPage() {
         </Modal>
       )}
       {showAddExpense && (
-        <Modal title="Add Expense to Period" onClose={() => setShowAddExpense(false)} size="lg">
+        <Modal title="Add Expense to Budget Cycle" onClose={() => setShowAddExpense(false)} size="lg">
           <AddExpenseModal periodId={id} budgetId={period.budgetid} existingDescs={expenses.map(e => e.expensedesc)} onClose={() => setShowAddExpense(false)} />
         </Modal>
       )}
       {showAddIncome && (
-        <Modal title="Add Income to Period" onClose={() => setShowAddIncome(false)}>
+        <Modal title="Add Income to Budget Cycle" onClose={() => setShowAddIncome(false)}>
           <AddIncomeModal periodId={id} budgetId={period.budgetid} existingDescs={incomes.map(i => i.incomedesc)} onClose={() => setShowAddIncome(false)} />
         </Modal>
       )}

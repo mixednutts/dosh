@@ -29,7 +29,7 @@ export default function SettingsTab({ budgetId, budget }) {
       <div className="card p-5">
         <h3 className="mb-2 font-semibold text-gray-800 dark:text-gray-100">Settings</h3>
         <p className="mb-4 text-sm text-gray-500 dark:text-gray-400">
-          Use these options to control how future periods are prepared and how this budget behaves.
+          Use these options to control how future budget cycles are prepared and how this budget behaves.
         </p>
 
         <label className="flex items-start gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-800/50">
@@ -42,7 +42,7 @@ export default function SettingsTab({ budgetId, budget }) {
           />
           <span className="space-y-1">
             <span className="flex items-center gap-2 font-medium text-gray-900 dark:text-gray-100">
-              Automatically add surplus budget to Investment Savings budget when creating a new period?
+              Automatically add surplus budget to Investment Savings budget when creating a new budget cycle?
               <span className="relative inline-flex">
                 <button
                   type="button"
@@ -64,7 +64,7 @@ export default function SettingsTab({ budgetId, budget }) {
               </span>
             </span>
             <span className="block text-gray-600 dark:text-gray-400">
-              When turned on, Dosh will calculate the new period&apos;s starting surplus budget and allocate it to the active primary investment line.
+              When turned on, Dosh will calculate the new budget cycle&apos;s starting surplus budget and allocate it to the active primary investment line.
             </span>
             <span className="block text-xs text-gray-500 dark:text-gray-400">
               Set one active investment line as primary to control where this automatic allocation goes.

@@ -83,7 +83,7 @@ function BudgetTableRows({ budget }) {
           <p className="text-xs text-gray-500 dark:text-gray-400">{budget.budgetowner}</p>
         </td>
         <td className="table-cell-muted"><span className="badge-gray">{budget.budget_frequency}</span></td>
-        <td colSpan={7} className="table-cell-muted italic">No periods — <Link to={`/budgets/${budget.budgetid}/setup`} className="text-dosh-600 dark:text-dosh-400 hover:underline">set up budget</Link></td>
+        <td colSpan={7} className="table-cell-muted italic">No budget cycles — <Link to={`/budgets/${budget.budgetid}/setup`} className="text-dosh-600 dark:text-dosh-400 hover:underline">set up budget</Link></td>
       </tr>
     )
   }
@@ -100,7 +100,7 @@ function BudgetTableRows({ budget }) {
         </td>
         <td className="table-cell-muted"><span className="badge-gray">{budget.budget_frequency}</span></td>
         <td colSpan={7} className="table-cell-muted italic">
-          No current period
+          No current budget cycle
           {upcoming && <span className="ml-2 text-xs text-gray-400">Next: {format(parseISO(upcoming.startdate), 'dd MMM yyyy')}</span>}
         </td>
       </tr>
@@ -134,7 +134,7 @@ export default function Dashboard() {
               <tr className="border-b border-gray-200 dark:border-gray-700">
                 <th className="table-header-cell text-left">Budget</th>
                 <th className="table-header-cell text-left">Frequency</th>
-                <th className="table-header-cell text-left">Current Period</th>
+                <th className="table-header-cell text-left">Current Budget Cycle</th>
                 <th className="table-header-cell text-right col-budget">Inc Budget</th>
                 <th className="table-header-cell text-right col-actual">Inc Actual</th>
                 <th className="table-header-cell text-right col-budget">Exp Budget</th>

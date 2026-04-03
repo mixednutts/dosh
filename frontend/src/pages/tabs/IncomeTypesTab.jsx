@@ -43,8 +43,8 @@ function IncomeTypeForm({ initial = emptyForm, onSubmit, onClose, loading, budge
       </div>
       <div className="space-y-2">
         {[
-          ['isfixed',    'Fixed amount (same every period)'],
-          ['autoinclude','Auto-include in new periods'],
+          ['isfixed',    'Fixed amount (same every budget cycle)'],
+          ['autoinclude','Auto-include in new budget cycles'],
         ].map(([key, label]) => (
           <label key={key} className="flex items-center gap-2 text-sm cursor-pointer">
             <input

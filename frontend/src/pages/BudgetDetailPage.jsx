@@ -215,7 +215,7 @@ export default function BudgetDetailPage() {
           </div>
         </div>
         <div className="mt-4 rounded-xl border border-dosh-200 bg-dosh-50 px-4 py-3 text-sm text-dosh-800 dark:border-dosh-800 dark:bg-dosh-900/20 dark:text-dosh-200">
-          Periods are managed from this budget's periods page. Use this page to build and maintain the setup that future periods will be generated from.
+          Budget cycles are managed from this budget's budget cycles page. Use this page to build and maintain the setup that future budget cycles will be generated from.
         </div>
       </SectionShell>
 
@@ -233,7 +233,7 @@ export default function BudgetDetailPage() {
         id="income-types"
         title="Income Types"
         badge={countLabel(incomeTypes.length, 'income type')}
-        summary="Add the income lines you want to include in generated periods, including fixed income and any savings transfers."
+        summary="Add the income lines you want to include in generated budget cycles, including fixed income and any savings transfers."
         helper={!hasAccounts ? 'Create at least one account first so account-linked income options are ready when you need them.' : null}
       >
         <IncomeTypesTab budgetId={id} />
@@ -243,7 +243,7 @@ export default function BudgetDetailPage() {
         id="expense-items"
         title="Expense Items"
         badge={countLabel(expenseItems.length, 'expense item')}
-        summary="Define the recurring and one-off expenses that should appear in generated periods."
+        summary="Define the recurring and one-off expenses that should appear in generated budget cycles."
         helper={!hasAccounts ? 'Create at least one account first so expense tracking has an account structure in place as that behaviour develops.' : null}
       >
         <ExpenseItemsTab budgetId={id} />

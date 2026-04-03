@@ -66,12 +66,12 @@ const SLIDERS = [
   {
     key: 'period_criticality_bias',
     title: 'When in the budget cycle should health issues escalate?',
-    helper: 'This helps Dosh decide whether issues should feel more important earlier in the period or closer to the finish line.',
+    helper: 'This helps Dosh decide whether issues should feel more important earlier in the budget cycle or closer to the finish line.',
     formatValue: value => `${value}/10`,
     inputSuffix: '/10',
     unitHint: 'Unit: timing sensitivity across the budget cycle',
-    leftLabel: 'Earlier in the period',
-    rightLabel: 'Later in the period',
+    leftLabel: 'Earlier in the budget cycle',
+    rightLabel: 'Later in the budget cycle',
     scale: 'ten',
   },
 ]

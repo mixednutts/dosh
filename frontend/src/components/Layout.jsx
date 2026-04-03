@@ -161,19 +161,19 @@ function CurrentBudgetPanel({ budget, activePeriodId, onNav }) {
             periodsMatch ? 'border-dosh-400 bg-dosh-600 text-white' : 'border-slate-800 bg-slate-900/60 text-slate-200 hover:border-dosh-700 hover:bg-slate-800 hover:text-white'
           )}
         >
-          Periods
+          Budget Cycles
         </Link>
       </div>
 
       <div className="space-y-3 border-t border-slate-800 pt-3">
         <div className="flex items-center justify-between gap-2">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-dosh-400">Period Shortcuts</span>
+          <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-dosh-400">Budget Cycle Shortcuts</span>
         </div>
 
         {periods.length === 0 ? (
           <div className="space-y-2">
             <p className="rounded-xl border border-slate-800 bg-slate-900/60 px-3 py-2 text-xs text-slate-300">
-              No periods yet. Finish setup, then generate your first period.
+              No budget cycles yet. Finish setup, then generate your first budget cycle.
             </p>
             <Link
               to={`/budgets/${budget.budgetid}/setup`}
@@ -190,7 +190,7 @@ function CurrentBudgetPanel({ budget, activePeriodId, onNav }) {
               periods={currentPeriods}
               activePeriodId={activePeriodId}
               onNav={onNav}
-              emptyMessage="No active period right now."
+              emptyMessage="No active budget cycle right now."
             />
             <PeriodShortcutGroup
               title="Upcoming"

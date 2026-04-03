@@ -51,7 +51,7 @@ function PeriodGenerateForm({ initialStartDate, onSubmit, onClose, loading, erro
         />
       </div>
       <div>
-        <label className="label">How Many Periods</label>
+        <label className="label">How Many Budget Cycles</label>
         <input
           required
           min="1"
@@ -62,7 +62,7 @@ function PeriodGenerateForm({ initialStartDate, onSubmit, onClose, loading, erro
           onChange={e => setCount(Math.max(1, Number(e.target.value) || 1))}
         />
         <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-          Generate one or more consecutive periods from this start date.
+          Generate one or more consecutive budget cycles from this start date.
         </p>
       </div>
       {error && (
@@ -73,7 +73,7 @@ function PeriodGenerateForm({ initialStartDate, onSubmit, onClose, loading, erro
       <div className="flex justify-end gap-2 pt-2">
         <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
         <button type="submit" className="btn-primary" disabled={loading}>
-          {loading ? 'Generating…' : 'Generate Period'}
+          {loading ? 'Generating…' : 'Generate Budget Cycle'}
         </button>
       </div>
     </form>
@@ -122,10 +122,14 @@ function PeriodSummaryRow({ summary, onDelete }) {
   return (
     <tr className="table-row align-top">
       <td className="table-cell">
-        <div className="font-medium leading-snug text-gray-900 dark:text-gray-100">
+        <Link
+          to={`/periods/${period.finperiodid}`}
+          className="block font-medium leading-snug text-gray-900 transition-colors hover:text-dosh-700 dark:text-gray-100 dark:hover:text-dosh-300"
+          title="View budget cycle details"
+        >
           <span className="block whitespace-nowrap">{startLabel} -</span>
           <span className="block whitespace-nowrap">{endLabel}</span>
-        </div>
+        </Link>
         <div className="mt-1">
           {period.islocked && <span className="badge-amber">Locked</span>}
         </div>
@@ -142,14 +146,14 @@ function PeriodSummaryRow({ summary, onDelete }) {
       <td className="table-cell">
         <div className="flex flex-wrap justify-end gap-2">
           <Link to={`/periods/${period.finperiodid}`} className="btn-primary">
-            Open
+            Details
           </Link>
           {summary.can_delete && (
             <button
               type="button"
               className="btn-danger"
               onClick={() => onDelete(summary)}
-              title="Delete period"
+              title="Delete budget cycle"
             >
               <TrashIcon className="h-4 w-4" />
             </button>
@@ -172,7 +176,7 @@ function PeriodSummaryGroup({ title, summaries, collapsed = false, collapsible =
           type="button"
           className="flex items-center gap-2 text-left text-sm font-semibold uppercase tracking-wide text-gray-700 transition-colors hover:text-gray-900 dark:text-gray-200 dark:hover:text-white"
           onClick={() => collapsible && setOpen(value => !value)}
-          title={collapsible ? (open ? `Collapse ${title.toLowerCase()} periods` : `Expand ${title.toLowerCase()} periods`) : undefined}
+          title={collapsible ? (open ? `Collapse ${title.toLowerCase()} budget cycles` : `Expand ${title.toLowerCase()} budget cycles`) : undefined}
         >
           {collapsible ? (
             open ? <ChevronDownIcon className="h-4 w-4 shrink-0" /> : <ChevronRightIcon className="h-4 w-4 shrink-0" />
@@ -199,7 +203,7 @@ function PeriodSummaryGroup({ title, summaries, collapsed = false, collapsible =
                 <th className="table-header-cell"></th>
               </tr>
               <tr className="border-b border-gray-200 dark:border-gray-800">
-                <th className="table-header-cell text-left">Period</th>
+                <th className="table-header-cell text-left">Budget Cycle</th>
                 <th className="table-header-cell text-right col-budget">Budget</th>
                 <th className="table-header-cell text-right col-actual">Actual</th>
                 <th className="table-header-cell text-right col-budget">Budget</th>
@@ -294,7 +298,7 @@ export default function BudgetPeriodsPage() {
       }
     },
     onError: error => {
-      setGenerateError(formatApiError(error, 'Unable to generate period right now.'))
+      setGenerateError(formatApiError(error, 'Unable to generate this budget cycle right now.'))
     },
   })
 
@@ -334,37 +338,37 @@ export default function BudgetPeriodsPage() {
             className="btn-primary"
             onClick={() => { setGenerateError(''); setShowGenerate(true) }}
             disabled={!canGenerate}
-            title={!canGenerate ? 'Add at least one income type and one active expense item first' : 'Generate a new period'}
+            title={!canGenerate ? 'Add at least one income type and one active expense item first' : 'Generate a new budget cycle'}
           >
-            <PlusIcon className="w-4 h-4" /> New Period
+            <PlusIcon className="w-4 h-4" /> New Budget Cycle
           </button>
         </div>
       </div>
 
       {!canGenerate && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-300">
-          New periods require at least one income type and one active expense item. Finish the setup first, then come back here to generate periods.
+          New budget cycles require at least one income type and one active expense item. Finish the setup first, then come back here to generate budget cycles.
         </div>
       )}
 
       {periods.length === 0 ? (
         <div className="card p-8 text-center">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">No periods yet</h2>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">No budget cycles yet</h2>
           <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            This budget is ready to start using once you generate the first period.
+            This budget is ready to start using once you generate the first budget cycle.
           </p>
           <div className="mt-4 flex justify-center gap-2">
             <Link to={`/budgets/${id}/setup`} className="btn-secondary">
               <Cog6ToothIcon className="w-4 h-4" /> Open Setup
             </Link>
             <button className="btn-primary" onClick={() => { setGenerateError(''); setShowGenerate(true) }} disabled={!canGenerate}>
-              <PlusIcon className="w-4 h-4" /> Generate First Period
+              <PlusIcon className="w-4 h-4" /> Generate First Budget Cycle
             </button>
           </div>
         </div>
       ) : (
         <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Periods</h2>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Budget Cycles</h2>
           <div className="space-y-4">
             <PeriodSummaryGroup title="Current" summaries={groupedSummaries.current} collapsible onDelete={setDeleteTarget} />
             <PeriodSummaryGroup title="Future" summaries={groupedSummaries.future} collapsed collapsible onDelete={setDeleteTarget} />
@@ -380,7 +384,7 @@ export default function BudgetPeriodsPage() {
       )}
 
       {showGenerate && (
-        <Modal title={`Generate Period for ${budget.description || 'Untitled Budget'}`} onClose={() => setShowGenerate(false)}>
+        <Modal title={`Generate Budget Cycle for ${budget.description || 'Untitled Budget'}`} onClose={() => setShowGenerate(false)}>
           <PeriodGenerateForm
             initialStartDate={suggestedStartDate}
             onSubmit={({ startDate, count }) => createPeriod.mutate({ startDate, count })}
@@ -392,17 +396,17 @@ export default function BudgetPeriodsPage() {
       )}
 
       {deleteTarget && (
-        <Modal title="Delete Future Period" onClose={() => setDeleteTarget(null)}>
+        <Modal title="Delete Future Budget Cycle" onClose={() => setDeleteTarget(null)}>
           <div className="space-y-4">
             <p className="text-sm text-gray-600 dark:text-gray-300">
-              Delete the future period from {format(parseISO(deleteTarget.period.startdate), 'dd MMM yyyy')} to {format(parseISO(deleteTarget.period.enddate), 'dd MMM yyyy')}?
+              Delete the future budget cycle from {format(parseISO(deleteTarget.period.startdate), 'dd MMM yyyy')} to {format(parseISO(deleteTarget.period.enddate), 'dd MMM yyyy')}?
             </p>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Only future periods without recorded actuals can be deleted.
+              Only future budget cycles without recorded actuals can be deleted.
             </p>
             {removePeriod.isError && (
               <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300">
-                {formatApiError(removePeriod.error, 'Unable to delete this period right now.')}
+                {formatApiError(removePeriod.error, 'Unable to delete this budget cycle right now.')}
               </div>
             )}
             <div className="flex justify-end gap-2">
@@ -413,7 +417,7 @@ export default function BudgetPeriodsPage() {
                 disabled={removePeriod.isPending}
                 onClick={() => removePeriod.mutate(deleteTarget.period.finperiodid)}
               >
-                {removePeriod.isPending ? 'Deleting…' : 'Delete Period'}
+                {removePeriod.isPending ? 'Deleting…' : 'Delete Budget Cycle'}
               </button>
             </div>
           </div>
