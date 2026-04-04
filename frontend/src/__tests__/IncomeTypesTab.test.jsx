@@ -10,6 +10,7 @@ jest.mock('../api/client', () => ({
   updateIncomeType: jest.fn(),
   deleteIncomeType: jest.fn(),
   getBalanceTypes: jest.fn(),
+  getBudgetSetupAssessment: jest.fn(),
 }))
 
 jest.mock('../components/Modal', () => ({ title, children }) => (
@@ -24,6 +25,16 @@ const client = require('../api/client')
 describe('IncomeTypesTab', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    client.getBudgetSetupAssessment.mockResolvedValue({
+      budgetid: 1,
+      can_generate: true,
+      blocking_issues: [],
+      warnings: [],
+      accounts: [],
+      income_types: [],
+      expense_items: [],
+      investment_items: [],
+    })
   })
 
   it('auto-sets auto-include when a fixed income type is created', async () => {
@@ -133,5 +144,44 @@ describe('IncomeTypesTab', () => {
         linked_account: null,
       })
     })
+  })
+
+  it('disables delete for an income type already in use', async () => {
+    client.getIncomeTypes.mockResolvedValue([
+      {
+        incomedesc: 'Salary',
+        issavings: false,
+        isfixed: true,
+        autoinclude: true,
+        amount: 2500,
+        linked_account: 'Everyday',
+      },
+    ])
+    client.getBalanceTypes.mockResolvedValue([{ balancedesc: 'Everyday', balance_type: 'Bank' }])
+    client.getBudgetSetupAssessment.mockResolvedValue({
+      budgetid: 1,
+      can_generate: true,
+      blocking_issues: [],
+      warnings: [],
+      accounts: [],
+      income_types: [
+        {
+          incomedesc: 'Salary',
+          in_use: true,
+          reasons: ['Included in generated budget cycles'],
+          can_delete: false,
+          can_edit_structure: false,
+        },
+      ],
+      expense_items: [],
+      investment_items: [],
+    })
+
+    renderWithProviders(<IncomeTypesTab budgetId={1} />)
+
+    expect(await screen.findByText('Salary')).toBeTruthy()
+    expect(screen.getByText('In Use')).toBeTruthy()
+    const deleteButton = screen.getAllByRole('button')[2]
+    expect(deleteButton.disabled).toBe(true)
   })
 })

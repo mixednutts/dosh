@@ -9,6 +9,8 @@ Read this alongside:
 - [TEST_STRATEGY.md](/home/ubuntu/dosh/TEST_STRATEGY.md)
 - [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/DEVELOPMENT_ACTIVITIES.md)
 - [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/BUDGET_CYCLE_LIFECYCLE_PLAN.md)
+- [SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md](/home/ubuntu/dosh/SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md)
+- [TEST_RESULTS_SUMMARY.md](/home/ubuntu/dosh/TEST_RESULTS_SUMMARY.md)
 
 ## Purpose
 
@@ -34,6 +36,11 @@ The repository now has:
 - close-out snapshot visibility and next-cycle activation
 
 This means the next work should favor depth and consequence coverage rather than building new test harnesses.
+
+Current update:
+
+- backend test harness isolation is now in place and should be treated as baseline, not future work
+- setup-assessment and downstream-protection coverage is also now baseline rather than an open test-expansion target
 
 ## Guiding Rules
 
@@ -65,6 +72,7 @@ Best next slices:
 - changing primary investment and then generating the next cycle
 - removing optional references and then attempting the first dependent action
 - valid-but-weaker setup states that should still produce clear guidance
+- reconciliation-aware or closed-cycle consequence messaging when protected setup can no longer be changed directly
 
 ### 3. Budget health expansion
 

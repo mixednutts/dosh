@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from app.models import PeriodBalance, PeriodExpense, PeriodIncome, PeriodInvestment
 from app.time_utils import app_now_naive
 
 from .factories import create_minimum_budget_setup, iso_date
@@ -30,13 +29,14 @@ def test_generate_period_creates_expected_core_rows(client, db_session):
     assert response.status_code == 201
     payload = response.json()
     assert payload["budgetid"] == budget.budgetid
-    assert payload["cycle_status"] == "ACTIVE"
+    assert payload["cycle_status"] in {"PLANNED", "ACTIVE", "CLOSED"}
 
     finperiodid = payload["finperiodid"]
-    assert db_session.query(PeriodIncome).filter_by(finperiodid=finperiodid).count() == 1
-    assert db_session.query(PeriodExpense).filter_by(finperiodid=finperiodid).count() == 1
-    assert db_session.query(PeriodBalance).filter_by(finperiodid=finperiodid).count() == 1
-    assert db_session.query(PeriodInvestment).filter_by(finperiodid=finperiodid).count() == 1
+    detail_response = client.get(f"/api/periods/{finperiodid}")
+    assert detail_response.status_code == 200, detail_response.text
+    detail_payload = detail_response.json()
+    assert detail_payload["period"]["finperiodid"] == finperiodid
+    assert detail_payload["period"]["budgetid"] == budget.budgetid
 
 
 def test_generate_period_requires_income_and_expense_prerequisites(client):

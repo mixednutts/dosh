@@ -182,6 +182,47 @@ def test_single_account_scenario_rejects_savings_transfer_without_savings_accoun
     assert "not a savings account" in transfer_attempt.json()["detail"].lower()
 
 
+def test_generation_requires_a_primary_account_when_expense_tracking_is_configured(client, db_session):
+    budget = create_budget(db_session)
+    create_income_type(db_session, budgetid=budget.budgetid)
+    create_expense_item(db_session, budgetid=budget.budgetid)
+
+    first_balance = client.post(
+        f"/api/budgets/{budget.budgetid}/balance-types/",
+        json={
+            "balancedesc": "Everyday",
+            "balance_type": "Transaction",
+            "opening_balance": "1000.00",
+            "active": True,
+            "is_primary": False,
+        },
+    )
+    assert first_balance.status_code == 201, first_balance.text
+
+    second_balance = client.post(
+        f"/api/budgets/{budget.budgetid}/balance-types/",
+        json={
+            "balancedesc": "Savings",
+            "balance_type": "Savings",
+            "opening_balance": "500.00",
+            "active": True,
+            "is_primary": False,
+        },
+    )
+    assert second_balance.status_code == 201, second_balance.text
+
+    generation_attempt = client.post(
+        "/api/periods/generate",
+        json={
+            "budgetid": budget.budgetid,
+            "startdate": app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0).isoformat(),
+            "count": 1,
+        },
+    )
+    assert generation_attempt.status_code == 422
+    assert "primary account" in generation_attempt.json()["detail"].lower()
+
+
 def test_multi_transaction_setup_uses_primary_account_for_expense_activity(client, db_session):
     budget = create_budget(db_session)
     create_income_type(db_session, budgetid=budget.budgetid)
@@ -229,6 +270,44 @@ def test_multi_transaction_setup_uses_primary_account_for_expense_activity(clien
     balances = {row["balancedesc"]: row for row in balances_response.json()}
     assert Decimal(balances["Main Account"]["movement_amount"]) == Decimal("-125.00")
     assert Decimal(balances["Joint Account"]["movement_amount"]) == Decimal("0.00")
+
+
+def test_expense_activity_fails_clearly_when_primary_account_is_removed_after_generation(client, db_session):
+    budget = create_budget(db_session)
+    create_income_type(db_session, budgetid=budget.budgetid)
+    create_expense_item(db_session, budgetid=budget.budgetid)
+
+    main_balance = client.post(
+        f"/api/budgets/{budget.budgetid}/balance-types/",
+        json={
+            "balancedesc": "Main Account",
+            "balance_type": "Transaction",
+            "opening_balance": "1000.00",
+            "active": True,
+            "is_primary": True,
+        },
+    )
+    assert main_balance.status_code == 201, main_balance.text
+
+    active_period = generate_periods(
+        client,
+        budgetid=budget.budgetid,
+        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        count=1,
+    )[0]
+
+    demote_primary = client.patch(
+        f"/api/budgets/{budget.budgetid}/balance-types/Main%20Account",
+        json={"is_primary": False},
+    )
+    assert demote_primary.status_code == 200, demote_primary.text
+
+    expense_entry = client.post(
+        f"/api/periods/{active_period['finperiodid']}/expenses/Rent/entries/",
+        json={"amount": "125.00", "note": "Should fail without primary"},
+    )
+    assert expense_entry.status_code == 422
+    assert "primary account" in expense_entry.json()["detail"].lower()
 
 
 def test_multi_transaction_setup_routes_linked_income_to_non_primary_account(client, db_session):

@@ -7,7 +7,7 @@ from ..cycle_constants import CLOSED, PAID
 from ..database import get_db
 from ..models import FinancialPeriod, PeriodExpense, PeriodTransaction
 from ..schemas import ExpenseEntryCreate, ExpenseEntryOut
-from ..transaction_ledger import build_expense_tx, sync_period_state
+from ..transaction_ledger import build_expense_tx, get_primary_account_desc, sync_period_state
 
 router = APIRouter(prefix="/periods/{finperiodid}/expenses/{expensedesc}/entries", tags=["expense-entries"])
 
@@ -74,6 +74,8 @@ def add_entry(
 
     pe = _get_period_expense(finperiodid, expensedesc, db)
     _assert_expense_not_paid(pe)
+    if not get_primary_account_desc(pe.budgetid, db):
+        raise HTTPException(422, "Set one account as the primary account before recording expense activity.")
 
     entry = build_expense_tx(
         finperiodid,

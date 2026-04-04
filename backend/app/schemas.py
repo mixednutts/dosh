@@ -84,6 +84,52 @@ class BudgetOut(BudgetBase):
     model_config = {"from_attributes": True}
 
 
+class SetupAssessmentAccountOut(BaseModel):
+    balancedesc: str
+    in_use: bool = False
+    reasons: list[str] = []
+    can_delete: bool = True
+    can_deactivate: bool = True
+    can_edit_structure: bool = True
+
+
+class SetupAssessmentIncomeOut(BaseModel):
+    incomedesc: str
+    in_use: bool = False
+    reasons: list[str] = []
+    can_delete: bool = True
+    can_edit_structure: bool = True
+
+
+class SetupAssessmentExpenseOut(BaseModel):
+    expensedesc: str
+    in_use: bool = False
+    reasons: list[str] = []
+    can_delete: bool = True
+    can_deactivate: bool = True
+    can_edit_structure: bool = True
+
+
+class SetupAssessmentInvestmentOut(BaseModel):
+    investmentdesc: str
+    in_use: bool = False
+    reasons: list[str] = []
+    can_delete: bool = True
+    can_deactivate: bool = True
+    can_edit_structure: bool = True
+
+
+class BudgetSetupAssessmentOut(BaseModel):
+    budgetid: int
+    can_generate: bool = False
+    blocking_issues: list[str] = []
+    warnings: list[str] = []
+    accounts: list[SetupAssessmentAccountOut] = []
+    income_types: list[SetupAssessmentIncomeOut] = []
+    expense_items: list[SetupAssessmentExpenseOut] = []
+    investment_items: list[SetupAssessmentInvestmentOut] = []
+
+
 # ── IncomeType ────────────────────────────────────────────────────────────────
 
 class IncomeTypeBase(BaseModel):

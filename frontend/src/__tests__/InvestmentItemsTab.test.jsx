@@ -10,6 +10,7 @@ jest.mock('../api/client', () => ({
   updateInvestmentItem: jest.fn(),
   deleteInvestmentItem: jest.fn(),
   getBalanceTypes: jest.fn(),
+  getBudgetSetupAssessment: jest.fn(),
 }))
 
 jest.mock('../components/Modal', () => ({ title, children }) => (
@@ -24,6 +25,16 @@ const client = require('../api/client')
 describe('InvestmentItemsTab', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    client.getBudgetSetupAssessment.mockResolvedValue({
+      budgetid: 1,
+      can_generate: true,
+      blocking_issues: [],
+      warnings: [],
+      accounts: [],
+      income_types: [],
+      expense_items: [],
+      investment_items: [],
+    })
   })
 
   it('creates a primary investment line with a linked account', async () => {
@@ -208,5 +219,45 @@ describe('InvestmentItemsTab', () => {
     })
 
     confirmSpy.mockRestore()
+  })
+
+  it('disables delete for an investment line already in use', async () => {
+    client.getInvestmentItems.mockResolvedValue([
+      {
+        investmentdesc: 'Emergency Fund',
+        active: true,
+        effectivedate: null,
+        initial_value: '100.00',
+        linked_account_desc: null,
+        is_primary: false,
+      },
+    ])
+    client.getBalanceTypes.mockResolvedValue([])
+    client.getBudgetSetupAssessment.mockResolvedValue({
+      budgetid: 1,
+      can_generate: true,
+      blocking_issues: [],
+      warnings: [],
+      accounts: [],
+      income_types: [],
+      expense_items: [],
+      investment_items: [
+        {
+          investmentdesc: 'Emergency Fund',
+          in_use: true,
+          reasons: ['Included in generated budget cycles'],
+          can_delete: false,
+          can_deactivate: false,
+          can_edit_structure: false,
+        },
+      ],
+    })
+
+    renderWithProviders(<InvestmentItemsTab budgetId={1} />)
+
+    expect(await screen.findByText('Emergency Fund')).toBeTruthy()
+    expect(screen.getByText('In Use')).toBeTruthy()
+    const deleteButton = screen.getAllByRole('button')[2]
+    expect(deleteButton.disabled).toBe(true)
   })
 })

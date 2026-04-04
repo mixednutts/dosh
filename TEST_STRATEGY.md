@@ -17,6 +17,8 @@ Read this alongside:
 - [CHANGES.md](/home/ubuntu/dosh/CHANGES.md)
 - [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/BUDGET_CYCLE_LIFECYCLE_PLAN.md)
 - [TEST_EXPANSION_PLAN.md](/home/ubuntu/dosh/TEST_EXPANSION_PLAN.md)
+- [SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md](/home/ubuntu/dosh/SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md)
+- [TEST_RESULTS_SUMMARY.md](/home/ubuntu/dosh/TEST_RESULTS_SUMMARY.md)
 
 ## Current Situation
 
@@ -25,12 +27,14 @@ The repository now has real backend, frontend, and end-to-end test harnesses in 
 Observed current state:
 
 - backend now includes a `pytest` harness under [backend/tests](/home/ubuntu/dosh/backend/tests)
+- backend harness now uses an isolated SQLite database per test case rather than a shared file-backed test database
 - backend test dependencies are listed in [backend/requirements-dev.txt](/home/ubuntu/dosh/backend/requirements-dev.txt)
 - backend test configuration is defined in [backend/pytest.ini](/home/ubuntu/dosh/backend/pytest.ini)
 - frontend has Create React App test tooling available through Jest, and now includes initial user-facing workflow coverage
 - frontend also now has a Playwright end-to-end harness under [frontend/e2e](/home/ubuntu/dosh/frontend/e2e)
 - the project now has a credible regression foundation for controlled enhancement work
 - coverage is still selective rather than exhaustive, so new behavior should continue to be added together with tests
+- the latest recorded backend, frontend, and deployment verification outcomes live in [TEST_RESULTS_SUMMARY.md](/home/ubuntu/dosh/TEST_RESULTS_SUMMARY.md)
 
 This matters because Dosh is no longer mostly CRUD. It now contains workflow rules where subtle regressions would reduce trust:
 
@@ -171,7 +175,11 @@ The following setup-shape combinations are currently covered by automated tests.
 | `No Accounts` | no accounts, no income, no expenses, no investments | setup guidance and blocked first-cycle generation | frontend |
 | `Single Account` | 1 primary transaction account, no savings account | valid setup rendering without false missing-account guidance | frontend |
 | `Single Account` | 1 primary transaction account, no savings account | reject savings-transfer behavior that depends on a real savings account | backend |
-| `Accounts Present, No Primary` | accounts exist but none selected as primary | prompt for primary-account selection before expense movement assumptions | frontend |
+| `Accounts Present, No Primary` | accounts exist but none selected as primary | centralized setup assessment should block generation and reject downstream expense activity until setup is repaired | frontend + backend |
+| `Accounts In Use` | generated cycles or linked references already depend on the account setup | protect account structure from delete, deactivate, or unsafe structural edits while still allowing safe reassignment paths | frontend + backend |
+| `Income Types In Use` | generated cycles or recorded activity already depend on the income setup | protect income setup from destructive edits or deletion once downstream cycles depend on it | frontend + backend |
+| `Expense Items In Use` | generated cycles or recorded activity already depend on the expense setup | protect expense setup from deletion or deactivation while preserving supported revision-style updates | frontend + backend |
+| `Investment Lines In Use` | generated cycles or recorded activity already depend on the investment setup | protect investment setup from destructive edits or deletion once downstream cycles depend on it | frontend + backend |
 | `Multi Transaction` | 2 transaction accounts with 1 primary | route expense activity to the primary account by default | backend |
 | `Multi Transaction With Linked Income` | 2 transaction accounts with income linked to a non-primary account | route income movement to the linked account rather than the primary account | backend |
 | `Multi Transaction After Primary Reassignment` | 2 transaction accounts with primary changed after setup | route later expense activity to the newly primary account | backend |
@@ -309,6 +317,7 @@ Current first smoke scope:
 Backend scaffold now present:
 
 - shared pytest fixtures in [backend/tests/conftest.py](/home/ubuntu/dosh/backend/tests/conftest.py)
+- shared pytest fixtures now create an isolated SQLite database per test case and patch the app onto that engine before the case runs
 - reusable data helpers in [backend/tests/factories.py](/home/ubuntu/dosh/backend/tests/factories.py)
 - initial smoke and pure-logic tests in [backend/tests/test_app_smoke.py](/home/ubuntu/dosh/backend/tests/test_app_smoke.py) and [backend/tests/test_period_logic.py](/home/ubuntu/dosh/backend/tests/test_period_logic.py)
 - first Priority 1 workflow coverage in [backend/tests/test_closeout_flow.py](/home/ubuntu/dosh/backend/tests/test_closeout_flow.py), [backend/tests/test_delete_continuity.py](/home/ubuntu/dosh/backend/tests/test_delete_continuity.py), and [backend/tests/test_status_workflows.py](/home/ubuntu/dosh/backend/tests/test_status_workflows.py)
@@ -316,8 +325,9 @@ Backend scaffold now present:
 - initial reconciliation and health-matrix coverage in [backend/tests/test_transactions_and_balances.py](/home/ubuntu/dosh/backend/tests/test_transactions_and_balances.py) and [backend/tests/test_budget_health_matrix.py](/home/ubuntu/dosh/backend/tests/test_budget_health_matrix.py)
 - additional live-ledger and advanced health coverage in [backend/tests/test_live_ledger_behavior.py](/home/ubuntu/dosh/backend/tests/test_live_ledger_behavior.py) and [backend/tests/test_budget_health_advanced.py](/home/ubuntu/dosh/backend/tests/test_budget_health_advanced.py)
 - initial setup and scenario coverage in [backend/tests/test_budget_setup_workflows.py](/home/ubuntu/dosh/backend/tests/test_budget_setup_workflows.py)
+- centralized setup-assessment and downstream-protection coverage in [backend/tests/test_setup_assessment.py](/home/ubuntu/dosh/backend/tests/test_setup_assessment.py)
 - initial frontend workflow coverage in [BudgetPeriodsPage.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/BudgetPeriodsPage.test.jsx), [PeriodDetailPage.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/PeriodDetailPage.test.jsx), [BudgetDetailPage.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/BudgetDetailPage.test.jsx), [BalanceTypesTab.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/BalanceTypesTab.test.jsx), [IncomeTypesTab.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/IncomeTypesTab.test.jsx), [InvestmentItemsTab.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/InvestmentItemsTab.test.jsx), and [SettingsTab.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/SettingsTab.test.jsx), with shared render utilities in [testUtils.jsx](/home/ubuntu/dosh/frontend/src/testUtils.jsx)
-  This now includes delete continuity messaging, non-deletable delete-state gating, closed-cycle read-only rendering, close-out modal confirmation gating, expense and investment paid-confirmation flows, expense and investment revise-comment workflows, locked-cycle guardrail messaging, settings guidance for primary investment allocation, manual cycle lock setting changes, account primary-selection setup plus edit, deactivation, and delete behavior, income setup auto-include behavior plus linked-account removal through edit, investment setup with and without linked accounts, investment primary/edit/deactivation/delete behavior, backend coverage for primary-investment reassignment affecting future auto-surplus generation, setup-shape visibility for richer account configurations, setup states where accounts exist but no primary account is selected, valid single-account setup states without false missing-account warnings, setup-to-generation readiness gating, successful generation handoff with suggested next start date, generate failure feedback, and setup guidance when account foundations are missing.
+  This now includes delete continuity messaging, non-deletable delete-state gating, closed-cycle read-only rendering, close-out modal confirmation gating, expense and investment paid-confirmation flows, expense and investment revise-comment workflows, locked-cycle guardrail messaging, settings guidance for primary investment allocation, manual cycle lock setting changes, account primary-selection setup plus edit, deactivation, and delete behavior, income setup auto-include behavior plus linked-account removal through edit, investment setup with and without linked accounts, investment primary/edit/deactivation/delete behavior, backend coverage for primary-investment reassignment affecting future auto-surplus generation, setup-shape visibility for richer account configurations, setup states where accounts exist but no primary account is selected, valid single-account setup states without false missing-account warnings, setup-to-generation readiness gating, successful generation handoff with suggested next start date, generate failure feedback, setup guidance when account foundations are missing, setup-assessment summary state on the budget setup page, and protected setup-item rendering across all relevant setup tabs.
 - initial Playwright end-to-end scaffold in [playwright.config.js](/home/ubuntu/dosh/frontend/playwright.config.js) and [budget-smoke.spec.js](/home/ubuntu/dosh/frontend/e2e/budget-smoke.spec.js)
   The current smoke paths now run successfully in Chromium locally, covering blocked setup handoff, minimum-setup first-cycle generation, first expense-transaction activity with linked account movement, and close-out into the next active cycle.
 
@@ -325,8 +335,9 @@ Current backend run command:
 
 ```bash
 cd backend
-pip install -r requirements-dev.txt
-pytest
+python3 -m venv .venv
+./.venv/bin/python -m pip install -r requirements-dev.txt
+./.venv/bin/python -m pytest -q
 ```
 
 Current frontend run command:
@@ -346,10 +357,11 @@ npx playwright test
 Current backend scaffold proves:
 
 - the app can boot under an isolated SQLite test database
+- the app can boot under an isolated SQLite test database per test case rather than a shared suite database
 - tests can drive API requests through FastAPI `TestClient`
 - tests can seed reusable domain fixtures without touching the real app database
 - the repository now has a stable place to add lifecycle, close-out, and continuity regression tests
-- the repository now has initial regression coverage for close-out transitions, carry-forward persistence, continuity-aware deletion, regeneration, paid or revised status guards, closed-cycle write rejection, delete blockers after recorded activity, lifecycle normalization, historical health snapshot preservation, live ledger-driven balance movement, system-generated transaction rows, early health-scoring matrix behavior, and setup-driven scenario assumptions including non-primary linked-income routing, primary-account reassignment effects on later expense activity, and mixed-account movement routing
+- the repository now has initial regression coverage for close-out transitions, carry-forward persistence, continuity-aware deletion, regeneration, paid or revised status guards, closed-cycle write rejection, delete blockers after recorded activity, lifecycle normalization, historical health snapshot preservation, live ledger-driven balance movement, system-generated transaction rows, early health-scoring matrix behavior, setup-driven scenario assumptions including non-primary linked-income routing, primary-account reassignment effects on later expense activity, mixed-account movement routing, and centralized setup assessment plus in-use setup protection
 
 Current limitation:
 
@@ -380,7 +392,7 @@ Recommended stack:
 
 - `pytest`
 - FastAPI `TestClient`
-- SQLite test database per test or per module
+- isolated SQLite test database per test case
 - dependency override for `get_db`
 - reusable fixtures for seeded budgets and generated periods
 
@@ -582,6 +594,7 @@ Current initial backend coverage now includes:
 - fixed-income autoinclude enforcement
 - unique primary balance and investment selection
 - generation without investment lines even when surplus auto-allocation is enabled
+- centralized setup-assessment blocking and setup protection once downstream cycles depend on setup records
 - `Single Account` savings-transfer rejection when no savings account exists
 - `Multi Transaction` primary-account use for expense movement
 - `Mixed Accounts` movement routing across transaction, savings, and linked investment accounts

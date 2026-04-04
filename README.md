@@ -25,6 +25,10 @@ For the current recommended automated testing approach, priorities, and case inv
 
 For the current testing expansion roadmap and planned next coverage slices, read [TEST_EXPANSION_PLAN.md](/home/ubuntu/dosh/TEST_EXPANSION_PLAN.md).
 
+For the current setup-validity and downstream-protection model introduced in the latest session, read [SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md](/home/ubuntu/dosh/SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md).
+
+For recent test and deployment verification results, read [TEST_RESULTS_SUMMARY.md](/home/ubuntu/dosh/TEST_RESULTS_SUMMARY.md).
+
 ## Current Repository Layout
 
 ```text
@@ -57,6 +61,7 @@ Implemented areas:
 
 - Budget CRUD
 - Budget settings for period-generation behavior
+- Centralized setup assessment for generation readiness and setup protection
 - Budget health metrics Phase 1 endpoint with explainable evidence payload
 - Budget-level health personalisation values that tune thresholds and weighting
 - Income type CRUD
@@ -115,6 +120,7 @@ Visible pages and flows:
 - Investments
 - Personalisation
 - Settings
+- including setup-assessment summary state and section-level readiness/protection badges
 - including auto-allocation of surplus budget into a primary investment line
 - with quiet autosave for Budget Info and Personalisation updates
 - Period detail page for working with:
@@ -150,6 +156,10 @@ Based on the checked-in code, the project currently uses:
 - Playwright
 - Docker Compose
 - Traefik labels on the frontend service
+
+Testing infrastructure note:
+
+- backend automated tests now run against an isolated SQLite database per test case to avoid cross-area contamination during mixed workflow sessions
 
 ## Data Model
 
@@ -207,6 +217,7 @@ Period generation currently requires:
 
 - At least one income type
 - At least one active expense item
+- At least one active primary account when expense-driven setup is present
 
 When a period is generated, the backend creates:
 

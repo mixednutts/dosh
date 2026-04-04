@@ -5,6 +5,7 @@ from ..database import get_db
 from ..models import Budget, ExpenseItem, FinancialPeriod, PeriodExpense
 from ..schemas import ExpenseItemCreate, ExpenseItemOut, ExpenseItemUpdate, ExpenseItemReorderRequest
 from ..period_logic import expense_occurs_in_period
+from ..setup_assessment import expense_assessment
 
 router = APIRouter(prefix="/budgets/{budgetid}/expense-items", tags=["expense-items"])
 
@@ -21,6 +22,18 @@ def _get_expense_or_404(budgetid: int, expensedesc: str, db: Session) -> Expense
     if not ei:
         raise HTTPException(404, "Expense item not found")
     return ei
+
+
+def _assert_expense_delete_allowed(budgetid: int, expensedesc: str, db: Session) -> None:
+    assessment = expense_assessment(budgetid, expensedesc, db)
+    if not assessment["can_delete"]:
+        raise HTTPException(422, f'Expense item "{expensedesc}" is in use and cannot be deleted. {"; ".join(assessment["reasons"])}.')
+
+
+def _assert_expense_deactivate_allowed(budgetid: int, expensedesc: str, db: Session) -> None:
+    assessment = expense_assessment(budgetid, expensedesc, db)
+    if not assessment["can_deactivate"]:
+        raise HTTPException(422, f'Expense item "{expensedesc}" is in use and cannot be deactivated. {"; ".join(assessment["reasons"])}.')
 
 
 @router.get("/", response_model=list[ExpenseItemOut])
@@ -66,6 +79,8 @@ def update_expense_item(
 ):
     ei = _get_expense_or_404(budgetid, expensedesc, db)
     data = payload.model_dump(exclude_none=True)
+    if data.get("active") is False:
+        _assert_expense_deactivate_allowed(budgetid, expensedesc, db)
     bump = data.pop("bump_revision", False)
 
     # Detect whether a revision-worthy field changed
@@ -124,5 +139,6 @@ def update_expense_item(
 @router.delete("/{expensedesc}", status_code=204)
 def delete_expense_item(budgetid: int, expensedesc: str, db: Session = Depends(get_db)):
     ei = _get_expense_or_404(budgetid, expensedesc, db)
+    _assert_expense_delete_allowed(budgetid, expensedesc, db)
     db.delete(ei)
     db.commit()

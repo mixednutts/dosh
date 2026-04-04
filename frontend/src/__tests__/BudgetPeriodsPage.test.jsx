@@ -6,8 +6,7 @@ import { renderWithProviders } from '../testUtils'
 
 jest.mock('../api/client', () => ({
   getBudget: jest.fn(),
-  getExpenseItems: jest.fn(),
-  getIncomeTypes: jest.fn(),
+  getBudgetSetupAssessment: jest.fn(),
   getPeriodDeleteOptions: jest.fn(),
   getPeriodSummariesForBudget: jest.fn(),
   generatePeriod: jest.fn(),
@@ -19,6 +18,13 @@ const client = require('../api/client')
 describe('BudgetPeriodsPage', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    client.getBudgetSetupAssessment.mockResolvedValue({
+      budgetid: 1,
+      can_generate: true,
+      blocking_issues: [],
+      warnings: [],
+      accounts: [],
+    })
   })
 
   it('shows future-chain delete messaging when continuity requires it', async () => {
@@ -28,8 +34,6 @@ describe('BudgetPeriodsPage', () => {
       description: 'Home Budget',
       budget_frequency: 'Monthly',
     })
-    client.getIncomeTypes.mockResolvedValue([{ incomedesc: 'Salary' }])
-    client.getExpenseItems.mockResolvedValue([{ expensedesc: 'Rent', active: true }])
     client.getPeriodSummariesForBudget.mockResolvedValue([
       {
         period: {
@@ -83,8 +87,6 @@ describe('BudgetPeriodsPage', () => {
       description: 'Home Budget',
       budget_frequency: 'Monthly',
     })
-    client.getIncomeTypes.mockResolvedValue([{ incomedesc: 'Salary' }])
-    client.getExpenseItems.mockResolvedValue([{ expensedesc: 'Rent', active: true }])
     client.getPeriodSummariesForBudget.mockResolvedValue([
       {
         period: {
@@ -140,8 +142,16 @@ describe('BudgetPeriodsPage', () => {
       description: 'Home Budget',
       budget_frequency: 'Monthly',
     })
-    client.getIncomeTypes.mockResolvedValue([])
-    client.getExpenseItems.mockResolvedValue([])
+    client.getBudgetSetupAssessment.mockResolvedValue({
+      budgetid: 1,
+      can_generate: false,
+      blocking_issues: [
+        'Add at least one income type before generating budget cycles.',
+        'Add at least one active expense item before generating budget cycles.',
+      ],
+      warnings: [],
+      accounts: [],
+    })
     client.getPeriodSummariesForBudget.mockResolvedValue([])
 
     renderWithProviders(<BudgetPeriodsPage />, {
@@ -149,12 +159,43 @@ describe('BudgetPeriodsPage', () => {
       path: '/budgets/:budgetId',
     })
 
-    expect(await screen.findByText(/New budget cycles require at least one income type and one active expense item\./)).toBeTruthy()
-    expect(screen.getByText(/Finish the setup first, then come back here to generate budget cycles\./)).toBeTruthy()
+    expect(await screen.findByText(/Add at least one income type before generating budget cycles\./)).toBeTruthy()
+    expect(screen.getByText(/Add at least one active expense item before generating budget cycles\./)).toBeTruthy()
     expect(screen.getByText(/Complete the setup steps first, then come back here to generate the first budget cycle\./)).toBeTruthy()
     expect(screen.queryByText(/This budget is ready to start using once you generate the first budget cycle\./)).toBeNull()
 
-    const newCycleButton = screen.getByTitle('Add at least one income type and one active expense item first')
+    const newCycleButton = screen.getByTitle('Add at least one income type before generating budget cycles.')
+    expect(newCycleButton.disabled).toBe(true)
+
+    const firstCycleButton = screen.getByText('Generate First Budget Cycle')
+    expect(firstCycleButton.disabled).toBe(true)
+  })
+
+  it('blocks budget cycle generation when no primary account is configured', async () => {
+    client.getBudget.mockResolvedValue({
+      budgetid: 1,
+      budgetowner: 'Alex',
+      description: 'Home Budget',
+      budget_frequency: 'Monthly',
+    })
+    client.getBudgetSetupAssessment.mockResolvedValue({
+      budgetid: 1,
+      can_generate: false,
+      blocking_issues: ['Set one active account as the primary account before generating budget cycles.'],
+      warnings: [],
+      accounts: [],
+    })
+    client.getPeriodSummariesForBudget.mockResolvedValue([])
+
+    renderWithProviders(<BudgetPeriodsPage />, {
+      route: '/budgets/1',
+      path: '/budgets/:budgetId',
+    })
+
+    expect(await screen.findByText(/Set one active account as the primary account before generating budget cycles\./)).toBeTruthy()
+    expect(screen.getByText(/Complete the setup steps first, then come back here to generate the first budget cycle\./)).toBeTruthy()
+
+    const newCycleButton = screen.getByTitle('Set one active account as the primary account before generating budget cycles.')
     expect(newCycleButton.disabled).toBe(true)
 
     const firstCycleButton = screen.getByText('Generate First Budget Cycle')
@@ -168,8 +209,6 @@ describe('BudgetPeriodsPage', () => {
       description: 'Home Budget',
       budget_frequency: 'Monthly',
     })
-    client.getIncomeTypes.mockResolvedValue([{ incomedesc: 'Salary' }])
-    client.getExpenseItems.mockResolvedValue([{ expensedesc: 'Rent', active: true }])
     client.getPeriodSummariesForBudget.mockResolvedValue([])
     client.generatePeriod.mockRejectedValue({
       response: {
@@ -213,8 +252,6 @@ describe('BudgetPeriodsPage', () => {
       description: 'Home Budget',
       budget_frequency: 'Monthly',
     })
-    client.getIncomeTypes.mockResolvedValue([{ incomedesc: 'Salary' }])
-    client.getExpenseItems.mockResolvedValue([{ expensedesc: 'Rent', active: true }])
     client.getPeriodSummariesForBudget.mockResolvedValue([
       {
         period: {

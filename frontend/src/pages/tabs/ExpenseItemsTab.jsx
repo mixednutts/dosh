@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { PlusIcon, PencilIcon, TrashIcon, ChevronUpIcon, ChevronDownIcon } from '@heroicons/react/24/outline'
 import { format, parseISO, addDays } from 'date-fns'
-import { getExpenseItems, createExpenseItem, updateExpenseItem, deleteExpenseItem, reorderExpenseItems } from '../../api/client'
+import { getExpenseItems, createExpenseItem, updateExpenseItem, deleteExpenseItem, reorderExpenseItems, getBudgetSetupAssessment } from '../../api/client'
 import Modal from '../../components/Modal'
 
 const FREQTYPES = ['Always', 'Fixed Day of Month', 'Every N Days']
@@ -47,7 +47,7 @@ function calcNextDue(freqtype, frequencyValue, effectivedate) {
   return null
 }
 
-function ExpenseItemForm({ initial = emptyForm, isEdit = false, onSubmit, onClose, loading }) {
+function ExpenseItemForm({ initial = emptyForm, isEdit = false, onSubmit, onClose, loading, activeLocked = false, lockReasons = [] }) {
   const [form, setForm] = useState(initial)
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
@@ -115,10 +115,16 @@ function ExpenseItemForm({ initial = emptyForm, isEdit = false, onSubmit, onClos
         </p>
       )}
       <label className="flex items-center gap-2 text-sm cursor-pointer">
-        <input type="checkbox" checked={form.active} onChange={e => set('active', e.target.checked)}
+        <input type="checkbox" disabled={activeLocked} checked={form.active} onChange={e => set('active', e.target.checked)}
           className="rounded border-gray-300 dark:border-gray-600 text-dosh-600 focus:ring-dosh-500" />
         <span className="text-gray-700 dark:text-gray-300">Active (include in future generated budget cycles)</span>
       </label>
+      {activeLocked && (
+        <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-300">
+          This expense item is already in use, so it cannot be deactivated.
+          {lockReasons.length > 0 ? ` ${lockReasons.join('. ')}.` : ''}
+        </div>
+      )}
       {isEdit && (
         <p className="text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded px-3 py-2">
           Saving changes to frequency, amount, or dates will automatically apply a revision and update budget amounts on future unlocked budget cycles.
@@ -148,25 +154,47 @@ export default function ExpenseItemsTab({ budgetId }) {
   const qc = useQueryClient()
   const [modal, setModal] = useState(null)
   const [showInactive, setShowInactive] = useState(false)
+  const [actionError, setActionError] = useState('')
 
   const { data: items = [] } = useQuery({
     queryKey: ['expense-items', budgetId],
     queryFn: () => getExpenseItems(budgetId),
   })
+  const { data: setupAssessment } = useQuery({
+    queryKey: ['budget-setup-assessment', budgetId],
+    queryFn: () => getBudgetSetupAssessment(budgetId),
+  })
 
   const create = useMutation({
     mutationFn: data => createExpenseItem(budgetId, data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['expense-items', budgetId] }); setModal(null) },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['expense-items', budgetId] })
+      qc.invalidateQueries({ queryKey: ['budget-setup-assessment', budgetId] })
+      setActionError('')
+      setModal(null)
+    },
+    onError: error => setActionError(error?.response?.data?.detail || 'Unable to save this expense item right now.'),
   })
 
   const update = useMutation({
     mutationFn: ({ desc, data }) => updateExpenseItem(budgetId, desc, data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['expense-items', budgetId] }); setModal(null) },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['expense-items', budgetId] })
+      qc.invalidateQueries({ queryKey: ['budget-setup-assessment', budgetId] })
+      setActionError('')
+      setModal(null)
+    },
+    onError: error => setActionError(error?.response?.data?.detail || 'Unable to update this expense item right now.'),
   })
 
   const remove = useMutation({
     mutationFn: desc => deleteExpenseItem(budgetId, desc),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['expense-items', budgetId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['expense-items', budgetId] })
+      qc.invalidateQueries({ queryKey: ['budget-setup-assessment', budgetId] })
+      setActionError('')
+    },
+    onError: error => setActionError(error?.response?.data?.detail || 'Unable to delete this expense item right now.'),
   })
 
   const moveItem = (desc, direction) => {
@@ -181,10 +209,12 @@ export default function ExpenseItemsTab({ budgetId }) {
   }
 
   const handleSubmit = form => {
+    setActionError('')
     if (modal.mode === 'create') create.mutate(form)
     else update.mutate({ desc: modal.item.expensedesc, data: form })
   }
 
+  const expenseUsageByDesc = Object.fromEntries((setupAssessment?.expense_items || []).map(item => [item.expensedesc, item]))
   const displayed = showInactive ? items : items.filter(i => i.active)
 
   return (
@@ -199,6 +229,12 @@ export default function ExpenseItemsTab({ budgetId }) {
           <PlusIcon className="w-4 h-4" /> Add Expense Item
         </button>
       </div>
+
+      {actionError && (
+        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300">
+          {actionError}
+        </div>
+      )}
 
       {displayed.length === 0 ? (
         <div className="card p-8 text-center text-gray-500 dark:text-gray-400">
@@ -223,6 +259,7 @@ export default function ExpenseItemsTab({ budgetId }) {
             </thead>
             <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
               {displayed.map((item, idx) => {
+                const usage = expenseUsageByDesc[item.expensedesc]
                 const nextDue = calcNextDue(item.freqtype, item.frequency_value, item.effectivedate)
                 const nextDueStr = nextDue ? format(nextDue, 'dd MMM yyyy') : '—'
                 const commDate = item.effectivedate ? format(parseISO(item.effectivedate), 'dd MMM yyyy') : '—'
@@ -240,7 +277,10 @@ export default function ExpenseItemsTab({ budgetId }) {
                         </button>
                       </div>
                     </td>
-                    <td className="px-4 py-2 font-medium text-gray-800 dark:text-gray-100">{item.expensedesc}</td>
+                    <td className="px-4 py-2 font-medium text-gray-800 dark:text-gray-100">
+                      {item.expensedesc}
+                      {usage?.in_use ? <span className="ml-2 badge-amber">In Use</span> : null}
+                    </td>
                     <td className="px-3 py-2">
                       <FreqBadge freqtype={item.freqtype} frequencyValue={item.frequency_value} />
                     </td>
@@ -265,7 +305,7 @@ export default function ExpenseItemsTab({ budgetId }) {
                         <button className="btn-secondary" onClick={() => setModal({ mode: 'edit', item })}>
                           <PencilIcon className="w-3 h-3" />
                         </button>
-                        <button className="btn-danger" onClick={() => { if (window.confirm(`Delete "${item.expensedesc}"?`)) remove.mutate(item.expensedesc) }}>
+                        <button className="btn-danger" disabled={usage ? usage.can_delete === false : false} title={usage?.can_delete === false ? usage.reasons.join('. ') : undefined} onClick={() => { if (window.confirm(`Delete "${item.expensedesc}"?`)) remove.mutate(item.expensedesc) }}>
                           <TrashIcon className="w-3 h-3" />
                         </button>
                       </div>
@@ -291,6 +331,8 @@ export default function ExpenseItemsTab({ budgetId }) {
               expenseamount: modal.item.expenseamount ?? '',
             } : emptyForm}
             isEdit={modal.mode === 'edit'}
+            activeLocked={modal.item ? expenseUsageByDesc[modal.item.expensedesc]?.can_deactivate === false : false}
+            lockReasons={modal.item ? (expenseUsageByDesc[modal.item.expensedesc]?.reasons || []) : []}
             onSubmit={handleSubmit}
             onClose={() => setModal(null)}
             loading={create.isPending || update.isPending}

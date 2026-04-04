@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronDownIcon, ChevronRightIcon, PlusIcon, Cog6ToothIcon, TrashIcon } from '@heroicons/react/24/outline'
 import { addDays, format, parseISO } from 'date-fns'
-import { deletePeriod, getBudget, getExpenseItems, getIncomeTypes, getPeriodDeleteOptions, getPeriodSummariesForBudget, generatePeriod } from '../api/client'
+import { deletePeriod, getBudget, getBudgetSetupAssessment, getPeriodDeleteOptions, getPeriodSummariesForBudget, generatePeriod } from '../api/client'
 import clsx from 'clsx'
 import Modal from '../components/Modal'
 import Spinner from '../components/Spinner'
@@ -239,21 +239,11 @@ export default function BudgetPeriodsPage() {
     queryFn: () => getPeriodSummariesForBudget(id),
     enabled: !!budget,
   })
-  const { data: incomeTypes = [] } = useQuery({
-    queryKey: ['income-types', id],
-    queryFn: () => getIncomeTypes(id),
+  const { data: setupAssessment } = useQuery({
+    queryKey: ['budget-setup-assessment', id],
+    queryFn: () => getBudgetSetupAssessment(id),
     enabled: !!budget,
   })
-  const { data: expenseItems = [] } = useQuery({
-    queryKey: ['expense-items', id],
-    queryFn: () => getExpenseItems(id),
-    enabled: !!budget,
-  })
-
-  const activeExpenseItems = useMemo(
-    () => expenseItems.filter(item => item.active),
-    [expenseItems]
-  )
 
   const periods = useMemo(
     () => periodSummaries.map(summary => summary.period),
@@ -270,7 +260,13 @@ export default function BudgetPeriodsPage() {
     return toDateInputValue(addDays(parseISO(latest.enddate), 1))
   }, [periods])
 
-  const canGenerate = incomeTypes.length > 0 && activeExpenseItems.length > 0
+  const canGenerate = setupAssessment?.can_generate ?? false
+  const missingSetupMessage = setupAssessment?.blocking_issues?.length
+    ? setupAssessment.blocking_issues.join(' ')
+    : 'Finish the setup first, then come back here to generate budget cycles.'
+  const generateButtonTitle = canGenerate
+    ? 'Generate a new budget cycle'
+    : (setupAssessment?.blocking_issues?.[0] || 'Finish the setup first')
 
   const createPeriod = useMutation({
     mutationFn: ({ startDate, count }) => generatePeriod({
@@ -329,7 +325,7 @@ export default function BudgetPeriodsPage() {
             className="btn-primary"
             onClick={() => { setGenerateError(''); setShowGenerate(true) }}
             disabled={!canGenerate}
-            title={!canGenerate ? 'Add at least one income type and one active expense item first' : 'Generate a new budget cycle'}
+            title={generateButtonTitle}
           >
             <PlusIcon className="w-4 h-4" /> New Budget Cycle
           </button>
@@ -338,7 +334,7 @@ export default function BudgetPeriodsPage() {
 
       {!canGenerate && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-300">
-          New budget cycles require at least one income type and one active expense item. Finish the setup first, then come back here to generate budget cycles.
+          {missingSetupMessage}
         </div>
       )}
 

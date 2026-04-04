@@ -3,7 +3,8 @@ from sqlalchemy.orm import Session
 from ..budget_health import build_budget_health_payload
 from ..database import get_db
 from ..models import Budget
-from ..schemas import BudgetCreate, BudgetHealthOut, BudgetOut, BudgetUpdate
+from ..schemas import BudgetCreate, BudgetHealthOut, BudgetOut, BudgetSetupAssessmentOut, BudgetUpdate
+from ..setup_assessment import budget_setup_assessment
 
 router = APIRouter(prefix="/budgets", tags=["budgets"])
 
@@ -33,6 +34,14 @@ def get_budget(budgetid: int, db: Session = Depends(get_db)):
 @router.get("/{budgetid}/health", response_model=BudgetHealthOut)
 def get_budget_health(budgetid: int, db: Session = Depends(get_db)):
     payload = build_budget_health_payload(db, budgetid)
+    if not payload:
+        raise HTTPException(404, "Budget not found")
+    return payload
+
+
+@router.get("/{budgetid}/setup-assessment", response_model=BudgetSetupAssessmentOut)
+def get_budget_setup_assessment(budgetid: int, db: Session = Depends(get_db)):
+    payload = budget_setup_assessment(budgetid, db)
     if not payload:
         raise HTTPException(404, "Budget not found")
     return payload

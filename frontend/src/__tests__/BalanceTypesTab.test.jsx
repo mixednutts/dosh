@@ -6,6 +6,7 @@ import { renderWithProviders } from '../testUtils'
 
 jest.mock('../api/client', () => ({
   getBalanceTypes: jest.fn(),
+  getBudgetSetupAssessment: jest.fn(),
   createBalanceType: jest.fn(),
   updateBalanceType: jest.fn(),
   deleteBalanceType: jest.fn(),
@@ -23,6 +24,13 @@ const client = require('../api/client')
 describe('BalanceTypesTab', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    client.getBudgetSetupAssessment.mockResolvedValue({
+      budgetid: 1,
+      can_generate: true,
+      blocking_issues: [],
+      warnings: [],
+      accounts: [],
+    })
   })
 
   it('creates a primary account from setup', async () => {
@@ -154,5 +162,40 @@ describe('BalanceTypesTab', () => {
     })
 
     confirmSpy.mockRestore()
+  })
+
+  it('disables delete for an account already in use', async () => {
+    client.getBalanceTypes.mockResolvedValue([
+      {
+        balancedesc: 'Main Account',
+        balance_type: 'Bank',
+        opening_balance: '1000.00',
+        active: true,
+        is_primary: true,
+      },
+    ])
+    client.getBudgetSetupAssessment.mockResolvedValue({
+      budgetid: 1,
+      can_generate: true,
+      blocking_issues: [],
+      warnings: [],
+      accounts: [
+        {
+          balancedesc: 'Main Account',
+          in_use: true,
+          reasons: ['Included in generated budget cycles'],
+          can_delete: false,
+          can_deactivate: false,
+          can_edit_structure: false,
+        },
+      ],
+    })
+
+    renderWithProviders(<BalanceTypesTab budgetId={1} />)
+
+    expect(await screen.findByText('Main Account')).toBeTruthy()
+    expect(screen.getByText('In Use')).toBeTruthy()
+    const deleteButton = screen.getAllByRole('button')[2]
+    expect(deleteButton.disabled).toBe(true)
   })
 })

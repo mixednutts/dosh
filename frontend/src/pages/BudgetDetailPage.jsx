@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronRightIcon, ArrowUpIcon } from '@heroicons/react/24/outline'
-import { getBudget, getIncomeTypes, getExpenseItems, getInvestmentItems, getBalanceTypes, updateBudget } from '../api/client'
+import { getBudget, getIncomeTypes, getExpenseItems, getInvestmentItems, getBalanceTypes, getBudgetSetupAssessment, updateBudget } from '../api/client'
 import Spinner from '../components/Spinner'
 import IncomeTypesTab from './tabs/IncomeTypesTab'
 import ExpenseItemsTab from './tabs/ExpenseItemsTab'
@@ -25,7 +25,7 @@ function countLabel(count, singular, plural = `${singular}s`) {
   return `${count} ${count === 1 ? singular : plural}`
 }
 
-function SectionShell({ id, title, summary, helper, children, badge }) {
+function SectionShell({ id, title, summary, helper, children, badge, statusBadge }) {
   return (
     <section id={id} className="scroll-mt-28 space-y-3">
       <div className="flex items-start justify-between gap-4">
@@ -33,6 +33,7 @@ function SectionShell({ id, title, summary, helper, children, badge }) {
           <div className="flex items-center gap-2">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{title}</h2>
             {badge && <span className="badge-gray">{badge}</span>}
+            {statusBadge ? <span className={statusBadge.className}>{statusBadge.label}</span> : null}
           </div>
           <p className="text-sm text-gray-600 dark:text-gray-400">{summary}</p>
           {helper && (
@@ -47,6 +48,33 @@ function SectionShell({ id, title, summary, helper, children, badge }) {
       </div>
     </section>
   )
+}
+
+function getSectionStatus(sectionKey, setupAssessment) {
+  if (!setupAssessment) return null
+
+  const blockingIssues = setupAssessment.blocking_issues || []
+  const sectionItems = setupAssessment[sectionKey] || []
+  const inUseCount = sectionItems.filter(item => item.in_use).length
+
+  const matchesBlockingIssue = blockingIssues.some(issue => {
+    const lower = issue.toLowerCase()
+    if (sectionKey === 'accounts') return lower.includes('account')
+    if (sectionKey === 'income_types') return lower.includes('income type')
+    if (sectionKey === 'expense_items') return lower.includes('expense item')
+    if (sectionKey === 'investment_items') return lower.includes('investment')
+    return false
+  })
+
+  if (matchesBlockingIssue) {
+    return { label: 'Needs Attention', className: 'badge-amber' }
+  }
+
+  if (inUseCount > 0) {
+    return { label: `${inUseCount} Protected`, className: 'badge-blue' }
+  }
+
+  return { label: 'Ready', className: 'badge-green' }
 }
 
 function BudgetInfoForm({ budgetId, budget }) {
@@ -141,6 +169,7 @@ export default function BudgetDetailPage() {
   const { data: incomeTypes = [] } = useQuery({ queryKey: ['income-types', id], queryFn: () => getIncomeTypes(id), enabled: !!budget })
   const { data: expenseItems = [] } = useQuery({ queryKey: ['expense-items', id], queryFn: () => getExpenseItems(id), enabled: !!budget })
   const { data: investmentItems = [] } = useQuery({ queryKey: ['investment-items', id], queryFn: () => getInvestmentItems(id), enabled: !!budget })
+  const { data: setupAssessment } = useQuery({ queryKey: ['budget-setup-assessment', id], queryFn: () => getBudgetSetupAssessment(id), enabled: !!budget })
 
   useEffect(() => {
     const handleScroll = () => setShowReturnTop(window.scrollY > 420)
@@ -213,6 +242,32 @@ export default function BudgetDetailPage() {
               {countLabel(accounts.length, 'account')}, {countLabel(incomeTypes.length, 'income type')}, {countLabel(activeExpenseItems.length, 'active expense item')}, {countLabel(investmentItems.length, 'investment')}
             </p>
           </div>
+          {setupAssessment ? (
+            <div className={`rounded-xl px-4 py-3 ${
+              setupAssessment.can_generate
+                ? 'border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/20'
+                : 'border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20'
+            }`}>
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Setup Assessment</p>
+              <p className="mt-1 text-sm font-medium text-gray-900 dark:text-gray-100">
+                {setupAssessment.can_generate ? 'Ready for budget cycle generation' : 'Setup still needs attention before generation'}
+              </p>
+              {setupAssessment.blocking_issues?.length ? (
+                <div className="mt-2 space-y-1">
+                  {setupAssessment.blocking_issues.map(issue => (
+                    <p key={issue} className="text-sm text-amber-800 dark:text-amber-300">{issue}</p>
+                  ))}
+                </div>
+              ) : null}
+              {setupAssessment.warnings?.length ? (
+                <div className="mt-2 space-y-1">
+                  {setupAssessment.warnings.map(warning => (
+                    <p key={warning} className="text-sm text-gray-700 dark:text-gray-300">{warning}</p>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
         </div>
         <div className="mt-4 rounded-xl border border-dosh-200 bg-dosh-50 px-4 py-3 text-sm text-dosh-800 dark:border-dosh-800 dark:bg-dosh-900/20 dark:text-dosh-200">
           Budget cycles are managed from this budget's budget cycles page. Use this page to build and maintain the setup that future budget cycles will be generated from.
@@ -223,6 +278,7 @@ export default function BudgetDetailPage() {
         id="accounts"
         title="Accounts"
         badge={countLabel(accounts.length, 'account')}
+        statusBadge={getSectionStatus('accounts', setupAssessment)}
         summary="Start here by creating the accounts this budget will use for balances, savings transfers, and linked transactions."
         helper={!primaryAccount ? 'Set one account as the primary account so expense movements have a default home.' : null}
       >
@@ -233,6 +289,7 @@ export default function BudgetDetailPage() {
         id="income-types"
         title="Income Types"
         badge={countLabel(incomeTypes.length, 'income type')}
+        statusBadge={getSectionStatus('income_types', setupAssessment)}
         summary="Add the income lines you want to include in generated budget cycles, including fixed income and any savings transfers."
         helper={!hasAccounts ? 'Create at least one account first so account-linked income options are ready when you need them.' : null}
       >
@@ -243,6 +300,7 @@ export default function BudgetDetailPage() {
         id="expense-items"
         title="Expense Items"
         badge={countLabel(expenseItems.length, 'expense item')}
+        statusBadge={getSectionStatus('expense_items', setupAssessment)}
         summary="Define the recurring and one-off expenses that should appear in generated budget cycles."
         helper={!hasAccounts ? 'Create at least one account first so expense tracking has an account structure in place as that behaviour develops.' : null}
       >
@@ -253,6 +311,7 @@ export default function BudgetDetailPage() {
         id="investments"
         title="Investments"
         badge={countLabel(investmentItems.length, 'investment')}
+        statusBadge={getSectionStatus('investment_items', setupAssessment)}
         summary="Add investment lines for contributions, balances, and account-linked investment activity."
         helper={!hasAccounts ? 'Create at least one account first so linked investment accounts are available when needed.' : null}
       >

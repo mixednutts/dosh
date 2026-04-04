@@ -3,7 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .cycle_management import assign_period_lifecycle_states
 from .database import Base, engine
-from .models import PayType  # noqa: F401 — ensure model is registered
+from . import models as _models  # noqa: F401 - ensure all models are registered
+from .models import PayType
 from .routers import budgets, periods, income_types, expense_items, investments, expense_entries, balance_types, investment_transactions, period_transactions
 
 # Create all tables on startup
@@ -38,6 +39,8 @@ def seed_reference_data():
 
     def add_column_if_missing(table_name: str, column_name: str, sql_definition: str):
         inspector = inspect(engine)
+        if not inspector.has_table(table_name):
+            return
         existing_columns = {column["name"] for column in inspector.get_columns(table_name)}
         if column_name not in existing_columns:
             db.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {sql_definition}"))

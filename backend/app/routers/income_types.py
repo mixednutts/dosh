@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models import Budget, IncomeType
 from ..schemas import IncomeTypeCreate, IncomeTypeOut, IncomeTypeUpdate
+from ..setup_assessment import income_assessment
 
 router = APIRouter(prefix="/budgets/{budgetid}/income-types", tags=["income-types"])
 
@@ -19,6 +20,18 @@ def _get_income_type_or_404(budgetid: int, incomedesc: str, db: Session) -> Inco
     if not it:
         raise HTTPException(404, "Income type not found")
     return it
+
+
+def _assert_income_edit_allowed(budgetid: int, incomedesc: str, db: Session) -> None:
+    assessment = income_assessment(budgetid, incomedesc, db)
+    if not assessment["can_edit_structure"]:
+        raise HTTPException(422, f'Income type "{incomedesc}" is in use and cannot be edited. {"; ".join(assessment["reasons"])}.')
+
+
+def _assert_income_delete_allowed(budgetid: int, incomedesc: str, db: Session) -> None:
+    assessment = income_assessment(budgetid, incomedesc, db)
+    if not assessment["can_delete"]:
+        raise HTTPException(422, f'Income type "{incomedesc}" is in use and cannot be deleted. {"; ".join(assessment["reasons"])}.')
 
 
 @router.get("/", response_model=list[IncomeTypeOut])
@@ -49,6 +62,7 @@ def update_income_type(
     budgetid: int, incomedesc: str, payload: IncomeTypeUpdate, db: Session = Depends(get_db)
 ):
     it = _get_income_type_or_404(budgetid, incomedesc, db)
+    _assert_income_edit_allowed(budgetid, incomedesc, db)
     data = payload.model_dump(exclude_none=True)
     for field, value in data.items():
         setattr(it, field, value)
@@ -63,5 +77,6 @@ def update_income_type(
 @router.delete("/{incomedesc}", status_code=204)
 def delete_income_type(budgetid: int, incomedesc: str, db: Session = Depends(get_db)):
     it = _get_income_type_or_404(budgetid, incomedesc, db)
+    _assert_income_delete_allowed(budgetid, incomedesc, db)
     db.delete(it)
     db.commit()

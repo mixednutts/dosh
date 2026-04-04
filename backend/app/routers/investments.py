@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models import Budget, InvestmentItem
 from ..schemas import InvestmentItemCreate, InvestmentItemOut, InvestmentItemUpdate
+from ..setup_assessment import investment_assessment
 
 router = APIRouter(prefix="/budgets/{budgetid}/investment-items", tags=["investment-items"])
 
@@ -24,6 +25,18 @@ def _clear_other_primary_investments(budgetid: int, keep_desc: str, db: Session)
         )
         .update({InvestmentItem.is_primary: False}, synchronize_session=False)
     )
+
+
+def _assert_investment_edit_allowed(budgetid: int, investmentdesc: str, db: Session) -> None:
+    assessment = investment_assessment(budgetid, investmentdesc, db)
+    if not assessment["can_edit_structure"]:
+        raise HTTPException(422, f'Investment line "{investmentdesc}" is in use and cannot be edited. {"; ".join(assessment["reasons"])}.')
+
+
+def _assert_investment_delete_allowed(budgetid: int, investmentdesc: str, db: Session) -> None:
+    assessment = investment_assessment(budgetid, investmentdesc, db)
+    if not assessment["can_delete"]:
+        raise HTTPException(422, f'Investment line "{investmentdesc}" is in use and cannot be deleted. {"; ".join(assessment["reasons"])}.')
 
 
 @router.get("/", response_model=list[InvestmentItemOut])
@@ -56,6 +69,7 @@ def update_investment_item(
     item = db.get(InvestmentItem, (budgetid, investmentdesc))
     if not item:
         raise HTTPException(404, "Investment item not found")
+    _assert_investment_edit_allowed(budgetid, investmentdesc, db)
     updates = payload.model_dump(exclude_none=True)
     next_active = updates.get("active", item.active)
     next_is_primary = updates.get("is_primary", item.is_primary)
@@ -79,5 +93,6 @@ def delete_investment_item(budgetid: int, investmentdesc: str, db: Session = Dep
     item = db.get(InvestmentItem, (budgetid, investmentdesc))
     if not item:
         raise HTTPException(404, "Investment item not found")
+    _assert_investment_delete_allowed(budgetid, investmentdesc, db)
     db.delete(item)
     db.commit()

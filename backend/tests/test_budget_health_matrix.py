@@ -8,6 +8,7 @@ from app.models import Budget, FinancialPeriod, PeriodExpense, PeriodIncome
 from app.time_utils import app_now_naive
 
 from .factories import create_budget, create_expense_item, create_income_type
+from .factories import create_balance_type
 
 
 def _seed_historical_period(
@@ -63,6 +64,7 @@ def test_budget_health_uses_tighter_of_percent_and_dollar_deficit_thresholds(cli
     budget = create_budget(db_session)
     create_income_type(db_session, budgetid=budget.budgetid, amount=Decimal("1000.00"))
     create_expense_item(db_session, budgetid=budget.budgetid, expenseamount=Decimal("1050.00"))
+    create_balance_type(db_session, budgetid=budget.budgetid, balancedesc="Main Account", is_primary=True)
 
     active_period = client.post(
         "/api/periods/generate",
@@ -155,4 +157,3 @@ def test_budget_health_momentum_improves_when_recent_closed_periods_overspend_le
     assert payload["momentum_status"] == "Improving"
     assert payload["momentum_delta"] > 0
     assert "overspending less" in payload["momentum_summary"]
-

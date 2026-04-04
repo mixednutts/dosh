@@ -45,8 +45,9 @@ from ..schemas import (
     PeriodInvestmentStatusUpdate,
 )
 from ..period_logic import calc_period_end, periods_overlap, expense_occurs_in_period
+from ..setup_assessment import budget_setup_assessment
 from ..time_utils import app_now_naive
-from ..transaction_ledger import build_expense_tx, build_income_tx, sync_period_state
+from ..transaction_ledger import build_expense_tx, build_income_tx, get_primary_account_desc, sync_period_state
 
 router = APIRouter(prefix="/periods", tags=["periods"])
 
@@ -82,6 +83,13 @@ def _assert_expense_not_paid(pe: PeriodExpense) -> None:
 def _assert_investment_not_paid(pi: PeriodInvestment) -> None:
     if (getattr(pi, "status", WORKING) or WORKING) == PAID:
         raise HTTPException(423, "Investment is marked Paid — revise it before making changes")
+
+
+def _assert_primary_account_configured(budgetid: int, db: Session, *, action: str) -> None:
+    assessment = budget_setup_assessment(budgetid, db)
+    if assessment and assessment["can_generate"] and get_primary_account_desc(budgetid, db):
+        return
+    raise HTTPException(422, f"Set one account as the primary account before {action}.")
 
 
 def _enrich_expenses(expenses: list[PeriodExpense], db: Session) -> list[PeriodExpenseOut]:
@@ -177,6 +185,7 @@ def generate_period(payload: PeriodGenerateRequest, db: Session = Depends(get_db
     ).count()
     if expense_count == 0:
         raise HTTPException(422, "Budget must have at least one active expense item before generating a period")
+    _assert_primary_account_configured(payload.budgetid, db, action="generating budget cycles")
 
     # Load items once for all iterations
     income_types = db.query(IncomeType).filter(
@@ -592,6 +601,7 @@ def update_expense_actual(
     if not pe:
         raise HTTPException(404, "Period expense entry not found")
     _assert_expense_not_paid(pe)
+    _assert_primary_account_configured(period.budgetid, db, action="recording expense activity")
     old_actual = Decimal(str(pe.actualamount or 0))
     delta = payload.actualamount - old_actual
     build_expense_tx(
@@ -632,6 +642,7 @@ def add_expense_actual(
     if not pe:
         raise HTTPException(404, "Period expense entry not found")
     _assert_expense_not_paid(pe)
+    _assert_primary_account_configured(period.budgetid, db, action="recording expense activity")
     build_expense_tx(
         finperiodid,
         period.budgetid,

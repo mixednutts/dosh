@@ -6,6 +6,7 @@ from ..schemas import (
     BalanceTypeCreate, BalanceTypeOut, BalanceTypeUpdate,
     PeriodBalanceOut, PeriodBalanceUpdate,
 )
+from ..setup_assessment import account_assessment
 
 router = APIRouter(prefix="/budgets/{budgetid}/balance-types", tags=["balance-types"])
 period_router = APIRouter(prefix="/periods", tags=["period-balances"])
@@ -33,6 +34,24 @@ def _clear_primary(budgetid: int, db: Session) -> None:
     ).update({"is_primary": False})
 
 
+def _assert_balance_delete_allowed(budgetid: int, balancedesc: str, db: Session) -> None:
+    assessment = account_assessment(budgetid, balancedesc, db)
+    if not assessment["can_delete"]:
+        raise HTTPException(422, f'Account "{balancedesc}" is in use and cannot be changed this way. {"; ".join(assessment["reasons"])}.')
+
+
+def _assert_balance_deactivate_allowed(budgetid: int, balancedesc: str, db: Session) -> None:
+    assessment = account_assessment(budgetid, balancedesc, db)
+    if not assessment["can_deactivate"]:
+        raise HTTPException(422, f'Account "{balancedesc}" is in use and cannot be deactivated. {"; ".join(assessment["reasons"])}.')
+
+
+def _assert_balance_edit_allowed(budgetid: int, balancedesc: str, db: Session) -> None:
+    assessment = account_assessment(budgetid, balancedesc, db)
+    if not assessment["can_edit_structure"]:
+        raise HTTPException(422, f'Account "{balancedesc}" is in use and its structure cannot be edited. {"; ".join(assessment["reasons"])}.')
+
+
 @router.post("/", response_model=BalanceTypeOut, status_code=201)
 def create_balance_type(budgetid: int, payload: BalanceTypeCreate, db: Session = Depends(get_db)):
     _get_budget_or_404(budgetid, db)
@@ -57,7 +76,12 @@ def update_balance_type(
         raise HTTPException(404, "Balance type not found")
     if payload.is_primary:
         _clear_primary(budgetid, db)
-    for k, v in payload.model_dump(exclude_none=True).items():
+    updates = payload.model_dump(exclude_none=True)
+    if "active" in updates and updates["active"] is False:
+        _assert_balance_deactivate_allowed(budgetid, balancedesc, db)
+    if {"balance_type", "opening_balance"}.intersection(updates.keys()):
+        _assert_balance_edit_allowed(budgetid, balancedesc, db)
+    for k, v in updates.items():
         setattr(bt, k, v)
     db.commit()
     db.refresh(bt)
@@ -69,6 +93,7 @@ def delete_balance_type(budgetid: int, balancedesc: str, db: Session = Depends(g
     bt = db.get(BalanceType, (budgetid, balancedesc))
     if not bt:
         raise HTTPException(404, "Balance type not found")
+    _assert_balance_delete_allowed(budgetid, balancedesc, db)
     db.delete(bt)
     db.commit()
 

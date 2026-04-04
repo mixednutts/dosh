@@ -21,6 +21,116 @@ For the detailed budget-cycle lifecycle and close-out plan that informed this se
 
 For the current consolidated testing approach and case inventory, read [TEST_STRATEGY.md](/home/ubuntu/dosh/TEST_STRATEGY.md).
 
+For the current setup-assessment and downstream-protection model introduced this session, read [SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md](/home/ubuntu/dosh/SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md).
+
+For recent concrete verification outcomes, read [TEST_RESULTS_SUMMARY.md](/home/ubuntu/dosh/TEST_RESULTS_SUMMARY.md).
+
+## Latest Session: Setup Assessment Hardening, Backend Harness Isolation, And Deployment Verification
+
+This session moved Dosh from loosely inferred setup-readiness rules into a centralized setup-assessment model with downstream protection.
+
+Important direction now in place:
+
+- Dosh now has a centralized setup assessment endpoint and shared readiness model rather than relying on scattered page-level assumptions
+- budget-cycle generation is now intentionally blocked when expense-driven setup exists but no active primary account is configured
+- setup records now become protected when generated cycles or downstream activity already depend on them
+- the budget setup page now surfaces blocking issues, warnings, and section-level assessment badges
+- setup tabs now show in-use or protected state for accounts, income types, expense items, and investment lines
+- backend tests now use an isolated SQLite database per test case, which removes the order-dependent contamination that appeared when multiple functional areas were exercised in one session
+- the repository now has a recorded deployment baseline using Docker Compose from the current working tree
+
+### 1. Setup assessment is now a first-class contract
+
+The product no longer relies on a mix of setup-page guidance and downstream failure discovery alone.
+
+Current direction:
+
+- setup remains editable
+- generation and other downstream workflows consult one centralized setup assessment
+- the assessment returns blocking issues, warnings, and protected setup state
+
+Important product meaning:
+
+- Dosh is not trying to allow every technically possible setup shape
+- Dosh is now deliberately protecting only the setup shapes that remain safe for downstream financial workflows
+
+### 2. Primary-account readiness is now treated as structural setup, not just guidance
+
+The specific gap that triggered this work was a budget where accounts existed but none was marked primary.
+
+Current rule:
+
+- if expense-driven behavior is configured, one active account must be designated as the primary account before budget cycles can be generated
+- expense-driven downstream activity also fails clearly if setup later drifts into a no-primary state
+
+Important meaning:
+
+- the system no longer silently assumes setup will conform to an older personal-use account model
+- it still does not try to support unsafe combinations that would break later workflows
+
+### 3. In-use setup sections now become protected
+
+Protection is now applied consistently across the relevant setup sections.
+
+Current behavior:
+
+- accounts in downstream use are protected from delete, deactivate, or unsafe structural edits
+- income types in downstream use are protected from destructive edits and deletion
+- expense items in downstream use are protected from delete and deactivation while preserving revision-style changes
+- investment lines in downstream use are protected from destructive edits and deletion
+
+Important product meaning:
+
+- setup is no longer treated as disposable configuration once real budget cycles or transactions depend on it
+- users should be guided toward safe continuity rather than allowed to break the shape behind historical or active cycles
+
+### 4. Budget setup now shows assessment state directly
+
+Assessment state is now surfaced on the setup page itself, not only on the budget-cycle generation page.
+
+Current behavior:
+
+- setup summary card shows whether the budget is ready for generation
+- blocking issues and warnings are shown explicitly
+- accounts, income types, expense items, and investments now show section-level status such as `Needs Attention`, `Ready`, or `Protected`
+
+Important product meaning:
+
+- users can assess setup quality before trying to generate a cycle
+- protection state is now visible where the underlying setup is edited
+
+### 5. Backend harness isolation is now a deliberate engineering rule
+
+This session exposed that the previous backend harness was not reliably fresh when running across multiple functional areas.
+
+What we found:
+
+- missing-table failures were first discovered by running the real backend `pytest` suite after installing the dev dependencies
+- the failures were order-dependent because the suite was sharing a single SQLite database file and global engine state
+
+Current fix:
+
+- backend tests now create an isolated SQLite database per test case
+- app database globals are patched onto the per-test engine before each case runs
+
+Important engineering meaning:
+
+- mixed functional sessions can now safely exercise lifecycle, setup, ledger, and health areas together without contaminating one another
+
+### 6. The current deployment path was revalidated
+
+The repository was rebuilt and started with Docker Compose from the current working tree.
+
+Current outcome:
+
+- backend and frontend containers start successfully
+- frontend serves on port `3080`
+- backend health endpoint responds through the container network
+
+Known deployment follow-up:
+
+- the frontend Docker build still uses Node 16 and now emits engine warnings because some development dependencies expect Node 18+
+
 ## Latest Session: Test Harness Expansion And Initial End-To-End Lifecycle Coverage
 
 This session moved the project from “testing strategy exists” to “the repo now has a usable multi-layer regression harness”.

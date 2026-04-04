@@ -19,8 +19,10 @@ It complements:
 - [CHANGES.md](/home/ubuntu/dosh/CHANGES.md) for recorded product decisions and recent implementation history
 - [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/BUDGET_HEALTH_ADDENDUM.md) for staged budget health direction
 - [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/BUDGET_CYCLE_LIFECYCLE_PLAN.md) for the detailed cycle lifecycle and close-out plan that is now partially implemented
+- [SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md](/home/ubuntu/dosh/SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md) for the centralized setup-validity and downstream-protection model implemented this session
 - [TEST_STRATEGY.md](/home/ubuntu/dosh/TEST_STRATEGY.md) for the current proposed testing approach, priorities, and case inventory
 - [TEST_EXPANSION_PLAN.md](/home/ubuntu/dosh/TEST_EXPANSION_PLAN.md) for the current testing follow-up plan and next coverage slices
+- [TEST_RESULTS_SUMMARY.md](/home/ubuntu/dosh/TEST_RESULTS_SUMMARY.md) for the latest recorded verification outcomes
 
 ## Current Product Stage
 
@@ -45,6 +47,11 @@ Recent progress worth carrying forward:
 - period deletion now has guided continuity-aware options, including `Delete this and all upcoming cycles`
 - budget settings now include a dedicated manual cycle-lock control separate from lifecycle state
 - the repository now has a credible automated regression harness across backend, frontend, and initial Playwright end-to-end lifecycle smoke flows
+- budget setup now has a centralized setup assessment model rather than scattered readiness assumptions
+- setup records now become explicitly protected when downstream cycles or transactions depend on them
+- the budget setup page now shows section-level assessment state and protected downstream usage
+- backend tests now run against an isolated SQLite database per test case, making mixed-area sessions much safer
+- Docker Compose deployment was rebuilt and verified successfully from the current working tree
 
 ## Active Development Streams
 
@@ -86,6 +93,7 @@ Suggested implementation slices:
 - grouped ledger view by account and transaction source
 - variance indicator between movement and explained transactions
 - system-adjustment review surface
+- setup-protection and reconciliation messaging should eventually align so blocked setup edits can explain the downstream consequence path clearly
 
 ### 3. Period Close Out
 
@@ -109,6 +117,27 @@ Suggested implementation slices:
 - refinement of the close-out modal and summary surfaces
 - clearer read-only and reconciliation messaging on closed cycles
 - reporting surfaces that use stored close-out snapshots rather than live recomputation
+
+### 3A. Setup Assessment And Protected Configuration
+
+This is now an implemented foundation and should be treated as an active maintenance stream rather than a speculative idea.
+
+Reference:
+
+- [SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md](/home/ubuntu/dosh/SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md)
+
+Focus areas:
+
+- keep centralized setup assessment as the source of truth for generation readiness
+- avoid reintroducing one-off page-level readiness logic
+- extend protection reasoning only when it improves downstream safety and user understanding
+- keep setup editable where safe while blocking destructive changes once downstream dependence exists
+
+Suggested implementation slices:
+
+- stronger explanation surfaces for why a setup item is protected
+- clearer setup-summary visibility before users reach cycle generation
+- extend consequence messaging for reconciliation or correction paths after setup becomes in use
 
 ### 4. Budget Health Phase 2 Preparation
 
@@ -229,6 +258,7 @@ Priority areas:
 - make startup behavior safer and more observable
 - separate one-time migration work from normal app startup
 - migrate current cycle-lifecycle and close-out schema bootstrap logic into the real migration path
+- migrate setup-assessment related schema evolution into the same real migration path
 
 ### 3. Tighten Deployment and Build Reliability
 
@@ -237,9 +267,11 @@ The Docker setup works as a local deployment path, but the repo notes already ca
 Priority areas:
 
 - pin frontend install behavior more reliably
+- move the frontend Docker build to a Node version that matches current dependency engine expectations
 - verify compose assumptions around networks and Traefik usage
 - document expected production vs local deployment differences
 - confirm build and startup paths remain clean as the app grows
+- clean up startup and timestamp deprecation warnings that now appear during test and deployment runs
 
 ### 4. Improve API and Domain Consistency
 
@@ -340,17 +372,16 @@ Priority areas:
 
 If we want a practical order of work rather than just a thematic roadmap, this is the strongest current sequence:
 
-1. Add backend tests around ledger, period, and surplus rules.
-2. Add focused tests around budget-cycle lifecycle, close-out, carry-forward, and guided delete flows.
-3. Design the reconciliation handoff for closed cycles and close remaining write-path gaps.
-4. Add a reporting summary endpoint that rolls up period and ledger data.
-5. Surface a budget-level reporting card set in the frontend.
-6. Introduce shared localisation utilities and decide how locale, currency, and timezone preferences are stored.
-7. Define the cash management workflow and the first summary model for available, committed, and reserved cash.
-8. Add tests and cleanup around health personalisation and current-period threshold behavior.
+1. Design the reconciliation handoff for closed cycles and close remaining write-path gaps.
+2. Add a reporting summary endpoint that rolls up period and ledger data.
+3. Surface a budget-level reporting card set in the frontend.
+4. Introduce shared localisation utilities and decide how locale, currency, and timezone preferences are stored.
+5. Define the cash management workflow and the first summary model for available, committed, and reserved cash.
+6. Add tests and cleanup around health personalisation and current-period threshold behavior.
+7. Replace ad hoc startup migrations with a proper migration system.
+8. Clean up deployment warnings and align the frontend Docker build with current Node engine requirements.
 9. Review sidebar and budget-summary polish after real use, especially around future first-class sections.
-10. Replace ad hoc startup migrations with a proper migration system.
-11. Define the first export and backup scope, including format and restore expectations.
+10. Define the first export and backup scope, including format and restore expectations.
 
 ## Guardrails For Future Work
 
@@ -367,6 +398,7 @@ These project rules already emerge clearly from the existing docs and implementa
 - autosave is preferred for lightweight setup and personalisation edits when validation is simple and failures can be surfaced clearly
 - backend and database naming should remain stable unless a change is clearly worth the cost
 - user-facing `Budget Cycle` wording can evolve independently of backend `period` naming when that improves clarity
+- setup validity and downstream protection should be centralized, not rebuilt ad hoc in each page
 - localisation should be explicit and centrally managed rather than emerging from scattered hard-coded formatting choices
 - cash management views should reflect trustworthy underlying money movement rather than introducing separate shadow balances
 - export and backup should preserve user trust by being understandable, complete enough to be useful, and compatible with ledger integrity
@@ -374,6 +406,7 @@ These project rules already emerge clearly from the existing docs and implementa
 - closing a cycle should create a trustworthy point-in-time historical record, not a view that can drift later
 - carry-forward and next-cycle opening rebasing should be recalculated together so continuity does not drift or double count
 - deleting a cycle must not leave retained gaps; guided delete-and-regenerate is preferred over ambiguous continuity
+- tests should continue using isolated databases per case whenever backend work spans multiple functional areas
 - if a sidebar affordance points to the page the user is already viewing, it should be muted or otherwise downgraded rather than appearing broken
 - the main budget summary page should avoid duplicate edit/setup actions when one clear path already exists
 - brand accent color and positive/success color should remain distinct so navigation and financial meaning do not blur together

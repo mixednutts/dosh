@@ -10,6 +10,7 @@ jest.mock('../api/client', () => ({
   getExpenseItems: jest.fn(),
   getInvestmentItems: jest.fn(),
   getBalanceTypes: jest.fn(),
+  getBudgetSetupAssessment: jest.fn(),
   updateBudget: jest.fn(),
 }))
 
@@ -27,6 +28,19 @@ describe('BudgetDetailPage', () => {
     jest.clearAllMocks()
   })
 
+  function mockSetupAssessment(overrides = {}) {
+    client.getBudgetSetupAssessment.mockResolvedValue({
+      can_generate: true,
+      blocking_issues: [],
+      warnings: [],
+      accounts: [],
+      income_types: [],
+      expense_items: [],
+      investment_items: [],
+      ...overrides,
+    })
+  }
+
   it('shows setup guidance when no accounts exist yet', async () => {
     client.getBudget.mockResolvedValue({
       budgetid: 1,
@@ -38,6 +52,10 @@ describe('BudgetDetailPage', () => {
     client.getIncomeTypes.mockResolvedValue([])
     client.getExpenseItems.mockResolvedValue([])
     client.getInvestmentItems.mockResolvedValue([])
+    mockSetupAssessment({
+      can_generate: false,
+      blocking_issues: ['A primary account must be configured before budget cycle generation.'],
+    })
 
     renderWithProviders(<BudgetDetailPage />, {
       route: '/budgets/1/setup',
@@ -47,6 +65,9 @@ describe('BudgetDetailPage', () => {
     expect(await screen.findByText(/Set one account as the primary account so expense movements have a default home\./)).toBeTruthy()
     expect(screen.getByText(/Create at least one account first so account-linked income options are ready when you need them\./)).toBeTruthy()
     expect(screen.getByText(/Create at least one account first so linked investment accounts are available when needed\./)).toBeTruthy()
+    expect(screen.getByText(/Setup still needs attention before generation/)).toBeTruthy()
+    expect(screen.getAllByText('Needs Attention')).toHaveLength(1)
+    expect(screen.getByText(/A primary account must be configured before budget cycle generation\./)).toBeTruthy()
   })
 
   it('reflects a mixed-account setup shape without no-account guidance', async () => {
@@ -72,6 +93,13 @@ describe('BudgetDetailPage', () => {
     client.getInvestmentItems.mockResolvedValue([
       { investmentdesc: 'ETF Portfolio' },
     ])
+    mockSetupAssessment({
+      warnings: ['Some setup items are already in downstream use and are now protected.'],
+      accounts: [{ account_desc: 'Everyday', in_use: true }],
+      income_types: [{ income_desc: 'Salary', in_use: true }],
+      expense_items: [{ expense_desc: 'Rent', in_use: true }],
+      investment_items: [{ investment_desc: 'ETF Portfolio', in_use: true }],
+    })
 
     renderWithProviders(<BudgetDetailPage />, {
       route: '/budgets/1/setup',
@@ -82,6 +110,9 @@ describe('BudgetDetailPage', () => {
     expect(screen.queryByText(/Create at least one account first so account-linked income options are ready when you need them\./)).toBeNull()
     expect(screen.queryByText(/Create at least one account first so linked investment accounts are available when needed\./)).toBeNull()
     expect(screen.queryByText(/Set one account as the primary account so expense movements have a default home\./)).toBeNull()
+    expect(screen.getByText(/Ready for budget cycle generation/)).toBeTruthy()
+    expect(screen.getAllByText('1 Protected')).toHaveLength(4)
+    expect(screen.getByText(/Some setup items are already in downstream use and are now protected\./)).toBeTruthy()
   })
 
   it('treats a single-account setup as valid without account-foundation warnings', async () => {
@@ -101,6 +132,7 @@ describe('BudgetDetailPage', () => {
       { expensedesc: 'Rent', active: true },
     ])
     client.getInvestmentItems.mockResolvedValue([])
+    mockSetupAssessment()
 
     renderWithProviders(<BudgetDetailPage />, {
       route: '/budgets/1/setup',
@@ -112,6 +144,8 @@ describe('BudgetDetailPage', () => {
     expect(screen.queryByText(/Create at least one account first so expense tracking has an account structure in place as that behaviour develops\./)).toBeNull()
     expect(screen.queryByText(/Create at least one account first so linked investment accounts are available when needed\./)).toBeNull()
     expect(screen.queryByText(/Set one account as the primary account so expense movements have a default home\./)).toBeNull()
+    expect(screen.getByText(/Ready for budget cycle generation/)).toBeTruthy()
+    expect(screen.getAllByText('Ready')).toHaveLength(4)
   })
 
   it('prompts for a primary account when accounts exist but none is selected', async () => {
@@ -128,6 +162,10 @@ describe('BudgetDetailPage', () => {
     client.getIncomeTypes.mockResolvedValue([{ incomedesc: 'Salary' }])
     client.getExpenseItems.mockResolvedValue([{ expensedesc: 'Rent', active: true }])
     client.getInvestmentItems.mockResolvedValue([{ investmentdesc: 'ETF Portfolio' }])
+    mockSetupAssessment({
+      can_generate: false,
+      blocking_issues: ['A primary account must be configured before budget cycle generation.'],
+    })
 
     renderWithProviders(<BudgetDetailPage />, {
       route: '/budgets/1/setup',
@@ -137,5 +175,7 @@ describe('BudgetDetailPage', () => {
     expect(await screen.findByText(/Set one account as the primary account so expense movements have a default home\./)).toBeTruthy()
     expect(screen.queryByText(/Create at least one account first so account-linked income options are ready when you need them\./)).toBeNull()
     expect(screen.queryByText(/Create at least one account first so linked investment accounts are available when needed\./)).toBeNull()
+    expect(screen.getByText(/Setup still needs attention before generation/)).toBeTruthy()
+    expect(screen.getAllByText('Needs Attention')).toHaveLength(1)
   })
 })
