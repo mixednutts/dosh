@@ -32,6 +32,7 @@ class Budget(Base):
     savings_priority = Column(Integer, nullable=False, default=50)
     period_criticality_bias = Column(Integer, nullable=False, default=50)
     allow_cycle_lock = Column(Boolean, nullable=False, default=True)
+    account_naming_preference = Column(String, nullable=False, default="Transaction")
 
     periods = relationship("FinancialPeriod", back_populates="budget", cascade="all, delete-orphan")
     income_types = relationship("IncomeType", back_populates="budget", cascade="all, delete-orphan")

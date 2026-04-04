@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronRightIcon, ArrowUpIcon } from '@heroicons/react/24/outline'
+import { ChevronDownIcon, ChevronRightIcon, ArrowUpIcon } from '@heroicons/react/24/outline'
 import { getBudget, getIncomeTypes, getExpenseItems, getInvestmentItems, getBalanceTypes, getBudgetSetupAssessment, updateBudget } from '../api/client'
 import Spinner from '../components/Spinner'
 import IncomeTypesTab from './tabs/IncomeTypesTab'
@@ -10,6 +10,7 @@ import InvestmentItemsTab from './tabs/InvestmentItemsTab'
 import BalanceTypesTab from './tabs/BalanceTypesTab'
 import PersonalisationTab from './tabs/PersonalisationTab'
 import SettingsTab from './tabs/SettingsTab'
+import { getPreferredTransactionLabel } from '../utils/accountNaming'
 
 const SECTIONS = [
   { id: 'budget-info', label: 'Budget Info' },
@@ -21,30 +22,102 @@ const SECTIONS = [
   { id: 'settings', label: 'Settings' },
 ]
 
+const SETUP_ISSUE_SECTION_ORDER = {
+  'budget-info': 0,
+  accounts: 1,
+  'income-types': 2,
+  'expense-items': 3,
+  investments: 4,
+  personalisation: 5,
+  settings: 6,
+}
+
+const COLLAPSIBLE_SECTIONS = new Set(['personalisation', 'settings'])
+const SECTION_SESSION_KEY_PREFIX = 'dosh-setup-section-collapsed'
+
 function countLabel(count, singular, plural = `${singular}s`) {
   return `${count} ${count === 1 ? singular : plural}`
 }
 
-function SectionShell({ id, title, summary, helper, children, badge, statusBadge }) {
+function getIssueSectionId(issue) {
+  const lower = issue.toLowerCase()
+
+  if (lower.includes('budget owner') || lower.includes('budget name') || lower.includes('budget info')) {
+    return 'budget-info'
+  }
+  if (lower.includes('account') || lower.includes('primary account')) {
+    return 'accounts'
+  }
+  if (lower.includes('income type')) {
+    return 'income-types'
+  }
+  if (lower.includes('expense item')) {
+    return 'expense-items'
+  }
+  if (lower.includes('investment')) {
+    return 'investments'
+  }
+  if (lower.includes('personalisation')) {
+    return 'personalisation'
+  }
+  if (lower.includes('setting')) {
+    return 'settings'
+  }
+
+  return 'settings'
+}
+
+function sortBlockingIssues(issues = []) {
+  return [...issues].sort((left, right) => {
+    const leftOrder = SETUP_ISSUE_SECTION_ORDER[getIssueSectionId(left)] ?? Number.MAX_SAFE_INTEGER
+    const rightOrder = SETUP_ISSUE_SECTION_ORDER[getIssueSectionId(right)] ?? Number.MAX_SAFE_INTEGER
+
+    if (leftOrder !== rightOrder) {
+      return leftOrder - rightOrder
+    }
+
+    return 0
+  })
+}
+
+function SectionShell({ id, title, summary, helper, children, badge, statusBadge, collapsible = false, collapsed = false, onToggle }) {
   return (
-    <section id={id} className="scroll-mt-28 space-y-3">
-      <div className="flex items-start justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{title}</h2>
-            {badge && <span className="badge-gray">{badge}</span>}
-            {statusBadge ? <span className={statusBadge.className}>{statusBadge.label}</span> : null}
+    <section id={id} className="scroll-mt-28">
+      <div className="card overflow-hidden">
+        <div className="border-b border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-800 dark:bg-gray-900/70 lg:px-5">
+          <div className="space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              {collapsible ? (
+                <button
+                  type="button"
+                  onClick={onToggle}
+                  className="inline-flex items-center text-gray-500 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+                  aria-expanded={!collapsed}
+                  aria-controls={`${id}-content`}
+                  title={collapsed ? `Expand ${title.toLowerCase()}` : `Collapse ${title.toLowerCase()}`}
+                >
+                  {collapsed ? <ChevronRightIcon className="h-4 w-4" /> : <ChevronDownIcon className="h-4 w-4" />}
+                </button>
+              ) : null}
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{title}</h2>
+              {badge && <span className="badge-gray">{badge}</span>}
+              {statusBadge ? <span className={statusBadge.className}>{statusBadge.label}</span> : null}
+            </div>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <p className="text-sm text-gray-600 dark:text-gray-400">{summary}</p>
+            </div>
+            {helper && (
+              <p className="inline-flex rounded-md bg-amber-50 px-2.5 py-1 text-xs text-amber-700 dark:bg-amber-900/20 dark:text-amber-400">
+                {helper}
+              </p>
+            )}
           </div>
-          <p className="text-sm text-gray-600 dark:text-gray-400">{summary}</p>
-          {helper && (
-            <p className="text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 inline-flex rounded-md px-2.5 py-1">
-              {helper}
-            </p>
-          )}
         </div>
-      </div>
-      <div className="card p-4 lg:p-5">
-        {children}
+        {!collapsed ? (
+          <div id={`${id}-content`} className="p-4 lg:p-5">
+            {children}
+          </div>
+        ) : null}
       </div>
     </section>
   )
@@ -71,7 +144,7 @@ function getSectionStatus(sectionKey, setupAssessment) {
   }
 
   if (inUseCount > 0) {
-    return { label: `${inUseCount} Protected`, className: 'badge-blue' }
+    return { label: `${inUseCount} In Use`, className: 'badge-blue' }
   }
 
   return { label: 'Ready', className: 'badge-green' }
@@ -119,23 +192,27 @@ function BudgetInfoForm({ budgetId, budget }) {
   return (
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-3">
-        <label className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/50">
+        <label className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 transition-colors hover:border-dosh-300 hover:bg-white focus-within:border-dosh-500 focus-within:bg-white dark:border-gray-700 dark:bg-gray-800/50 dark:hover:border-dosh-700 dark:hover:bg-gray-900 dark:focus-within:border-dosh-500 dark:focus-within:bg-gray-900">
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Budget Name</p>
           <input
-            className="mt-2 w-full border-0 bg-transparent p-0 text-sm font-medium text-gray-900 outline-none focus:ring-0 dark:text-gray-100"
+            className="mt-2 w-full rounded-md border border-dashed border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 outline-none transition-colors placeholder:text-gray-400 focus:border-dosh-500 focus:ring-2 focus:ring-dosh-200 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500 dark:focus:border-dosh-500 dark:focus:ring-dosh-900/40"
             value={form.description}
             onChange={e => setForm(current => ({ ...current, description: e.target.value }))}
             placeholder="Untitled Budget"
+            aria-label="Budget Name"
           />
+          <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">Click to edit. Changes save automatically.</p>
         </label>
-        <label className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/50">
+        <label className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 transition-colors hover:border-dosh-300 hover:bg-white focus-within:border-dosh-500 focus-within:bg-white dark:border-gray-700 dark:bg-gray-800/50 dark:hover:border-dosh-700 dark:hover:bg-gray-900 dark:focus-within:border-dosh-500 dark:focus-within:bg-gray-900">
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Budget Owner</p>
           <input
-            className="mt-2 w-full border-0 bg-transparent p-0 text-sm font-medium text-gray-900 outline-none focus:ring-0 dark:text-gray-100"
+            className="mt-2 w-full rounded-md border border-dashed border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 outline-none transition-colors placeholder:text-gray-400 focus:border-dosh-500 focus:ring-2 focus:ring-dosh-200 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500 dark:focus:border-dosh-500 dark:focus:ring-dosh-900/40"
             value={form.budgetowner}
             onChange={e => setForm(current => ({ ...current, budgetowner: e.target.value }))}
             placeholder="Budget owner"
+            aria-label="Budget Owner"
           />
+          <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">Click to edit. Changes save automatically.</p>
         </label>
         <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/50">
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Frequency</p>
@@ -163,6 +240,16 @@ export default function BudgetDetailPage() {
   const id = parseInt(budgetId, 10)
   const [activeSection, setActiveSection] = useState('budget-info')
   const [showReturnTop, setShowReturnTop] = useState(false)
+  const [collapsedSections, setCollapsedSections] = useState(() => {
+    if (typeof window === 'undefined') {
+      return { personalisation: true, settings: true }
+    }
+
+    return {
+      personalisation: window.sessionStorage.getItem(`${SECTION_SESSION_KEY_PREFIX}:personalisation`) !== 'false',
+      settings: window.sessionStorage.getItem(`${SECTION_SESSION_KEY_PREFIX}:settings`) !== 'false',
+    }
+  })
 
   const { data: budget, isLoading } = useQuery({ queryKey: ['budget', id], queryFn: () => getBudget(id) })
   const { data: accounts = [] } = useQuery({ queryKey: ['balance-types', id], queryFn: () => getBalanceTypes(id), enabled: !!budget })
@@ -184,6 +271,8 @@ export default function BudgetDetailPage() {
   const activeExpenseItems = expenseItems.filter(item => item.active)
   const hasAccounts = accounts.length > 0
   const primaryAccount = accounts.find(account => account.is_primary)
+  const orderedBlockingIssues = sortBlockingIssues(setupAssessment?.blocking_issues)
+  const preferredTransactionLabel = getPreferredTransactionLabel(budget.account_naming_preference)
 
   const jumpToSection = sectionId => {
     setActiveSection(sectionId)
@@ -193,6 +282,17 @@ export default function BudgetDetailPage() {
   const returnToTop = () => {
     setActiveSection('budget-info')
     window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const toggleSection = sectionId => {
+    setCollapsedSections(current => {
+      const nextCollapsed = !current[sectionId]
+      if (typeof window !== 'undefined') {
+        window.sessionStorage.setItem(`${SECTION_SESSION_KEY_PREFIX}:${sectionId}`, String(nextCollapsed))
+      }
+
+      return { ...current, [sectionId]: nextCollapsed }
+    })
   }
 
   return (
@@ -232,7 +332,7 @@ export default function BudgetDetailPage() {
       <SectionShell
         id="budget-info"
         title="Budget Info"
-        summary="Review the core details for this budget before working through the setup steps below."
+        summary="Some basic information about your budget."
       >
         <BudgetInfoForm budgetId={id} budget={budget} />
         <div className="mt-4 grid gap-3 sm:grid-cols-1">
@@ -250,11 +350,19 @@ export default function BudgetDetailPage() {
             }`}>
               <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Setup Assessment</p>
               <p className="mt-1 text-sm font-medium text-gray-900 dark:text-gray-100">
-                {setupAssessment.can_generate ? 'Ready for budget cycle generation' : 'Setup still needs attention before generation'}
+                {setupAssessment.can_generate ? 'Ready for budget cycle generation' : 'The following information is needed to allow us to generate a budget cycle:'}
               </p>
-              {setupAssessment.blocking_issues?.length ? (
+              {setupAssessment.can_generate ? (
+                <Link
+                  to={`/budgets/${id}/periods`}
+                  className="mt-2 inline-flex text-sm font-medium text-dosh-700 hover:underline dark:text-dosh-400"
+                >
+                  Go to budget cycles
+                </Link>
+              ) : null}
+              {orderedBlockingIssues.length ? (
                 <div className="mt-2 space-y-1">
-                  {setupAssessment.blocking_issues.map(issue => (
+                  {orderedBlockingIssues.map(issue => (
                     <p key={issue} className="text-sm text-amber-800 dark:text-amber-300">{issue}</p>
                   ))}
                 </div>
@@ -269,9 +377,6 @@ export default function BudgetDetailPage() {
             </div>
           ) : null}
         </div>
-        <div className="mt-4 rounded-xl border border-dosh-200 bg-dosh-50 px-4 py-3 text-sm text-dosh-800 dark:border-dosh-800 dark:bg-dosh-900/20 dark:text-dosh-200">
-          Budget cycles are managed from this budget's budget cycles page. Use this page to build and maintain the setup that future budget cycles will be generated from.
-        </div>
       </SectionShell>
 
       <SectionShell
@@ -280,9 +385,9 @@ export default function BudgetDetailPage() {
         badge={countLabel(accounts.length, 'account')}
         statusBadge={getSectionStatus('accounts', setupAssessment)}
         summary="Start here by creating the accounts this budget will use for balances, savings transfers, and linked transactions."
-        helper={!primaryAccount ? 'Set one account as the primary account so expense movements have a default home.' : null}
+        helper={!primaryAccount ? `Set one account as the primary ${preferredTransactionLabel.toLowerCase()} account so expense movements have a default home.` : null}
       >
-        <BalanceTypesTab budgetId={id} />
+        <BalanceTypesTab budgetId={id} budget={budget} />
       </SectionShell>
 
       <SectionShell
@@ -293,7 +398,7 @@ export default function BudgetDetailPage() {
         summary="Add the income lines you want to include in generated budget cycles, including fixed income and any savings transfers."
         helper={!hasAccounts ? 'Create at least one account first so account-linked income options are ready when you need them.' : null}
       >
-        <IncomeTypesTab budgetId={id} />
+        <IncomeTypesTab budgetId={id} budget={budget} />
       </SectionShell>
 
       <SectionShell
@@ -315,13 +420,16 @@ export default function BudgetDetailPage() {
         summary="Add investment lines for contributions, balances, and account-linked investment activity."
         helper={!hasAccounts ? 'Create at least one account first so linked investment accounts are available when needed.' : null}
       >
-        <InvestmentItemsTab budgetId={id} />
+        <InvestmentItemsTab budgetId={id} budget={budget} />
       </SectionShell>
 
       <SectionShell
         id="personalisation"
         title="Personalisation"
         summary="Tell Dosh what feels important to you so the health checks can be a little more aligned with your budgeting style."
+        collapsible={COLLAPSIBLE_SECTIONS.has('personalisation')}
+        collapsed={collapsedSections.personalisation}
+        onToggle={() => toggleSection('personalisation')}
       >
         <PersonalisationTab budgetId={id} budget={budget} />
       </SectionShell>
@@ -330,6 +438,9 @@ export default function BudgetDetailPage() {
         id="settings"
         title="Settings"
         summary="Optional controls that adjust budget behaviour and other setup preferences."
+        collapsible={COLLAPSIBLE_SECTIONS.has('settings')}
+        collapsed={collapsedSections.settings}
+        onToggle={() => toggleSection('settings')}
       >
         <SettingsTab budgetId={id} budget={budget} />
       </SectionShell>

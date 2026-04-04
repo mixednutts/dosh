@@ -164,7 +164,7 @@ def _build_setup_pillar(
             "detail": "An active period is in place." if current_period else "Generate the next live period to begin tracking against plan.",
         },
         {
-            "label": "Future period coverage",
+            "label": "Upcoming period coverage",
             "value": f"{len(future_periods)} planned period{'s' if len(future_periods) != 1 else ''}",
             "detail": (
                 f"Next future period: {_period_range(next_future_period)}. Preference target: {desired_future_periods} ahead."

@@ -117,7 +117,7 @@ describe('InvestmentItemsTab', () => {
     ])
     client.getBalanceTypes.mockResolvedValue([
       { balancedesc: 'Investments', balance_type: 'Savings' },
-      { balancedesc: 'Broker Cash', balance_type: 'Bank' },
+      { balancedesc: 'Broker Cash', balance_type: 'Transaction' },
     ])
     client.updateInvestmentItem.mockResolvedValue({})
 
@@ -259,5 +259,20 @@ describe('InvestmentItemsTab', () => {
     expect(screen.getByText('In Use')).toBeTruthy()
     const deleteButton = screen.getAllByRole('button')[2]
     expect(deleteButton.disabled).toBe(true)
+  })
+
+  it('shows the preferred transaction naming in linked account options', async () => {
+    client.getInvestmentItems.mockResolvedValue([])
+    client.getBalanceTypes.mockResolvedValue([{ balancedesc: 'Daily Spending', balance_type: 'Transaction' }])
+
+    renderWithProviders(
+      <InvestmentItemsTab
+        budgetId={1}
+        budget={{ account_naming_preference: 'Everyday' }}
+      />
+    )
+
+    fireEvent.click(await screen.findByText('Add Investment'))
+    expect(await screen.findByRole('option', { name: 'Daily Spending (Everyday)' })).toBeTruthy()
   })
 })

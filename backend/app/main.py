@@ -49,6 +49,7 @@ def seed_reference_data():
     db: Session = SessionLocal()
     try:
         add_column_if_missing("budgets", "allow_cycle_lock", "INTEGER NOT NULL DEFAULT 1")
+        add_column_if_missing("budgets", "account_naming_preference", "VARCHAR NOT NULL DEFAULT 'Transaction'")
         add_column_if_missing("financialperiods", "cycle_status", "VARCHAR NOT NULL DEFAULT 'PLANNED'")
         add_column_if_missing("financialperiods", "closed_at", "DATETIME")
         add_column_if_missing("periodincome", "is_system", "INTEGER NOT NULL DEFAULT 0")

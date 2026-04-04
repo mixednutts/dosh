@@ -46,7 +46,7 @@ describe('BalanceTypesTab', () => {
       target: { value: 'Everyday Account' },
     })
     fireEvent.change(screen.getByRole('combobox'), {
-      target: { value: 'Bank' },
+      target: { value: 'Transaction' },
     })
     fireEvent.change(screen.getByRole('spinbutton'), {
       target: { value: '1250' },
@@ -59,7 +59,7 @@ describe('BalanceTypesTab', () => {
     await waitFor(() => {
       expect(client.createBalanceType).toHaveBeenCalledWith(1, {
         balancedesc: 'Everyday Account',
-        balance_type: 'Bank',
+        balance_type: 'Transaction',
         opening_balance: 1250,
         active: true,
         is_primary: true,
@@ -168,7 +168,7 @@ describe('BalanceTypesTab', () => {
     client.getBalanceTypes.mockResolvedValue([
       {
         balancedesc: 'Main Account',
-        balance_type: 'Bank',
+        balance_type: 'Transaction',
         opening_balance: '1000.00',
         active: true,
         is_primary: true,
@@ -197,5 +197,30 @@ describe('BalanceTypesTab', () => {
     expect(screen.getByText('In Use')).toBeTruthy()
     const deleteButton = screen.getAllByRole('button')[2]
     expect(deleteButton.disabled).toBe(true)
+  })
+
+  it('uses the preferred transaction naming in the account type UI', async () => {
+    client.getBalanceTypes.mockResolvedValue([
+      {
+        balancedesc: 'Main Account',
+        balance_type: 'Transaction',
+        opening_balance: '1000.00',
+        active: true,
+        is_primary: true,
+      },
+    ])
+
+    renderWithProviders(
+      <BalanceTypesTab
+        budgetId={1}
+        budget={{ account_naming_preference: 'Checking' }}
+      />
+    )
+
+    expect(await screen.findByText('Checking')).toBeTruthy()
+    fireEvent.click(screen.getAllByRole('button')[1])
+    expect(await screen.findByRole('heading', { name: 'Edit Account' })).toBeTruthy()
+    expect(screen.getByRole('option', { name: 'Checking' })).toBeTruthy()
+    expect(screen.getByText('Primary checking account (expenses deducted from this account)')).toBeTruthy()
   })
 })

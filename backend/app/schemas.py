@@ -17,6 +17,7 @@ class BudgetBase(BaseModel):
     budgetowner: str
     description: Optional[str] = None
     budget_frequency: str  # Weekly | Fortnightly | Monthly
+    account_naming_preference: str = "Transaction"
 
     @field_validator("budget_frequency")
     @classmethod
@@ -24,6 +25,14 @@ class BudgetBase(BaseModel):
         allowed = {"Weekly", "Fortnightly", "Monthly"}
         if v not in allowed:
             raise ValueError(f"budget_frequency must be one of {allowed}")
+        return v
+
+    @field_validator("account_naming_preference")
+    @classmethod
+    def validate_account_naming_preference(cls, v: str) -> str:
+        allowed = {"Transaction", "Everyday", "Checking"}
+        if v not in allowed:
+            raise ValueError(f"account_naming_preference must be one of {allowed}")
         return v
 
 
@@ -44,6 +53,7 @@ class BudgetUpdate(BaseModel):
     savings_priority: Optional[int] = None
     period_criticality_bias: Optional[int] = None
     allow_cycle_lock: Optional[bool] = None
+    account_naming_preference: Optional[str] = None
 
     @field_validator(
         "acceptable_expense_overrun_pct",
@@ -69,6 +79,16 @@ class BudgetUpdate(BaseModel):
             raise ValueError("Maximum deficit amount must be 0 or more")
         return v.quantize(Decimal("0.01"))
 
+    @field_validator("account_naming_preference")
+    @classmethod
+    def validate_optional_account_naming_preference(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        allowed = {"Transaction", "Everyday", "Checking"}
+        if v not in allowed:
+            raise ValueError(f"account_naming_preference must be one of {allowed}")
+        return v
+
 
 class BudgetOut(BudgetBase):
     budgetid: int
@@ -81,6 +101,7 @@ class BudgetOut(BudgetBase):
     savings_priority: int = 50
     period_criticality_bias: int = 50
     allow_cycle_lock: bool = True
+    account_naming_preference: str = "Transaction"
     model_config = {"from_attributes": True}
 
 
@@ -559,6 +580,7 @@ class PeriodDetailOut(BaseModel):
     expenses: list[PeriodExpenseOut]
     investments: list[PeriodInvestmentOut] = []
     balances: list[PeriodBalanceOut] = []
+    projected_savings: Decimal = Decimal("0")
     closeout_snapshot: Optional[PeriodCloseoutSnapshotOut] = None
 
 

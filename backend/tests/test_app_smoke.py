@@ -62,3 +62,23 @@ def test_generate_period_requires_income_and_expense_prerequisites(client):
 
     assert response.status_code == 422
     assert "income type" in response.json()["detail"]
+
+
+def test_budget_account_naming_preference_can_be_saved(client):
+    create_budget_response = client.post(
+        "/api/budgets/",
+        json={
+            "budgetowner": "Naming User",
+            "description": "Naming Budget",
+            "budget_frequency": "Monthly",
+        },
+    )
+    budgetid = create_budget_response.json()["budgetid"]
+
+    response = client.patch(
+        f"/api/budgets/{budgetid}",
+        json={"account_naming_preference": "Checking"},
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json()["account_naming_preference"] == "Checking"

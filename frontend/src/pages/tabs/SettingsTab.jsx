@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { QuestionMarkCircleIcon } from '@heroicons/react/24/outline'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { updateBudget } from '../../api/client'
+import { ACCOUNT_NAMING_OPTIONS } from '../../utils/accountNaming'
 
 function formatApiError(error, fallback) {
   return error?.response?.data?.detail || fallback
@@ -22,6 +23,10 @@ export default function SettingsTab({ budgetId, budget }) {
 
   const handleToggle = (field, checked) => {
     saveSettings.mutate({ [field]: checked })
+  }
+
+  const handleSelectChange = (field, value) => {
+    saveSettings.mutate({ [field]: value })
   }
 
   return (
@@ -89,6 +94,24 @@ export default function SettingsTab({ budgetId, budget }) {
             </span>
           </span>
         </label>
+
+        <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-800/50">
+          <label htmlFor="account-naming-preference" className="label">Preferred Primary Account Naming</label>
+          <select
+            id="account-naming-preference"
+            className="input"
+            value={budget?.account_naming_preference || 'Transaction'}
+            disabled={saveSettings.isPending}
+            onChange={e => handleSelectChange('account_naming_preference', e.target.value)}
+          >
+            {ACCOUNT_NAMING_OPTIONS.map(option => (
+              <option key={option} value={option}>{option}</option>
+            ))}
+          </select>
+          <p className="mt-2 text-gray-600 dark:text-gray-400">
+            Choose the label Dosh should use when talking about your main spending account in setup and account-related screens.
+          </p>
+        </div>
 
         {saveSettings.isError && (
           <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300">

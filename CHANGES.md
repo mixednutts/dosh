@@ -25,6 +25,96 @@ For the current setup-assessment and downstream-protection model introduced this
 
 For recent concrete verification outcomes, read [TEST_RESULTS_SUMMARY.md](/home/ubuntu/dosh/TEST_RESULTS_SUMMARY.md).
 
+## Latest Session: Setup UX Refinement, Account Naming Localisation Seed, And Period Summary Expansion
+
+This session focused on tightening workflow wording, reducing repeated navigation noise, and introducing the first low-risk localisation-style display preference.
+
+Important direction now in place:
+
+- the old account type label `Bank` has been replaced by `Transaction` in the product, with existing data updated to match
+- Dosh now supports a budget-level display preference for transaction-style account naming: `Transaction`, `Everyday`, or `Checking`
+- the internal account type model still stays stable even when the user-facing terminology changes
+- the budget setup page now uses in-card headers more consistently, keeps `Personalisation` and `Settings` collapsed by default, and remembers their state for the browser session
+- the budget cycles list now uses `Upcoming` instead of `Future`, and the historical section remembers its collapse state for the session
+- the period detail page now surfaces both `Projected Savings` and `Remaining Expenses` in the top summary card set
+- several navigation and sidebar refinements were made to reduce duplicate information and improve visual grouping without changing the underlying route structure
+
+### 1. Account naming localisation now exists as a safe display-layer preference
+
+The product now supports regional naming variation for the main spending-account concept without changing the stored data model.
+
+Current behavior:
+
+- `Transaction` is now the canonical user-facing base label instead of `Bank`
+- budgets can choose `Transaction`, `Everyday`, or `Checking` as the preferred display label
+- the preference is used in account-related setup and helper copy while the stored account type remains `Transaction`
+
+Important product meaning:
+
+- Dosh can now adapt familiar terminology for different user expectations without fragmenting financial behavior or schema meaning
+- future terminology preferences should follow this pattern when they are primarily presentation concerns
+
+### 2. Budget setup guidance and section structure were made more direct
+
+The setup page now communicates generation readiness and optional sections more cleanly.
+
+Current behavior:
+
+- setup-assessment blocking copy now explicitly states what information is needed before generation can proceed
+- blocking issues are shown in the same order as the setup sections themselves
+- the assessment card now links directly to the budget cycles page when setup is ready
+- the redundant helper card about managing budget cycles from the separate page was removed
+- section descriptions now live inside the card header area rather than above the card
+- `Personalisation` and `Settings` start collapsed, persist their expand or collapse state for the browser session, and now use the same chevron-first affordance pattern as the period listing page
+
+Important product meaning:
+
+- the setup page now behaves more like a guided workflow surface and less like a collection of unrelated cards
+- optional sections can stay out of the way until the user wants them, without forgetting the user’s session-level preference
+
+### 3. Budget cycle wording and summary affordances were tightened
+
+The periods flow now uses slightly cleaner, more consistent wording and persistence behavior.
+
+Current behavior:
+
+- `Future` is now `Upcoming` in the grouped budget-cycle listing and related summary wording
+- the historical budget-cycle section now remembers whether it was expanded or collapsed for the duration of the browser session
+- the sidebar and navigation surfaces were adjusted to reduce duplicate budget-detail repetition and to keep navigation hierarchy easier to scan
+
+Important product meaning:
+
+- session-level expand or collapse preferences are now an accepted lightweight interaction pattern for non-critical optional sections
+- `Upcoming` is now the preferred grouping term in the periods listing where it reads more naturally than `Future`
+
+### 4. Period detail summary cards now provide a fuller money snapshot
+
+The top summary area on the period detail page now exposes more of the live budget picture at a glance.
+
+Current behavior:
+
+- `Projected Savings` now appears with the surplus summary cards
+- `Remaining Expenses` now appears in the top summary grid
+- the top summary area is now an 8-card grid rather than split into separate rows with mismatched card counts
+
+Important product meaning:
+
+- the period-detail page is moving toward a more practical “how is this period tracking?” summary before the detailed line items
+
+### 5. A few UX ideas were intentionally deferred
+
+These were discussed but not implemented in this session.
+
+Deferred ideas:
+
+- a user-facing terminology preference for `Budget Cycle` vs alternatives such as `Period`
+- drag-and-drop ordering of the period-detail summary cards
+
+Current guidance:
+
+- the period-naming preference should stay deferred until it is clearly worth introducing another terminology preference
+- draggable summary-card ordering remains a credible enhancement, but should wait until the card set feels stable enough to customize
+
 ## Latest Session: Setup Assessment Hardening, Backend Harness Isolation, And Deployment Verification
 
 This session moved Dosh from loosely inferred setup-readiness rules into a centralized setup-assessment model with downstream protection.

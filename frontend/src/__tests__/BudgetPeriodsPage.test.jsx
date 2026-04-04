@@ -18,6 +18,7 @@ const client = require('../api/client')
 describe('BudgetPeriodsPage', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    window.sessionStorage.clear()
     client.getBudgetSetupAssessment.mockResolvedValue({
       budgetid: 1,
       can_generate: true,
@@ -73,7 +74,7 @@ describe('BudgetPeriodsPage', () => {
     })
 
     expect(await screen.findByText('Budget Cycles')).toBeTruthy()
-    fireEvent.click(screen.getByTitle('Expand future budget cycles'))
+    fireEvent.click(screen.getByTitle('Expand upcoming budget cycles'))
     fireEvent.click(screen.getByTitle('Delete budget cycle'))
 
     expect(await screen.findByText(/Delete this cycle and all upcoming cycles \(3\)/)).toBeTruthy()
@@ -200,6 +201,61 @@ describe('BudgetPeriodsPage', () => {
 
     const firstCycleButton = screen.getByText('Generate First Budget Cycle')
     expect(firstCycleButton.disabled).toBe(true)
+  })
+
+  it('remembers the historical budget cycles section state for the browser session', async () => {
+    client.getBudget.mockResolvedValue({
+      budgetid: 1,
+      budgetowner: 'Alex',
+      description: 'Home Budget',
+      budget_frequency: 'Monthly',
+    })
+    client.getPeriodSummariesForBudget.mockResolvedValue([
+      {
+        period: {
+          finperiodid: 31,
+          budgetid: 1,
+          startdate: '2026-03-01T00:00:00',
+          enddate: '2026-03-31T00:00:00',
+          islocked: false,
+          cycle_status: 'CLOSED',
+        },
+        income_budget: '1000.00',
+        income_actual: '1000.00',
+        expense_budget: '800.00',
+        expense_actual: '790.00',
+        investment_budget: '0.00',
+        investment_actual: '0.00',
+        surplus_budget: '200.00',
+        surplus_actual: '210.00',
+        projected_savings: '0.00',
+        can_delete: false,
+      },
+    ])
+
+    const firstRender = renderWithProviders(<BudgetPeriodsPage />, {
+      route: '/budgets/1',
+      path: '/budgets/:budgetId',
+    })
+
+    expect(await screen.findByText('Budget Cycles')).toBeTruthy()
+    expect(screen.getByTitle('Expand historical budget cycles')).toBeTruthy()
+    expect(screen.queryByText('31 Mar 26')).toBeNull()
+
+    fireEvent.click(screen.getByTitle('Expand historical budget cycles'))
+
+    expect(await screen.findByTitle('Collapse historical budget cycles')).toBeTruthy()
+    expect(screen.getByText('31 Mar 26')).toBeTruthy()
+
+    firstRender.unmount()
+
+    renderWithProviders(<BudgetPeriodsPage />, {
+      route: '/budgets/1',
+      path: '/budgets/:budgetId',
+    })
+
+    expect(await screen.findByTitle('Collapse historical budget cycles')).toBeTruthy()
+    expect(screen.getByText('31 Mar 26')).toBeTruthy()
   })
 
   it('shows generation errors when setup is complete but generation fails', async () => {

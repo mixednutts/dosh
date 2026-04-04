@@ -31,6 +31,8 @@ It is now a workflow-driven personal finance application with:
 
 The product direction is practical, personal, and supportive rather than corporate or accounting-heavy. Functional clarity is preferred over decorative redesign.
 
+Localisation and regional-fit work now has an initial live slice through budget-level account naming preferences, while the core domain model still stays terminology-stable underneath.
+
 ## Current Technical Shape
 
 Backend:
@@ -94,6 +96,10 @@ The repository already supports:
 - account balance viewing with transaction-based movement explanation
 - current budget summary cards, current balance summary, and current-period health check
 - historical close-out snapshot review for closed cycles
+- budget-level primary-account display naming with `Transaction`, `Everyday`, and `Checking` as user-facing options while the stored account type remains `Transaction`
+- setup-page collapsible `Personalisation` and `Settings` sections with session-persisted expand or collapse state
+- budget-cycle grouping using `Current`, `Upcoming`, and `Historical`, with the historical list remembering its collapse state for the browser session
+- period-detail summary cards that now include both `Projected Savings` and `Remaining Expenses`
 
 Current frontend wording trends toward `Budget Cycle` for user clarity while backend naming still uses `period` for stability.
 
@@ -166,6 +172,7 @@ When making changes, preserve these working assumptions from the docs:
 - do not treat startup schema patching as a finished migration strategy
 - do not weaken setup protection by reintroducing page-local readiness assumptions when centralized setup assessment already exists
 - do not treat backend test isolation as optional now that mixed-area sessions depend on it
+- prefer regional display-label preferences over renaming internal domain models when terminology variation is mostly user-facing
 
 ## Practical Starting Order For Future Sessions
 

@@ -1125,6 +1125,7 @@ export default function PeriodDetailPage() {
   const totalExpenseRemaining = expenses.reduce((s, e) => s + Number(e.remaining_amount ?? 0), 0)
   const surplusBudget = totalIncomeBudget - effectiveExpenseBudget - effectiveInvestmentBudget
   const surplusActual = totalIncomeActual - totalExpenseActual - totalInvestmentActual
+  const projectedSavings = Number(data.projected_savings ?? 0)
 
   const handleMarkPaid = expense => {
     const remaining = Number(expense.remaining_amount ?? 0)
@@ -1205,24 +1206,20 @@ export default function PeriodDetailPage() {
       )}
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {[
           { label: 'Income Budget',  value: totalIncomeBudget,  cls: 'text-gray-700 dark:text-gray-300' },
           { label: 'Income Actual',  value: totalIncomeActual,  cls: 'text-success-700 dark:text-success-400' },
           { label: 'Expense Budget', value: effectiveExpenseBudget, cls: 'text-gray-700 dark:text-gray-300' },
           { label: 'Expense Actual', value: totalExpenseActual, cls: 'text-red-700 dark:text-red-400' },
+          { label: 'Remaining Expenses', value: totalExpenseRemaining, cls: totalExpenseRemaining >= 0 ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400' },
+          { label: 'Projected Savings', value: projectedSavings },
+          { label: 'Surplus (Budget)', value: surplusBudget },
+          { label: 'Surplus (Actual)', value: surplusActual },
         ].map(({ label, value, cls }) => (
           <div key={label} className="card px-4 py-3">
             <p className="text-xs text-gray-500 dark:text-gray-400">{label}</p>
-            <p className={`text-lg font-bold ${cls}`}>{fmt(value)}</p>
-          </div>
-        ))}
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        {[{ label: 'Surplus (Budget)', value: surplusBudget }, { label: 'Surplus (Actual)', value: surplusActual }].map(({ label, value }) => (
-          <div key={label} className="card px-4 py-3">
-            <p className="text-xs text-gray-500 dark:text-gray-400">{label}</p>
-            <p className={`text-lg font-bold ${value >= 0 ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'}`}>{fmt(value)}</p>
+            <p className={`text-lg font-bold ${cls || (value >= 0 ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400')}`}>{fmt(value)}</p>
           </div>
         ))}
       </div>

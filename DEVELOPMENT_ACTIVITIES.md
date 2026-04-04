@@ -50,6 +50,10 @@ Recent progress worth carrying forward:
 - budget setup now has a centralized setup assessment model rather than scattered readiness assumptions
 - setup records now become explicitly protected when downstream cycles or transactions depend on them
 - the budget setup page now shows section-level assessment state and protected downstream usage
+- account terminology now has an initial budget-level display preference, allowing `Transaction`, `Everyday`, or `Checking` while preserving one internal model
+- the budget setup page now uses in-card section headers, default-collapsed optional sections, and session-persisted expand or collapse state
+- the budget cycles list now uses `Upcoming` group wording and remembers the historical section expand or collapse state for the browser session
+- the period-detail page now surfaces `Projected Savings` and `Remaining Expenses` in a single 8-card summary grid
 - backend tests now run against an isolated SQLite database per test case, making mixed-area sessions much safer
 - Docker Compose deployment was rebuilt and verified successfully from the current working tree
 
@@ -173,12 +177,19 @@ Focus areas:
 - prepare for country-specific conventions such as fortnightly budgeting, date ordering, and currency display
 - keep localisation practical and product-led rather than introducing translation plumbing with no user-facing value
 
+Current implemented slice:
+
+- account naming now has a budget-level display preference for `Transaction`, `Everyday`, and `Checking`
+- this should be treated as the reference pattern for terminology preferences that are display-layer only
+- the data model should stay stable underneath unless a deeper domain reason appears
+
 Suggested implementation slices:
 
 - introduce shared frontend formatting utilities for currency, number, and date presentation
 - add budget-level or user-level locale and currency preferences
 - audit hard-coded `en-AU` assumptions and replace them with explicit formatting settings
 - identify user-facing finance terminology that may need regional variants
+- decide cautiously whether period naming should follow the same preference pattern later; it was discussed this session and intentionally deferred
 - document which localisation decisions belong in product copy versus data model behavior
 
 ### 6. Cash Management Workflow Definition
@@ -321,6 +332,7 @@ Priority areas:
 - preserve the compact/collapsible desktop mode as new features arrive
 - keep overflow affordances honest when the user is already on the destination page
 - avoid duplicate edit or setup entry points on the same screen unless they serve clearly different purposes
+- preserve the cleanup that removed duplicate budget detail text from the `Current Budget` panel and moved utility controls away from the banner collision area
 
 ### 8. Expand Budget Summary Reporting Value
 
@@ -331,6 +343,7 @@ Priority areas:
 - add richer historical and trend summaries without turning the page into a dashboard clone
 - continue favoring live money position and practical status over repeated setup actions
 - identify the next summary card that best complements current balance and health without duplicating period-listing data
+- keep the period-detail summary card set under review before introducing user-controlled drag-and-drop ordering
 
 ### 9. Establish Localisation Foundations
 
@@ -382,6 +395,7 @@ If we want a practical order of work rather than just a thematic roadmap, this i
 8. Clean up deployment warnings and align the frontend Docker build with current Node engine requirements.
 9. Review sidebar and budget-summary polish after real use, especially around future first-class sections.
 10. Define the first export and backup scope, including format and restore expectations.
+11. Revisit summary-card customization only after the current period-detail card set feels stable in real use.
 
 ## Guardrails For Future Work
 

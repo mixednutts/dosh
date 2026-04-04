@@ -137,7 +137,7 @@ def _period_status(period: FinancialPeriod, now: datetime) -> str:
     if status == ACTIVE:
         return "Current"
     if status == PLANNED:
-        return "Future"
+        return "Upcoming"
     return "Historical"
 
 
@@ -491,12 +491,29 @@ def get_period_detail(finperiodid: int, db: Session = Depends(get_db)):
         d = PeriodBalanceOut.model_validate(pb)
         d.balance_type = bt.balance_type if bt else None
         enriched_balances.append(d)
+
+    income_budget = sum((Decimal(str(row.budgetamount or 0)) for row in incomes), Decimal("0.00"))
+    income_actual = sum((Decimal(str(row.actualamount or 0)) for row in incomes), Decimal("0.00"))
+    expense_budget = sum((
+        Decimal(str(row.actualamount if (getattr(row, "status", WORKING) or WORKING) == PAID else row.budgetamount or 0))
+        for row in expenses
+    ), Decimal("0.00"))
+    expense_actual = sum((Decimal(str(row.actualamount or 0)) for row in expenses), Decimal("0.00"))
+    investment_budget = sum((
+        Decimal(str(row.actualamount if (getattr(row, "status", WORKING) or WORKING) == PAID else row.budgeted_amount or 0))
+        for row in investments
+    ), Decimal("0.00"))
+    investment_actual = sum((Decimal(str(row.actualamount or 0)) for row in investments), Decimal("0.00"))
+    period_status = _period_status(period, app_now_naive())
+    projected_savings = _projected_savings(period_status, investment_budget, investment_actual)
+
     return PeriodDetailOut(
         period=PeriodOut.model_validate(period),
         incomes=[PeriodIncomeOut.model_validate(i) for i in incomes],
         expenses=_enrich_expenses(expenses, db),
         investments=_enrich_investments(investments, db),
         balances=enriched_balances,
+        projected_savings=projected_savings,
         closeout_snapshot=period.closeout_snapshot,
     )
 

@@ -3,10 +3,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline'
 import { getIncomeTypes, createIncomeType, updateIncomeType, deleteIncomeType, getBalanceTypes, getBudgetSetupAssessment } from '../../api/client'
 import Modal from '../../components/Modal'
+import { getBalanceTypeLabel } from '../../utils/accountNaming'
 
 const emptyForm = { incomedesc: '', issavings: false, isfixed: false, autoinclude: false, amount: '', linked_account: '' }
 
-function IncomeTypeForm({ initial = emptyForm, onSubmit, onClose, loading, budgetId, structureLocked = false, lockReasons = [] }) {
+function IncomeTypeForm({ initial = emptyForm, onSubmit, onClose, loading, budgetId, structureLocked = false, lockReasons = [], accountNamingPreference = 'Transaction' }) {
   const [form, setForm] = useState({ ...initial, amount: initial.amount ?? '', linked_account: initial.linked_account ?? '' })
   const set = (k, v) => setForm(f => {
     const next = { ...f, [k]: v }
@@ -38,7 +39,7 @@ function IncomeTypeForm({ initial = emptyForm, onSubmit, onClose, loading, budge
         <label className="label">Paid into Account</label>
         <select disabled={structureLocked} className="input" value={form.linked_account} onChange={e => set('linked_account', e.target.value)}>
           <option value="">— none —</option>
-          {accounts.map(a => <option key={a.balancedesc} value={a.balancedesc}>{a.balancedesc}</option>)}
+          {accounts.map(a => <option key={a.balancedesc} value={a.balancedesc}>{a.balancedesc}{a.balance_type ? ` (${getBalanceTypeLabel(a.balance_type, accountNamingPreference)})` : ''}</option>)}
         </select>
       </div>
       <div className="space-y-2">
@@ -79,7 +80,7 @@ function IncomeTypeForm({ initial = emptyForm, onSubmit, onClose, loading, budge
 
 const fmt = v => Number(v).toLocaleString('en-AU', { style: 'currency', currency: 'AUD' })
 
-export default function IncomeTypesTab({ budgetId }) {
+export default function IncomeTypesTab({ budgetId, budget }) {
   const qc = useQueryClient()
   const [modal, setModal] = useState(null)
   const [actionError, setActionError] = useState('')
@@ -132,6 +133,7 @@ export default function IncomeTypesTab({ budgetId }) {
   }
 
   const incomeUsageByDesc = Object.fromEntries((setupAssessment?.income_types || []).map(item => [item.incomedesc, item]))
+  const accountNamingPreference = budget?.account_naming_preference || 'Transaction'
 
   if (isLoading) return null
 
@@ -211,6 +213,7 @@ export default function IncomeTypesTab({ budgetId }) {
             onClose={() => setModal(null)}
             loading={create.isPending || update.isPending}
             budgetId={budgetId}
+            accountNamingPreference={accountNamingPreference}
           />
         </Modal>
       )}

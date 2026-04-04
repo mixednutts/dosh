@@ -4,10 +4,11 @@ import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline'
 import { format, parseISO } from 'date-fns'
 import { getInvestmentItems, createInvestmentItem, updateInvestmentItem, deleteInvestmentItem, getBalanceTypes, getBudgetSetupAssessment } from '../../api/client'
 import Modal from '../../components/Modal'
+import { getBalanceTypeLabel } from '../../utils/accountNaming'
 
 const emptyForm = { investmentdesc: '', active: true, effectivedate: '', initial_value: '', linked_account_desc: '', is_primary: false }
 
-function InvestmentForm({ initial = emptyForm, isEdit = false, onSubmit, onClose, loading, balanceTypes = [], structureLocked = false, lockReasons = [] }) {
+function InvestmentForm({ initial = emptyForm, isEdit = false, onSubmit, onClose, loading, balanceTypes = [], structureLocked = false, lockReasons = [], accountNamingPreference = 'Transaction' }) {
   const [form, setForm] = useState(initial)
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
@@ -42,7 +43,7 @@ function InvestmentForm({ initial = emptyForm, isEdit = false, onSubmit, onClose
         <select disabled={structureLocked} className="input" value={form.linked_account_desc} onChange={e => set('linked_account_desc', e.target.value)}>
           <option value="">— none —</option>
           {balanceTypes.map(bt => (
-            <option key={bt.balancedesc} value={bt.balancedesc}>{bt.balancedesc}{bt.balance_type ? ` (${bt.balance_type})` : ''}</option>
+            <option key={bt.balancedesc} value={bt.balancedesc}>{bt.balancedesc}{bt.balance_type ? ` (${getBalanceTypeLabel(bt.balance_type, accountNamingPreference)})` : ''}</option>
           ))}
         </select>
         <p className="text-xs text-gray-400 mt-1">Contributions to this investment will be credited to this account balance.</p>
@@ -76,7 +77,7 @@ function InvestmentForm({ initial = emptyForm, isEdit = false, onSubmit, onClose
   )
 }
 
-export default function InvestmentItemsTab({ budgetId }) {
+export default function InvestmentItemsTab({ budgetId, budget }) {
   const qc = useQueryClient()
   const [modal, setModal] = useState(null)
   const [actionError, setActionError] = useState('')
@@ -128,6 +129,7 @@ export default function InvestmentItemsTab({ budgetId }) {
   })
 
   const investmentUsageByDesc = Object.fromEntries((setupAssessment?.investment_items || []).map(item => [item.investmentdesc, item]))
+  const accountNamingPreference = budget?.account_naming_preference || 'Transaction'
 
   return (
     <div className="space-y-3">
@@ -202,6 +204,7 @@ export default function InvestmentItemsTab({ budgetId }) {
             balanceTypes={balanceTypes}
             structureLocked={modal.item ? investmentUsageByDesc[modal.item.investmentdesc]?.can_edit_structure === false : false}
             lockReasons={modal.item ? (investmentUsageByDesc[modal.item.investmentdesc]?.reasons || []) : []}
+            accountNamingPreference={accountNamingPreference}
             onSubmit={form => {
               if (modal.mode === 'create') create.mutate(form)
               else update.mutate({ desc: modal.item.investmentdesc, data: form })

@@ -8,6 +8,8 @@ import clsx from 'clsx'
 import Modal from '../components/Modal'
 import Spinner from '../components/Spinner'
 
+const PERIOD_GROUP_SESSION_KEY_PREFIX = 'dosh-budget-periods-group-open'
+
 function formatApiError(error, fallback) {
   return error?.response?.data?.detail || fallback
 }
@@ -85,7 +87,7 @@ function getGroupedPeriodSummaries(periodSummaries) {
 
   return {
     current: ordered.filter(({ period }) => period.cycle_status === 'ACTIVE'),
-    future: ordered.filter(({ period }) => period.cycle_status === 'PLANNED'),
+    upcoming: ordered.filter(({ period }) => period.cycle_status === 'PLANNED'),
     historical: ordered.filter(({ period }) => period.cycle_status === 'CLOSED'),
   }
 }
@@ -153,10 +155,36 @@ function PeriodSummaryRow({ summary, onDelete }) {
   )
 }
 
-function PeriodSummaryGroup({ title, summaries, collapsed = false, collapsible = false, onDelete }) {
-  const [open, setOpen] = useState(!collapsed)
+function PeriodSummaryGroup({ title, summaries, collapsed = false, collapsible = false, onDelete, sessionStorageKey }) {
+  const [open, setOpen] = useState(() => {
+    if (!collapsible || !sessionStorageKey || typeof window === 'undefined') {
+      return !collapsed
+    }
+
+    const storedValue = window.sessionStorage.getItem(`${PERIOD_GROUP_SESSION_KEY_PREFIX}:${sessionStorageKey}`)
+
+    if (storedValue === null) {
+      return !collapsed
+    }
+
+    return storedValue === 'true'
+  })
 
   if (summaries.length === 0) return null
+
+  const handleToggle = () => {
+    if (!collapsible) return
+
+    setOpen(current => {
+      const nextOpen = !current
+
+      if (sessionStorageKey && typeof window !== 'undefined') {
+        window.sessionStorage.setItem(`${PERIOD_GROUP_SESSION_KEY_PREFIX}:${sessionStorageKey}`, String(nextOpen))
+      }
+
+      return nextOpen
+    })
+  }
 
   return (
     <section className="card overflow-hidden">
@@ -164,7 +192,7 @@ function PeriodSummaryGroup({ title, summaries, collapsed = false, collapsible =
         <button
           type="button"
           className="flex items-center gap-2 text-left text-sm font-semibold uppercase tracking-wide text-gray-700 transition-colors hover:text-gray-900 dark:text-gray-200 dark:hover:text-white"
-          onClick={() => collapsible && setOpen(value => !value)}
+          onClick={handleToggle}
           title={collapsible ? (open ? `Collapse ${title.toLowerCase()} budget cycles` : `Expand ${title.toLowerCase()} budget cycles`) : undefined}
         >
           {collapsible ? (
@@ -360,12 +388,13 @@ export default function BudgetPeriodsPage() {
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Budget Cycles</h2>
           <div className="space-y-4">
             <PeriodSummaryGroup title="Current" summaries={groupedSummaries.current} collapsible onDelete={summary => { setDeleteMode(summary.delete_mode || 'single'); setDeleteTarget(summary) }} />
-            <PeriodSummaryGroup title="Future" summaries={groupedSummaries.future} collapsed collapsible onDelete={summary => { setDeleteMode(summary.delete_mode || 'single'); setDeleteTarget(summary) }} />
+            <PeriodSummaryGroup title="Upcoming" summaries={groupedSummaries.upcoming} collapsed collapsible onDelete={summary => { setDeleteMode(summary.delete_mode || 'single'); setDeleteTarget(summary) }} />
             <PeriodSummaryGroup
               title="Historical"
               summaries={groupedSummaries.historical}
               collapsed
               collapsible
+              sessionStorageKey={`budget-${id}-historical`}
               onDelete={summary => { setDeleteMode(summary.delete_mode || 'single'); setDeleteTarget(summary) }}
             />
           </div>

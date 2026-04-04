@@ -133,19 +133,23 @@ function BalanceSummaryCard({ currentPeriod, currentPeriodDetail, isLoading }) {
   return (
     <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 dark:border-gray-700 dark:bg-gray-800/50">
       <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Current Balance</p>
+      <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+        <span>Account</span>
+        <span className="text-right">Closing</span>
+      </div>
       <div className="mt-2 space-y-1.5">
         {balances.map(balance => (
-          <div key={balance.balancedesc} className="flex items-center justify-between gap-3 text-xs">
+          <div key={balance.balancedesc} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 text-xs">
             <span className="min-w-0 truncate text-gray-600 dark:text-gray-300">{balance.balancedesc}</span>
-            <span className="shrink-0 font-semibold text-gray-900 dark:text-gray-100">
+            <span className="shrink-0 text-right font-semibold text-gray-900 dark:text-gray-100">
               {fmtCurrency(balance.closing_amount)}
             </span>
           </div>
         ))}
       </div>
-      <div className="mt-3 flex items-center justify-between gap-3 border-t border-gray-200 pt-2 dark:border-gray-700">
+      <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 border-t border-gray-200 pt-2 dark:border-gray-700">
         <span className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Total</span>
-        <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">{fmtCurrency(totalClosing)}</span>
+        <span className="text-right text-sm font-semibold text-gray-900 dark:text-gray-100">{fmtCurrency(totalClosing)}</span>
       </div>
     </div>
   )

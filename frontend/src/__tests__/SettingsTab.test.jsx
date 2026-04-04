@@ -20,6 +20,7 @@ describe('SettingsTab', () => {
       budgetid: 1,
       auto_add_surplus_to_investment: true,
       allow_cycle_lock: true,
+      account_naming_preference: 'Transaction',
     })
 
     renderWithProviders(
@@ -29,6 +30,7 @@ describe('SettingsTab', () => {
           budgetid: 1,
           auto_add_surplus_to_investment: false,
           allow_cycle_lock: true,
+          account_naming_preference: 'Transaction',
         }}
       />
     )
@@ -50,6 +52,7 @@ describe('SettingsTab', () => {
       budgetid: 1,
       auto_add_surplus_to_investment: false,
       allow_cycle_lock: false,
+      account_naming_preference: 'Transaction',
     })
 
     renderWithProviders(
@@ -59,6 +62,7 @@ describe('SettingsTab', () => {
           budgetid: 1,
           auto_add_surplus_to_investment: false,
           allow_cycle_lock: true,
+          account_naming_preference: 'Transaction',
         }}
       />
     )
@@ -68,6 +72,35 @@ describe('SettingsTab', () => {
 
     await waitFor(() => {
       expect(client.updateBudget).toHaveBeenCalledWith(1, { allow_cycle_lock: false })
+    })
+  })
+
+  it('saves the preferred primary account naming setting', async () => {
+    client.updateBudget.mockResolvedValue({
+      budgetid: 1,
+      auto_add_surplus_to_investment: false,
+      allow_cycle_lock: true,
+      account_naming_preference: 'Checking',
+    })
+
+    renderWithProviders(
+      <SettingsTab
+        budgetId={1}
+        budget={{
+          budgetid: 1,
+          auto_add_surplus_to_investment: false,
+          allow_cycle_lock: true,
+          account_naming_preference: 'Transaction',
+        }}
+      />
+    )
+
+    fireEvent.change(screen.getByLabelText('Preferred Primary Account Naming'), {
+      target: { value: 'Checking' },
+    })
+
+    await waitFor(() => {
+      expect(client.updateBudget).toHaveBeenCalledWith(1, { account_naming_preference: 'Checking' })
     })
   })
 })

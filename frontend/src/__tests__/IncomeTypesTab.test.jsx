@@ -39,7 +39,7 @@ describe('IncomeTypesTab', () => {
 
   it('auto-sets auto-include when a fixed income type is created', async () => {
     client.getIncomeTypes.mockResolvedValue([])
-    client.getBalanceTypes.mockResolvedValue([{ balancedesc: 'Everyday', balance_type: 'Bank' }])
+    client.getBalanceTypes.mockResolvedValue([{ balancedesc: 'Everyday', balance_type: 'Transaction' }])
     client.createIncomeType.mockResolvedValue({})
 
     renderWithProviders(<IncomeTypesTab budgetId={1} />)
@@ -117,7 +117,7 @@ describe('IncomeTypesTab', () => {
         linked_account: 'Everyday',
       },
     ])
-    client.getBalanceTypes.mockResolvedValue([{ balancedesc: 'Everyday', balance_type: 'Bank' }])
+    client.getBalanceTypes.mockResolvedValue([{ balancedesc: 'Everyday', balance_type: 'Transaction' }])
     client.updateIncomeType.mockResolvedValue({})
 
     renderWithProviders(<IncomeTypesTab budgetId={1} />)
@@ -157,7 +157,7 @@ describe('IncomeTypesTab', () => {
         linked_account: 'Everyday',
       },
     ])
-    client.getBalanceTypes.mockResolvedValue([{ balancedesc: 'Everyday', balance_type: 'Bank' }])
+    client.getBalanceTypes.mockResolvedValue([{ balancedesc: 'Everyday', balance_type: 'Transaction' }])
     client.getBudgetSetupAssessment.mockResolvedValue({
       budgetid: 1,
       can_generate: true,
@@ -183,5 +183,20 @@ describe('IncomeTypesTab', () => {
     expect(screen.getByText('In Use')).toBeTruthy()
     const deleteButton = screen.getAllByRole('button')[2]
     expect(deleteButton.disabled).toBe(true)
+  })
+
+  it('shows the preferred transaction naming in linked account options', async () => {
+    client.getIncomeTypes.mockResolvedValue([])
+    client.getBalanceTypes.mockResolvedValue([{ balancedesc: 'Everyday', balance_type: 'Transaction' }])
+
+    renderWithProviders(
+      <IncomeTypesTab
+        budgetId={1}
+        budget={{ account_naming_preference: 'Checking' }}
+      />
+    )
+
+    fireEvent.click(await screen.findByText('Add Income Type'))
+    expect(await screen.findByRole('option', { name: 'Everyday (Checking)' })).toBeTruthy()
   })
 })

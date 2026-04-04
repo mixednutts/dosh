@@ -62,10 +62,10 @@ describe('BudgetDetailPage', () => {
       path: '/budgets/:budgetId/setup',
     })
 
-    expect(await screen.findByText(/Set one account as the primary account so expense movements have a default home\./)).toBeTruthy()
+    expect(await screen.findByText(/Set one account as the primary transaction account so expense movements have a default home\./)).toBeTruthy()
     expect(screen.getByText(/Create at least one account first so account-linked income options are ready when you need them\./)).toBeTruthy()
     expect(screen.getByText(/Create at least one account first so linked investment accounts are available when needed\./)).toBeTruthy()
-    expect(screen.getByText(/Setup still needs attention before generation/)).toBeTruthy()
+    expect(screen.getByText(/The following information is needed to allow us to generate a budget cycle:/)).toBeTruthy()
     expect(screen.getAllByText('Needs Attention')).toHaveLength(1)
     expect(screen.getByText(/A primary account must be configured before budget cycle generation\./)).toBeTruthy()
   })
@@ -78,8 +78,8 @@ describe('BudgetDetailPage', () => {
       budget_frequency: 'Monthly',
     })
     client.getBalanceTypes.mockResolvedValue([
-      { balancedesc: 'Everyday', balance_type: 'Bank', active: true, is_primary: true },
-      { balancedesc: 'Bills', balance_type: 'Bank', active: true, is_primary: false },
+      { balancedesc: 'Everyday', balance_type: 'Transaction', active: true, is_primary: true },
+      { balancedesc: 'Bills', balance_type: 'Transaction', active: true, is_primary: false },
       { balancedesc: 'Savings', balance_type: 'Savings', active: true, is_primary: false },
     ])
     client.getIncomeTypes.mockResolvedValue([
@@ -111,7 +111,8 @@ describe('BudgetDetailPage', () => {
     expect(screen.queryByText(/Create at least one account first so linked investment accounts are available when needed\./)).toBeNull()
     expect(screen.queryByText(/Set one account as the primary account so expense movements have a default home\./)).toBeNull()
     expect(screen.getByText(/Ready for budget cycle generation/)).toBeTruthy()
-    expect(screen.getAllByText('1 Protected')).toHaveLength(4)
+    expect(screen.getByRole('link', { name: 'Go to budget cycles' }).getAttribute('href')).toBe('/budgets/1/periods')
+    expect(screen.getAllByText('1 In Use')).toHaveLength(4)
     expect(screen.getByText(/Some setup items are already in downstream use and are now protected\./)).toBeTruthy()
   })
 
@@ -123,7 +124,7 @@ describe('BudgetDetailPage', () => {
       budget_frequency: 'Monthly',
     })
     client.getBalanceTypes.mockResolvedValue([
-      { balancedesc: 'Everyday', balance_type: 'Bank', active: true, is_primary: true },
+      { balancedesc: 'Everyday', balance_type: 'Transaction', active: true, is_primary: true },
     ])
     client.getIncomeTypes.mockResolvedValue([
       { incomedesc: 'Salary' },
@@ -145,6 +146,7 @@ describe('BudgetDetailPage', () => {
     expect(screen.queryByText(/Create at least one account first so linked investment accounts are available when needed\./)).toBeNull()
     expect(screen.queryByText(/Set one account as the primary account so expense movements have a default home\./)).toBeNull()
     expect(screen.getByText(/Ready for budget cycle generation/)).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Go to budget cycles' }).getAttribute('href')).toBe('/budgets/1/periods')
     expect(screen.getAllByText('Ready')).toHaveLength(4)
   })
 
@@ -156,7 +158,7 @@ describe('BudgetDetailPage', () => {
       budget_frequency: 'Monthly',
     })
     client.getBalanceTypes.mockResolvedValue([
-      { balancedesc: 'Everyday', balance_type: 'Bank', active: true, is_primary: false },
+      { balancedesc: 'Everyday', balance_type: 'Transaction', active: true, is_primary: false },
       { balancedesc: 'Savings', balance_type: 'Savings', active: true, is_primary: false },
     ])
     client.getIncomeTypes.mockResolvedValue([{ incomedesc: 'Salary' }])
@@ -172,10 +174,45 @@ describe('BudgetDetailPage', () => {
       path: '/budgets/:budgetId/setup',
     })
 
-    expect(await screen.findByText(/Set one account as the primary account so expense movements have a default home\./)).toBeTruthy()
+    expect(await screen.findByText(/Set one account as the primary transaction account so expense movements have a default home\./)).toBeTruthy()
     expect(screen.queryByText(/Create at least one account first so account-linked income options are ready when you need them\./)).toBeNull()
     expect(screen.queryByText(/Create at least one account first so linked investment accounts are available when needed\./)).toBeNull()
-    expect(screen.getByText(/Setup still needs attention before generation/)).toBeTruthy()
+    expect(screen.getByText(/The following information is needed to allow us to generate a budget cycle:/)).toBeTruthy()
     expect(screen.getAllByText('Needs Attention')).toHaveLength(1)
+  })
+
+  it('shows blocking issues in the same order as the setup sections', async () => {
+    client.getBudget.mockResolvedValue({
+      budgetid: 1,
+      budgetowner: 'Alex',
+      description: 'Home Budget',
+      budget_frequency: 'Monthly',
+    })
+    client.getBalanceTypes.mockResolvedValue([])
+    client.getIncomeTypes.mockResolvedValue([])
+    client.getExpenseItems.mockResolvedValue([])
+    client.getInvestmentItems.mockResolvedValue([])
+    mockSetupAssessment({
+      can_generate: false,
+      blocking_issues: [
+        'Add at least one active expense item before generating budget cycles.',
+        'Add at least one income type before generating budget cycles.',
+        'Add at least one active account before generating budget cycles.',
+      ],
+    })
+
+    renderWithProviders(<BudgetDetailPage />, {
+      route: '/budgets/1/setup',
+      path: '/budgets/:budgetId/setup',
+    })
+
+    expect(await screen.findByText(/The following information is needed to allow us to generate a budget cycle:/)).toBeTruthy()
+
+    const setupIssues = screen.getAllByText(/before generating budget cycles\./).map(node => node.textContent)
+    expect(setupIssues).toEqual([
+      'Add at least one active account before generating budget cycles.',
+      'Add at least one income type before generating budget cycles.',
+      'Add at least one active expense item before generating budget cycles.',
+    ])
   })
 })

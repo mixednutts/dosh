@@ -268,6 +268,7 @@ Best candidates:
 - delete option presentation for single delete versus future-chain delete
 - paid or revised controls for expenses and investments
 - key summaries that distinguish budget totals from actual totals
+- session-persisted expand or collapse behavior where setup or history panels intentionally remember user preference for the browser session
 
 Primary targets in the current codebase:
 
@@ -328,6 +329,12 @@ Backend scaffold now present:
 - centralized setup-assessment and downstream-protection coverage in [backend/tests/test_setup_assessment.py](/home/ubuntu/dosh/backend/tests/test_setup_assessment.py)
 - initial frontend workflow coverage in [BudgetPeriodsPage.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/BudgetPeriodsPage.test.jsx), [PeriodDetailPage.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/PeriodDetailPage.test.jsx), [BudgetDetailPage.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/BudgetDetailPage.test.jsx), [BalanceTypesTab.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/BalanceTypesTab.test.jsx), [IncomeTypesTab.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/IncomeTypesTab.test.jsx), [InvestmentItemsTab.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/InvestmentItemsTab.test.jsx), and [SettingsTab.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/SettingsTab.test.jsx), with shared render utilities in [testUtils.jsx](/home/ubuntu/dosh/frontend/src/testUtils.jsx)
   This now includes delete continuity messaging, non-deletable delete-state gating, closed-cycle read-only rendering, close-out modal confirmation gating, expense and investment paid-confirmation flows, expense and investment revise-comment workflows, locked-cycle guardrail messaging, settings guidance for primary investment allocation, manual cycle lock setting changes, account primary-selection setup plus edit, deactivation, and delete behavior, income setup auto-include behavior plus linked-account removal through edit, investment setup with and without linked accounts, investment primary/edit/deactivation/delete behavior, backend coverage for primary-investment reassignment affecting future auto-surplus generation, setup-shape visibility for richer account configurations, setup states where accounts exist but no primary account is selected, valid single-account setup states without false missing-account warnings, setup-to-generation readiness gating, successful generation handoff with suggested next start date, generate failure feedback, setup guidance when account foundations are missing, setup-assessment summary state on the budget setup page, and protected setup-item rendering across all relevant setup tabs.
+  Recent additions in this session include:
+  - account-naming preference persistence plus display-label rendering across settings, account setup, income linked-account copy, and investment linked-account copy
+  - ordered setup-assessment blocking issues and ready-state linking on the budget setup page
+  - session-persisted collapse state for optional setup sections and the historical budget-cycle section
+  - `Upcoming` grouping wording on the budget cycles list
+  - `Projected Savings` and `Remaining Expenses` summary-card visibility on the period detail page
 - initial Playwright end-to-end scaffold in [playwright.config.js](/home/ubuntu/dosh/frontend/playwright.config.js) and [budget-smoke.spec.js](/home/ubuntu/dosh/frontend/e2e/budget-smoke.spec.js)
   The current smoke paths now run successfully in Chromium locally, covering blocked setup handoff, minimum-setup first-cycle generation, first expense-transaction activity with linked account movement, and close-out into the next active cycle.
 

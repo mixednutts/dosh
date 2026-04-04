@@ -324,7 +324,7 @@ export default function PersonalisationTab({ budgetId, budget }) {
 
         <div className="mt-5 flex flex-wrap justify-end gap-2">
           <button type="button" className="btn-secondary" onClick={resetDefaults}>
-            Reset to normal defaults
+            Reset to Defaults
           </button>
         </div>
 

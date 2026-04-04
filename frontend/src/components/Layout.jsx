@@ -73,10 +73,10 @@ function BudgetList({ budgets, currentBudgetId, onNav }) {
   if (budgets.length === 0) return null
 
   return (
-    <div className="mt-3 space-y-2 rounded-2xl border border-slate-800 bg-slate-950/40 p-3">
+    <div className="mt-3 space-y-2 rounded-2xl border border-dosh-700/75 bg-dosh-950/28 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-dosh-400">Budget List</span>
-        <span className="text-[11px] text-dosh-500">{budgets.length}</span>
+        <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-dosh-300">Budget List</span>
+        <span className="text-[11px] text-dosh-400">{budgets.length}</span>
       </div>
       <div className="space-y-1.5">
         {budgets.map(budget => (
@@ -122,13 +122,12 @@ function CurrentBudgetPanel({ budget, activePeriodId, onNav }) {
   const hasMoreHistoricalPeriods = allHistoricalPeriods.length > historicalPeriods.length
 
   return (
-    <div className="space-y-3 rounded-2xl border border-slate-800 bg-slate-950/40 p-3">
+    <div className="space-y-3 rounded-2xl border border-cyan-700/75 bg-cyan-950/22 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
       <div className="space-y-1">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-dosh-400">Current Budget</span>
-        <div>
-          <p className="truncate text-sm font-semibold text-white">{budget.description || 'Untitled Budget'}</p>
-          <p className="truncate text-xs text-dosh-300">{budget.budgetowner} · {budget.budget_frequency}</p>
-        </div>
+        <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-300">Current Budget</span>
+        <p className="text-xs text-cyan-100/80">
+          Quick links and shortcuts for the budget you&apos;re working in now.
+        </p>
       </div>
 
       <div className="grid grid-cols-1 gap-2">
@@ -137,16 +136,18 @@ function CurrentBudgetPanel({ budget, activePeriodId, onNav }) {
           onClick={onNav}
           className={clsx(
             'rounded-xl border px-3 py-2 text-sm font-medium transition-colors',
-            periodsMatch ? 'border-dosh-400 bg-dosh-600 text-white' : 'border-slate-800 bg-slate-900/60 text-slate-200 hover:border-dosh-700 hover:bg-slate-800 hover:text-white'
+            periodsMatch
+              ? 'border-cyan-300 bg-cyan-600 text-white'
+              : 'border-cyan-700/75 bg-cyan-950/20 text-cyan-100 hover:border-cyan-400 hover:bg-cyan-900/35 hover:text-white'
           )}
         >
           Budget Cycles
         </Link>
       </div>
 
-      <div className="space-y-3 border-t border-slate-800 pt-3">
+      <div className="space-y-3 border-t border-cyan-800/80 pt-3">
         <div className="flex items-center justify-between gap-2">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-dosh-400">Budget Cycle Shortcuts</span>
+          <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-300">Budget Cycle Shortcuts</span>
         </div>
 
         {periods.length === 0 ? (
@@ -202,7 +203,7 @@ function LayoutNav({ budgets, currentBudgetId, activePeriodId, budgetsExpanded, 
   return (
     <div className="space-y-3">
       <div className="space-y-2">
-        <span className="block px-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-dosh-400">Workspace</span>
+        <span className="block px-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Workspace</span>
         <div className="flex items-center gap-2">
           <NavLink
             to="/budgets"
@@ -212,8 +213,8 @@ function LayoutNav({ budgets, currentBudgetId, activePeriodId, budgetsExpanded, 
               clsx(
                 'flex flex-1 items-center gap-2.5 rounded-2xl border px-3 py-3 text-sm font-medium transition-colors',
                 (isActive || onBudgetOrPeriod)
-                  ? 'border-dosh-400 bg-dosh-700 text-white'
-                  : 'border-slate-800 bg-slate-900/60 text-slate-200 hover:border-dosh-700 hover:bg-slate-800 hover:text-white'
+                  ? 'border-dosh-300 bg-dosh-600 text-white'
+                  : 'border-dosh-700/75 bg-dosh-950/30 text-dosh-100 hover:border-dosh-500 hover:bg-dosh-900/55 hover:text-white'
               )
             }
           >
@@ -226,8 +227,8 @@ function LayoutNav({ budgets, currentBudgetId, activePeriodId, budgetsExpanded, 
             className={clsx(
               'rounded-2xl border p-3 transition-colors',
               budgetsExpanded
-                ? 'border-dosh-400 bg-dosh-700 text-white hover:bg-dosh-600'
-                : 'border-slate-800 bg-slate-900/60 text-slate-300 hover:border-dosh-700 hover:bg-slate-800 hover:text-white'
+                ? 'border-dosh-300 bg-dosh-600 text-white hover:bg-dosh-500'
+                : 'border-dosh-700/75 bg-dosh-950/30 text-dosh-200 hover:border-dosh-500 hover:bg-dosh-900/55 hover:text-white'
             )}
           >
             {budgetsExpanded ? <ChevronDownIcon className="h-4 w-4" /> : <ChevronRightIcon className="h-4 w-4" />}
@@ -310,7 +311,7 @@ export default function Layout() {
         )}
       >
         <div className={clsx('border-b border-slate-800 py-4', sidebarCollapsed ? 'px-3 lg:px-2' : 'px-5')}>
-          <div className={clsx('flex items-center', sidebarCollapsed ? 'justify-center' : 'justify-between gap-3')}>
+          <div className={clsx('flex items-start', sidebarCollapsed ? 'justify-center' : 'justify-between gap-3')}>
             <Link
               to="/budgets"
               onClick={() => setOpen(false)}
@@ -330,19 +331,39 @@ export default function Layout() {
               ) : null}
             </Link>
             {!sidebarCollapsed ? (
-              <button
-                type="button"
-                onClick={() => setSidebarCollapsed(true)}
-                title="Collapse sidebar"
-                className="hidden shrink-0 rounded-md p-1.5 text-dosh-300 transition-colors hover:bg-slate-900 hover:text-white lg:inline-flex"
-              >
-                <ChevronLeftIcon className="h-4 w-4" />
-              </button>
+              <div className="hidden flex-col items-end gap-1 lg:flex">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-medium uppercase tracking-[0.18em] text-dosh-400">v1.0</span>
+                  <button
+                    onClick={() => setDark(value => !value)}
+                    title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+                    className="rounded-md p-1.5 text-dosh-300 transition-colors hover:bg-slate-900 hover:text-white"
+                  >
+                    {dark ? <SunIcon className="h-4 w-4" /> : <MoonIcon className="h-4 w-4" />}
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSidebarCollapsed(true)}
+                  title="Collapse sidebar"
+                  className="shrink-0 rounded-md p-1.5 text-dosh-300 transition-colors hover:bg-slate-900 hover:text-white"
+                >
+                  <ChevronLeftIcon className="h-4 w-4" />
+                </button>
+              </div>
             ) : null}
           </div>
 
           {sidebarCollapsed ? (
-            <div className="mt-3 hidden justify-center lg:flex">
+            <div className="mt-3 hidden flex-col items-center gap-2 lg:flex">
+              <button
+                onClick={() => setDark(value => !value)}
+                title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+                className="rounded-md p-1.5 text-dosh-300 transition-colors hover:bg-slate-900 hover:text-white"
+              >
+                {dark ? <SunIcon className="h-4 w-4" /> : <MoonIcon className="h-4 w-4" />}
+              </button>
+              <span className="text-[9px] font-medium uppercase tracking-[0.18em] text-dosh-400">v1.0</span>
               <button
                 type="button"
                 onClick={() => setSidebarCollapsed(false)}
@@ -398,16 +419,6 @@ export default function Layout() {
           </nav>
         )}
 
-        <div className="flex items-center justify-between border-t border-slate-800 px-4 py-3">
-          {!sidebarCollapsed ? <span className="text-xs text-dosh-400">Do$h v1.0</span> : <span className="w-4" />}
-          <button
-            onClick={() => setDark(value => !value)}
-            title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
-            className="rounded-md p-1.5 text-dosh-300 transition-colors hover:bg-slate-900 hover:text-white"
-          >
-            {dark ? <SunIcon className="h-4 w-4" /> : <MoonIcon className="h-4 w-4" />}
-          </button>
-        </div>
       </aside>
 
       {open && (

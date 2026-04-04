@@ -82,6 +82,7 @@ describe('PeriodDetailPage', () => {
       expenses: [],
       investments: [],
       balances: [],
+      projected_savings: '150.00',
       closeout_snapshot: {
         comments: 'Closed out smoothly.',
         goals: 'Stay consistent next cycle.',
@@ -103,6 +104,10 @@ describe('PeriodDetailPage', () => {
 
     expect(await screen.findByText(/This budget cycle is closed\./)).toBeTruthy()
     expect(screen.getByText(/Carry Forward:/)).toBeTruthy()
+    expect(screen.getByText('Remaining Expenses')).toBeTruthy()
+    expect(screen.getAllByText('$0.00').length).toBeGreaterThan(0)
+    expect(screen.getByText('Projected Savings')).toBeTruthy()
+    expect(screen.getByText('$150.00')).toBeTruthy()
     expect(screen.getByText(/Closed out smoothly\./)).toBeTruthy()
     expect(screen.getByText(/Next cycle goals: Stay consistent next cycle\./)).toBeTruthy()
     expect(screen.queryByText('Close Out')).toBeNull()
