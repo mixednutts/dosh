@@ -2,7 +2,7 @@
 
 This document records meaningful automated test results from major working sessions.
 
-It exists separately from [TEST_STRATEGY.md](/home/ubuntu/dosh/TEST_STRATEGY.md) so the strategy can stay stable while future sessions still have a record of what was actually run and verified.
+It exists separately from [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) so the strategy can stay stable while future sessions still have a record of what was actually run and verified.
 
 ## Latest Session: Demo Budget Workflow, Shared Dev-Mode Gating, Health-Relevant Demo Activity, And Deployment Verification
 

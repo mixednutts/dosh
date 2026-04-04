@@ -15,17 +15,17 @@ Its purpose is to preserve decision-making context so future sessions can unders
 - what constraints or product rules now exist
 - what ideas were intentionally deferred rather than forgotten
 
-For staged budget health metrics direction, also read [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/BUDGET_HEALTH_ADDENDUM.md).
+For staged budget health metrics direction, also read [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/docs/plans/BUDGET_HEALTH_ADDENDUM.md).
 
-For the detailed budget-cycle lifecycle and close-out plan that informed this session's implementation, read [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/BUDGET_CYCLE_LIFECYCLE_PLAN.md).
+For the detailed budget-cycle lifecycle and close-out plan that informed this session's implementation, read [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_CYCLE_LIFECYCLE_PLAN.md).
 
-For the current consolidated testing approach and case inventory, read [TEST_STRATEGY.md](/home/ubuntu/dosh/TEST_STRATEGY.md).
+For the current consolidated testing approach and case inventory, read [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md).
 
-For the current setup-assessment and downstream-protection model introduced this session, read [SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md](/home/ubuntu/dosh/SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md).
+For the current setup-assessment and downstream-protection model introduced this session, read [SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md](/home/ubuntu/dosh/docs/plans/SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md).
 
-For recent concrete verification outcomes, read [TEST_RESULTS_SUMMARY.md](/home/ubuntu/dosh/TEST_RESULTS_SUMMARY.md).
+For recent concrete verification outcomes, read [TEST_RESULTS_SUMMARY.md](/home/ubuntu/dosh/docs/tests/TEST_RESULTS_SUMMARY.md).
 
-For the dedicated implementation plan that drove the income transaction unification and legacy-ledger cleanup work in this session, read [INCOME_TRANSACTIONS_UNIFICATION_AND_LEGACY_LEDGER_CLEANUP_PLAN.md](/home/ubuntu/dosh/INCOME_TRANSACTIONS_UNIFICATION_AND_LEGACY_LEDGER_CLEANUP_PLAN.md).
+For the dedicated implementation plan that drove the income transaction unification and legacy-ledger cleanup work in this session, read [INCOME_TRANSACTIONS_UNIFICATION_AND_LEGACY_LEDGER_CLEANUP_PLAN.md](/home/ubuntu/dosh/docs/plans/INCOME_TRANSACTIONS_UNIFICATION_AND_LEGACY_LEDGER_CLEANUP_PLAN.md).
 
 ## Latest Session: Demo Budget Seeding, Shared Dev-Mode Gating, Budget-Health-Focused Demo Activity, And Compose-Based Deployment Control
 
@@ -387,7 +387,7 @@ This session moved the project from “testing strategy exists” to “the repo
 
 Important direction now in place:
 
-- Dosh now has a dedicated testing strategy reference in [TEST_STRATEGY.md](/home/ubuntu/dosh/TEST_STRATEGY.md) plus a separate forward-looking coverage roadmap in [TEST_EXPANSION_PLAN.md](/home/ubuntu/dosh/TEST_EXPANSION_PLAN.md)
+- Dosh now has a dedicated testing strategy reference in [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) plus a separate forward-looking coverage roadmap in [TEST_EXPANSION_PLAN.md](/home/ubuntu/dosh/docs/tests/TEST_EXPANSION_PLAN.md)
 - backend `pytest` coverage now exists across lifecycle, close-out, continuity-aware deletion, ledger behavior, setup scenarios, and budget health
 - frontend workflow coverage now exists across setup tabs, scenario-shaped setup states, close-out gating, closed-cycle behavior, paid or revised flows, and setup-to-generation handoff
 - Playwright now runs local Chromium smoke flows for:

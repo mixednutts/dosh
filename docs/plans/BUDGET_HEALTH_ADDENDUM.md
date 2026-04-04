@@ -11,8 +11,8 @@ Its purpose is to keep the staged health-scoring direction clear without overloa
 Read this alongside:
 
 - [README.md](/home/ubuntu/dosh/README.md)
-- [CHANGES.md](/home/ubuntu/dosh/CHANGES.md)
-- [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/BUDGET_CYCLE_LIFECYCLE_PLAN.md)
+- [CHANGES.md](/home/ubuntu/dosh/docs/CHANGES.md)
+- [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_CYCLE_LIFECYCLE_PLAN.md)
 
 ## Phase 1
 

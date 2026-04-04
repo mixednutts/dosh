@@ -282,7 +282,9 @@ describe('BudgetPeriodsPage', () => {
     fireEvent.click(await screen.findByText('Generate First Budget Cycle'))
     expect(await screen.findByText('Generate Budget Cycle for Home Budget')).toBeTruthy()
 
-    fireEvent.change(screen.getByDisplayValue('2026-04-04'), {
+    const startDateInput = screen.getByDisplayValue(/\d{4}-\d{2}-\d{2}/)
+
+    fireEvent.change(startDateInput, {
       target: { value: '2026-09-01' },
     })
     fireEvent.change(screen.getByDisplayValue('1'), {

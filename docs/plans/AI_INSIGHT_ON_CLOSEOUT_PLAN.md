@@ -7,14 +7,14 @@ It is intentionally a planning document, not a locked product decision. Use it t
 Read this alongside:
 
 - [README.md](/home/ubuntu/dosh/README.md)
-- [PROJECT_CONTEXT.md](/home/ubuntu/dosh/PROJECT_CONTEXT.md)
-- [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/DEVELOPMENT_ACTIVITIES.md)
-- [CHANGES.md](/home/ubuntu/dosh/CHANGES.md)
-- [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/BUDGET_CYCLE_LIFECYCLE_PLAN.md)
-- [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/BUDGET_HEALTH_ADDENDUM.md)
-- [TEST_STRATEGY.md](/home/ubuntu/dosh/TEST_STRATEGY.md)
-- [TEST_EXPANSION_PLAN.md](/home/ubuntu/dosh/TEST_EXPANSION_PLAN.md)
-- [SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md](/home/ubuntu/dosh/SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md)
+- [PROJECT_CONTEXT.md](/home/ubuntu/dosh/docs/PROJECT_CONTEXT.md)
+- [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md)
+- [CHANGES.md](/home/ubuntu/dosh/docs/CHANGES.md)
+- [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_CYCLE_LIFECYCLE_PLAN.md)
+- [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/docs/plans/BUDGET_HEALTH_ADDENDUM.md)
+- [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md)
+- [TEST_EXPANSION_PLAN.md](/home/ubuntu/dosh/docs/tests/TEST_EXPANSION_PLAN.md)
+- [SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md](/home/ubuntu/dosh/docs/plans/SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md)
 
 ## Purpose
 
@@ -31,12 +31,12 @@ Its purpose is to keep the work grounded in Dosh's existing lifecycle, historica
 
 The relevant current-state facts already established elsewhere in the repository are:
 
-- budget cycles have explicit lifecycle state with `PLANNED`, `ACTIVE`, and `CLOSED`; see [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/BUDGET_CYCLE_LIFECYCLE_PLAN.md)
-- close-out already exists as a first-class workflow with preview, carry-forward handling, snapshot storage, and next-cycle activation; see [README.md](/home/ubuntu/dosh/README.md) and [CHANGES.md](/home/ubuntu/dosh/CHANGES.md)
-- close-out stores comments, goals, carry-forward amount, health snapshot JSON, and totals snapshot JSON as a dedicated historical artifact; see [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/BUDGET_CYCLE_LIFECYCLE_PLAN.md)
-- historical close-out meaning must remain point-in-time and must not be rewritten from later settings; see [TEST_STRATEGY.md](/home/ubuntu/dosh/TEST_STRATEGY.md) and [CHANGES.md](/home/ubuntu/dosh/CHANGES.md)
-- budget health Phase 2 already anticipates closer use of close-out commentary and revision signals; see [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/BUDGET_HEALTH_ADDENDUM.md)
-- close-out hardening, consequence visibility, and snapshot-based reporting are already active development directions; see [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/DEVELOPMENT_ACTIVITIES.md)
+- budget cycles have explicit lifecycle state with `PLANNED`, `ACTIVE`, and `CLOSED`; see [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_CYCLE_LIFECYCLE_PLAN.md)
+- close-out already exists as a first-class workflow with preview, carry-forward handling, snapshot storage, and next-cycle activation; see [README.md](/home/ubuntu/dosh/README.md) and [CHANGES.md](/home/ubuntu/dosh/docs/CHANGES.md)
+- close-out stores comments, goals, carry-forward amount, health snapshot JSON, and totals snapshot JSON as a dedicated historical artifact; see [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_CYCLE_LIFECYCLE_PLAN.md)
+- historical close-out meaning must remain point-in-time and must not be rewritten from later settings; see [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) and [CHANGES.md](/home/ubuntu/dosh/docs/CHANGES.md)
+- budget health Phase 2 already anticipates closer use of close-out commentary and revision signals; see [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/docs/plans/BUDGET_HEALTH_ADDENDUM.md)
+- close-out hardening, consequence visibility, and snapshot-based reporting are already active development directions; see [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md)
 
 ## Discovery Framing
 
@@ -66,7 +66,7 @@ The likely product goal for a first useful version is:
 - use close-out comments, goals, and selected transaction or revision comments as supporting context
 - keep the feature optional and clearly separated from the core close-out transaction itself
 
-This aligns with the current direction that close-out should feel reviewable and trustworthy; see [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/DEVELOPMENT_ACTIVITIES.md) and [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/BUDGET_CYCLE_LIFECYCLE_PLAN.md).
+This aligns with the current direction that close-out should feel reviewable and trustworthy; see [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md) and [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_CYCLE_LIFECYCLE_PLAN.md).
 
 ## Data Inputs Under Consideration
 
@@ -203,7 +203,7 @@ Likely settings fields:
 
 ## Close-Out Modal Integration Direction
 
-The current close-out modal already shows totals, carry-forward, health summary, comments, goals, and the read-only warning; see [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/BUDGET_CYCLE_LIFECYCLE_PLAN.md) and [README.md](/home/ubuntu/dosh/README.md).
+The current close-out modal already shows totals, carry-forward, health summary, comments, goals, and the read-only warning; see [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_CYCLE_LIFECYCLE_PLAN.md) and [README.md](/home/ubuntu/dosh/README.md).
 
 Recommended integration path:
 
@@ -240,7 +240,7 @@ These questions remain open and should be resolved through discovery rather than
 
 ## Testing Implications
 
-Any implementation of this plan should extend the current test-with-change discipline already established in the repository; see [TEST_STRATEGY.md](/home/ubuntu/dosh/TEST_STRATEGY.md) and [TEST_EXPANSION_PLAN.md](/home/ubuntu/dosh/TEST_EXPANSION_PLAN.md).
+Any implementation of this plan should extend the current test-with-change discipline already established in the repository; see [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) and [TEST_EXPANSION_PLAN.md](/home/ubuntu/dosh/docs/tests/TEST_EXPANSION_PLAN.md).
 
 Likely test areas:
 

@@ -5,15 +5,80 @@ This document initializes a practical working context for new Dosh development.
 It is a synthesis of the current Markdown sources in this repository:
 
 - [README.md](/home/ubuntu/dosh/README.md)
-- [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/DEVELOPMENT_ACTIVITIES.md)
-- [CHANGES.md](/home/ubuntu/dosh/CHANGES.md)
-- [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/BUDGET_CYCLE_LIFECYCLE_PLAN.md)
-- [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/BUDGET_HEALTH_ADDENDUM.md)
-- [TEST_STRATEGY.md](/home/ubuntu/dosh/TEST_STRATEGY.md)
-- [TEST_EXPANSION_PLAN.md](/home/ubuntu/dosh/TEST_EXPANSION_PLAN.md)
-- [INCOME_TRANSACTIONS_UNIFICATION_AND_LEGACY_LEDGER_CLEANUP_PLAN.md](/home/ubuntu/dosh/INCOME_TRANSACTIONS_UNIFICATION_AND_LEGACY_LEDGER_CLEANUP_PLAN.md)
+- [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md)
+- [CHANGES.md](/home/ubuntu/dosh/docs/CHANGES.md)
+- [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_CYCLE_LIFECYCLE_PLAN.md)
+- [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/docs/plans/BUDGET_HEALTH_ADDENDUM.md)
+- [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md)
+- [TEST_EXPANSION_PLAN.md](/home/ubuntu/dosh/docs/tests/TEST_EXPANSION_PLAN.md)
+- [INCOME_TRANSACTIONS_UNIFICATION_AND_LEGACY_LEDGER_CLEANUP_PLAN.md](/home/ubuntu/dosh/docs/plans/INCOME_TRANSACTIONS_UNIFICATION_AND_LEGACY_LEDGER_CLEANUP_PLAN.md)
 
 Use this as the quick-start development handoff. Use the source documents above when deeper detail is needed.
+
+## Project Guidelines
+
+These guidelines apply across the project as a whole and should continue guiding future work.
+
+### Documentation
+
+- follow [DOCUMENTATION_FRAMEWORK.md](/home/ubuntu/dosh/docs/DOCUMENTATION_FRAMEWORK.md)
+- use [README.md](/home/ubuntu/dosh/README.md) as the top-level entry point
+- use this document as the operational handoff for new AI sessions
+- maintain one primary source of truth per topic
+- prefer cross-links over duplicating maintained content
+- update [DOCUMENT_REGISTER.md](/home/ubuntu/dosh/docs/DOCUMENT_REGISTER.md) when managed documents are added, moved, renamed, or materially repurposed
+- preserve meaning and context when reorganizing documentation
+
+### Product and UX
+
+- favor functional clarity over decorative redesign
+- keep the product practical, supportive, and workflow-driven rather than corporate or accounting-heavy
+- workflow meaning should take priority over isolated CRUD convenience
+- user-facing wording may evolve for clarity, while stable backend or domain naming should only change when clearly justified
+
+### Domain Integrity
+
+- balance movement should remain transaction-derived and explainable from the ledger
+- do not introduce shortcuts that weaken ledger trust
+- actual-entry workflows should remain transaction-first unless a deliberate exception is designed
+- preserve historical meaning rather than recomputing it from later settings when that would distort history
+
+### Lifecycle and Continuity
+
+- there should only ever be one active or current cycle per budget
+- closed cycles should remain trustworthy historical records
+- carry-forward and next-cycle opening rebasing must stay synchronized
+- guided continuity should be preferred over ambiguous deletion behavior or retained gaps
+
+### Setup and Protection
+
+- centralized setup assessment must remain the source of truth for readiness and protection
+- do not reintroduce scattered page-local readiness assumptions
+- keep setup editable where safe, but protect records once downstream dependence exists
+
+### Budget Health
+
+- keep budget health supportive and explainable, not overly authoritative
+- use practical language users can reasonably trust
+- be explicit when the concept is deficit rather than surplus
+- do not let later personalisation rewrite the meaning of historical closed cycles
+
+### Localisation
+
+- treat localisation as explicit and centrally managed
+- prefer display-layer regional variation over unnecessary internal domain renaming
+
+### Testing and Change Safety
+
+- maintain a test-with-change discipline for meaningful workflow changes
+- keep backend test isolation in place for mixed-area work
+- treat high-risk workflow changes with extra care, especially around lifecycle, close-out, ledger behavior, and historical integrity
+
+### Operational Rules
+
+- keep demo-budget import additive-only unless a separately designed reset workflow exists
+- keep Docker Compose as the shared source of truth for `DEV_MODE`
+- backend enforcement should continue even when the frontend hides dev-only controls
 
 ## Current Product Shape
 
@@ -191,9 +256,9 @@ When making changes, preserve these working assumptions from the docs:
 Before starting a new feature or refactor:
 
 1. read this file
-2. check [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/DEVELOPMENT_ACTIVITIES.md) for active stream priority
-3. check [CHANGES.md](/home/ubuntu/dosh/CHANGES.md) for product decisions that should not be accidentally undone
-4. check [TEST_STRATEGY.md](/home/ubuntu/dosh/TEST_STRATEGY.md) and [TEST_EXPANSION_PLAN.md](/home/ubuntu/dosh/TEST_EXPANSION_PLAN.md) for the expected coverage boundary
+2. check [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md) for active stream priority
+3. check [CHANGES.md](/home/ubuntu/dosh/docs/CHANGES.md) for product decisions that should not be accidentally undone
+4. check [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) and [TEST_EXPANSION_PLAN.md](/home/ubuntu/dosh/docs/tests/TEST_EXPANSION_PLAN.md) for the expected coverage boundary
 5. confirm whether the work touches lifecycle, close-out, carry-forward, ledger, or health rules before changing behavior
 
 ## Recommended First Targets
@@ -213,10 +278,10 @@ This file is intentionally concise.
 For detailed product meaning:
 
 - use [README.md](/home/ubuntu/dosh/README.md) for current-state overview
-- use [CHANGES.md](/home/ubuntu/dosh/CHANGES.md) for product decisions and implementation history
-- use [SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md](/home/ubuntu/dosh/SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md) for the current setup-validity and downstream-protection model
-- use [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/BUDGET_CYCLE_LIFECYCLE_PLAN.md) for lifecycle, carry-forward, delete, and close-out rules
-- use [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/BUDGET_HEALTH_ADDENDUM.md) for health direction
-- use [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/DEVELOPMENT_ACTIVITIES.md) for roadmap and engineering priorities
-- use [TEST_STRATEGY.md](/home/ubuntu/dosh/TEST_STRATEGY.md) and [TEST_EXPANSION_PLAN.md](/home/ubuntu/dosh/TEST_EXPANSION_PLAN.md) for testing expectations
-- use [TEST_RESULTS_SUMMARY.md](/home/ubuntu/dosh/TEST_RESULTS_SUMMARY.md) for recent verification outcomes
+- use [CHANGES.md](/home/ubuntu/dosh/docs/CHANGES.md) for product decisions and implementation history
+- use [SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md](/home/ubuntu/dosh/docs/plans/SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md) for the current setup-validity and downstream-protection model
+- use [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_CYCLE_LIFECYCLE_PLAN.md) for lifecycle, carry-forward, delete, and close-out rules
+- use [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/docs/plans/BUDGET_HEALTH_ADDENDUM.md) for health direction
+- use [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md) for roadmap and engineering priorities
+- use [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) and [TEST_EXPANSION_PLAN.md](/home/ubuntu/dosh/docs/tests/TEST_EXPANSION_PLAN.md) for testing expectations
+- use [TEST_RESULTS_SUMMARY.md](/home/ubuntu/dosh/docs/tests/TEST_RESULTS_SUMMARY.md) for recent verification outcomes

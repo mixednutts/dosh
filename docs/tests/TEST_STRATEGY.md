@@ -13,12 +13,12 @@ Its purpose is to give future sessions a stable reference for:
 Read this alongside:
 
 - [README.md](/home/ubuntu/dosh/README.md)
-- [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/DEVELOPMENT_ACTIVITIES.md)
-- [CHANGES.md](/home/ubuntu/dosh/CHANGES.md)
-- [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/BUDGET_CYCLE_LIFECYCLE_PLAN.md)
-- [TEST_EXPANSION_PLAN.md](/home/ubuntu/dosh/TEST_EXPANSION_PLAN.md)
-- [SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md](/home/ubuntu/dosh/SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md)
-- [TEST_RESULTS_SUMMARY.md](/home/ubuntu/dosh/TEST_RESULTS_SUMMARY.md)
+- [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md)
+- [CHANGES.md](/home/ubuntu/dosh/docs/CHANGES.md)
+- [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_CYCLE_LIFECYCLE_PLAN.md)
+- [TEST_EXPANSION_PLAN.md](/home/ubuntu/dosh/docs/tests/TEST_EXPANSION_PLAN.md)
+- [SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md](/home/ubuntu/dosh/docs/plans/SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md)
+- [TEST_RESULTS_SUMMARY.md](/home/ubuntu/dosh/docs/tests/TEST_RESULTS_SUMMARY.md)
 
 ## Current Situation
 
@@ -34,7 +34,7 @@ Observed current state:
 - frontend also now has a Playwright end-to-end harness under [frontend/e2e](/home/ubuntu/dosh/frontend/e2e)
 - the project now has a credible regression foundation for controlled enhancement work
 - coverage is still selective rather than exhaustive, so new behavior should continue to be added together with tests
-- the latest recorded backend, frontend, and deployment verification outcomes live in [TEST_RESULTS_SUMMARY.md](/home/ubuntu/dosh/TEST_RESULTS_SUMMARY.md)
+- the latest recorded backend, frontend, and deployment verification outcomes live in [TEST_RESULTS_SUMMARY.md](/home/ubuntu/dosh/docs/tests/TEST_RESULTS_SUMMARY.md)
 - the latest frontend security baseline is now zero reported `npm audit` vulnerabilities after the Vite migration and dependency cleanup
 
 This matters because Dosh is no longer mostly CRUD. It now contains workflow rules where subtle regressions would reduce trust:
@@ -60,11 +60,11 @@ This section is the quick-start project context for testing work.
 It consolidates the testing-relevant product meaning currently spread across:
 
 - [README.md](/home/ubuntu/dosh/README.md)
-- [CHANGES.md](/home/ubuntu/dosh/CHANGES.md)
-- [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/DEVELOPMENT_ACTIVITIES.md)
-- [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/BUDGET_CYCLE_LIFECYCLE_PLAN.md)
-- [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/BUDGET_HEALTH_ADDENDUM.md)
-- [TEST_EXPANSION_PLAN.md](/home/ubuntu/dosh/TEST_EXPANSION_PLAN.md)
+- [CHANGES.md](/home/ubuntu/dosh/docs/CHANGES.md)
+- [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md)
+- [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_CYCLE_LIFECYCLE_PLAN.md)
+- [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/docs/plans/BUDGET_HEALTH_ADDENDUM.md)
+- [TEST_EXPANSION_PLAN.md](/home/ubuntu/dosh/docs/tests/TEST_EXPANSION_PLAN.md)
 
 ### Product shape under test
 
@@ -665,7 +665,7 @@ Good coverage does not yet require exhaustive frontend snapshot tests or broad e
 ## Maintenance Notes
 
 - Update this document when new workflow rules are added or when testing priorities change.
-- When a new rule is added to [CHANGES.md](/home/ubuntu/dosh/CHANGES.md) or [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/BUDGET_CYCLE_LIFECYCLE_PLAN.md), add or revise the corresponding test case entry here.
+- When a new rule is added to [CHANGES.md](/home/ubuntu/dosh/docs/CHANGES.md) or [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_CYCLE_LIFECYCLE_PLAN.md), add or revise the corresponding test case entry here.
 - If the migration strategy changes, update the backend harness guidance to reflect how test databases should be prepared.
 - If the frontend toolchain changes again from the current Vite plus Jest baseline, revisit the recommended frontend test tooling section.
 - If new user-account shapes become important, add them to the named scenario list here and expand setup and workflow tests accordingly.

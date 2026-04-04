@@ -2,15 +2,15 @@
 
 This document captures the current follow-up plan for expanding Dosh test coverage from the now-established harnesses.
 
-It exists separately from [TEST_STRATEGY.md](/home/ubuntu/dosh/TEST_STRATEGY.md) so future sessions can see the likely next testing work without overloading the strategy document with too much moving detail.
+It exists separately from [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) so future sessions can see the likely next testing work without overloading the strategy document with too much moving detail.
 
 Read this alongside:
 
-- [TEST_STRATEGY.md](/home/ubuntu/dosh/TEST_STRATEGY.md)
-- [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/DEVELOPMENT_ACTIVITIES.md)
-- [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/BUDGET_CYCLE_LIFECYCLE_PLAN.md)
-- [SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md](/home/ubuntu/dosh/SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md)
-- [TEST_RESULTS_SUMMARY.md](/home/ubuntu/dosh/TEST_RESULTS_SUMMARY.md)
+- [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md)
+- [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md)
+- [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_CYCLE_LIFECYCLE_PLAN.md)
+- [SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md](/home/ubuntu/dosh/docs/plans/SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md)
+- [TEST_RESULTS_SUMMARY.md](/home/ubuntu/dosh/docs/tests/TEST_RESULTS_SUMMARY.md)
 
 ## Purpose
 
@@ -49,7 +49,7 @@ Current update:
 - focus first on downstream consequences, not just local form behavior
 - add scenario-shaped coverage when a workflow can behave differently for different account setups
 - treat migration backfill as historical alignment work, not a recurring workflow feature
-- document meaningful new testing scope back into [TEST_STRATEGY.md](/home/ubuntu/dosh/TEST_STRATEGY.md)
+- document meaningful new testing scope back into [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md)
 
 ## Next Backend Priorities
 
@@ -139,5 +139,5 @@ Most useful next additions:
 If a future session changes product behavior in any workflow already mentioned here:
 
 - update or add the relevant tests in the appropriate layer
-- record the new coverage boundary in [TEST_STRATEGY.md](/home/ubuntu/dosh/TEST_STRATEGY.md)
+- record the new coverage boundary in [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md)
 - only expand this plan when the next-step priorities themselves have materially changed

@@ -7,10 +7,10 @@ It exists as a dedicated reference so future sessions can understand the intende
 Read this alongside:
 
 - [README.md](/home/ubuntu/dosh/README.md)
-- [CHANGES.md](/home/ubuntu/dosh/CHANGES.md)
-- [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/DEVELOPMENT_ACTIVITIES.md)
-- [TEST_STRATEGY.md](/home/ubuntu/dosh/TEST_STRATEGY.md)
-- [TEST_EXPANSION_PLAN.md](/home/ubuntu/dosh/TEST_EXPANSION_PLAN.md)
+- [CHANGES.md](/home/ubuntu/dosh/docs/CHANGES.md)
+- [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md)
+- [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md)
+- [TEST_EXPANSION_PLAN.md](/home/ubuntu/dosh/docs/tests/TEST_EXPANSION_PLAN.md)
 
 ## Summary
 
@@ -130,7 +130,7 @@ Latest decisions locked in:
 
 Cross-reference:
 
-- [TEST_STRATEGY.md](/home/ubuntu/dosh/TEST_STRATEGY.md) for the broader staged testing approach and expanded case inventory
+- [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) for the broader staged testing approach and expanded case inventory
 
 - Lifecycle: only one `ACTIVE` cycle per budget.
 - Lifecycle: close-out activates the next cycle and closes the current one.

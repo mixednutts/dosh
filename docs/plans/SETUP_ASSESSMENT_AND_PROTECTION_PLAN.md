@@ -6,10 +6,10 @@ It exists separately so future sessions can understand the intended model withou
 
 Read this alongside:
 
-- [PROJECT_CONTEXT.md](/home/ubuntu/dosh/PROJECT_CONTEXT.md)
+- [PROJECT_CONTEXT.md](/home/ubuntu/dosh/docs/PROJECT_CONTEXT.md)
 - [README.md](/home/ubuntu/dosh/README.md)
-- [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/DEVELOPMENT_ACTIVITIES.md)
-- [TEST_STRATEGY.md](/home/ubuntu/dosh/TEST_STRATEGY.md)
+- [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md)
+- [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md)
 
 ## Purpose
 

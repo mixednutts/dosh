@@ -6,10 +6,10 @@ Use it as a focused reference for why the session took the shape it did and whic
 
 Read this alongside:
 
-- [PROJECT_CONTEXT.md](/home/ubuntu/dosh/PROJECT_CONTEXT.md)
-- [CHANGES.md](/home/ubuntu/dosh/CHANGES.md)
-- [TEST_STRATEGY.md](/home/ubuntu/dosh/TEST_STRATEGY.md)
-- [TEST_RESULTS_SUMMARY.md](/home/ubuntu/dosh/TEST_RESULTS_SUMMARY.md)
+- [PROJECT_CONTEXT.md](/home/ubuntu/dosh/docs/PROJECT_CONTEXT.md)
+- [CHANGES.md](/home/ubuntu/dosh/docs/CHANGES.md)
+- [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md)
+- [TEST_RESULTS_SUMMARY.md](/home/ubuntu/dosh/docs/tests/TEST_RESULTS_SUMMARY.md)
 
 ## Summary
 

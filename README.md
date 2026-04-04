@@ -1,416 +1,83 @@
 # Dosh
 
-Dosh is a personal finance application with a FastAPI backend and a Vite-powered React frontend. The current codebase supports guided budget setup, period planning, income and expense tracking, account balance tracking, savings and investment planning, transaction-backed reconciliation, and an established automated regression layer for the highest-risk workflows.
+Dosh is a workflow-driven personal finance application with a FastAPI backend and a Vite-powered React frontend.
 
-This README reflects the repository as it exists now, not the originally intended design.
+The current product supports guided budget setup, budget-cycle planning, income and expense tracking, transaction-backed balance movement, savings and investment planning, close-out workflows, and a meaningful automated regression baseline.
 
-## Purpose
+## Start Here
 
-This document is the main current-state overview for Dosh.
+This README is the top-level orientation document for the project.
 
-Its purpose is to give future sessions and contributors a reliable snapshot of:
+Use it to understand:
 
-- what the app currently is
-- what features already exist
-- what technical shape the codebase currently has
-- what broader roadmap areas are visible from the repo today
+- what Dosh is
+- the current technical shape of the repository
+- where to go next in the documentation set
 
-For budget health scoring and roadmap context, also read [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/BUDGET_HEALTH_ADDENDUM.md).
+For new AI or agent sessions:
 
-For a focused view of current and near-term work, read [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/DEVELOPMENT_ACTIVITIES.md).
+1. read this file first
+2. then read [PROJECT_CONTEXT.md](/home/ubuntu/dosh/docs/PROJECT_CONTEXT.md)
+3. then follow the links from there into the relevant roadmap, plan, history, or testing documents
 
-For the detailed budget-cycle lifecycle and close-out workflow plan that now informs period management, read [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/BUDGET_CYCLE_LIFECYCLE_PLAN.md).
+## Project Snapshot
 
-For the current recommended automated testing approach, priorities, and case inventory, read [TEST_STRATEGY.md](/home/ubuntu/dosh/TEST_STRATEGY.md).
+- Backend: FastAPI, SQLAlchemy, SQLite
+- Frontend: React 18, Vite, React Query, React Router
+- Testing: `pytest`, Jest with React Testing Library, Playwright
+- Deployment path: Docker Compose
+- Core product shape: guided budgeting, explicit budget-cycle lifecycle, ledger-backed transaction movement, close-out flow, setup assessment, and budget health
 
-For the current testing expansion roadmap and planned next coverage slices, read [TEST_EXPANSION_PLAN.md](/home/ubuntu/dosh/TEST_EXPANSION_PLAN.md).
-
-For the current setup-validity and downstream-protection model introduced in the latest session, read [SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md](/home/ubuntu/dosh/SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md).
-
-For recent test and deployment verification results, read [TEST_RESULTS_SUMMARY.md](/home/ubuntu/dosh/TEST_RESULTS_SUMMARY.md).
-
-## Current Repository Layout
+## Repository Layout
 
 ```text
 dosh/
+├── README.md
 ├── backend/
-│   ├── Dockerfile
-│   ├── requirements.txt
-│   └── app/
-│       ├── main.py
-│       ├── database.py
-│       ├── models.py
-│       ├── schemas.py
-│       ├── period_logic.py
-│       └── routers/
 ├── frontend/
-│   ├── Dockerfile
-│   ├── package.json
-│   ├── nginx.conf
-│   └── src/
-└── docker-compose.yml
+├── docker-compose.yml
+└── docs/
+    ├── DOCUMENTATION_FRAMEWORK.md
+    ├── DOCUMENT_REGISTER.md
+    ├── DEVELOPMENT_ACTIVITIES.md
+    ├── CHANGES.md
+    ├── PROJECT_CONTEXT.md
+    ├── plans/
+    └── tests/
 ```
 
-## What Exists Today
+## Documentation Map
 
-### Backend
+### Start and Orientation
 
-The backend is a FastAPI app under `backend/app`.
+- [PROJECT_CONTEXT.md](/home/ubuntu/dosh/docs/PROJECT_CONTEXT.md): the working handoff document for future AI sessions and new development starts
+- [DOCUMENT_REGISTER.md](/home/ubuntu/dosh/docs/DOCUMENT_REGISTER.md): the map of project documents, ownership boundaries, and source-of-truth scope
+- [DOCUMENTATION_FRAMEWORK.md](/home/ubuntu/dosh/docs/DOCUMENTATION_FRAMEWORK.md): the generic documentation structure and governance framework
 
-Implemented areas:
+### Roadmap and Active Work
 
-- Budget CRUD
-- Dev-only demo budget creation endpoint, gated by backend `DEV_MODE`
-- Budget settings for period-generation behavior
-- Centralized setup assessment for generation readiness and setup protection
-- Budget health metrics Phase 1 endpoint with explainable evidence payload
-- Budget-level health personalisation values that tune thresholds and weighting
-- Income type CRUD
-- Expense item CRUD and reordering
-- Investment item CRUD with primary-line support
-- Balance/account type CRUD
-- Financial period generation, listing, detail view, locking, and deletion
-- Explicit budget cycle lifecycle management with `PLANNED`, `ACTIVE`, and `CLOSED` states
-- Period close-out preview and close-out completion workflow
-- Close-out snapshot storage for historical health and totals
-- Period income updates
-- Period expense updates
-- Expense transaction entries per period expense
-- Centralized period transaction ledger and migration/backfill for active periods
-- Period balance viewing and transaction-backed movement details
-- Period investment budget updates
-- Investment transactions per period investment
-- Investment status workflow matching expenses with `Current`, `Paid`, and `Revised`
-- Savings transfer support via period income records
-- Period summary endpoint with cumulative projected savings
-- Guided period deletion options including `delete this and all upcoming cycles`
+- [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md): roadmap areas, activity groups, active work, and near-term backlog
 
-The API is mounted under `/api`, with a health endpoint at `/api/health`.
+### History and Decisions
 
-### Frontend
+- [CHANGES.md](/home/ubuntu/dosh/docs/CHANGES.md): implementation history, major decisions, and changes that should not be accidentally undone
 
-The frontend is a React single-page app under `frontend/src`, currently built with Vite.
+### Plans
 
-Visible pages and flows:
+- [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_CYCLE_LIFECYCLE_PLAN.md): lifecycle, close-out, carry-forward, and continuity rules
+- [SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md](/home/ubuntu/dosh/docs/plans/SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md): setup validity, readiness, and downstream protection rules
+- [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/docs/plans/BUDGET_HEALTH_ADDENDUM.md): budget health direction and staged health design
+- [INCOME_TRANSACTIONS_UNIFICATION_AND_LEGACY_LEDGER_CLEANUP_PLAN.md](/home/ubuntu/dosh/docs/plans/INCOME_TRANSACTIONS_UNIFICATION_AND_LEGACY_LEDGER_CLEANUP_PLAN.md): transaction unification and ledger cleanup planning
+- [AI_INSIGHT_ON_CLOSEOUT_PLAN.md](/home/ubuntu/dosh/docs/plans/AI_INSIGHT_ON_CLOSEOUT_PLAN.md): supporting close-out planning insight
 
-- Budgets list/create/edit/delete
-- dev-only `Create Demo Budget` action in the create-budget modal when frontend dev mode is enabled at build time
-- Budgets page as the main landing page and primary overview surface
-- budget-level summary cards including:
-- current period range
-- days remaining in the active period
-- current balance summary showing each active-period account closing balance and total
-- historical period counts
-- budget health score and momentum indicator
-- current-period health check with traffic-light status and detail modal
-- budget health details modal with evidence breakdown
-- inline edit and delete actions without duplicate setup links
-- Budget periods page for:
-- viewing existing periods
-- viewing period-level financial summaries
-- viewing cumulative projected savings
-- deleting eligible planned or active periods through guided delete options
-- generating new periods
-- showing period ranges in a fixed two-line format for consistent scanning
-- showing budget-cycle lifecycle state and linking directly to the cycle details from the period column
-- using `Details` rather than `Open` for the primary period action
-- Budget setup page with scrollable sections for:
-- Budget Info
-- Accounts
-- Income Types
-- Expense Items
-- Investments
-- Personalisation
-- Settings
-- including setup-assessment summary state and section-level readiness/protection badges
-- including auto-allocation of surplus budget into a primary investment line
-- with quiet autosave for Budget Info and Personalisation updates
-- Period detail page for working with:
-- Income actuals
-- Expense actuals and notes
-- Expense transactions
-- Account balances
-- Balance movement transaction details
-- Investment budgets
-- Investment transactions
-- investment paid and revised status controls
-- active-cycle close-out preview and completion
-- historical close-out snapshot review for closed cycles
-- a seeded demo-budget path for development walkthroughs, including historical, current, and upcoming cycle coverage
-- a first end-to-end lifecycle path from budget creation through setup, first activity, close-out, and next-cycle activation
+### Testing
 
-The frontend talks to the backend through `/api` using Axios.
+- [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md): testing posture, priorities, and coverage intent
+- [TEST_EXPANSION_PLAN.md](/home/ubuntu/dosh/docs/tests/TEST_EXPANSION_PLAN.md): planned test expansion and next coverage slices
+- [TEST_RESULTS_SUMMARY.md](/home/ubuntu/dosh/docs/tests/TEST_RESULTS_SUMMARY.md): recent verification outcomes and recorded results
 
-## Actual Tech Stack
+## Development Notes
 
-Based on the checked-in code, the project currently uses:
-
-- FastAPI
-- SQLAlchemy ORM
-- SQLite
-- React 18
-- Vite
-- React Query
-- React Router
-- Axios
-- Tailwind CSS
-- Pytest
-- React Testing Library
-- Playwright
-- Docker Compose
-- Traefik labels on the frontend service
-
-Testing infrastructure note:
-
-- backend automated tests now run against an isolated SQLite database per test case to avoid cross-area contamination during mixed workflow sessions
-
-## Data Model
-
-The main SQLAlchemy models currently present are:
-
-- `Budget`
-- `FinancialPeriod`
-- `IncomeType`
-- `PeriodIncome`
-- `ExpenseItem`
-- `PeriodExpense`
-- `PeriodExpenseEntry`
-- `BalanceType`
-- `PeriodBalance`
-- `InvestmentItem`
-- `PeriodInvestment`
-- `PeriodInvestmentTransaction`
-- `PeriodTransaction`
-- `PayType`
-- `AppInfo`
-
-Notes on the model:
-
-- Period records are generated from budget configuration.
-- Budgets can opt into automatically allocating new-period surplus to a primary investment line.
-- Budgets now also store health personalisation values including expense tolerance, deficit thresholds, revision sensitivity, savings priority, and period criticality preference.
-- Budgets now also store whether manual budget-cycle locking is enabled for structural budget edits.
-- Expense actuals can be tracked either directly or through child transaction entries.
-- A centralized period transaction ledger now exists to support reconciliation and reporting.
-- Budget health is currently computed from existing budget, period, and expense data, and closed cycles now also persist a point-in-time close-out health snapshot.
-- The overall budget health score now includes the dedicated current-period assessment as an explicit weighted input.
-- Balance movement is intended to be explained through transactions rather than edited directly.
-- Financial periods now persist explicit cycle state and closed timestamp.
-- Investment periods track opening value, closing value, budgeted amount, actual transaction totals, and lifecycle status matching expense workflow.
-- Period income rows can now include protected system-managed lines such as `Carried Forward`.
-- A dedicated close-out snapshot table stores comments, goals, carry-forward result, health snapshot data, and totals snapshot data for each closed cycle.
-- Investment items can be marked as the single active primary line for automatic savings allocation.
-- Existing active periods are backfilled where possible so they can reconcile through transactions.
-
-## Budgeting and Period Logic
-
-Budget frequencies supported by validation and period generation are:
-
-- `Weekly`
-- `Fortnightly`
-- `Monthly`
-
-Expense scheduling currently supports:
-
-- `Always`
-- `Fixed Day of Month`
-- `Every N Days`
-
-Period generation currently requires:
-
-- At least one income type
-- At least one active expense item
-- At least one active primary account when expense-driven setup is present
-
-When a period is generated, the backend creates:
-
-- `PeriodIncome` rows for auto-included income types
-- `PeriodExpense` rows for active expense items that occur in that period
-- `PeriodBalance` rows for active balance types
-- `PeriodInvestment` rows for active investment items
-
-Additional current generation rules:
-
-- If enabled in budget settings, positive starting surplus budget is automatically allocated to the active primary investment line.
-- Period generation now normalizes incoming start dates to avoid timezone-related overlap bugs.
-- User-facing terminology is now trending toward `budget cycle` while backend naming still uses `period` for stability.
-- The app now treats lifecycle state as explicit persisted data rather than deriving everything from dates alone.
-- There should only ever be one `ACTIVE` cycle for a budget.
-- `CLOSED` cycles are intended to be read-only from normal workflow paths.
-- Closing a cycle can create or update a protected `Carried Forward` income line in the next cycle using budget-side values only.
-- Guided deletion can require deleting a selected cycle and all upcoming cycles in order to preserve continuity.
-- Period status and budget health evaluation now use the app timezone rather than UTC-only runtime defaults.
-- There should only ever be one user-facing current cycle for a budget; overflow handling is only relevant to future and historical groupings.
-
-## Current Navigation And Visual Direction
-
-The current sidebar is no longer an all-budgets drilldown tree. It now follows a focused workflow pattern:
-
-- a single global `Budgets` entry
-- a compact budget chooser
-- a `Current Budget` context panel when working inside a budget
-- period shortcuts for `Current`, `Upcoming`, and `Recent`
-- a desktop collapse mode to reclaim screen width
-
-Important current interaction rules:
-
-- the sidebar should emphasize the budget the user is actively working in rather than expanding every budget at once
-- the `More` affordance for hidden period shortcuts is contextual and should be muted when the user is already on that budget's period listing page
-- duplicate setup or edit affordances on the same screen should be avoided when one clear path already exists
-
-The current visual system has also shifted away from all-purpose green branding:
-
-- muted teal is now the primary navigation and brand accent
-- green is reserved for positive or success meaning
-- dark mode uses slate and ink surfaces rather than dark emerald fills
-
-## Accounts and Investments
-
-The current implementation goes beyond simple budgeting:
-
-- A balance type can be marked as the primary account.
-- Expense updates and expense entries can reduce the primary account balance.
-- Income types can optionally credit a linked account.
-- Savings transfers create special period income lines and move value between accounts.
-- Investment items can optionally link to an account balance.
-- Investment items can be designated as the primary savings destination for automatic surplus allocation.
-- Investment transactions update both investment totals and, when linked, account balances.
-- Account balance movement can be inspected from the period page through supporting transaction details.
-
-Current terminology guidance:
-
-- Use `Savings` for the user-facing idea of setting money aside.
-- Use `Investment` for the technical record type and setup area already established in the codebase.
-- Use `Budget Cycle` in the UI where that wording makes the workflow clearer, while preserving backend `period` naming unless a stronger reason emerges.
-- Use `Primary investment line` when referring to the destination for automatic surplus allocation.
-- In budget health wording, be explicit when the value being assessed is deficit rather than positive surplus.
-
-## Current Testing State
-
-Dosh now has a real automated test foundation rather than only a proposed test strategy.
-
-Current coverage shape:
-
-- backend `pytest` coverage protects lifecycle, close-out, delete continuity, ledger behavior, setup-driven scenarios, and budget health rules
-- frontend Jest and React Testing Library coverage protects setup workflows, close-out and locked-cycle behavior, delete guidance, paid or revised flows, and setup-to-generation handoff states
-- Playwright now runs local Chromium smoke flows for:
-- create-budget to incomplete-setup gating
-- minimum setup and first cycle generation
-- first expense transaction and linked account movement
-- close-out snapshot visibility and next-cycle activation
-
-Important working rule:
-
-- future feature work should continue under a test-with-change discipline, especially where setup shape, lifecycle rules, ledger trust, or historical integrity are involved
-
-## Deployment Files Present
-
-The repo includes:
-
-- `docker-compose.yml`
-- `backend/Dockerfile`
-- `frontend/Dockerfile`
-
-`docker-compose.yml` defines:
-
-- `backend`
-- `frontend`
-- a SQLite-backed named volume for backend data
-- a local `dosh-net` network
-- an external `frontend` network for Traefik
-- `TZ=Australia/Sydney` on both services so visible app time aligns with the expected local timezone
-
-The frontend service includes Traefik labels for TLS and basic auth.
-
-## Known State and Gaps
-
-The repository is not fully polished from an operations perspective. These are important current-state notes:
-
-- The frontend uses Vite for local development and production builds.
-- The frontend Dockerfile builds Vite output from `/app/dist`.
-- Docker Compose now acts as the shared source of truth for dev-only demo-budget gating across frontend build behavior and backend runtime enforcement.
-- The frontend Dockerfile runs `npm install`, so it depends on `package-lock.json` behavior not being pinned in the repo.
-- Focused `.dockerignore` files now exist for both frontend and backend build contexts.
-- Frontend builds currently pass cleanly without the earlier lint warnings.
-- Budget health is a Phase 1 implementation and should be treated as an explainable first slice rather than a finished scoring system.
-- The user-facing budget health presentation should stay free of internal development terminology such as phase labels.
-- Budget health personalisation exists today, but the wording and explanation of threshold interaction should keep being refined from real usage.
-
-## API Surface Overview
-
-Current backend routers are implemented for:
-
-- `budgets`
-- `periods`
-- `income_types`
-- `expense_items`
-- `investments`
-- `expense_entries`
-- `balance_types`
-- `investment_transactions`
-- `period_transactions`
-
-Additional budget route surface now includes:
-
-- budget health summary/detail via `/budgets/{budgetid}/health`
-
-## Development Roadmap
-
-The next larger product milestones currently identified for Dosh are:
-
-- Reporting & Analysis
-- Reconciliation
-- Period Close Out
-
-Budget health metrics work is staged separately in [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/BUDGET_HEALTH_ADDENDUM.md) so future sessions can distinguish the current Phase 1 implementation from later close-out and configuration work.
-
-Current status:
-
-- `Budget Health Metrics` exists today as a roadmap item with an implemented `Phase 1` slice.
-- Phase 1 should be treated as the initial explainable metrics release, not the finished end-state.
-- The shipped UI should present budget health as a normal product feature, while phase terminology stays in development documentation only.
-
-### Reporting & Analysis
-
-This milestone should deepen the app's ability to explain financial activity and trends over time.
-
-Likely focus areas:
-
-- ledger-backed reporting views across periods
-- richer period and dashboard summaries
-- clearer surplus, savings, and investment trend analysis
-- reporting that helps users understand what changed and why
-
-### Reconciliation
-
-This milestone should build on the centralized ledger and balance movement detail work so reconciliation becomes a first-class workflow.
-
-Likely focus areas:
-
-- stronger account-by-account reconciliation views
-- clearer audit trails with filtering and source grouping
-- running totals and discrepancy detection
-- possible bank statement import and OCR-assisted matching, if that proves practical and reliable
-
-### Period Close Out
-
-This milestone should support end-of-period review and make each period feel complete before moving on.
-
-Likely focus areas:
-
-- close-out performance metrics
-- end-of-period review flow
-- commentary and notes on what happened during the period
-- use of revision comments and final-state indicators in later reporting
-
-## Summary
-
-Dosh is currently a budget-and-period based personal finance app with:
-
-- a substantial FastAPI backend
-- a working Vite-powered React frontend structure
-- SQLite persistence
-- support for budgets, periods, income, expenses, accounts, investments, and transaction-backed balance reconciliation
-- a dev-only seeded demo-budget workflow that creates additive demo data without mutating existing budgets
-
-The product code is broader than a minimal budgeting tracker, but the repo still has some packaging and deployment inconsistencies that should be resolved before treating the Docker setup as production-ready.
+- `Budget Cycle` is the preferred user-facing wording where it improves clarity, while backend naming may still use `period` for stability.
+- The product direction is practical, supportive, and workflow-driven rather than accounting-heavy.
+- Detailed roadmap, plan, and testing content should live in the next-layer documents above rather than growing this README.
