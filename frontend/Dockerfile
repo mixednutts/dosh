@@ -1,6 +1,8 @@
 # build environment
 FROM node:20-alpine AS build
 WORKDIR /app
+ARG DEV_MODE=false
+ENV VITE_DEV_MODE=${DEV_MODE}
 COPY package*.json ./
 RUN npm ci
 COPY . .

@@ -51,6 +51,7 @@ Important scope note:
 
 - migration-era ledger backfill was a one-off alignment activity for older data, not a normal recurring workflow feature
 - ongoing test emphasis should stay on live transaction behavior, balance movement, continuity, and historical integrity rather than repeatedly treating one-time migration backfill as product behavior
+- dev-only demo-budget seeding is now a documented workflow and should be tested as additive environment-scoped setup support rather than as a replacement for ordinary user setup flows
 
 ## Testing Context Snapshot
 
@@ -106,6 +107,7 @@ These areas deserve extra caution whenever product work touches them:
 - post-paid revise flows and read-only guards on closed cycles
 - health scoring, evidence payloads, and historical snapshot integrity
 - setup edits whose consequences show up only in later workflows
+- demo-mode gating and seeded demo-budget behavior, especially additive-only import safety and health-signal credibility
 
 ### Budget health context for tests
 
@@ -193,6 +195,7 @@ The following setup-shape combinations are currently covered by automated tests.
 | `Multiple Investment Lines` | more than one investment with exactly one primary | keep primary selection unique and allocate auto-surplus only to the primary line | backend |
 | `Primary Investment Reassigned` | multiple investments with primary line changed before generation | route future auto-surplus allocation to the new primary investment | backend |
 | `Missing Period Investment Reference` | no generated period investment line for attempted downstream activity | fail clearly when dependent investment activity is attempted | backend |
+| `Demo Seeded Budget` | baseline personal setup with linked savings and primary investment plus historical, current, and upcoming cycles | dev-only seeded budget creation stays additive, remains gated by shared dev mode, and produces meaningful budget-health signals | backend + frontend |
 
 Notes:
 

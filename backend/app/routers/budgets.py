@@ -2,7 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from ..budget_health import build_budget_health_payload
 from ..database import get_db
+from ..demo_budget import create_standard_demo_budget
 from ..models import Budget
+from ..runtime_settings import dev_mode_enabled
 from ..schemas import BudgetCreate, BudgetHealthOut, BudgetOut, BudgetSetupAssessmentOut, BudgetUpdate
 from ..setup_assessment import budget_setup_assessment
 
@@ -21,6 +23,13 @@ def create_budget(payload: BudgetCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(budget)
     return budget
+
+
+@router.post("/demo", response_model=BudgetOut, status_code=201)
+def create_demo_budget(db: Session = Depends(get_db)):
+    if not dev_mode_enabled():
+        raise HTTPException(404, "Not found")
+    return create_standard_demo_budget(db)
 
 
 @router.get("/{budgetid}", response_model=BudgetOut)

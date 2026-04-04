@@ -64,6 +64,7 @@ Operational note:
 - backend tests now run against an isolated SQLite database per test case through [conftest.py](/home/ubuntu/dosh/backend/tests/conftest.py)
 - Docker Compose remains the active deployment path, with the frontend exposed on port `3080`
 - the frontend Docker build now uses Node 20 rather than the old Node 16 baseline
+- Docker Compose `DEV_MODE` is now the shared control point for dev-only demo-budget behavior across frontend build visibility and backend runtime enforcement
 - `PeriodTransaction` is now the sole live transaction store; older expense and investment transaction tables have been removed from the active schema
 
 ## Core Domain Rules
@@ -94,6 +95,7 @@ These rules should be treated as current product invariants unless deliberately 
 The repository already supports:
 
 - budgets list, create, edit, delete
+- dev-only demo budget creation from the create-budget modal when Compose `DEV_MODE` is enabled
 - guided budget setup across budget info, accounts, income, expenses, investments, personalisation, and settings
 - setup-assessment summary state on the budget setup page, including blocking issues, warnings, and section-level readiness or protection badges
 - budget cycle generation, listing, detail, lifecycle display, delete prevalidation, and close-out flow
@@ -102,6 +104,7 @@ The repository already supports:
 - account balance viewing with transaction-based movement explanation
 - current budget summary cards, current balance summary, and current-period health check
 - historical close-out snapshot review for closed cycles
+- seeded demo-budget creation with historical close-outs, a current cycle, upcoming cycles, and health-relevant activity
 - budget-level primary-account display naming with `Transaction`, `Everyday`, and `Checking` as user-facing options while the stored account type remains `Transaction`
 - setup-page collapsible `Personalisation` and `Settings` sections with session-persisted expand or collapse state
 - budget-cycle grouping using `Current`, `Upcoming`, and `Historical`, with the historical list remembering its collapse state for the browser session
@@ -181,6 +184,7 @@ When making changes, preserve these working assumptions from the docs:
 - do not weaken setup protection by reintroducing page-local readiness assumptions when centralized setup assessment already exists
 - do not treat backend test isolation as optional now that mixed-area sessions depend on it
 - prefer regional display-label preferences over renaming internal domain models when terminology variation is mostly user-facing
+- do not let demo-budget import become destructive; it should remain additive-only unless a separately named reset workflow is intentionally designed
 
 ## Practical Starting Order For Future Sessions
 

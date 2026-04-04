@@ -10,6 +10,7 @@ export const getBudget = id => api.get(`/budgets/${id}`).then(r => r.data)
 export const getBudgetHealth = id => api.get(`/budgets/${id}/health`).then(r => r.data)
 export const getBudgetSetupAssessment = id => api.get(`/budgets/${id}/setup-assessment`).then(r => r.data)
 export const createBudget = data => api.post('/budgets/', data).then(r => r.data)
+export const createDemoBudget = () => api.post('/budgets/demo').then(r => r.data)
 export const updateBudget = (id, data) => api.patch(`/budgets/${id}`, data).then(r => r.data)
 export const deleteBudget = id => api.delete(`/budgets/${id}`)
 

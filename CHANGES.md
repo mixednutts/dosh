@@ -27,6 +27,83 @@ For recent concrete verification outcomes, read [TEST_RESULTS_SUMMARY.md](/home/
 
 For the dedicated implementation plan that drove the income transaction unification and legacy-ledger cleanup work in this session, read [INCOME_TRANSACTIONS_UNIFICATION_AND_LEGACY_LEDGER_CLEANUP_PLAN.md](/home/ubuntu/dosh/INCOME_TRANSACTIONS_UNIFICATION_AND_LEGACY_LEDGER_CLEANUP_PLAN.md).
 
+## Latest Session: Demo Budget Seeding, Shared Dev-Mode Gating, Budget-Health-Focused Demo Activity, And Compose-Based Deployment Control
+
+This session focused on making demos faster to stand up without weakening normal production behavior or distorting current product rules.
+
+Important direction now in place:
+
+- the budget-create modal can now expose a dev-only `Create Demo Budget` action
+- demo-budget creation is now controlled by one shared Compose-level `DEV_MODE` setting across frontend and backend rather than a checked-in frontend `.env`
+- the frontend uses the shared flag only to reveal the control, while the backend separately enforces the same flag before allowing `/api/budgets/demo`
+- demo import creates a new seeded budget and related records only; it does not overwrite or delete existing budgets
+- the seeded demo now includes historical close-outs, a live current cycle, upcoming cycles, linked savings and investment setup, and activity shaped to influence budget health rather than merely populate records
+- current docs and testing records now treat the demo-budget path as a real, documented development workflow rather than a hidden local shortcut
+
+### 1. Demo budgets are now a deliberate development workflow, not an ad hoc manual setup shortcut
+
+The product now has a dedicated demo-budget creation path for development and stakeholder walkthroughs.
+
+Current behavior:
+
+- the create-budget modal can show `Create Demo Budget` when dev mode is enabled
+- the action creates a complete standard household-style budget with transaction account, savings account, income, expenses, and a primary investment line linked to savings
+- the seed includes closed cycles with stored close-out comments and goals, one active cycle, and several planned upcoming cycles
+- the user lands on the seeded budget after creation so the cycle state and current summary surfaces are immediately visible
+
+Important product meaning:
+
+- demo setup should now be treated as a first-class development affordance rather than something future sessions need to rebuild manually each time
+- demo data should continue to follow real domain rules rather than introducing fake shortcuts that bypass lifecycle, carry-forward, or ledger behavior
+
+### 2. Demo-mode gating is now shared between frontend and backend
+
+This session intentionally avoided a frontend-only hide-or-show treatment for demo controls.
+
+Current behavior:
+
+- Docker Compose now provides the controlling `DEV_MODE` value
+- the frontend build uses that value to decide whether the modal should show the demo-budget control
+- the backend checks the same runtime flag and returns `404` for the demo route when dev mode is off
+- omitting `DEV_MODE` defaults both sides to a false state
+
+Important engineering meaning:
+
+- hiding the control in the UI alone is not considered sufficient protection for dev-only workflows
+- Vite-based frontend behavior is still compile-time, so changing the frontend side of the flag requires an image rebuild
+- the backend side remains runtime-checked and should stay aligned with the same single Compose-level source of truth
+
+### 3. Demo seed activity now intentionally affects budget health output
+
+The first demo seed implementation populated data shape, but it did not yet create especially meaningful health signals.
+
+Current behavior:
+
+- historical demo cycles now show a more believable discipline pattern across rougher and steadier completed periods
+- the active cycle includes real pressure signals such as revised expense state, over-budget actuals, paid-over-budget lines, and negative actual surplus
+- the seeded demo budget now produces visible health evidence and non-trivial planning-stability output
+
+Important product meaning:
+
+- demo budgets should help explain the value of budget health rather than leaving health surfaces looking empty or artificially perfect
+- future demo data changes should preserve explainable evidence rather than optimizing only for visual completeness
+
+### 4. Demo import is additive only
+
+This was explicitly checked because dev-only import features can become risky if they behave like reset tools.
+
+Current behavior:
+
+- importing demo data creates a new budget and child records tied to that new `budgetid`
+- the demo import path does not delete existing budgets
+- the demo import path does not overwrite existing budgets
+- repeated use creates additional demo budgets rather than mutating prior ones
+
+Important engineering meaning:
+
+- future work should preserve this additive-only behavior unless a separate, explicitly named reset or cleanup workflow is introduced
+- demo import should not quietly become a destructive environment management tool
+
 ## Latest Session: Income Transactions Unification, Unified Ledger Cleanup, Frontend Toolchain Modernisation, And Deployment Hardening
 
 This session focused on removing remaining inconsistency in actual-entry workflows, tightening ledger trust, and cleaning up the frontend delivery baseline.

@@ -62,6 +62,8 @@ Recent progress worth carrying forward:
 - backend startup schema patching has been removed in favor of an explicit cutover script for the current baseline
 - the frontend now uses Vite plus standalone Jest rather than Create React App
 - the frontend Docker image now uses Node 20 and the frontend dependency tree is currently clean on `npm audit`
+- a dev-only `Create Demo Budget` flow now exists from the budget-create modal and is controlled through shared Docker Compose `DEV_MODE` gating across frontend and backend
+- the seeded demo budget now includes historical close-outs, a live current cycle, upcoming cycles, linked savings and investment setup, and budget-health-relevant activity rather than neutral placeholder transactions
 
 ## Active Development Streams
 
@@ -161,6 +163,7 @@ Focus areas:
 - validate whether the current-period weighting inside the overall score feels proportionate in real use
 - prepare for close-out metrics integration
 - continue refining evidence language
+- keep development and demo data realistic enough that health surfaces remain meaningful during walkthroughs and regression checks
 
 Suggested implementation slices:
 
@@ -170,6 +173,7 @@ Suggested implementation slices:
 - test the new overall-score weighting so current-period influence is visible but not overly volatile
 - tests and refinement around personalised threshold behavior
 - continued copy refinement so health evidence reads naturally in budget terms
+- consider whether more than one demo seed profile is needed later, such as `healthy`, `under pressure`, or `recovery`, without weakening the current additive-only demo import behavior
 
 ### 5. Localisation and Regional Fit
 
@@ -237,6 +241,19 @@ Suggested implementation slices:
 - document what a complete backup must include beyond the primary database file
 - design import or restore expectations separately from simple export download
 - identify privacy and security expectations around exported financial data
+
+## Implementation Notes To Preserve
+
+- Docker Compose is now the active control point for `DEV_MODE`; future work should avoid drifting back to a separate checked-in frontend-only flag for demo gating.
+- Demo-budget creation is intentionally additive only. It should keep creating a new budget rather than overwriting or deleting existing budgets.
+- Because the frontend is built with Vite and served as static assets, changes to frontend dev-mode visibility require a rebuild, not only a container restart.
+- Backend enforcement should continue to exist even when the frontend hides the control, so dev-only workflows are not protected by UI state alone.
+
+## Near-Term Follow-Up Worth Tracking
+
+- decide whether repeated demo imports should eventually gain clearer naming, timestamps, or lightweight duplicate-management affordances
+- consider adding a richer demo-validation checklist or smoke flow once more reporting and reconciliation surfaces exist
+- keep the demo seed aligned with any later budget-health scoring changes so walkthrough data does not become misleading or stale
 
 ## Near-Term Engineering Work
 

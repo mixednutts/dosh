@@ -1,6 +1,6 @@
 # Dosh
 
-Dosh is a personal finance application with a FastAPI backend and a Create React App frontend. The current codebase supports guided budget setup, period planning, income and expense tracking, account balance tracking, savings and investment planning, transaction-backed reconciliation, and an established automated regression layer for the highest-risk workflows.
+Dosh is a personal finance application with a FastAPI backend and a Vite-powered React frontend. The current codebase supports guided budget setup, period planning, income and expense tracking, account balance tracking, savings and investment planning, transaction-backed reconciliation, and an established automated regression layer for the highest-risk workflows.
 
 This README reflects the repository as it exists now, not the originally intended design.
 
@@ -60,6 +60,7 @@ The backend is a FastAPI app under `backend/app`.
 Implemented areas:
 
 - Budget CRUD
+- Dev-only demo budget creation endpoint, gated by backend `DEV_MODE`
 - Budget settings for period-generation behavior
 - Centralized setup assessment for generation readiness and setup protection
 - Budget health metrics Phase 1 endpoint with explainable evidence payload
@@ -88,11 +89,12 @@ The API is mounted under `/api`, with a health endpoint at `/api/health`.
 
 ### Frontend
 
-The frontend is a React single-page app under `frontend/src`, currently built with Create React App (`react-scripts`).
+The frontend is a React single-page app under `frontend/src`, currently built with Vite.
 
 Visible pages and flows:
 
 - Budgets list/create/edit/delete
+- dev-only `Create Demo Budget` action in the create-budget modal when frontend dev mode is enabled at build time
 - Budgets page as the main landing page and primary overview surface
 - budget-level summary cards including:
 - current period range
@@ -134,6 +136,7 @@ Visible pages and flows:
 - investment paid and revised status controls
 - active-cycle close-out preview and completion
 - historical close-out snapshot review for closed cycles
+- a seeded demo-budget path for development walkthroughs, including historical, current, and upcoming cycle coverage
 - a first end-to-end lifecycle path from budget creation through setup, first activity, close-out, and next-cycle activation
 
 The frontend talks to the backend through `/api` using Axios.
@@ -146,7 +149,7 @@ Based on the checked-in code, the project currently uses:
 - SQLAlchemy ORM
 - SQLite
 - React 18
-- Create React App (`react-scripts`)
+- Vite
 - React Query
 - React Router
 - Axios
@@ -323,8 +326,9 @@ The frontend service includes Traefik labels for TLS and basic auth.
 
 The repository is not fully polished from an operations perspective. These are important current-state notes:
 
-- The frontend uses Create React App via `react-scripts`.
-- The frontend Dockerfile builds `/app/build`, which matches Create React App rather than Vite.
+- The frontend uses Vite for local development and production builds.
+- The frontend Dockerfile builds Vite output from `/app/dist`.
+- Docker Compose now acts as the shared source of truth for dev-only demo-budget gating across frontend build behavior and backend runtime enforcement.
 - The frontend Dockerfile runs `npm install`, so it depends on `package-lock.json` behavior not being pinned in the repo.
 - Focused `.dockerignore` files now exist for both frontend and backend build contexts.
 - Frontend builds currently pass cleanly without the earlier lint warnings.
@@ -418,8 +422,9 @@ Likely focus areas:
 Dosh is currently a budget-and-period based personal finance app with:
 
 - a substantial FastAPI backend
-- a working Create React App frontend structure
+- a working Vite-powered React frontend structure
 - SQLite persistence
 - support for budgets, periods, income, expenses, accounts, investments, and transaction-backed balance reconciliation
+- a dev-only seeded demo-budget workflow that creates additive demo data without mutating existing budgets
 
 The product code is broader than a minimal budgeting tracker, but the repo still has some packaging and deployment inconsistencies that should be resolved before treating the Docker setup as production-ready.

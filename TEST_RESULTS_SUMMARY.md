@@ -4,6 +4,91 @@ This document records meaningful automated test results from major working sessi
 
 It exists separately from [TEST_STRATEGY.md](/home/ubuntu/dosh/TEST_STRATEGY.md) so the strategy can stay stable while future sessions still have a record of what was actually run and verified.
 
+## Latest Session: Demo Budget Workflow, Shared Dev-Mode Gating, Health-Relevant Demo Activity, And Deployment Verification
+
+Session outcomes verified in this run:
+
+- stale current-state CRA references were removed from [README.md](/home/ubuntu/dosh/README.md)
+- the create-budget modal now supports a dev-only `Create Demo Budget` action
+- demo-budget creation is now controlled through shared Docker Compose `DEV_MODE` handling rather than a checked-in frontend `.env`
+- the backend now enforces the same dev-mode gate before allowing `/api/budgets/demo`
+- demo import creates additive seeded data only and does not overwrite or delete existing budgets
+- the seeded demo budget now includes historical close-outs, a live current cycle, several upcoming cycles, linked savings and investment setup, and activity that meaningfully affects budget health output
+- the Docker deployment was rebuilt twice during the session: once for the initial shared demo-mode flow and once again after tuning demo activity to better influence budget health
+
+### Frontend verification
+
+Commands run during this session:
+
+```bash
+cd frontend
+npm test -- --runTestsByPath /home/ubuntu/dosh/frontend/src/__tests__/BudgetsPage.test.jsx
+npm run build
+```
+
+Result:
+
+- focused Budgets page coverage passed for dev-mode visibility and demo-budget action behavior
+- frontend production builds passed after moving the demo-mode control away from a checked-in `.env` and onto Docker Compose build arguments
+
+Files with meaningful frontend test or harness updates in this session:
+
+- [BudgetsPage.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/BudgetsPage.test.jsx)
+- [BudgetsPage.jsx](/home/ubuntu/dosh/frontend/src/pages/BudgetsPage.jsx)
+- [client.js](/home/ubuntu/dosh/frontend/src/api/client.js)
+- [vite.config.js](/home/ubuntu/dosh/frontend/vite.config.js)
+- [Dockerfile](/home/ubuntu/dosh/frontend/Dockerfile)
+- [jest.setup.js](/home/ubuntu/dosh/frontend/jest.setup.js)
+
+### Backend verification
+
+Command run:
+
+```bash
+cd backend
+/tmp/dosh-test-venv/bin/python -m pytest /home/ubuntu/dosh/backend/tests/test_app_smoke.py -q
+```
+
+Result:
+
+- backend smoke coverage passed for both demo-mode states
+- the demo endpoint correctly returned `404` when `DEV_MODE` was not enabled
+- the seeded demo-budget path passed with historical, current, and upcoming cycle coverage
+- the seeded demo budget now also passed targeted health assertions showing visible pressure signals and non-trivial planning-stability output
+- 6 backend smoke tests passed
+
+Files with meaningful backend test updates in this session:
+
+- [test_app_smoke.py](/home/ubuntu/dosh/backend/tests/test_app_smoke.py)
+- [demo_budget.py](/home/ubuntu/dosh/backend/app/demo_budget.py)
+- [runtime_settings.py](/home/ubuntu/dosh/backend/app/runtime_settings.py)
+- [budgets.py](/home/ubuntu/dosh/backend/app/routers/budgets.py)
+
+### Deployment verification
+
+Commands run:
+
+```bash
+docker compose -f docker-compose.yml up -d --build
+docker compose -f docker-compose.yml ps
+curl -sS http://127.0.0.1:3080/api/health
+```
+
+Result:
+
+- backend container rebuilt and restarted successfully
+- frontend container rebuilt and restarted successfully
+- frontend remained available on port `3080`
+- backend health endpoint returned `{"status":"ok","app":"Dosh"}`
+- the final deployed state includes the updated demo budget with health-relevant seeded activity
+
+### Test failures and resolution notes
+
+- The initial demo-budget implementation produced a structurally valid demo budget, but the seeded activity did not yet put enough visible pressure on budget-health surfaces to make demos especially useful.
+- The demo seed was revised to include a clearer historical discipline pattern, revised current expense state, over-budget lines, and negative actual surplus pressure.
+- Focused backend smoke verification was rerun after the seed adjustment and passed.
+- No unresolved test failures remained at the end of the session.
+
 ## Latest Session: Income Transactions, Unified Ledger Cleanup, Vite Migration, Vulnerability Remediation, And Deploy Verification
 
 Session outcomes verified in this run:

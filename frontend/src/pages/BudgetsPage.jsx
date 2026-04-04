@@ -3,11 +3,12 @@ import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/rea
 import { Link, useNavigate } from 'react-router-dom'
 import { ArrowTrendingDownIcon, ArrowTrendingUpIcon, MinusIcon, PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline'
 import { differenceInCalendarDays, format, parseISO } from 'date-fns'
-import { getBudgets, createBudget, deleteBudget, getPeriodsForBudget, getBudgetHealth, getPeriodDetail } from '../api/client'
+import { getBudgets, createBudget, createDemoBudget, deleteBudget, getPeriodsForBudget, getBudgetHealth, getPeriodDetail } from '../api/client'
 import Modal from '../components/Modal'
 import Spinner from '../components/Spinner'
 
 const FREQUENCIES = ['Weekly', 'Fortnightly', 'Monthly']
+const isDevModeEnabled = () => (typeof __DEV_MODE__ !== 'undefined' ? __DEV_MODE__ : false)
 
 const emptyForm = { description: '', budgetowner: '', budget_frequency: 'Fortnightly' }
 const fmtCurrency = value => Number(value ?? 0).toLocaleString('en-AU', { style: 'currency', currency: 'AUD' })
@@ -366,33 +367,49 @@ function BudgetHealthModal({ budget, health, onClose }) {
   )
 }
 
-function BudgetForm({ initial = emptyForm, onSubmit, onClose, loading }) {
+function BudgetForm({ initial = emptyForm, onSubmit, onCreateDemo, onClose, loading, demoLoading, showDemoOption }) {
   const [form, setForm] = useState(initial)
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
   return (
-    <form onSubmit={e => { e.preventDefault(); onSubmit(form) }} className="space-y-4">
-      <div>
-        <label className="label">Description</label>
-        <input className="input" value={form.description} onChange={e => set('description', e.target.value)} placeholder="e.g. Household Budget 2025" />
-      </div>
-      <div>
-        <label className="label">Owner <span className="text-red-500">*</span></label>
-        <input required className="input" value={form.budgetowner} onChange={e => set('budgetowner', e.target.value)} placeholder="Your name" />
-      </div>
-      <div>
-        <label className="label">Frequency <span className="text-red-500">*</span></label>
-        <select required className="input" value={form.budget_frequency} onChange={e => set('budget_frequency', e.target.value)}>
-          {FREQUENCIES.map(f => <option key={f}>{f}</option>)}
-        </select>
-      </div>
-      <div className="flex justify-end gap-2 pt-2">
-        <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
-        <button type="submit" className="btn-primary" disabled={loading}>
-          {loading ? 'Saving…' : 'Save'}
-        </button>
-      </div>
-    </form>
+    <div className="space-y-5">
+      <form onSubmit={e => { e.preventDefault(); onSubmit(form) }} className="space-y-4">
+        <div>
+          <label className="label">Description</label>
+          <input className="input" value={form.description} onChange={e => set('description', e.target.value)} placeholder="e.g. Household Budget 2025" />
+        </div>
+        <div>
+          <label className="label">Owner <span className="text-red-500">*</span></label>
+          <input required className="input" value={form.budgetowner} onChange={e => set('budgetowner', e.target.value)} placeholder="Your name" />
+        </div>
+        <div>
+          <label className="label">Frequency <span className="text-red-500">*</span></label>
+          <select required className="input" value={form.budget_frequency} onChange={e => set('budget_frequency', e.target.value)}>
+            {FREQUENCIES.map(f => <option key={f}>{f}</option>)}
+          </select>
+        </div>
+        <div className="flex justify-end gap-2 pt-2">
+          <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
+          <button type="submit" className="btn-primary" disabled={loading || demoLoading}>
+            {loading ? 'Saving…' : 'Save'}
+          </button>
+        </div>
+      </form>
+
+      {showDemoOption ? (
+        <div className="rounded-lg border border-dashed border-dosh-200 bg-dosh-50/60 px-4 py-4 dark:border-dosh-800 dark:bg-dosh-950/30">
+          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Developer shortcut</p>
+          <p className="mt-1 text-xs text-gray-600 dark:text-gray-300">
+            Create a fully populated demo budget with historical close-outs, a live current cycle, linked savings and investment setup, and several upcoming cycles.
+          </p>
+          <div className="mt-3 flex justify-end">
+            <button type="button" className="btn-secondary" onClick={onCreateDemo} disabled={loading || demoLoading}>
+              {demoLoading ? 'Creating Demo…' : 'Create Demo Budget'}
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </div>
   )
 }
 
@@ -439,6 +456,14 @@ export default function BudgetsPage() {
       navigate(`/budgets/${newBudget.budgetid}/setup`)
     },
   })
+  const createDemo = useMutation({
+    mutationFn: createDemoBudget,
+    onSuccess: (newBudget) => {
+      qc.invalidateQueries({ queryKey: ['budgets'] })
+      setModal(null)
+      navigate(`/budgets/${newBudget.budgetid}`)
+    },
+  })
 
   const remove = useMutation({
     mutationFn: deleteBudget,
@@ -447,6 +472,10 @@ export default function BudgetsPage() {
 
   const handleSubmit = form => {
     create.mutate(form)
+  }
+
+  const handleCreateDemo = () => {
+    createDemo.mutate()
   }
 
   if (isLoading) return <div className="flex justify-center pt-16"><Spinner /></div>
@@ -521,8 +550,11 @@ export default function BudgetsPage() {
           <BudgetForm
             initial={emptyForm}
             onSubmit={handleSubmit}
+            onCreateDemo={handleCreateDemo}
             onClose={() => setModal(null)}
             loading={create.isPending}
+            demoLoading={createDemo.isPending}
+            showDemoOption={isDevModeEnabled()}
           />
         </Modal>
       )}
