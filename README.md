@@ -354,20 +354,6 @@ Additional budget route surface now includes:
 
 - budget health summary/detail via `/budgets/{budgetid}/health`
 
-## To Do
-
-- Evaluate user-facing terminology shift from `Budget` -> `Book` and `Period` -> `Chapter`.
-- Preferred direction: use `Book` and `Chapter` in frontend labels/navigation while keeping core finance terms such as `budget`, `actual`, `surplus`, `income`, and `expense` for clarity.
-- If adopted, keep backend/API/database naming unchanged initially and treat this as a frontend/content relabel pass first.
-- Decide whether projected savings should stay investment-based everywhere or become a broader combined savings/planned-investment concept.
-- Continue normalizing user-facing language around `Savings`, `Investment`, and `Primary investment line`.
-- Continue refining budget health scoring semantics, weighting, and evidence language from real usage feedback.
-- Continue refining health personalisation wording so each control clearly names the exact financial value being assessed.
-- Decide whether the deficit concern controls need an even clearer combined explanation when both percentage and dollar thresholds are set.
-- Decide whether app timezone should remain deployment-driven through `TZ` or eventually become a user-configurable setting.
-- Extend the budget health momentum model so corrective action in future periods can influence the visible trend more directly.
-- Assess a revision reason code pick list when revising an expense item, especially if revision reporting becomes more structured later.
-
 ## Development Roadmap
 
 The next larger product milestones currently identified for Dosh are:

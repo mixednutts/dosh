@@ -12,6 +12,7 @@ Its purpose is to help future sessions quickly identify:
 - what engineering work is most likely next
 - what supporting foundation work is still missing
 - where future sessions should pick up
+- the current single-source-of-truth backlog for outstanding follow-up work
 
 It complements:
 
@@ -254,6 +255,10 @@ Suggested implementation slices:
 - decide whether repeated demo imports should eventually gain clearer naming, timestamps, or lightweight duplicate-management affordances
 - consider adding a richer demo-validation checklist or smoke flow once more reporting and reconciliation surfaces exist
 - keep the demo seed aligned with any later budget-health scoring changes so walkthrough data does not become misleading or stale
+- tighten period-detail UI polish around totals and status affordances, especially for the income, investment, and balance sections
+- add period-detail totals for investments and balances while keeping movement read-only and avoiding a meaningless movement total
+- fix the empty visual artifact at the end of the total income line on the period detail page
+- align the investment spent pill wording and behavior with the expense spent pill so both outflow workflows feel consistent
 
 ## Near-Term Engineering Work
 
