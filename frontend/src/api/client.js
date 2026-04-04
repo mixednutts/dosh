@@ -68,6 +68,12 @@ export const updateIncomeActual = (periodId, desc, actualamount) =>
   api.patch(`/periods/${periodId}/income/${encodeURIComponent(desc)}`, { actualamount }).then(r => r.data)
 export const addToIncomeActual = (periodId, desc, amount) =>
   api.post(`/periods/${periodId}/income/${encodeURIComponent(desc)}/add`, { amount }).then(r => r.data)
+export const getIncomeTransactions = (periodId, desc) =>
+  api.get(`/periods/${periodId}/income/${encodeURIComponent(desc)}/transactions/`).then(r => r.data)
+export const addIncomeTransaction = (periodId, desc, data) =>
+  api.post(`/periods/${periodId}/income/${encodeURIComponent(desc)}/transactions/`, data).then(r => r.data)
+export const deleteIncomeTransaction = (periodId, desc, txId) =>
+  api.delete(`/periods/${periodId}/income/${encodeURIComponent(desc)}/transactions/${txId}`)
 export const updateExpenseActual = (periodId, desc, actualamount) =>
   api.patch(`/periods/${periodId}/expense/${encodeURIComponent(desc)}`, { actualamount }).then(r => r.data)
 export const addToExpenseActual = (periodId, desc, amount) =>

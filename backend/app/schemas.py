@@ -492,6 +492,25 @@ class InvestmentTxOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class IncomeTxCreate(BaseModel):
+    amount: Decimal
+    note: Optional[str] = None
+
+
+class IncomeTxOut(BaseModel):
+    id: int
+    finperiodid: int
+    budgetid: int
+    incomedesc: str
+    amount: Decimal
+    note: Optional[str] = None
+    entrydate: datetime
+    source: str
+    affected_account_desc: Optional[str] = None
+    related_account_desc: Optional[str] = None
+    model_config = {"from_attributes": True}
+
+
 class PeriodTransactionOut(BaseModel):
     id: int
     finperiodid: int

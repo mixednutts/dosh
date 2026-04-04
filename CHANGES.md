@@ -25,6 +25,89 @@ For the current setup-assessment and downstream-protection model introduced this
 
 For recent concrete verification outcomes, read [TEST_RESULTS_SUMMARY.md](/home/ubuntu/dosh/TEST_RESULTS_SUMMARY.md).
 
+For the dedicated implementation plan that drove the income transaction unification and legacy-ledger cleanup work in this session, read [INCOME_TRANSACTIONS_UNIFICATION_AND_LEGACY_LEDGER_CLEANUP_PLAN.md](/home/ubuntu/dosh/INCOME_TRANSACTIONS_UNIFICATION_AND_LEGACY_LEDGER_CLEANUP_PLAN.md).
+
+## Latest Session: Income Transactions Unification, Unified Ledger Cleanup, Frontend Toolchain Modernisation, And Deployment Hardening
+
+This session focused on removing remaining inconsistency in actual-entry workflows, tightening ledger trust, and cleaning up the frontend delivery baseline.
+
+Important direction now in place:
+
+- income actuals on the period detail page now use a dedicated transaction-history workflow rather than inline set or add controls
+- `ACTIVE` locked cycles now still allow actual-entry and transaction recording, while structural edits remain protected
+- the unified `periodtransactions` ledger is now the sole live transaction store; obsolete expense and investment transaction tables and bridge code have been removed
+- backend startup no longer mutates schema during app boot through targeted `ALTER TABLE` checks
+- the repository now has an explicit database cutover script and the local SQLite database was backed up before the schema cleanup was applied
+- the frontend has moved from Create React App to Vite while keeping Jest and Playwright coverage working
+- the frontend Docker build now uses Node 20, and `npm audit` is clean at zero reported vulnerabilities
+- stale CRA artifacts such as the old `public/index.html`, `src/index.js`, and legacy `build/` output were removed
+
+### 1. Income actuals now follow the same transaction-first model as expenses and investments
+
+The period detail income section no longer uses direct inline actual overrides.
+
+Current behavior:
+
+- income rows open a dedicated transaction modal
+- users record actual income through add, correction, and delete transaction flows
+- `Add New Income Line Item` remains a separate structural setup-style action for new budgeted lines
+- standard income, transfer-backed income, and `Carried Forward` now all live under one consistent transaction-entry pattern, while keeping their domain-specific rules
+
+Important product meaning:
+
+- actuals are now entered more consistently across income, expenses, and investments
+- the page distinguishes more clearly between structural planning actions and real transaction recording
+- direct actual-edit shortcuts should not be reintroduced unless there is a deliberate ledger-model decision to do so
+
+### 2. Locked-cycle meaning was clarified and protected by tests
+
+This session surfaced a regression where locking a cycle also blocked actual recording.
+
+Current rule:
+
+- `CLOSED` cycles block normal workflow writes
+- `ACTIVE` plus `islocked=true` blocks structural edits only
+- actuals and transactions must still be recordable on locked active cycles
+
+Important engineering meaning:
+
+- lock behavior is now explicitly part of the test boundary, not just an assumed UI detail
+- future work should treat lifecycle state and manual structure protection as separate concerns
+
+### 3. The unified ledger is now the only live transaction store
+
+The application had already been functionally centered on `PeriodTransaction`, but older expense and investment transaction tables still existed as legacy persistence artifacts.
+
+Current behavior:
+
+- dedicated expense, investment, and income transaction routes now all write to the same live ledger table
+- obsolete legacy transaction tables and related bridge logic have been removed from the active model
+- startup no longer performs schema mutation on app boot
+- one explicit cutover script now defines the current schema transition path, with database backup required before schema-level changes
+
+Important product meaning:
+
+- Dosh should now be treated as a ledger-centered workflow app rather than a mixed ledger-plus-legacy-children design
+- real versioned migrations are still needed, but the active baseline is cleaner and easier to reason about
+
+### 4. Frontend delivery and dependency posture were modernized
+
+The old CRA-based frontend stack was carrying security findings and an aging Docker baseline.
+
+Current behavior:
+
+- frontend build and dev now run through Vite
+- frontend tests still run through Jest and React Testing Library
+- Playwright continues to cover the main smoke workflows
+- the frontend Docker image now builds with Node 20 instead of Node 16
+- `npm audit` now reports zero vulnerabilities for the frontend package tree
+
+Important engineering meaning:
+
+- future frontend work should assume Vite entrypoints and config rather than CRA conventions
+- stale CRA artifacts should not be restored
+- deprecation warnings during install are not currently security blockers, but should still be reviewed over time
+
 ## Latest Session: Setup UX Refinement, Account Naming Localisation Seed, And Period Summary Expansion
 
 This session focused on tightening workflow wording, reducing repeated navigation noise, and introducing the first low-risk localisation-style display preference.

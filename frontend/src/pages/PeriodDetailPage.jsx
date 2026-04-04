@@ -9,7 +9,7 @@ import {
 } from '@heroicons/react/24/outline'
 import {
   getPeriodDetail, getBudget, setPeriodLock,
-  updateIncomeActual, addToIncomeActual,
+  getIncomeTransactions, addIncomeTransaction, deleteIncomeTransaction,
   addExpenseToPeriod, addIncomeToPeriod, savingsTransfer,
   getExpenseItems, getIncomeTypes, createExpenseItem,
   getExpenseEntries, addExpenseEntry, deleteExpenseEntry,
@@ -81,45 +81,146 @@ function freqLabel(freqtype, frequencyValue) {
   return freqtype
 }
 
-// ── Income actual cell (set or add) ──────────────────────────────────────────
-function IncomeActualCell({ value, onSet, onAdd, disabled = false }) {
-  const [mode, setMode] = useState(null)
-  const [draft, setDraft] = useState('')
+function IncomeTransactionsModal({ periodId, incomedesc, budgetamount, actualamount, locked, onClose, defaultType = 'credit' }) {
+  const qc = useQueryClient()
+  const [amount, setAmount] = useState('')
+  const [note, setNote] = useState('')
+  const [type, setType] = useState(defaultType) // credit | debit
 
-  const save = () => {
-    const n = parseFloat(draft)
-    if (!isNaN(n)) mode === 'set' ? onSet(n) : onAdd(n)
-    setMode(null); setDraft('')
+  const { data: transactions = [], isLoading } = useQuery({
+    queryKey: ['income-transactions', periodId, incomedesc],
+    queryFn: () => getIncomeTransactions(periodId, incomedesc),
+  })
+
+  const add = useMutation({
+    mutationFn: data => addIncomeTransaction(periodId, incomedesc, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['income-transactions', periodId, incomedesc] })
+      qc.invalidateQueries({ queryKey: ['period', periodId] })
+      setAmount('')
+      setNote('')
+      onClose()
+    },
+  })
+
+  const remove = useMutation({
+    mutationFn: txId => deleteIncomeTransaction(periodId, incomedesc, txId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['income-transactions', periodId, incomedesc] })
+      qc.invalidateQueries({ queryKey: ['period', periodId] })
+    },
+  })
+
+  const handleAdd = e => {
+    e.preventDefault()
+    const n = parseFloat(amount)
+    if (isNaN(n) || n <= 0) return
+    add.mutate({ amount: type === 'credit' ? n : -n, note: note || null })
   }
 
-  if (mode) {
-    return (
-      <span className="inline-flex items-center gap-1">
-        <span className="text-xs text-gray-400">{mode === 'add' ? '+' : '='}</span>
-        <input autoFocus type="number" step="0.01" min="0" value={draft}
-          onChange={e => setDraft(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') { setMode(null); setDraft('') } }}
-          onBlur={save}
-          className="w-24 rounded border border-dosh-400 px-1 py-0.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-dosh-500 dark:bg-gray-800 dark:text-white"
-          placeholder="0.00" />
-      </span>
-    )
-  }
+  const runningTotal = transactions.reduce((s, tx) => s + Number(tx.amount), 0)
+  const variance = Number(actualamount) - Number(budgetamount)
 
   return (
-    <span className="inline-flex items-center gap-1 group">
-      <span onClick={() => { if (!disabled) { setDraft(String(Number(value ?? 0))); setMode('set') } }}
-        className={`${disabled ? 'cursor-default opacity-70' : 'cursor-pointer'} rounded px-1.5 py-0.5 bg-dosh-50 border border-dosh-200 hover:border-dosh-400 text-dosh-800 font-medium transition-colors dark:bg-dosh-900/30 dark:border-dosh-700 dark:text-dosh-300`}
-        title="Click to set">
-        {fmt(value ?? 0)}
-      </span>
-      <button onClick={() => { if (!disabled) { setDraft(''); setMode('add') } }}
-        disabled={disabled}
-        className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded text-dosh-500 hover:bg-dosh-100 dark:hover:bg-dosh-900/40"
-        title="Add to total">
-        <PlusIcon className="w-3 h-3" />
-      </button>
-    </span>
+    <div className="space-y-4">
+      <div className="grid grid-cols-3 gap-2 text-xs text-center">
+        {[
+          { label: 'Budget', value: budgetamount, cls: 'text-gray-600 dark:text-gray-400' },
+          { label: 'Actual', value: actualamount, cls: 'text-success-700 dark:text-success-400 font-bold' },
+          { label: 'Variance', value: variance, cls: variance >= 0 ? 'text-success-600' : 'text-red-600' },
+        ].map(({ label, value, cls }) => (
+          <div key={label} className="card p-2">
+            <p className="text-gray-400">{label}</p>
+            <p className={`font-semibold ${cls}`}>{fmt(value)}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="px-3 py-2 bg-gray-50 dark:bg-gray-800 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide flex justify-between">
+          <span>Transactions</span>
+          <span>{transactions.length} entries</span>
+        </div>
+        {isLoading ? (
+          <div className="flex justify-center py-4"><Spinner className="w-4 h-4" /></div>
+        ) : transactions.length === 0 ? (
+          <p className="text-center text-sm text-gray-400 py-4 italic">No transactions yet</p>
+        ) : (
+          <div className="divide-y divide-gray-100 dark:divide-gray-800 max-h-52 overflow-y-auto">
+            {transactions.map(tx => (
+              <div key={tx.id} className="flex items-center gap-2 px-3 py-2">
+                <span className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold
+                  ${Number(tx.amount) >= 0
+                    ? 'bg-success-100 text-success-700 dark:bg-success-900/40 dark:text-success-400'
+                    : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400'}`}>
+                  {Number(tx.amount) >= 0 ? '+' : '−'}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p className={`text-sm font-medium ${Number(tx.amount) >= 0 ? 'text-success-700 dark:text-success-400' : 'text-red-700 dark:text-red-400'}`}>
+                    {fmt(Math.abs(tx.amount))}
+                  </p>
+                  {tx.note && <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{tx.note}</p>}
+                  <p className="text-xs text-gray-400">{format(parseISO(tx.entrydate), 'dd MMM yyyy HH:mm')}</p>
+                </div>
+                {!locked && (
+                  <button onClick={() => remove.mutate(tx.id)}
+                    className="p-1 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                    <TrashIcon className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+        {transactions.length > 0 && (
+          <div className="px-3 py-2 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 flex justify-between text-sm font-semibold">
+            <span className="text-gray-600 dark:text-gray-400">Total</span>
+            <span className={runningTotal >= 0 ? 'text-success-700 dark:text-success-400' : 'text-red-700 dark:text-red-400'}>{fmt(runningTotal)}</span>
+          </div>
+        )}
+      </div>
+
+      {!locked && (
+        <form onSubmit={handleAdd} className="space-y-3 pt-1 border-t border-gray-200 dark:border-gray-700">
+          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Add Transaction</p>
+          <div className="flex rounded-md border border-gray-200 dark:border-gray-700 overflow-hidden text-sm">
+            {[['credit', 'Income (+)'], ['debit', 'Correction (−)']].map(([val, label]) => (
+              <button key={val} type="button" onClick={() => setType(val)}
+                className={`flex-1 py-1.5 font-medium transition-colors ${type === val ? (val === 'credit' ? 'bg-success-600 text-white' : 'bg-red-600 text-white') : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-2 items-center">
+            <input type="number" step="0.01" min="0.01" required value={amount}
+              onChange={e => setAmount(e.target.value)} placeholder="Amount"
+              className="input flex-1" />
+            {Number(budgetamount) > 0 && (
+              <button type="button"
+                onClick={() => setAmount(String(Number(budgetamount)))}
+                className="text-xs btn-secondary whitespace-nowrap"
+                title="Allocate full budget amount">
+                Full ({fmt(budgetamount)})
+              </button>
+            )}
+            <input type="text" value={note} onChange={e => setNote(e.target.value)}
+              placeholder="Note (optional)" className="input flex-[2]" />
+          </div>
+          <div className="flex justify-end gap-2">
+            <button type="button" className="btn-secondary" onClick={onClose}>Close</button>
+            <button type="submit" disabled={add.isPending}
+              className={type === 'credit' ? 'btn-primary' : 'btn-danger'}>
+              {add.isPending ? 'Saving…' : (type === 'credit' ? 'Add Income' : 'Add Correction')}
+            </button>
+          </div>
+        </form>
+      )}
+      {locked && (
+        <div className="flex justify-end">
+          <button className="btn-secondary" onClick={onClose}>Close</button>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -1045,6 +1146,7 @@ export default function PeriodDetailPage() {
   const qc = useQueryClient()
   const [showAddExpense, setShowAddExpense] = useState(false)
   const [showAddIncome, setShowAddIncome] = useState(false)
+  const [incomeModal, setIncomeModal] = useState(null) // { incomedesc, budgetamount, actualamount, readOnly, defaultType }
   const [entriesModal, setEntriesModal] = useState(null) // { expensedesc, budgetamount, actualamount }
   const [noteModal, setNoteModal] = useState(null) // { expensedesc, note }
   const [reviseModal, setReviseModal] = useState(null) // { expensedesc }
@@ -1068,8 +1170,6 @@ export default function PeriodDetailPage() {
   })
 
   const lock = useMutation({ mutationFn: islocked => setPeriodLock(id, islocked), onSuccess: () => qc.invalidateQueries({ queryKey: ['period', id] }) })
-  const setIncome = useMutation({ mutationFn: ({ desc, val }) => updateIncomeActual(id, desc, val), onSuccess: () => qc.invalidateQueries({ queryKey: ['period', id] }) })
-  const addIncome = useMutation({ mutationFn: ({ desc, val }) => addToIncomeActual(id, desc, val), onSuccess: () => qc.invalidateQueries({ queryKey: ['period', id] }) })
   const setExpenseStatus = useMutation({ mutationFn: ({ desc, status, revisionComment = null }) => setPeriodExpenseStatus(id, desc, status, revisionComment), onSuccess: () => qc.invalidateQueries({ queryKey: ['period', id] }) })
   const setInvestmentStatus = useMutation({ mutationFn: ({ desc, status, revisionComment = null }) => setPeriodInvestmentStatus(id, desc, status, revisionComment), onSuccess: () => qc.invalidateQueries({ queryKey: ['period', id] }) })
   const editExpenseBudget = useMutation({ mutationFn: ({ desc, budgetamount }) => updatePeriodExpenseBudget(id, desc, budgetamount), onSuccess: () => qc.invalidateQueries({ queryKey: ['period', id] }) })
@@ -1239,7 +1339,9 @@ export default function PeriodDetailPage() {
             <tr className="border-b border-gray-100 dark:border-gray-800">
               <th className="table-header-cell text-left">Description</th>
               <th className="table-header-cell text-right col-budget">Budget</th>
-              <th className="table-header-cell text-right col-actual">Actual ✎</th>
+              <th className="table-header-cell text-right col-actual">
+                <span title="Sum of all transactions — read-only">Actual ∑</span>
+              </th>
               <th className="table-header-cell text-right">Variance</th>
               <th className="table-header-cell"></th>
             </tr>
@@ -1255,23 +1357,43 @@ export default function PeriodDetailPage() {
                   </div>
                 </td>
                 <td className="table-cell-muted text-right col-budget">{fmt(i.budgetamount)}</td>
-                <td className="table-cell text-right col-actual">
-                  <IncomeActualCell disabled={closed} value={i.actualamount} onSet={val => setIncome.mutate({ desc: i.incomedesc, val })} onAdd={val => addIncome.mutate({ desc: i.incomedesc, val })} />
-                </td>
+                <td className="table-cell text-right col-actual font-semibold text-gray-800 dark:text-gray-200">{fmt(i.actualamount)}</td>
                 <td className="table-cell text-right">
                   <span className={`font-medium ${Number(i.actualamount) >= Number(i.budgetamount) ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'}`}>
                     {fmt(Number(i.actualamount) - Number(i.budgetamount))}
                   </span>
                 </td>
                 <td className="px-3 py-2">
-                  {!locked && !closed && i.system_key !== 'carry_forward' && (
+                  <div className="flex items-center justify-center gap-1 flex-wrap">
                     <button
-                      onClick={() => { if (window.confirm(`Remove "${i.incomedesc}" from this budget cycle?`)) deleteIncomeLine.mutate(i.incomedesc) }}
-                      title="Remove from budget cycle"
-                      className="flex items-center justify-center w-7 h-7 rounded-full text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
-                      <TrashIcon className="w-4 h-4" />
+                      disabled={closed}
+                      onClick={() => setIncomeModal({ incomedesc: i.incomedesc, budgetamount: i.budgetamount, actualamount: i.actualamount, defaultType: 'credit' })}
+                      title="Add income transaction"
+                      className={`flex items-center justify-center w-7 h-7 rounded-full font-bold text-sm transition-colors ${closed ? 'opacity-30 cursor-not-allowed bg-gray-100 text-gray-400' : 'bg-success-100 text-success-700 hover:bg-success-200 dark:bg-success-900/40 dark:text-success-400 dark:hover:bg-success-900/60'}`}>
+                      <PlusIcon className="w-4 h-4" />
                     </button>
-                  )}
+                    <button
+                      disabled={closed}
+                      onClick={() => setIncomeModal({ incomedesc: i.incomedesc, budgetamount: i.budgetamount, actualamount: i.actualamount, defaultType: 'debit' })}
+                      title="Add income correction"
+                      className={`flex items-center justify-center w-7 h-7 rounded-full font-bold text-sm transition-colors ${closed ? 'opacity-30 cursor-not-allowed bg-gray-100 text-gray-400' : 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/40 dark:text-red-400 dark:hover:bg-red-900/60'}`}>
+                      <MinusIcon className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => setIncomeModal({ incomedesc: i.incomedesc, budgetamount: i.budgetamount, actualamount: i.actualamount, defaultType: 'credit', readOnly: closed })}
+                      title="View transactions"
+                      className="flex items-center justify-center w-7 h-7 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                      <ListBulletIcon className="w-4 h-4" />
+                    </button>
+                    {!locked && !closed && i.system_key !== 'carry_forward' && (
+                      <button
+                        onClick={() => { if (window.confirm(`Remove "${i.incomedesc}" from this budget cycle?`)) deleteIncomeLine.mutate(i.incomedesc) }}
+                        title="Remove from budget cycle"
+                        className="flex items-center justify-center w-7 h-7 rounded-full text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                        <TrashIcon className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
@@ -1379,21 +1501,21 @@ export default function PeriodDetailPage() {
                           onRevise={() => setReviseModal({ expensedesc: e.expensedesc })}
                         />
                         <button
-                          disabled={closed || locked || isPaid}
+                          disabled={closed || isPaid}
                           onClick={() => setEntriesModal({ expensedesc: e.expensedesc, budgetamount: e.budgetamount, actualamount: e.actualamount, defaultType: 'debit' })}
                           title="Add expense transaction"
-                          className={`flex items-center justify-center w-7 h-7 rounded-full font-bold text-sm transition-colors ${closed || locked || isPaid ? 'opacity-30 cursor-not-allowed bg-gray-100 text-gray-400' : 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/40 dark:text-red-400 dark:hover:bg-red-900/60'}`}>
+                          className={`flex items-center justify-center w-7 h-7 rounded-full font-bold text-sm transition-colors ${closed || isPaid ? 'opacity-30 cursor-not-allowed bg-gray-100 text-gray-400' : 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/40 dark:text-red-400 dark:hover:bg-red-900/60'}`}>
                           <PlusIcon className="w-4 h-4" />
                         </button>
                         <button
-                          disabled={closed || locked || isPaid}
+                          disabled={closed || isPaid}
                           onClick={() => setEntriesModal({ expensedesc: e.expensedesc, budgetamount: e.budgetamount, actualamount: e.actualamount, defaultType: 'credit' })}
                           title="Add refund/credit"
-                          className={`flex items-center justify-center w-7 h-7 rounded-full font-bold text-sm transition-colors ${closed || locked || isPaid ? 'opacity-30 cursor-not-allowed bg-gray-100 text-gray-400' : 'bg-dosh-100 text-dosh-700 hover:bg-dosh-200 dark:bg-dosh-900/40 dark:text-dosh-400 dark:hover:bg-dosh-900/60'}`}>
+                          className={`flex items-center justify-center w-7 h-7 rounded-full font-bold text-sm transition-colors ${closed || isPaid ? 'opacity-30 cursor-not-allowed bg-gray-100 text-gray-400' : 'bg-dosh-100 text-dosh-700 hover:bg-dosh-200 dark:bg-dosh-900/40 dark:text-dosh-400 dark:hover:bg-dosh-900/60'}`}>
                           <MinusIcon className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => setEntriesModal({ expensedesc: e.expensedesc, budgetamount: e.budgetamount, actualamount: e.actualamount, defaultType: 'debit', readOnly: closed || locked || isPaid })}
+                          onClick={() => setEntriesModal({ expensedesc: e.expensedesc, budgetamount: e.budgetamount, actualamount: e.actualamount, defaultType: 'debit', readOnly: closed || isPaid })}
                           title="View transactions"
                           className="flex items-center justify-center w-7 h-7 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
                           <ListBulletIcon className="w-4 h-4" />
@@ -1469,21 +1591,21 @@ export default function PeriodDetailPage() {
                           onRevise={() => setReviseInvestmentModal({ investmentdesc: inv.investmentdesc })}
                         />
                         <button
-                          disabled={closed || locked || inv.status === 'Paid'}
+                          disabled={closed || inv.status === 'Paid'}
                           onClick={() => setInvestmentModal({ investmentdesc: inv.investmentdesc, openingValue: inv.opening_value, closingValue: inv.closing_value, budgetedAmount: inv.budgeted_amount, defaultType: 'increase' })}
                           title="Add investment transaction"
-                          className={`flex items-center justify-center w-7 h-7 rounded-full font-bold text-sm transition-colors ${closed || locked || inv.status === 'Paid' ? 'opacity-30 cursor-not-allowed bg-gray-100 text-gray-400' : 'bg-dosh-100 text-dosh-700 hover:bg-dosh-200 dark:bg-dosh-900/40 dark:text-dosh-400 dark:hover:bg-dosh-900/60'}`}>
+                          className={`flex items-center justify-center w-7 h-7 rounded-full font-bold text-sm transition-colors ${closed || inv.status === 'Paid' ? 'opacity-30 cursor-not-allowed bg-gray-100 text-gray-400' : 'bg-dosh-100 text-dosh-700 hover:bg-dosh-200 dark:bg-dosh-900/40 dark:text-dosh-400 dark:hover:bg-dosh-900/60'}`}>
                           <PlusIcon className="w-4 h-4" />
                         </button>
                         <button
-                          disabled={closed || locked || inv.status === 'Paid'}
+                          disabled={closed || inv.status === 'Paid'}
                           onClick={() => setInvestmentModal({ investmentdesc: inv.investmentdesc, openingValue: inv.opening_value, closingValue: inv.closing_value, budgetedAmount: inv.budgeted_amount, defaultType: 'decrease' })}
                           title="Add subtraction/withdrawal"
-                          className={`flex items-center justify-center w-7 h-7 rounded-full font-bold text-sm transition-colors ${closed || locked || inv.status === 'Paid' ? 'opacity-30 cursor-not-allowed bg-gray-100 text-gray-400' : 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/40 dark:text-red-400 dark:hover:bg-red-900/60'}`}>
+                          className={`flex items-center justify-center w-7 h-7 rounded-full font-bold text-sm transition-colors ${closed || inv.status === 'Paid' ? 'opacity-30 cursor-not-allowed bg-gray-100 text-gray-400' : 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/40 dark:text-red-400 dark:hover:bg-red-900/60'}`}>
                           <MinusIcon className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => setInvestmentModal({ investmentdesc: inv.investmentdesc, openingValue: inv.opening_value, closingValue: inv.closing_value, budgetedAmount: inv.budgeted_amount, defaultType: 'increase', readOnly: closed || locked || inv.status === 'Paid' })}
+                          onClick={() => setInvestmentModal({ investmentdesc: inv.investmentdesc, openingValue: inv.opening_value, closingValue: inv.closing_value, budgetedAmount: inv.budgeted_amount, defaultType: 'increase', readOnly: closed || inv.status === 'Paid' })}
                           title="View transactions"
                           className="flex items-center justify-center w-7 h-7 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
                           <ListBulletIcon className="w-4 h-4" />
@@ -1551,6 +1673,19 @@ export default function PeriodDetailPage() {
       )}
 
       {/* Modals */}
+      {incomeModal && (
+        <Modal title={`Transactions — ${incomeModal.incomedesc}`} onClose={() => setIncomeModal(null)} size="lg">
+          <IncomeTransactionsModal
+            periodId={id}
+            incomedesc={incomeModal.incomedesc}
+            budgetamount={incomeModal.budgetamount}
+            actualamount={incomeModal.actualamount}
+            locked={closed || incomeModal.readOnly}
+            defaultType={incomeModal.defaultType ?? 'credit'}
+            onClose={() => setIncomeModal(null)}
+          />
+        </Modal>
+      )}
       {entriesModal && (
         <Modal title={`Transactions — ${entriesModal.expensedesc}`} onClose={() => setEntriesModal(null)} size="lg">
           <ExpenseEntriesModal
@@ -1559,7 +1694,7 @@ export default function PeriodDetailPage() {
             expensedesc={entriesModal.expensedesc}
             budgetamount={entriesModal.budgetamount}
             actualamount={entriesModal.actualamount}
-            locked={locked || entriesModal.readOnly}
+            locked={closed || entriesModal.readOnly}
             defaultType={entriesModal.defaultType ?? 'debit'}
             onClose={() => setEntriesModal(null)}
           />
@@ -1631,7 +1766,7 @@ export default function PeriodDetailPage() {
             openingValue={investmentModal.openingValue}
             closingValue={investmentModal.closingValue}
             budgetedAmount={investmentModal.budgetedAmount}
-            locked={investmentModal.readOnly || locked || closed}
+            locked={investmentModal.readOnly || closed}
             defaultType={investmentModal.defaultType ?? 'increase'}
             onClose={() => setInvestmentModal(null)}
           />

@@ -27,7 +27,7 @@ async function completeMinimumSetup(page) {
   await expect(page.getByRole('heading', { name: 'Add Account' })).toBeVisible()
   await page.getByPlaceholder('e.g. Everyday Account').fill('Main Account')
   await page.getByPlaceholder('0.00').fill('1000')
-  await page.getByLabel(/Primary account \(expenses deducted from this account\)/i).check()
+  await page.getByLabel(/Primary transaction account \(expenses deducted from this account\)/i).check()
   await page.getByRole('button', { name: 'Save' }).click()
   await expect(page.getByText('Main Account')).toBeVisible()
 
@@ -70,7 +70,7 @@ test('creates a budget and reaches setup and budget-cycle handoff', async ({ pag
   await createBudget(page, 'E2E Household')
   await expect(page.getByText('Current Setup')).toBeVisible()
   await expect(page.getByText('0 accounts, 0 income types, 0 active expense items, 0 investments')).toBeVisible()
-  await expect(page.getByText('Set one account as the primary account so expense movements have a default home.')).toBeVisible()
+  await expect(page.getByText('Set one account as the primary transaction account so expense movements have a default home.')).toBeVisible()
 
   await page.goto(page.url().replace(/\/setup$/, ''))
 

@@ -144,42 +144,10 @@ class PeriodExpense(Base):
         foreign_keys="[PeriodExpense.budgetid, PeriodExpense.expensedesc]",
         back_populates="period_expenses",
     )
-    entries = relationship("PeriodExpenseEntry", back_populates="period_expense", cascade="all, delete-orphan")
-
     __table_args__ = (
         ForeignKeyConstraint(
             ["budgetid", "expensedesc"],
             ["expenseitems.budgetid", "expenseitems.expensedesc"],
-        ),
-    )
-
-
-class PeriodExpenseEntry(Base):
-    """Individual expense transactions against a period expense line item."""
-    __tablename__ = "periodexpense_transactions"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    finperiodid = Column(Integer, nullable=False)
-    budgetid = Column(Integer, nullable=False)
-    expensedesc = Column(String, nullable=False)
-    # positive = expense incurred, negative = refund/credit
-    amount = Column(Numeric(10, 2), nullable=False)
-    note = Column(String)
-    entrydate = Column(DateTime, default=dt.utcnow)
-
-    period_expense = relationship(
-        "PeriodExpense",
-        primaryjoin="and_(PeriodExpenseEntry.finperiodid == PeriodExpense.finperiodid, "
-                    "PeriodExpenseEntry.budgetid == PeriodExpense.budgetid, "
-                    "PeriodExpenseEntry.expensedesc == PeriodExpense.expensedesc)",
-        foreign_keys="[PeriodExpenseEntry.finperiodid, PeriodExpenseEntry.budgetid, PeriodExpenseEntry.expensedesc]",
-        back_populates="entries",
-    )
-
-    __table_args__ = (
-        ForeignKeyConstraint(
-            ["finperiodid", "budgetid", "expensedesc"],
-            ["periodexpenses.finperiodid", "periodexpenses.budgetid", "periodexpenses.expensedesc"],
         ),
     )
 
@@ -270,43 +238,10 @@ class PeriodInvestment(Base):
         foreign_keys="[PeriodInvestment.budgetid, PeriodInvestment.investmentdesc]",
         back_populates="period_investments",
     )
-    transactions = relationship("PeriodInvestmentTransaction", back_populates="period_investment", cascade="all, delete-orphan")
-
     __table_args__ = (
         ForeignKeyConstraint(
             ["budgetid", "investmentdesc"],
             ["investmentitems.budgetid", "investmentitems.investmentdesc"],
-        ),
-    )
-
-
-class PeriodInvestmentTransaction(Base):
-    """Individual investment transactions (buy, sell, dividend, etc.)."""
-    __tablename__ = "periodinvestment_transactions"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    finperiodid = Column(Integer, nullable=False)
-    budgetid = Column(Integer, nullable=False)
-    investmentdesc = Column(String, nullable=False)
-    # positive = increase in value, negative = decrease/withdrawal
-    amount = Column(Numeric(10, 2), nullable=False)
-    note = Column(String)
-    entrydate = Column(DateTime, default=dt.utcnow)
-    # optional link to a period income line (e.g. savings transfer)
-    linked_incomedesc = Column(String, nullable=True)
-
-    period_investment = relationship(
-        "PeriodInvestment",
-        primaryjoin="and_(PeriodInvestmentTransaction.finperiodid == PeriodInvestment.finperiodid, "
-                    "PeriodInvestmentTransaction.investmentdesc == PeriodInvestment.investmentdesc)",
-        foreign_keys="[PeriodInvestmentTransaction.finperiodid, PeriodInvestmentTransaction.investmentdesc]",
-        back_populates="transactions",
-    )
-
-    __table_args__ = (
-        ForeignKeyConstraint(
-            ["finperiodid", "investmentdesc"],
-            ["periodinvestments.finperiodid", "periodinvestments.investmentdesc"],
         ),
     )
 

@@ -12,10 +12,8 @@ from .models import (
     InvestmentItem,
     PeriodBalance,
     PeriodExpense,
-    PeriodExpenseEntry,
     PeriodIncome,
     PeriodInvestment,
-    PeriodInvestmentTransaction,
     PeriodTransaction,
 )
 
@@ -371,105 +369,3 @@ def _is_active_period(period: FinancialPeriod) -> bool:
     now = dt.utcnow()
     in_range = period.startdate <= now <= period.enddate
     return (not period.islocked) or in_range
-
-
-def migrate_legacy_transactions(db: Session) -> None:
-    for entry in db.query(PeriodExpenseEntry).order_by(PeriodExpenseEntry.entrydate, PeriodExpenseEntry.id).all():
-        build_expense_tx(
-            entry.finperiodid,
-            entry.budgetid,
-            entry.expensedesc,
-            entry.amount,
-            db,
-            note=entry.note,
-            entrydate=entry.entrydate,
-            legacy_table="periodexpense_transactions",
-            legacy_id=entry.id,
-        )
-
-    for tx in db.query(PeriodInvestmentTransaction).order_by(PeriodInvestmentTransaction.entrydate, PeriodInvestmentTransaction.id).all():
-        build_investment_tx(
-            tx.finperiodid,
-            tx.budgetid,
-            tx.investmentdesc,
-            tx.amount,
-            db,
-            note=tx.note,
-            entrydate=tx.entrydate,
-            linked_incomedesc=tx.linked_incomedesc,
-            legacy_table="periodinvestment_transactions",
-            legacy_id=tx.id,
-        )
-
-
-def backfill_active_period_transactions(db: Session) -> None:
-    periods = db.query(FinancialPeriod).all()
-    for period in periods:
-        if not _is_active_period(period):
-            continue
-
-        for pe in db.query(PeriodExpense).filter(PeriodExpense.finperiodid == period.finperiodid).all():
-            diff = _rounded(_as_decimal(pe.actualamount) - expense_amount_from_ledger(period.finperiodid, pe.budgetid, pe.expensedesc, db))
-            if diff != Decimal("0.00"):
-                build_expense_tx(
-                    period.finperiodid,
-                    pe.budgetid,
-                    pe.expensedesc,
-                    diff,
-                    db,
-                    is_system=True,
-                    system_reason="migration_expense_actual_adjustment",
-                    note="System backfill to reconcile historical expense actuals",
-                    dedupe_key=f"migration:expense:{period.finperiodid}:{pe.expensedesc}",
-                )
-
-        for pi in db.query(PeriodInvestment).filter(PeriodInvestment.finperiodid == period.finperiodid).all():
-            diff = _rounded(_as_decimal(pi.actualamount) - investment_amount_from_ledger(period.finperiodid, pi.budgetid, pi.investmentdesc, db))
-            if diff != Decimal("0.00"):
-                build_investment_tx(
-                    period.finperiodid,
-                    pi.budgetid,
-                    pi.investmentdesc,
-                    diff,
-                    db,
-                    is_system=True,
-                    system_reason="migration_investment_actual_adjustment",
-                    note="System backfill to reconcile historical investment actuals",
-                    dedupe_key=f"migration:investment:{period.finperiodid}:{pi.investmentdesc}",
-                )
-
-        for pi in db.query(PeriodIncome).filter(PeriodIncome.finperiodid == period.finperiodid).all():
-            diff = _rounded(_as_decimal(pi.actualamount) - income_amount_from_ledger(period.finperiodid, pi.budgetid, pi.incomedesc, db))
-            if diff != Decimal("0.00"):
-                reason = "migration_transfer_backfill" if pi.incomedesc.startswith(TRANSFER_PREFIX) else "migration_income_actual_adjustment"
-                note = "System backfill to reconcile historical transfer actuals" if pi.incomedesc.startswith(TRANSFER_PREFIX) else "System backfill to reconcile historical income actuals"
-                build_income_tx(
-                    period.finperiodid,
-                    pi.budgetid,
-                    pi.incomedesc,
-                    diff,
-                    db,
-                    is_system=True,
-                    system_reason=reason,
-                    note=note,
-                    dedupe_key=f"migration:income:{period.finperiodid}:{pi.incomedesc}",
-                )
-
-        txs = _transactions_for_period(period.finperiodid, db)
-        for pb in db.query(PeriodBalance).filter(PeriodBalance.finperiodid == period.finperiodid).all():
-            ledger_delta = _rounded(sum((account_delta_for_transaction(tx, pb.balancedesc) for tx in txs), Decimal("0.00")))
-            stored_delta = _rounded(_as_decimal(pb.movement_amount))
-            diff = _rounded(stored_delta - ledger_delta)
-            if diff != Decimal("0.00"):
-                build_balance_adjustment_tx(
-                    period.finperiodid,
-                    pb.budgetid,
-                    pb.balancedesc,
-                    diff,
-                    db,
-                    system_reason="migration_balance_reconciliation",
-                    note="System backfill to reconcile historical account movement",
-                    dedupe_key=f"migration:balance:{period.finperiodid}:{pb.balancedesc}",
-                )
-
-        sync_period_state(period.finperiodid, db)

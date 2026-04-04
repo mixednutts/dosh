@@ -95,3 +95,72 @@ def test_period_transactions_drive_balance_movement_and_balance_transaction_view
     assert rainy_day_payload[0]["source"] == "transfer"
     assert rainy_day_payload[0]["related_account_desc"] == "Rainy Day"
 
+
+def test_locked_active_cycle_still_allows_actuals_and_transactions(client, db_session):
+    setup = create_minimum_budget_setup(db_session)
+    budget = setup["budget"]
+
+    salary = db_session.get(IncomeType, (budget.budgetid, "Salary"))
+    salary.linked_account = "Main Account"
+    emergency_fund = db_session.get(InvestmentItem, (budget.budgetid, "Emergency Fund"))
+    emergency_fund.linked_account_desc = "Main Account"
+    create_balance_type(
+        db_session,
+        budgetid=budget.budgetid,
+        balancedesc="Rainy Day",
+        opening_balance=Decimal("500.00"),
+        balance_type="Savings",
+        is_primary=False,
+    )
+
+    active_period = generate_periods(
+        client,
+        budgetid=budget.budgetid,
+        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        count=1,
+    )[0]
+
+    lock_response = client.patch(
+        f"/api/periods/{active_period['finperiodid']}/lock",
+        json={"islocked": True},
+    )
+    assert lock_response.status_code == 200, lock_response.text
+    assert lock_response.json()["islocked"] is True
+    assert lock_response.json()["cycle_status"] == "ACTIVE"
+
+    income_update = client.patch(
+        f"/api/periods/{active_period['finperiodid']}/income/Salary",
+        json={"actualamount": "1000.00"},
+    )
+    assert income_update.status_code == 200, income_update.text
+
+    expense_entry = client.post(
+        f"/api/periods/{active_period['finperiodid']}/expenses/Rent/entries/",
+        json={"amount": "200.00", "note": "Rent paid while locked"},
+    )
+    assert expense_entry.status_code == 201, expense_entry.text
+
+    investment_tx = client.post(
+        f"/api/periods/{active_period['finperiodid']}/investments/Emergency%20Fund/transactions/",
+        json={"amount": "50.00", "note": "Savings contribution while locked"},
+    )
+    assert investment_tx.status_code == 201, investment_tx.text
+
+    transfer_create = client.post(
+        f"/api/periods/{active_period['finperiodid']}/savings-transfer",
+        json={"budgetid": budget.budgetid, "balancedesc": "Rainy Day", "amount": "75.00"},
+    )
+    assert transfer_create.status_code == 201, transfer_create.text
+
+    transfer_actual = client.patch(
+        f"/api/periods/{active_period['finperiodid']}/income/Transfer%20from%20Rainy%20Day",
+        json={"actualamount": "75.00"},
+    )
+    assert transfer_actual.status_code == 200, transfer_actual.text
+
+    balances_response = client.get(f"/api/periods/{active_period['finperiodid']}/balances")
+    assert balances_response.status_code == 200, balances_response.text
+    balances = {row["balancedesc"]: row for row in balances_response.json()}
+
+    assert Decimal(balances["Main Account"]["movement_amount"]) == Decimal("925.00")
+    assert Decimal(balances["Rainy Day"]["movement_amount"]) == Decimal("-75.00")

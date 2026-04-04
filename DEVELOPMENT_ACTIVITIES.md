@@ -56,6 +56,12 @@ Recent progress worth carrying forward:
 - the period-detail page now surfaces `Projected Savings` and `Remaining Expenses` in a single 8-card summary grid
 - backend tests now run against an isolated SQLite database per test case, making mixed-area sessions much safer
 - Docker Compose deployment was rebuilt and verified successfully from the current working tree
+- income actual entry in the period detail page now uses a dedicated transaction modal instead of inline actual overrides
+- locked active cycles now preserve actual-entry and transaction flows while still guarding structural edits
+- `PeriodTransaction` is now the sole live transaction store after removal of obsolete legacy expense and investment transaction tables
+- backend startup schema patching has been removed in favor of an explicit cutover script for the current baseline
+- the frontend now uses Vite plus standalone Jest rather than Create React App
+- the frontend Docker image now uses Node 20 and the frontend dependency tree is currently clean on `npm audit`
 
 ## Active Development Streams
 
@@ -266,10 +272,10 @@ That approach has helped the project move quickly, but it will become fragile as
 Priority areas:
 
 - introduce proper versioned migrations
-- make startup behavior safer and more observable
-- separate one-time migration work from normal app startup
-- migrate current cycle-lifecycle and close-out schema bootstrap logic into the real migration path
-- migrate setup-assessment related schema evolution into the same real migration path
+- turn the current explicit cutover-script baseline into a real migration history
+- make schema evolution safer and more observable than ad hoc one-time scripts
+- separate one-time migration work from normal app startup permanently
+- capture the new unified-ledger baseline, close-out schema, and setup-assessment schema in the real migration path
 
 ### 3. Tighten Deployment and Build Reliability
 
@@ -278,11 +284,12 @@ The Docker setup works as a local deployment path, but the repo notes already ca
 Priority areas:
 
 - pin frontend install behavior more reliably
-- move the frontend Docker build to a Node version that matches current dependency engine expectations
+- keep the new Node 20 frontend Docker baseline healthy and revisit newer LTS adoption only when the toolchain is ready
 - verify compose assumptions around networks and Traefik usage
 - document expected production vs local deployment differences
 - confirm build and startup paths remain clean as the app grows
 - clean up startup and timestamp deprecation warnings that now appear during test and deployment runs
+- keep Playwright selectors aligned with current UI copy so full-suite verification stays trustworthy
 
 ### 4. Improve API and Domain Consistency
 
@@ -296,6 +303,7 @@ Priority areas:
 - preserve backend naming stability while refining frontend wording
 - keep balance movement read-only and transaction-derived
 - avoid introducing edit paths that weaken ledger trust
+- keep actual-entry workflows transaction-first across income, expenses, and investments unless a deliberate exception is introduced
 
 ### 5. Close Out And Reconciliation Handoff
 
@@ -392,7 +400,7 @@ If we want a practical order of work rather than just a thematic roadmap, this i
 5. Define the cash management workflow and the first summary model for available, committed, and reserved cash.
 6. Add tests and cleanup around health personalisation and current-period threshold behavior.
 7. Replace ad hoc startup migrations with a proper migration system.
-8. Clean up deployment warnings and align the frontend Docker build with current Node engine requirements.
+8. Clean up remaining deployment and backend deprecation warnings from startup hooks and timestamp usage.
 9. Review sidebar and budget-summary polish after real use, especially around future first-class sections.
 10. Define the first export and backup scope, including format and restore expectations.
 11. Revisit summary-card customization only after the current period-detail card set feels stable in real use.

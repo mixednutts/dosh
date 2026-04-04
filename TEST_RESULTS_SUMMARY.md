@@ -4,6 +4,124 @@ This document records meaningful automated test results from major working sessi
 
 It exists separately from [TEST_STRATEGY.md](/home/ubuntu/dosh/TEST_STRATEGY.md) so the strategy can stay stable while future sessions still have a record of what was actually run and verified.
 
+## Latest Session: Income Transactions, Unified Ledger Cleanup, Vite Migration, Vulnerability Remediation, And Deploy Verification
+
+Session outcomes verified in this run:
+
+- period-detail income actual entry was moved from inline editing to a dedicated transaction modal
+- locked active cycles were corrected so they still allow actual recording and transaction entry
+- dedicated backend income transaction routes were added over the unified `periodtransactions` ledger
+- obsolete legacy expense and investment transaction tables were removed from the active schema after taking a database backup and running the explicit cutover script
+- backend startup schema patching was removed
+- the frontend was migrated from CRA to Vite while keeping Jest and Playwright coverage working
+- the frontend Docker image moved to Node 20
+- frontend dependency vulnerabilities were reduced to zero reported findings
+- stale CRA artifacts and selectors were cleaned up, including Playwright wording drift and unused frontend entry files
+
+### Frontend verification
+
+Commands run during this session:
+
+```bash
+cd frontend
+npm test -- --runInBand --watchAll=false PeriodDetailPage.test.jsx
+npm test -- --watchAll=false
+npm run build
+npm run test:e2e
+npm audit --json
+```
+
+Result:
+
+- focused period-detail tests passed after the income transaction and locking changes
+- full frontend Jest suite passed
+- 8 suites passed
+- 43 tests passed
+- Vite production build completed successfully
+- Playwright smoke suite passed after selector updates
+- 4 end-to-end tests passed
+- `npm audit` reported `0` vulnerabilities
+
+Files with meaningful frontend test or harness updates in this session:
+
+- [PeriodDetailPage.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/PeriodDetailPage.test.jsx)
+- [budget-smoke.spec.js](/home/ubuntu/dosh/frontend/e2e/budget-smoke.spec.js)
+- [playwright.config.js](/home/ubuntu/dosh/frontend/playwright.config.js)
+- [package.json](/home/ubuntu/dosh/frontend/package.json)
+- [vite.config.js](/home/ubuntu/dosh/frontend/vite.config.js)
+- [jest.config.cjs](/home/ubuntu/dosh/frontend/jest.config.cjs)
+- [babel.config.cjs](/home/ubuntu/dosh/frontend/babel.config.cjs)
+- [jest.setup.js](/home/ubuntu/dosh/frontend/jest.setup.js)
+
+### Backend verification
+
+Commands run:
+
+```bash
+cd backend
+./.venv/bin/python -m pytest tests/test_transactions_and_balances.py -q
+./.venv/bin/python -m pytest tests/test_income_transactions.py tests/test_transactions_and_balances.py tests/test_live_ledger_behavior.py -q
+./.venv/bin/python -m pytest -q
+```
+
+Result:
+
+- focused locking and ledger tests passed
+- dedicated income transaction backend tests passed
+- full backend suite passed
+- 49 backend tests passed
+
+Files with meaningful backend test updates in this session:
+
+- [test_income_transactions.py](/home/ubuntu/dosh/backend/tests/test_income_transactions.py)
+- [test_transactions_and_balances.py](/home/ubuntu/dosh/backend/tests/test_transactions_and_balances.py)
+
+### Database cutover verification
+
+Command run:
+
+```bash
+python backend/scripts/cutover_unified_transactions.py
+```
+
+Operational steps recorded:
+
+- a timestamped SQLite backup was created under [backend/db_backups](/home/ubuntu/dosh/backend/db_backups) before schema mutation
+- the cutover script removed obsolete legacy expense and investment transaction tables from the active schema
+- backend imports and tests were run against the post-cutover code and schema state
+
+### Deployment verification
+
+Commands run:
+
+```bash
+docker compose -f docker-compose.yml up --build -d
+docker compose -f docker-compose.yml up --build -d frontend
+```
+
+Runtime checks:
+
+```bash
+docker compose -f docker-compose.yml ps
+curl http://127.0.0.1:3080/
+docker exec dosh-backend python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:80/api/health').read().decode())"
+```
+
+Result:
+
+- backend container started successfully
+- frontend container started successfully
+- frontend served on port `3080`
+- backend health endpoint returned `{"status":"ok","app":"Dosh"}`
+
+### Test failures and resolution notes
+
+- The initial full Playwright run failed in 3 smoke cases because the specs still expected the old `Primary account` wording.
+- The selectors and expected helper copy were updated to the current `Primary transaction account` wording in [budget-smoke.spec.js](/home/ubuntu/dosh/frontend/e2e/budget-smoke.spec.js).
+- The first Vite-based frontend Docker rebuild failed because [Dockerfile](/home/ubuntu/dosh/frontend/Dockerfile) still copied CRA output from `/app/build`.
+- The Dockerfile was updated to copy Vite output from `/app/dist`, after which the frontend image rebuilt and deployed successfully.
+- No unresolved test failures remained at the end of the session.
+
 ## Latest Session: Setup UX Refinement, Account Naming Localisation, And Period Summary Expansion
 
 Session outcomes verified in this run:

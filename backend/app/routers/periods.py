@@ -30,7 +30,7 @@ from ..database import get_db
 from ..models import (
     Budget, FinancialPeriod, IncomeType,
     ExpenseItem, PeriodIncome, PeriodExpense, BalanceType, PeriodBalance,
-    InvestmentItem, PeriodInvestment,
+    InvestmentItem, PeriodInvestment, PeriodTransaction,
 )
 from ..schemas import (
     PeriodGenerateRequest, PeriodOut, PeriodDetailOut, PeriodSummaryOut,
@@ -1046,8 +1046,18 @@ def remove_income_from_period(
         raise HTTPException(404, "Period income entry not found")
     if pi.system_key == CARRIED_FORWARD_SYSTEM_KEY:
         raise HTTPException(409, "System-managed carried forward income cannot be removed")
-    if Decimal(str(pi.actualamount)) != Decimal("0"):
-        raise HTTPException(409, "Cannot remove income with recorded actuals")
+    has_transactions = (
+        db.query(PeriodTransaction)
+        .filter(
+            PeriodTransaction.finperiodid == finperiodid,
+            PeriodTransaction.source.in_(["income", "transfer"]),
+            PeriodTransaction.source_key == incomedesc,
+        )
+        .first()
+        is not None
+    )
+    if has_transactions:
+        raise HTTPException(409, "Cannot remove income with recorded transactions")
     db.delete(pi)
     db.commit()
 

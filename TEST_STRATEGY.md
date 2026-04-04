@@ -30,11 +30,12 @@ Observed current state:
 - backend harness now uses an isolated SQLite database per test case rather than a shared file-backed test database
 - backend test dependencies are listed in [backend/requirements-dev.txt](/home/ubuntu/dosh/backend/requirements-dev.txt)
 - backend test configuration is defined in [backend/pytest.ini](/home/ubuntu/dosh/backend/pytest.ini)
-- frontend has Create React App test tooling available through Jest, and now includes initial user-facing workflow coverage
+- frontend now uses a Vite build with standalone Jest plus React Testing Library, and includes user-facing workflow coverage
 - frontend also now has a Playwright end-to-end harness under [frontend/e2e](/home/ubuntu/dosh/frontend/e2e)
 - the project now has a credible regression foundation for controlled enhancement work
 - coverage is still selective rather than exhaustive, so new behavior should continue to be added together with tests
 - the latest recorded backend, frontend, and deployment verification outcomes live in [TEST_RESULTS_SUMMARY.md](/home/ubuntu/dosh/TEST_RESULTS_SUMMARY.md)
+- the latest frontend security baseline is now zero reported `npm audit` vulnerabilities after the Vite migration and dependency cleanup
 
 This matters because Dosh is no longer mostly CRUD. It now contains workflow rules where subtle regressions would reduce trust:
 
@@ -88,6 +89,7 @@ The most important business rules to preserve are:
 - carry-forward and next-cycle opening rebasing must stay synchronized
 - guided delete behavior must protect continuity, especially for non-trailing cycles
 - expense and investment lifecycle behavior should remain aligned
+- `islocked=true` on an `ACTIVE` cycle protects structural edits, but must not block recording actuals or transactions
 - paid lines should be treated as finalized unless explicitly revised through the supported workflow
 - balance movement trust should come from ledger-backed transactions, not manual drift
 
@@ -100,6 +102,7 @@ These areas deserve extra caution whenever product work touches them:
 - `Carried Forward` creation, protection, and recalculation after delete or regenerate flows
 - delete continuity options such as `Delete this and all upcoming cycles`
 - transaction-backed expense, balance, and investment behavior
+- transaction-backed income behavior, including dedicated income transaction history rather than inline actual overrides
 - post-paid revise flows and read-only guards on closed cycles
 - health scoring, evidence payloads, and historical snapshot integrity
 - setup edits whose consequences show up only in later workflows
@@ -122,7 +125,7 @@ Current development direction makes the following test emphasis especially usefu
 - reporting and reconciliation are likely to expand next, so ledger integrity and discrepancy behavior should stay well protected
 - close-out and reconciliation handoff still need hardening, so correction-after-close expectations remain a live risk area
 - localisation and regional-fit work is expected later, so tests should avoid depending on unnecessary hard-coded locale assumptions where possible
-- startup schema evolution still uses transitional bootstrap logic, so tests should focus on runtime workflow behavior rather than treating startup schema patching as product functionality
+- startup no longer applies transitional schema mutation during app boot, so tests should focus on runtime workflow behavior and treat explicit cutover or migration flows as separate maintenance concerns
 
 ### Practical rule for future sessions
 
@@ -264,9 +267,11 @@ Keep these focused on rendering and interaction states that matter to user decis
 Best candidates:
 
 - period detail read-only behavior for closed cycles
+- period detail distinction between locked active cycles and closed cycles
 - close-out modal preview and submit flow
 - delete option presentation for single delete versus future-chain delete
 - paid or revised controls for expenses and investments
+- income transaction modal behavior for standard income, transfer-backed income, and `Carried Forward`
 - key summaries that distinguish budget totals from actual totals
 - session-persisted expand or collapse behavior where setup or history panels intentionally remember user preference for the browser session
 
@@ -335,8 +340,13 @@ Backend scaffold now present:
   - session-persisted collapse state for optional setup sections and the historical budget-cycle section
   - `Upcoming` grouping wording on the budget cycles list
   - `Projected Savings` and `Remaining Expenses` summary-card visibility on the period detail page
+  More recent additions now in place:
+  - locked active cycles continue to allow actual recording and transaction entry while still protecting structural edits
+  - period-detail income actual entry now uses a dedicated income transaction modal rather than inline set or add controls
+  - income transaction UI coverage now exists alongside expense and investment transaction coverage
 - initial Playwright end-to-end scaffold in [playwright.config.js](/home/ubuntu/dosh/frontend/playwright.config.js) and [budget-smoke.spec.js](/home/ubuntu/dosh/frontend/e2e/budget-smoke.spec.js)
   The current smoke paths now run successfully in Chromium locally, covering blocked setup handoff, minimum-setup first-cycle generation, first expense-transaction activity with linked account movement, and close-out into the next active cycle.
+  The current smoke path selectors have also been updated to match the newer `Primary transaction account` wording so the suite reflects current UI copy.
 
 Current backend run command:
 
@@ -430,7 +440,8 @@ Recommended fixture layers:
 
 Recommended stack:
 
-- CRA Jest runner
+- Vite for build and local dev
+- standalone Jest runner
 - React Testing Library
 - mocked API module at [client.js](/home/ubuntu/dosh/frontend/src/api/client.js)
 
@@ -475,6 +486,7 @@ These tests should come first because they protect the financial rules most like
 - changing health personalisation later does not rewrite stored close-out history
 - transaction-backed account movement matches ledger-derived explanations
 - expense entry and investment transaction changes sync actuals and balances correctly
+- income transaction add, delete, and correction flows sync actuals and balances correctly
 - multi-account scenarios do not break balance movement and transaction-account expectations
 
 ### Priority 3: Frontend user-safety flows
@@ -483,6 +495,7 @@ These tests should come first because they protect the financial rules most like
 - closed-cycle views become read-only in the right places
 - close-out surfaces communicate the next-cycle consequences correctly
 - period summaries show the expected lifecycle state and action availability
+- locked active cycles continue to expose actual-entry paths that closed cycles block
 
 ### Priority 4: Broader health and reporting confidence
 
@@ -651,5 +664,5 @@ Good coverage does not yet require exhaustive frontend snapshot tests or broad e
 - Update this document when new workflow rules are added or when testing priorities change.
 - When a new rule is added to [CHANGES.md](/home/ubuntu/dosh/CHANGES.md) or [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/BUDGET_CYCLE_LIFECYCLE_PLAN.md), add or revise the corresponding test case entry here.
 - If the migration strategy changes, update the backend harness guidance to reflect how test databases should be prepared.
-- If the frontend moves away from Create React App, revisit the recommended frontend test tooling section.
+- If the frontend toolchain changes again from the current Vite plus Jest baseline, revisit the recommended frontend test tooling section.
 - If new user-account shapes become important, add them to the named scenario list here and expand setup and workflow tests accordingly.

@@ -11,6 +11,7 @@ It is a synthesis of the current Markdown sources in this repository:
 - [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/BUDGET_HEALTH_ADDENDUM.md)
 - [TEST_STRATEGY.md](/home/ubuntu/dosh/TEST_STRATEGY.md)
 - [TEST_EXPANSION_PLAN.md](/home/ubuntu/dosh/TEST_EXPANSION_PLAN.md)
+- [INCOME_TRANSACTIONS_UNIFICATION_AND_LEGACY_LEDGER_CLEANUP_PLAN.md](/home/ubuntu/dosh/INCOME_TRANSACTIONS_UNIFICATION_AND_LEGACY_LEDGER_CLEANUP_PLAN.md)
 
 Use this as the quick-start development handoff. Use the source documents above when deeper detail is needed.
 
@@ -48,7 +49,8 @@ Backend:
 Frontend:
 
 - React 18
-- Create React App
+- Vite
+- standalone Jest plus React Testing Library
 - React Router
 - React Query
 - Tailwind CSS
@@ -56,10 +58,13 @@ Frontend:
 
 Operational note:
 
-- the app still uses transitional startup schema patching in [main.py](/home/ubuntu/dosh/backend/app/main.py) via targeted `ALTER TABLE` checks
-- proper versioned migrations remain a near-term engineering need
+- transitional startup schema patching has now been removed from [main.py](/home/ubuntu/dosh/backend/app/main.py)
+- the repo now has an explicit transaction-ledger cutover script in [cutover_unified_transactions.py](/home/ubuntu/dosh/backend/scripts/cutover_unified_transactions.py) for the current schema baseline
+- proper versioned migrations still remain a near-term engineering need from that new baseline
 - backend tests now run against an isolated SQLite database per test case through [conftest.py](/home/ubuntu/dosh/backend/tests/conftest.py)
 - Docker Compose remains the active deployment path, with the frontend exposed on port `3080`
+- the frontend Docker build now uses Node 20 rather than the old Node 16 baseline
+- `PeriodTransaction` is now the sole live transaction store; older expense and investment transaction tables have been removed from the active schema
 
 ## Core Domain Rules
 
@@ -79,6 +84,7 @@ These rules should be treated as current product invariants unless deliberately 
 - expense-driven setups require one active primary account before generation can proceed safely
 - deleting a non-trailing planned or active cycle may require `Delete this and all upcoming cycles`
 - balance movement is intended to be transaction-derived rather than freely edited
+- `ACTIVE` plus `islocked=true` protects structural edits but should still allow actual-entry and transaction-recording workflows
 - expense and investment workflows should remain aligned, including `Current`, `Paid`, and `Revised` behavior
 - paid lines are treated as finalized unless intentionally revised through the supported workflow
 - setup records already used by generated cycles or downstream activity should be protected from destructive edits
@@ -92,7 +98,7 @@ The repository already supports:
 - setup-assessment summary state on the budget setup page, including blocking issues, warnings, and section-level readiness or protection badges
 - budget cycle generation, listing, detail, lifecycle display, delete prevalidation, and close-out flow
 - income, expense, account, and investment activity within a cycle
-- transaction-backed expense and investment updates
+- transaction-backed income, expense, and investment updates
 - account balance viewing with transaction-based movement explanation
 - current budget summary cards, current balance summary, and current-period health check
 - historical close-out snapshot review for closed cycles
@@ -110,11 +116,11 @@ These are the clearest live development streams from the docs.
 1. Reporting and analysis
 2. Reconciliation
 3. Period close-out hardening
-4. Budget health Phase 2 preparation
-5. Localisation and regional fit
-6. Cash management workflow definition
-7. Export and backup readiness
-8. Migration strategy replacement for startup schema patching
+4. Migration framework introduction from the new post-cutover schema baseline
+5. Budget health Phase 2 preparation
+6. Localisation and regional fit
+7. Cash management workflow definition
+8. Export and backup readiness
 
 If no other priority has been set, reporting and reconciliation are the most natural next feature directions.
 
@@ -123,8 +129,8 @@ If no other priority has been set, reporting and reconciliation are the most nat
 The most useful enabling work for future sessions is:
 
 1. keep a test-with-change discipline for every workflow change
-2. expand coverage around close-out, deletion continuity, ledger integrity, reconciliation, and setup consequences
-3. replace transitional startup schema evolution with real versioned migrations
+2. expand coverage around close-out, deletion continuity, ledger integrity, income transaction behavior, reconciliation, and setup consequences
+3. replace the current explicit cutover-style schema baseline with real versioned migrations
 4. tighten deployment and build reliability
 5. improve API and domain wording consistency while preserving backend stability
 6. keep closed-cycle correction design aligned with reconciliation rather than reopening normal edit paths
@@ -135,7 +141,7 @@ The most useful enabling work for future sessions is:
 Dosh now has a meaningful multi-layer regression baseline:
 
 - backend `pytest`
-- frontend Jest and React Testing Library
+- frontend Jest and React Testing Library on the Vite-based frontend
 - Playwright smoke coverage for create-budget, setup gating, first-cycle generation, first expense activity, close-out snapshot visibility, and next-cycle activation
 
 Testing emphasis should remain risk-based.
@@ -147,6 +153,7 @@ Highest-risk areas:
 - carry-forward and opening rebasing
 - delete continuity
 - transaction-backed balances and ledger trust
+- income transaction history and actual sync behavior
 - expense and investment paid or revised behavior
 - health scoring and personalised thresholds
 
@@ -170,6 +177,7 @@ When making changes, preserve these working assumptions from the docs:
 - do not assume there is always one transaction account plus one savings account
 - do not let localisation work remain implicit through hard-coded `en-AU` formatting forever
 - do not treat startup schema patching as a finished migration strategy
+- do not reintroduce direct inline actual-edit shortcuts that bypass the ledger-backed transaction model for income
 - do not weaken setup protection by reintroducing page-local readiness assumptions when centralized setup assessment already exists
 - do not treat backend test isolation as optional now that mixed-area sessions depend on it
 - prefer regional display-label preferences over renaming internal domain models when terminology variation is mostly user-facing
@@ -191,8 +199,8 @@ If the next development task is still open-ended, the best default candidates ar
 1. reporting and period-comparison summaries built from the ledger-backed model
 2. reconciliation summary and discrepancy surfaces by account
 3. close-out and delete continuity hardening with deeper automated coverage
-4. migration framework introduction to replace startup schema patching
-5. deployment hardening and deprecation cleanup after the successful Compose baseline
+4. migration framework introduction from the new post-cutover schema baseline
+5. reporting and reconciliation surfaces that take advantage of the now-clean unified ledger model
 
 ## Source Of Truth
 

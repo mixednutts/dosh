@@ -8,8 +8,9 @@ jest.mock('../api/client', () => ({
   getPeriodDetail: jest.fn(),
   getBudget: jest.fn(),
   setPeriodLock: jest.fn(),
-  updateIncomeActual: jest.fn(),
-  addToIncomeActual: jest.fn(),
+  getIncomeTransactions: jest.fn(),
+  addIncomeTransaction: jest.fn(),
+  deleteIncomeTransaction: jest.fn(),
   addExpenseToPeriod: jest.fn(),
   addIncomeToPeriod: jest.fn(),
   savingsTransfer: jest.fn(),
@@ -238,6 +239,9 @@ describe('PeriodDetailPage', () => {
   })
 
   it('shows lock guidance and hides structure-edit actions while a cycle is locked', async () => {
+    client.getIncomeTransactions.mockResolvedValue([])
+    client.getExpenseEntries.mockResolvedValue([])
+    client.getInvestmentTransactions.mockResolvedValue([])
     client.getBudget.mockResolvedValue({
       budgetid: 1,
       budgetowner: 'Alex',
@@ -265,6 +269,16 @@ describe('PeriodDetailPage', () => {
           is_system: false,
           system_key: null,
         },
+        {
+          finperiodid: 57,
+          budgetid: 1,
+          incomedesc: 'Carried Forward',
+          budgetamount: '250.00',
+          actualamount: '0.00',
+          varianceamount: '-250.00',
+          is_system: true,
+          system_key: 'carry_forward',
+        },
       ],
       expenses: [
         {
@@ -281,7 +295,21 @@ describe('PeriodDetailPage', () => {
           revision_comment: null,
         },
       ],
-      investments: [],
+      investments: [
+        {
+          finperiodid: 57,
+          budgetid: 1,
+          investmentdesc: 'Emergency Fund',
+          budgeted_amount: '100.00',
+          actualamount: '0.00',
+          remaining_amount: '100.00',
+          linked_account_desc: 'Savings',
+          opening_value: '1000.00',
+          closing_value: '1000.00',
+          status: 'Current',
+          revision_comment: null,
+        },
+      ],
       balances: [],
       closeout_snapshot: null,
     })
@@ -296,9 +324,88 @@ describe('PeriodDetailPage', () => {
     expect(screen.getByText('Locked')).toBeTruthy()
     expect(screen.queryByText('Add New Income Line Item')).toBeNull()
     expect(screen.queryByText('Add New Expense Line Item')).toBeNull()
+    expect(screen.getByText('System')).toBeTruthy()
+
+    const incomeButtons = screen.getAllByTitle('Add income transaction')
+    expect(incomeButtons[0].disabled).toBe(false)
+    fireEvent.click(incomeButtons[0])
+    expect(await screen.findByText('Transactions — Salary')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Add Income' })).toBeTruthy()
 
     const addExpenseButton = screen.getByTitle('Add expense transaction')
-    expect(addExpenseButton.disabled).toBe(true)
+    expect(addExpenseButton.disabled).toBe(false)
+    fireEvent.click(addExpenseButton)
+    expect(await screen.findByText('Transactions — Rent')).toBeTruthy()
+    expect(screen.getAllByText('Add Transaction').length).toBeGreaterThan(0)
+    expect(screen.getByRole('button', { name: 'Add Expense' })).toBeTruthy()
+
+    const addInvestmentButton = screen.getByTitle('Add investment transaction')
+    expect(addInvestmentButton.disabled).toBe(false)
+    fireEvent.click(addInvestmentButton)
+    expect(await screen.findByText('Transactions — Emergency Fund')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Add' })).toBeTruthy()
+  })
+
+  it('records income actuals through the transaction modal instead of inline editing', async () => {
+    client.getIncomeTransactions.mockResolvedValue([])
+    client.addIncomeTransaction.mockResolvedValue({})
+    client.getBudget.mockResolvedValue({
+      budgetid: 1,
+      budgetowner: 'Alex',
+      description: 'Home Budget',
+      budget_frequency: 'Monthly',
+      allow_cycle_lock: true,
+    })
+    client.getPeriodDetail.mockResolvedValue({
+      period: {
+        finperiodid: 61,
+        budgetid: 1,
+        startdate: '2026-08-01T00:00:00',
+        enddate: '2026-08-31T00:00:00',
+        islocked: false,
+        cycle_status: 'ACTIVE',
+      },
+      incomes: [
+        {
+          finperiodid: 61,
+          budgetid: 1,
+          incomedesc: 'Salary',
+          budgetamount: '2000.00',
+          actualamount: '0.00',
+          varianceamount: '-2000.00',
+          is_system: false,
+          system_key: null,
+        },
+      ],
+      expenses: [],
+      investments: [],
+      balances: [],
+      closeout_snapshot: null,
+    })
+
+    renderWithProviders(<PeriodDetailPage />, {
+      route: '/periods/61',
+      path: '/periods/:periodId',
+    })
+
+    fireEvent.click(await screen.findByTitle('Add income correction'))
+    expect(await screen.findByText('Transactions — Salary')).toBeTruthy()
+    expect(screen.queryByTitle('Click to set')).toBeNull()
+
+    fireEvent.change(screen.getByPlaceholderText('Amount'), {
+      target: { value: '125.50' },
+    })
+    fireEvent.change(screen.getByPlaceholderText('Note (optional)'), {
+      target: { value: 'Payroll correction' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Add Correction' }))
+
+    await waitFor(() => {
+      expect(client.addIncomeTransaction).toHaveBeenCalledWith(61, 'Salary', {
+        amount: -125.5,
+        note: 'Payroll correction',
+      })
+    })
   })
 
   it('requires confirmation before marking an over-budget investment as paid', async () => {
