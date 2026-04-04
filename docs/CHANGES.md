@@ -27,6 +27,70 @@ For recent concrete verification outcomes, read [TEST_RESULTS_SUMMARY.md](/home/
 
 For the dedicated implementation plan that drove the income transaction unification and legacy-ledger cleanup work in this session, read [INCOME_TRANSACTIONS_UNIFICATION_AND_LEGACY_LEDGER_CLEANUP_PLAN.md](/home/ubuntu/dosh/docs/plans/INCOME_TRANSACTIONS_UNIFICATION_AND_LEGACY_LEDGER_CLEANUP_PLAN.md).
 
+## Latest Session: Period-Detail Polish, Sidebar Navigation Refinement, Navigation Regression Coverage, And Repeated Deployment Verification
+
+This session focused on tightening the budget-cycle and period-detail workflow surfaces after user testing, then locking the resulting navigation behavior into frontend tests.
+
+Important direction now in place:
+
+- the period detail page now has complete footer totals for income, investments, and balances where totals are meaningful, while still avoiding a misleading aggregate movement total for balances
+- investment status affordances now follow the same `spent` pill behavior as expenses, including revised-state handling and status wording alignment
+- the sidebar now treats the active budget workspace as a distinct context surface rather than coupling it entirely to the expanded budget list
+- the current budget panel uses `Current`, `Upcoming`, and `Historical` cycle shortcuts, with explicit deep links when more cycles exist than the compact sidebar preview shows
+- the budget cycles page now remembers the `Upcoming` section collapse state for the browser session and responds more cleanly to section hash navigation
+- the current frontend Jest suite now includes a dedicated layout-navigation regression test that captures the current sidebar baseline rather than leaving those rules implicit
+
+### 1. Period-detail totals and status affordances were tightened without weakening ledger meaning
+
+The period detail page received a focused polish pass driven by concrete review findings.
+
+Current behavior:
+
+- the `Total Income` footer row now matches the full table shape and no longer leaves a trailing visual artifact
+- investments now show a footer total for budget, actual, and remaining
+- balances now show footer totals for opening and closing values while intentionally omitting a meaningless movement total
+- investment status pills now behave consistently with expense status pills, including clearer revise and paid affordances
+- investment and balance tables now use the same horizontal overflow treatment as expenses on narrower layouts
+
+Important product meaning:
+
+- period totals should help users read section-level meaning quickly without implying false precision where totals are not meaningful
+- movement remains transaction-derived and explainable rather than something the UI should summarize as if it were an independently managed editable field
+
+### 2. Sidebar navigation now reflects the active budget context more deliberately
+
+Several sidebar adjustments were made to reduce ambiguity about where the user is working and what the next available actions are.
+
+Current behavior:
+
+- the `Budget List` and `Current Budget` areas now render as separate sidebar concepts, with the list above the current budget panel
+- compact desktop sidebar mode still preserves a minimal active-budget context rather than dropping budget context entirely
+- the current budget panel now uses `Historical` rather than the old `Recent` label so sidebar and budget-cycle page grouping language stay aligned
+- when more cycles exist than the sidebar preview shows, the user now sees explicit `View all ...` links rather than a vague `More` affordance
+- on the budget cycles page, the sidebar no longer duplicates setup entry as a separate card; the page-level setup action is the intended route from the `No budget cycles yet` state
+- the dark-mode sidebar palette was tuned back toward the deeper original appearance after an initial light/dark styling pass made it appear too grey in dark mode
+
+Important product meaning:
+
+- sidebar navigation should stay centered on the currently active budget workflow without duplicating too many competing entry points
+- compact navigation can be reduced, but it should not become contextless
+- empty-state actions should remain intentional and not multiply setup paths unnecessarily
+
+### 3. Navigation behavior is now part of the frontend regression baseline
+
+This session did not stop at UI tweaks; it also added focused regression protection.
+
+Current behavior:
+
+- the frontend now includes a dedicated layout-navigation test covering sidebar hierarchy, current-budget behavior, and explicit cycle deep-link affordances
+- budget-cycle tests already covered historical collapse persistence, and the session also preserved `Upcoming` collapse behavior through the current implementation on the page itself
+- focused period-detail tests were extended to protect the footer-total and spent-pill fixes
+
+Important engineering meaning:
+
+- sidebar behavior should now be treated as a tested workflow baseline, not a purely visual detail that future sessions can accidentally reshape without noticing
+- the current navigation tests intentionally reflect live behavior rather than an idealized future state, so later UX changes should update tests deliberately
+
 ## Latest Session: Demo Budget Seeding, Shared Dev-Mode Gating, Budget-Health-Focused Demo Activity, And Compose-Based Deployment Control
 
 This session focused on making demos faster to stand up without weakening normal production behavior or distorting current product rules.

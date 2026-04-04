@@ -465,6 +465,186 @@ describe('PeriodDetailPage', () => {
     })
   })
 
+  it('renders the total income footer with a full-width row and no dangling action artifact', async () => {
+    client.getBudget.mockResolvedValue({
+      budgetid: 1,
+      budgetowner: 'Alex',
+      description: 'Home Budget',
+      budget_frequency: 'Monthly',
+      allow_cycle_lock: true,
+    })
+    client.getPeriodDetail.mockResolvedValue({
+      period: {
+        finperiodid: 62,
+        budgetid: 1,
+        startdate: '2026-09-01T00:00:00',
+        enddate: '2026-09-30T00:00:00',
+        islocked: false,
+        cycle_status: 'ACTIVE',
+      },
+      incomes: [
+        {
+          finperiodid: 62,
+          budgetid: 1,
+          incomedesc: 'Salary',
+          budgetamount: '2000.00',
+          actualamount: '2000.00',
+          varianceamount: '0.00',
+          is_system: false,
+          system_key: null,
+        },
+      ],
+      expenses: [],
+      investments: [],
+      balances: [],
+      closeout_snapshot: null,
+    })
+
+    renderWithProviders(<PeriodDetailPage />, {
+      route: '/periods/62',
+      path: '/periods/:periodId',
+    })
+
+    const totalIncomeCell = await screen.findByText('Total Income')
+    const totalIncomeRow = totalIncomeCell.closest('tr')
+
+    expect(totalIncomeRow).toBeTruthy()
+    expect(totalIncomeRow.children).toHaveLength(5)
+  })
+
+  it('uses the same spent-pill wording model for investments as expenses', async () => {
+    client.getBudget.mockResolvedValue({
+      budgetid: 1,
+      budgetowner: 'Alex',
+      description: 'Home Budget',
+      budget_frequency: 'Monthly',
+      allow_cycle_lock: true,
+    })
+    client.getPeriodDetail.mockResolvedValue({
+      period: {
+        finperiodid: 63,
+        budgetid: 1,
+        startdate: '2026-09-01T00:00:00',
+        enddate: '2026-09-30T00:00:00',
+        islocked: false,
+        cycle_status: 'ACTIVE',
+      },
+      incomes: [],
+      expenses: [],
+      investments: [
+        {
+          finperiodid: 63,
+          budgetid: 1,
+          investmentdesc: 'Emergency Fund',
+          budgeted_amount: '100.00',
+          actualamount: '95.00',
+          remaining_amount: '5.00',
+          linked_account_desc: 'Savings',
+          opening_value: '1000.00',
+          closing_value: '1095.00',
+          status: 'Current',
+          revision_comment: null,
+        },
+      ],
+      balances: [],
+      closeout_snapshot: null,
+    })
+
+    renderWithProviders(<PeriodDetailPage />, {
+      route: '/periods/63',
+      path: '/periods/:periodId',
+    })
+
+    const spentButton = await screen.findByTitle(/95% spent • \$95\.00 of \$100\.00 • Remaining \$5\.00 • Click to mark Paid/i)
+    expect(spentButton).toBeTruthy()
+    expect(spentButton.textContent).toBe('Spent')
+  })
+
+  it('shows investment and balance totals while keeping balance movement non-totaled', async () => {
+    client.getBudget.mockResolvedValue({
+      budgetid: 1,
+      budgetowner: 'Alex',
+      description: 'Home Budget',
+      budget_frequency: 'Monthly',
+      allow_cycle_lock: true,
+    })
+    client.getPeriodDetail.mockResolvedValue({
+      period: {
+        finperiodid: 64,
+        budgetid: 1,
+        startdate: '2026-10-01T00:00:00',
+        enddate: '2026-10-31T00:00:00',
+        islocked: false,
+        cycle_status: 'ACTIVE',
+      },
+      incomes: [],
+      expenses: [],
+      investments: [
+        {
+          finperiodid: 64,
+          budgetid: 1,
+          investmentdesc: 'Emergency Fund',
+          budgeted_amount: '100.00',
+          actualamount: '80.00',
+          remaining_amount: '20.00',
+          linked_account_desc: 'Savings',
+          opening_value: '1000.00',
+          closing_value: '1080.00',
+          status: 'Current',
+          revision_comment: null,
+        },
+        {
+          finperiodid: 64,
+          budgetid: 1,
+          investmentdesc: 'Brokerage',
+          budgeted_amount: '50.00',
+          actualamount: '75.00',
+          remaining_amount: '-25.00',
+          linked_account_desc: 'Investments',
+          opening_value: '5000.00',
+          closing_value: '5075.00',
+          status: 'Paid',
+          revision_comment: null,
+        },
+      ],
+      balances: [
+        {
+          balancedesc: 'Everyday',
+          balance_type: 'Transaction',
+          opening_amount: '1000.00',
+          movement_amount: '250.00',
+        },
+        {
+          balancedesc: 'Savings',
+          balance_type: 'Savings',
+          opening_amount: '500.00',
+          movement_amount: '-100.00',
+        },
+      ],
+      closeout_snapshot: null,
+    })
+
+    renderWithProviders(<PeriodDetailPage />, {
+      route: '/periods/64',
+      path: '/periods/:periodId',
+    })
+
+    expect((await screen.findAllByText('Status / Txns')).length).toBeGreaterThanOrEqual(2)
+
+    const totalInvestmentsRow = screen.getByText('Total Investments').closest('tr')
+    expect(totalInvestmentsRow).toBeTruthy()
+    expect(totalInvestmentsRow.textContent).toContain('$175.00')
+    expect(totalInvestmentsRow.textContent).toContain('$155.00')
+    expect(totalInvestmentsRow.textContent).toContain('-$5.00')
+
+    const totalBalancesRow = screen.getByText('Total Balances').closest('tr')
+    expect(totalBalancesRow).toBeTruthy()
+    expect(totalBalancesRow.textContent).toContain('$1,500.00')
+    expect(totalBalancesRow.textContent).toContain('$1,650.00')
+    expect(totalBalancesRow.textContent).toContain('—')
+
+  })
+
   it('requires a revision comment before reopening a paid expense', async () => {
     client.getBudget.mockResolvedValue({
       budgetid: 1,

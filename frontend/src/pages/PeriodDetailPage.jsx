@@ -775,31 +775,55 @@ function InvestmentStatusPill({ investment, onMarkPaid, onRevise }) {
   const rawPercent = budget > 0 ? (actual / budget) * 100 : 0
   const clampedPercent = Math.max(0, Math.min(rawPercent, 100))
   const isOver = rawPercent > 100
+  const isNearLimit = rawPercent >= 90 && rawPercent <= 100
+  const revisionComment = investment.revision_comment?.trim()
+  const title = budget > 0
+    ? `${Math.round(rawPercent)}% spent • ${fmt(actual)} of ${fmt(budget)} • Remaining ${fmt(remaining)}`
+    : `No budget set • Actual ${fmt(actual)}`
 
   if (investment.status === 'Paid') {
+    const paidCls = isOver
+      ? 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/40 dark:text-red-300 dark:hover:bg-red-900/60'
+      : 'bg-dosh-100 text-dosh-700 hover:bg-dosh-200 dark:bg-dosh-900/40 dark:text-dosh-300 dark:hover:bg-dosh-900/60'
     return (
       <button
         onClick={onRevise}
-        className={`inline-flex min-w-[108px] items-center justify-center rounded-full px-2.5 py-1 text-xs font-semibold transition-colors ${isOver ? 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/40 dark:text-red-300 dark:hover:bg-red-900/60' : 'bg-dosh-100 text-dosh-700 hover:bg-dosh-200 dark:bg-dosh-900/40 dark:text-dosh-300 dark:hover:bg-dosh-900/60'}`}
+        title={`${title} • Click to revise with a comment`}
+        className={`inline-flex min-w-[108px] items-center justify-center rounded-full px-2.5 py-1 text-xs font-semibold transition-colors ${paidCls}`}
       >
         Paid
       </button>
     )
   }
 
+  const trackCls = isOver
+    ? 'bg-red-100 dark:bg-red-900/30'
+    : isNearLimit
+      ? 'bg-amber-100 dark:bg-amber-900/30'
+      : 'bg-gray-200 dark:bg-gray-700'
+  const fillCls = isOver
+    ? 'bg-red-500'
+    : isNearLimit
+      ? 'bg-amber-500'
+      : 'bg-dosh-500'
+  const labelCls = isOver
+    ? 'text-red-700 dark:text-red-300'
+    : investment.status === 'Revised'
+      ? 'text-amber-700 dark:text-amber-300'
+      : 'text-gray-700 dark:text-gray-200'
+
   return (
     <button
       onClick={onMarkPaid}
+      title={`${title}${revisionComment ? ` • Revision: ${revisionComment}` : ''} • Click to mark Paid`}
       className="inline-flex min-w-[108px] items-center gap-2 rounded-full border border-gray-200 bg-white px-2 py-1 text-left text-xs transition-colors hover:border-dosh-300 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:border-dosh-700 dark:hover:bg-gray-700"
     >
-      <span className={`w-10 flex-shrink-0 font-semibold ${investment.status === 'Revised' ? 'text-amber-700 dark:text-amber-300' : 'text-gray-700 dark:text-gray-200'}`}>
+      <span className={`w-10 flex-shrink-0 font-semibold ${labelCls}`}>
         {investment.status === 'Revised' ? 'Rev' : 'Spent'}
       </span>
-      <span className="relative h-2 flex-1 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
-        <span className={`absolute inset-y-0 left-0 rounded-full ${isOver ? 'bg-red-500' : 'bg-dosh-500'}`} style={{ width: `${clampedPercent}%` }} />
-      </span>
-      <span className={`text-[10px] font-semibold ${remaining >= 0 ? 'text-dosh-700 dark:text-dosh-300' : 'text-red-700 dark:text-red-300'}`}>
-        {fmt(remaining)}
+      <span className={`relative h-2 flex-1 overflow-hidden rounded-full ${trackCls}`}>
+        <span className={`absolute inset-y-0 left-0 rounded-full ${fillCls}`} style={{ width: `${clampedPercent}%` }} />
+        {isOver && <span className="absolute inset-y-0 right-0 w-1 bg-red-700 dark:bg-red-400" />}
       </span>
     </button>
   )
@@ -1222,7 +1246,10 @@ export default function PeriodDetailPage() {
   const totalExpenseActual   = expenses.reduce((s, e) => s + Number(e.actualamount), 0)
   const effectiveInvestmentBudget = investments.reduce((s, inv) => s + Number(inv.status === 'Paid' ? inv.actualamount : inv.budgeted_amount ?? 0), 0)
   const totalInvestmentActual = investments.reduce((s, inv) => s + Number(inv.actualamount ?? 0), 0)
+  const totalInvestmentRemaining = investments.reduce((s, inv) => s + Number(inv.remaining_amount ?? 0), 0)
   const totalExpenseRemaining = expenses.reduce((s, e) => s + Number(e.remaining_amount ?? 0), 0)
+  const totalBalanceOpening = balances.reduce((s, b) => s + Number(b.opening_amount ?? 0), 0)
+  const totalBalanceClosing = balances.reduce((s, b) => s + Number(b.opening_amount ?? 0) + Number(b.movement_amount ?? 0), 0)
   const surplusBudget = totalIncomeBudget - effectiveExpenseBudget - effectiveInvestmentBudget
   const surplusActual = totalIncomeActual - totalExpenseActual - totalInvestmentActual
   const projectedSavings = Number(data.projected_savings ?? 0)
@@ -1406,6 +1433,7 @@ export default function PeriodDetailPage() {
               <td className="px-4 py-2 text-right text-sm">
                 <span className={totalIncomeActual >= totalIncomeBudget ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'}>{fmt(totalIncomeActual - totalIncomeBudget)}</span>
               </td>
+              <td className="px-3 py-2" aria-hidden="true"></td>
             </tr>
           </tfoot>
         </table>
@@ -1554,69 +1582,82 @@ export default function PeriodDetailPage() {
       {investments.length > 0 && (
         <div className="card">
           <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 font-semibold text-gray-700 dark:text-gray-200 text-sm">Investments</div>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 dark:border-gray-800">
-                <th className="table-header-cell text-left">Investment</th>
-                <th className="table-header-cell text-right col-budget">Budget</th>
-                <th className="table-header-cell text-right col-actual">Actual ∑</th>
-                <th className="table-header-cell text-right">Remaining</th>
-                <th className="table-header-cell text-left">Account</th>
-                <th className="table-header-cell text-center">Transactions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
-              {investments.map(inv => {
-                const remaining = Number(inv.remaining_amount ?? 0)
-                return (
-                  <tr key={inv.investmentdesc} className="table-row">
-                    <td className="table-cell font-medium">{inv.investmentdesc}</td>
-                    <td className="table-cell-muted text-right col-budget">
-                      {!locked && !closed ? (
-                        <BudgetEditCell value={inv.budgeted_amount} onSave={val => editInvBudget.mutate({ desc: inv.investmentdesc, budgetamount: val })} />
-                      ) : fmt(inv.budgeted_amount)}
-                    </td>
-                    <td className="table-cell text-right col-actual font-semibold text-gray-800 dark:text-gray-200">{fmt(inv.actualamount)}</td>
-                    <td className="table-cell text-right">
-                      <span className={`font-medium ${remaining >= 0 ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'}`}>{fmt(remaining)}</span>
-                    </td>
-                    <td className="table-cell-muted text-sm">
-                      {inv.linked_account_desc ? <span className="text-purple-600 dark:text-purple-400">{inv.linked_account_desc}</span> : <span className="text-gray-300 dark:text-gray-600">—</span>}
-                    </td>
-                    <td className="px-3 py-2">
-                      <div className="flex items-center justify-center gap-1 flex-wrap">
-                        <InvestmentStatusPill
-                          investment={inv}
-                          onMarkPaid={() => handleMarkInvestmentPaid(inv)}
-                          onRevise={() => setReviseInvestmentModal({ investmentdesc: inv.investmentdesc })}
-                        />
-                        <button
-                          disabled={closed || inv.status === 'Paid'}
-                          onClick={() => setInvestmentModal({ investmentdesc: inv.investmentdesc, openingValue: inv.opening_value, closingValue: inv.closing_value, budgetedAmount: inv.budgeted_amount, defaultType: 'increase' })}
-                          title="Add investment transaction"
-                          className={`flex items-center justify-center w-7 h-7 rounded-full font-bold text-sm transition-colors ${closed || inv.status === 'Paid' ? 'opacity-30 cursor-not-allowed bg-gray-100 text-gray-400' : 'bg-dosh-100 text-dosh-700 hover:bg-dosh-200 dark:bg-dosh-900/40 dark:text-dosh-400 dark:hover:bg-dosh-900/60'}`}>
-                          <PlusIcon className="w-4 h-4" />
-                        </button>
-                        <button
-                          disabled={closed || inv.status === 'Paid'}
-                          onClick={() => setInvestmentModal({ investmentdesc: inv.investmentdesc, openingValue: inv.opening_value, closingValue: inv.closing_value, budgetedAmount: inv.budgeted_amount, defaultType: 'decrease' })}
-                          title="Add subtraction/withdrawal"
-                          className={`flex items-center justify-center w-7 h-7 rounded-full font-bold text-sm transition-colors ${closed || inv.status === 'Paid' ? 'opacity-30 cursor-not-allowed bg-gray-100 text-gray-400' : 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/40 dark:text-red-400 dark:hover:bg-red-900/60'}`}>
-                          <MinusIcon className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => setInvestmentModal({ investmentdesc: inv.investmentdesc, openingValue: inv.opening_value, closingValue: inv.closing_value, budgetedAmount: inv.budgeted_amount, defaultType: 'increase', readOnly: closed || inv.status === 'Paid' })}
-                          title="View transactions"
-                          className="flex items-center justify-center w-7 h-7 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                          <ListBulletIcon className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 dark:border-gray-800">
+                  <th className="table-header-cell text-left">Investment</th>
+                  <th className="table-header-cell text-right col-budget">Budget</th>
+                  <th className="table-header-cell text-right col-actual">Actual ∑</th>
+                  <th className="table-header-cell text-right">Remaining</th>
+                  <th className="table-header-cell text-left">Account</th>
+                  <th className="table-header-cell text-center">Status / Txns</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
+                {investments.map(inv => {
+                  const remaining = Number(inv.remaining_amount ?? 0)
+                  return (
+                    <tr key={inv.investmentdesc} className="table-row">
+                      <td className="table-cell font-medium">{inv.investmentdesc}</td>
+                      <td className="table-cell-muted text-right col-budget">
+                        {!locked && !closed ? (
+                          <BudgetEditCell value={inv.budgeted_amount} onSave={val => editInvBudget.mutate({ desc: inv.investmentdesc, budgetamount: val })} />
+                        ) : fmt(inv.budgeted_amount)}
+                      </td>
+                      <td className="table-cell text-right col-actual font-semibold text-gray-800 dark:text-gray-200">{fmt(inv.actualamount)}</td>
+                      <td className="table-cell text-right">
+                        <span className={`font-medium ${remaining >= 0 ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'}`}>{fmt(remaining)}</span>
+                      </td>
+                      <td className="table-cell-muted text-sm">
+                        {inv.linked_account_desc ? <span className="text-purple-600 dark:text-purple-400">{inv.linked_account_desc}</span> : <span className="text-gray-300 dark:text-gray-600">—</span>}
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="flex items-center justify-center gap-1 flex-wrap">
+                          <InvestmentStatusPill
+                            investment={inv}
+                            onMarkPaid={() => handleMarkInvestmentPaid(inv)}
+                            onRevise={() => setReviseInvestmentModal({ investmentdesc: inv.investmentdesc })}
+                          />
+                          <button
+                            disabled={closed || inv.status === 'Paid'}
+                            onClick={() => setInvestmentModal({ investmentdesc: inv.investmentdesc, openingValue: inv.opening_value, closingValue: inv.closing_value, budgetedAmount: inv.budgeted_amount, defaultType: 'increase' })}
+                            title="Add investment transaction"
+                            className={`flex items-center justify-center w-7 h-7 rounded-full font-bold text-sm transition-colors ${closed || inv.status === 'Paid' ? 'opacity-30 cursor-not-allowed bg-gray-100 text-gray-400' : 'bg-dosh-100 text-dosh-700 hover:bg-dosh-200 dark:bg-dosh-900/40 dark:text-dosh-400 dark:hover:bg-dosh-900/60'}`}>
+                            <PlusIcon className="w-4 h-4" />
+                          </button>
+                          <button
+                            disabled={closed || inv.status === 'Paid'}
+                            onClick={() => setInvestmentModal({ investmentdesc: inv.investmentdesc, openingValue: inv.opening_value, closingValue: inv.closing_value, budgetedAmount: inv.budgeted_amount, defaultType: 'decrease' })}
+                            title="Add subtraction/withdrawal"
+                            className={`flex items-center justify-center w-7 h-7 rounded-full font-bold text-sm transition-colors ${closed || inv.status === 'Paid' ? 'opacity-30 cursor-not-allowed bg-gray-100 text-gray-400' : 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/40 dark:text-red-400 dark:hover:bg-red-900/60'}`}>
+                            <MinusIcon className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => setInvestmentModal({ investmentdesc: inv.investmentdesc, openingValue: inv.opening_value, closingValue: inv.closing_value, budgetedAmount: inv.budgeted_amount, defaultType: 'increase', readOnly: closed || inv.status === 'Paid' })}
+                            title="View transactions"
+                            className="flex items-center justify-center w-7 h-7 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                            <ListBulletIcon className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-gray-200 dark:border-gray-700 font-semibold bg-gray-50 dark:bg-gray-800">
+                  <td className="px-4 py-2 text-gray-700 dark:text-gray-300 text-sm">Total Investments</td>
+                  <td className="px-4 py-2 text-right text-gray-600 dark:text-gray-400 text-sm">{fmt(effectiveInvestmentBudget)}</td>
+                  <td className="px-4 py-2 text-right text-gray-800 dark:text-gray-200 text-sm">{fmt(totalInvestmentActual)}</td>
+                  <td className="px-4 py-2 text-right text-sm">
+                    <span className={`font-medium ${totalInvestmentRemaining >= 0 ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'}`}>{fmt(totalInvestmentRemaining)}</span>
+                  </td>
+                  <td colSpan={2} />
+                </tr>
+              </tfoot>
+            </table>
+          </div>
         </div>
       )}
 
@@ -1624,51 +1665,65 @@ export default function PeriodDetailPage() {
       {balances.length > 0 && (
         <div className="card">
           <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 font-semibold text-gray-700 dark:text-gray-200 text-sm">Account Balances</div>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 dark:border-gray-800">
-                <th className="table-header-cell text-left">Account</th>
-                <th className="table-header-cell text-left">Type</th>
-                <th className="table-header-cell text-right">Opening</th>
-                <th className="table-header-cell text-right col-actual">
-                  <span title="Calculated from account-linked transactions and transfers">Movement</span>
-                </th>
-                <th className="table-header-cell text-right">Closing</th>
-                <th className="table-header-cell text-center">Details</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
-              {balances.map(b => {
-                const closing = Number(b.opening_amount) + Number(b.movement_amount ?? 0)
-                return (
-                  <tr key={b.balancedesc} className="table-row">
-                    <td className="table-cell font-medium">{b.balancedesc}</td>
-                    <td className="table-cell-muted">{b.balance_type || '—'}</td>
-                    <td className="table-cell-muted text-right">{fmt(b.opening_amount)}</td>
-                    <td className="table-cell text-right col-actual">
-                      <span className={`font-medium ${Number(b.movement_amount ?? 0) >= 0 ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'}`}>
-                        {fmt(b.movement_amount ?? 0)}
-                      </span>
-                    </td>
-                    <td className="table-cell text-right">
-                      <span className={`font-medium ${closing >= 0 ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'}`}>{fmt(closing)}</span>
-                    </td>
-                    <td className="px-3 py-2">
-                      <div className="flex items-center justify-center">
-                        <button
-                          onClick={() => setBalanceModal({ balancedesc: b.balancedesc, movementAmount: b.movement_amount ?? 0 })}
-                          title="View supporting transactions"
-                          className="flex items-center justify-center w-7 h-7 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                        >
-                          <ListBulletIcon className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 dark:border-gray-800">
+                  <th className="table-header-cell text-left">Account</th>
+                  <th className="table-header-cell text-left">Type</th>
+                  <th className="table-header-cell text-right">Opening</th>
+                  <th className="table-header-cell text-right col-actual">
+                    <span title="Calculated from account-linked transactions and transfers">Movement</span>
+                  </th>
+                  <th className="table-header-cell text-right">Closing</th>
+                  <th className="table-header-cell text-center">Details</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
+                {balances.map(b => {
+                  const closing = Number(b.opening_amount) + Number(b.movement_amount ?? 0)
+                  return (
+                    <tr key={b.balancedesc} className="table-row">
+                      <td className="table-cell font-medium">{b.balancedesc}</td>
+                      <td className="table-cell-muted">{b.balance_type || '—'}</td>
+                      <td className="table-cell-muted text-right">{fmt(b.opening_amount)}</td>
+                      <td className="table-cell text-right col-actual">
+                        <span className={`font-medium ${Number(b.movement_amount ?? 0) >= 0 ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'}`}>
+                          {fmt(b.movement_amount ?? 0)}
+                        </span>
+                      </td>
+                      <td className="table-cell text-right">
+                        <span className={`font-medium ${closing >= 0 ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'}`}>{fmt(closing)}</span>
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="flex items-center justify-center">
+                          <button
+                            onClick={() => setBalanceModal({ balancedesc: b.balancedesc, movementAmount: b.movement_amount ?? 0 })}
+                            title="View supporting transactions"
+                            className="flex items-center justify-center w-7 h-7 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                          >
+                            <ListBulletIcon className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-gray-200 dark:border-gray-700 font-semibold bg-gray-50 dark:bg-gray-800">
+                  <td className="px-4 py-2 text-gray-700 dark:text-gray-300 text-sm">Total Balances</td>
+                  <td />
+                  <td className="px-4 py-2 text-right text-gray-600 dark:text-gray-400 text-sm">{fmt(totalBalanceOpening)}</td>
+                  <td className="px-4 py-2 text-center text-xs text-gray-400 dark:text-gray-500" title="Movement is shown per account only and is not totaled across accounts">—</td>
+                  <td className="px-4 py-2 text-right text-sm">
+                    <span className={`font-medium ${totalBalanceClosing >= 0 ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'}`}>{fmt(totalBalanceClosing)}</span>
+                  </td>
+                  <td />
+                </tr>
+              </tfoot>
+            </table>
+          </div>
         </div>
       )}
 

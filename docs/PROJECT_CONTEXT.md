@@ -172,8 +172,10 @@ The repository already supports:
 - seeded demo-budget creation with historical close-outs, a current cycle, upcoming cycles, and health-relevant activity
 - budget-level primary-account display naming with `Transaction`, `Everyday`, and `Checking` as user-facing options while the stored account type remains `Transaction`
 - setup-page collapsible `Personalisation` and `Settings` sections with session-persisted expand or collapse state
-- budget-cycle grouping using `Current`, `Upcoming`, and `Historical`, with the historical list remembering its collapse state for the browser session
+- budget-cycle grouping using `Current`, `Upcoming`, and `Historical`, with the budget cycles page now remembering both upcoming and historical section collapse state for the browser session
 - period-detail summary cards that now include both `Projected Savings` and `Remaining Expenses`
+- period-detail footer totals for investments and balances, while keeping balance movement read-only and intentionally not totaled
+- a sidebar current-budget workspace that stays separate from the expanded budget list, uses explicit `View all ...` cycle links when more cycles exist, and avoids duplicating setup entry on the budget cycles page
 
 Current frontend wording trends toward `Budget Cycle` for user clarity while backend naming still uses `period` for stability.
 
@@ -209,7 +211,7 @@ The most useful enabling work for future sessions is:
 Dosh now has a meaningful multi-layer regression baseline:
 
 - backend `pytest`
-- frontend Jest and React Testing Library on the Vite-based frontend
+- frontend Jest and React Testing Library on the Vite-based frontend, including a dedicated layout-navigation regression baseline for current sidebar behavior
 - Playwright smoke coverage for create-budget, setup gating, first-cycle generation, first expense activity, close-out snapshot visibility, and next-cycle activation
 
 Testing emphasis should remain risk-based.
@@ -250,6 +252,8 @@ When making changes, preserve these working assumptions from the docs:
 - do not treat backend test isolation as optional now that mixed-area sessions depend on it
 - prefer regional display-label preferences over renaming internal domain models when terminology variation is mostly user-facing
 - do not let demo-budget import become destructive; it should remain additive-only unless a separately named reset workflow is intentionally designed
+- do not duplicate setup entry points on the budget cycles sidebar when the page already provides the relevant setup action
+- do not treat current sidebar navigation behavior as unowned presentation detail; update the layout regression baseline deliberately when navigation rules change
 
 ## Practical Starting Order For Future Sessions
 

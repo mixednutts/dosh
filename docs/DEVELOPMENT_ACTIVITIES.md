@@ -81,6 +81,13 @@ Working rules for this document:
 - `Quality` is a first-class roadmap area for UX/UI, bugs, test coverage, reliability, consistency, and polish work
 - roadmap areas are the strategic buckets; activity groups are the operational buckets inside them
 
+Status convention used in this document:
+
+- `Active`: already underway or the clearest live continuation area
+- `Next`: not yet active, but a strong near-term candidate
+- `Later`: worth tracking, but not a current near-term priority
+- `Completed`: finished and intentionally retained here until the roadmap is next regrouped
+
 ## Roadmap Areas
 
 ### 1. Reporting and Analysis
@@ -89,17 +96,29 @@ This remains the clearest next feature stream.
 
 #### Activity Group: Reporting Foundations
 
+Status:
+
+- `Next`
+
 - add a period comparison summary endpoint
 - add reporting cards on the budget summary page
 - build account movement summaries grouped by source
 
 #### Activity Group: Trend and Variance Visibility
 
+Status:
+
+- `Later`
+
 - add surplus trend and planned-vs-actual trend views
 - improve explanations of surplus changes over time
 - improve savings and investment trend visibility
 
 #### Activity Group: Historical Reporting Usability
+
+Status:
+
+- `Later`
 
 - add filters for historical transaction reporting
 - keep building better answers to "what changed and why?"
@@ -121,11 +140,19 @@ The centralized transaction ledger is already in place, so the next step is turn
 
 #### Activity Group: Reconciliation Workflow
 
+Status:
+
+- `Next`
+
 - add account-by-account reconciliation screens
 - add running totals and discrepancy detection
 - add reconciliation summary views for each balance type
 
 #### Activity Group: Ledger Review and Adjustment Visibility
+
+Status:
+
+- `Next`
 
 - add grouped ledger views by account and transaction source
 - add visibility into unmatched or system-generated adjustments
@@ -133,6 +160,10 @@ The centralized transaction ledger is already in place, so the next step is turn
 - add a system-adjustment review surface
 
 #### Activity Group: Closed-Cycle Reconciliation Handoff
+
+Status:
+
+- `Active`
 
 - define the reconciliation workflow for fixing issues discovered after a cycle is closed
 - align setup-protection and reconciliation messaging so blocked setup edits explain the downstream consequence path clearly
@@ -154,17 +185,29 @@ Reference:
 
 #### Activity Group: Lifecycle Hardening
 
+Status:
+
+- `Active`
+
 - validate and harden the explicit lifecycle rules
 - ensure carry-forward and opening rebasing stay aligned after delete and regenerate flows
 - strengthen the handoff from `ACTIVE` to `CLOSED` to next `ACTIVE`
 
 #### Activity Group: Close-Out Experience
 
+Status:
+
+- `Next`
+
 - finish the end-of-cycle review experience so it feels complete and trustworthy
 - refine the close-out modal and summary surfaces
 - decide which historical views should show close-out comments, goals, and snapshotted health data
 
 #### Activity Group: Historical Integrity and Read-Only Behavior
+
+Status:
+
+- `Active`
 
 - make closed-cycle read-only behavior consistent across remaining write paths
 - add clearer read-only and reconciliation messaging on closed cycles
@@ -188,17 +231,29 @@ Reference:
 
 #### Activity Group: Generation Readiness
 
+Status:
+
+- `Active`
+
 - keep centralized setup assessment as the source of truth for generation readiness
 - avoid reintroducing one-off page-level readiness logic
 - improve setup-summary visibility before users reach cycle generation
 
 #### Activity Group: Protected Configuration
 
+Status:
+
+- `Active`
+
 - extend protection reasoning only when it improves downstream safety and user understanding
 - keep setup editable where safe while blocking destructive changes once downstream dependence exists
 - add stronger explanation surfaces for why a setup item is protected
 
 #### Activity Group: Consequence Visibility
+
+Status:
+
+- `Next`
 
 - extend consequence messaging for reconciliation or correction paths after setup becomes in use
 
@@ -217,6 +272,10 @@ Reference:
 
 #### Activity Group: Scoring and Momentum
 
+Status:
+
+- `Later`
+
 - improve trend credibility
 - connect future corrective action to visible momentum
 - validate whether the current-period weighting inside the overall score feels proportionate in real use
@@ -225,11 +284,19 @@ Reference:
 
 #### Activity Group: Current-Period Interpretation
 
+Status:
+
+- `Next`
+
 - refine current-period warning signals
 - prepare for close-out metrics integration
 - align the overall budget health detail view with the dedicated current-period health check so the active-period story does not conflict between the two surfaces
 
 #### Activity Group: Personalisation and Evidence Language
+
+Status:
+
+- `Next`
 
 - refine evidence language so it reads naturally in budget terms
 - test and refine personalised threshold behavior
@@ -239,6 +306,10 @@ Reference:
 - keep the personalisation section lightweight rather than turning it into an intimidating settings panel
 
 #### Activity Group: Demo Data Alignment
+
+Status:
+
+- `Active`
 
 - keep development and demo data realistic enough that health surfaces remain meaningful during walkthroughs and regression checks
 - keep the demo seed aligned with later budget-health scoring changes so walkthrough data does not become misleading or stale
@@ -262,16 +333,28 @@ Current implemented slice:
 
 #### Activity Group: Formatting Foundations
 
+Status:
+
+- `Next`
+
 - move locale, currency, and date formatting out of hard-coded UI assumptions
 - introduce shared frontend formatting utilities for currency, number, and date presentation
 - add tests around locale-sensitive display and period-boundary assumptions where practical
 
 #### Activity Group: Preferences and Resolution
 
+Status:
+
+- `Next`
+
 - add budget-level or user-level locale and currency preferences
 - decide where locale, timezone, and currency preferences are stored and resolved
 
 #### Activity Group: Terminology and Regional Behavior
+
+Status:
+
+- `Later`
 
 - support regional budgeting cadence and terminology without fragmenting the core model
 - make health language, labels, and helper copy adaptable by locale
@@ -293,17 +376,29 @@ Dosh tracks balances and transactions already, but the product still needs an ex
 
 #### Activity Group: Cash Model Definition
 
+Status:
+
+- `Next`
+
 - define how cash position should be reviewed during an active period
 - define what Dosh means by available cash, committed cash, and reserved cash
 - clarify the relationship between account balances, planned spending, savings transfers, and investment allocations
 
 #### Activity Group: Cash Summary and Review Surfaces
 
+Status:
+
+- `Next`
+
 - define a cash management summary model for current-period use
 - add views for available cash, committed outflows, and near-term obligations
 - design the first cash management review surface before adding more balance-related UI fragments
 
 #### Activity Group: Cash Pressure Signals and Validation
+
+Status:
+
+- `Later`
 
 - make it easier to see which money is free to use versus already spoken for
 - identify the practical actions a user should take when cash pressure appears
@@ -326,12 +421,20 @@ As Dosh becomes more trustworthy for day-to-day finance use, users will eventual
 
 #### Activity Group: Export Scope and Format
 
+Status:
+
+- `Later`
+
 - define what data should be exportable for user trust, portability, and support
 - define initial export scope for budgets, periods, transactions, balances, and investments
 - decide on export formats such as CSV for review and JSON for structured backup
 - make export useful for both human review and machine-readable portability
 
 #### Activity Group: Backup and Restore Design
+
+Status:
+
+- `Later`
 
 - decide how backup should work without weakening data integrity or leaking implementation details
 - support practical recovery paths for self-hosted or manually managed deployments
@@ -342,6 +445,10 @@ As Dosh becomes more trustworthy for day-to-day finance use, users will eventual
 - document restore expectations and what level of compatibility Dosh intends to maintain across versions
 
 #### Activity Group: Trust, Privacy, and Validation
+
+Status:
+
+- `Later`
 
 - keep export and backup aligned with the ledger-backed model so restored data stays explainable
 - identify privacy and security expectations around exported financial data
@@ -354,12 +461,17 @@ This roadmap area exists for work that improves trust, usability, consistency, a
 
 #### Activity Group: UX/UI
 
-- tighten period-detail UI polish around totals and status affordances, especially for the income, investment, and balance sections
-- add period-detail totals for investments and balances while keeping movement read-only and avoiding a meaningless movement total
+Status:
+
+- `Next`
+
+- `Completed`: tighten period-detail UI polish around totals and status affordances, especially for the income, investment, and balance sections
+- `Completed`: add period-detail totals for investments and balances while keeping movement read-only and avoiding a meaningless movement total
 - continue navigation and information architecture cleanup so the sidebar stays centered on one active budget context at a time
 - preserve the compact or collapsible desktop mode as new features arrive
 - keep overflow affordances honest when the user is already on the destination page
 - avoid duplicate edit or setup entry points on the same screen unless they serve clearly different purposes
+- add a delete-current-budget action to the `No budget cycles yet` card so an abandoned or exploratory budget can be removed directly from that empty state
 - preserve the cleanup that removed duplicate budget detail text from the `Current Budget` panel and moved utility controls away from the banner collision area
 - expand budget summary reporting value without turning the page into a dashboard clone
 - identify the next summary card that best complements current balance and health without duplicating period-listing data
@@ -369,10 +481,18 @@ This roadmap area exists for work that improves trust, usability, consistency, a
 
 #### Activity Group: Bugs
 
+Status:
+
+- `Completed`
+
 - fix the empty visual artifact at the end of the total income line on the period detail page
 - align the investment spent pill wording and behavior with the expense spent pill so both outflow workflows feel consistent
 
 #### Activity Group: Test Coverage
+
+Status:
+
+- `Active`
 
 - keep new feature work under a test-with-change discipline rather than treating testing as a later cleanup phase
 - extend Playwright from the current happy-path lifecycle smoke into reconciliation, correction, and broader scenario-shaped flows
@@ -386,6 +506,10 @@ This roadmap area exists for work that improves trust, usability, consistency, a
 - add tests and cleanup around health personalisation and current-period threshold behavior
 
 #### Activity Group: Reliability
+
+Status:
+
+- `Active`
 
 - pin frontend install behavior more reliably
 - keep the Node 20 frontend Docker baseline healthy and revisit newer LTS adoption only when the toolchain is ready
@@ -401,6 +525,10 @@ This roadmap area exists for work that improves trust, usability, consistency, a
 
 #### Activity Group: Consistency
 
+Status:
+
+- `Next`
+
 - standardize terminology around savings and investments
 - standardize where the UI says `Budget Cycle` while backend and API continue using `period`
 - standardize health terminology around surplus, deficit, tolerance, threshold, and escalation
@@ -410,6 +538,10 @@ This roadmap area exists for work that improves trust, usability, consistency, a
 - keep actual-entry workflows transaction-first across income, expenses, and investments unless a deliberate exception is introduced
 
 #### Activity Group: Polish
+
+Status:
+
+- `Later`
 
 - decide whether repeated demo imports should eventually gain clearer naming, timestamps, or lightweight duplicate-management affordances
 
@@ -434,166 +566,30 @@ If we want a practical order of work rather than just a thematic roadmap, this i
 - Because the frontend is built with Vite and served as static assets, changes to frontend dev-mode visibility require a rebuild, not only a container restart.
 - Backend enforcement should continue to exist even when the frontend hides the control, so dev-only workflows are not protected by UI state alone.
 
-## Near-Term Follow-Up Worth Tracking
+## Canonical Near-Term References
 
-- decide whether repeated demo imports should eventually gain clearer naming, timestamps, or lightweight duplicate-management affordances
-- consider adding a richer demo-validation checklist or smoke flow once more reporting and reconciliation surfaces exist
-- keep the demo seed aligned with any later budget-health scoring changes so walkthrough data does not become misleading or stale
-- tighten period-detail UI polish around totals and status affordances, especially for the income, investment, and balance sections
-- add period-detail totals for investments and balances while keeping movement read-only and avoiding a meaningless movement total
-- fix the empty visual artifact at the end of the total income line on the period detail page
-- align the investment spent pill wording and behavior with the expense spent pill so both outflow workflows feel consistent
+To avoid duplicating the canonical roadmap entries above, use these sections as the main near-term reference points:
 
-## Near-Term Engineering Work
+- `Reconciliation > Closed-Cycle Reconciliation Handoff`
+- `Reporting and Analysis > Reporting Foundations`
+- `Localisation and Regional Fit > Formatting Foundations`
+- `Localisation and Regional Fit > Preferences and Resolution`
+- `Cash Management > Cash Model Definition`
+- `Cash Management > Cash Summary and Review Surfaces`
+- `Budget Health > Personalisation and Evidence Language`
+- `Budget Health > Demo Data Alignment`
+- `Quality > UX/UI`
+- `Quality > Bugs`
+- `Quality > Test Coverage`
+- `Quality > Reliability`
+- `Quality > Consistency`
+- `Quality > Polish`
 
-These activities are not necessarily flashy product milestones, but they are the most obvious engineering tasks that would reduce friction for future development.
-
-### 1. Expand And Maintain Automated Regression Coverage
-
-The repo now has a meaningful automated test harness across backend, frontend, and initial end-to-end workflows.
-
-Reference:
+Supporting validation material for near-term engineering work:
 
 - [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md)
 - [TEST_EXPANSION_PLAN.md](/home/ubuntu/dosh/docs/tests/TEST_EXPANSION_PLAN.md)
-
-Priority areas:
-- keep new feature work under a test-with-change discipline rather than treating testing as a later cleanup phase
-- extend Playwright from the current happy-path lifecycle smoke into reconciliation, correction, and broader scenario-shaped flows
-- continue expanding setup-shape consequence coverage where technically valid configuration changes can still weaken later workflows
-- deepen ledger and reconciliation coverage without treating one-off migration backfill as normal product behavior
-- continue broadening budget health coverage as scoring and reporting evolve
-
-Scenario note:
-
-- future setup and workflow testing should expand beyond the original `1 transaction + 1 savings` assumption
-- bookmark named scenarios such as `Single Account` and `Multi Transaction` so future sessions can deliberately test differing account shapes rather than relying on one default personal setup model
-
-### 2. Formalize Database Migration Strategy
-
-The backend currently applies schema changes during startup with targeted raw `ALTER TABLE` statements for newer lifecycle-related fields.
-
-That approach has helped the project move quickly, but it will become fragile as schema work grows.
-
-Priority areas:
-
-- introduce proper versioned migrations
-- turn the current explicit cutover-script baseline into a real migration history
-- make schema evolution safer and more observable than ad hoc one-time scripts
-- separate one-time migration work from normal app startup permanently
-- capture the new unified-ledger baseline, close-out schema, and setup-assessment schema in the real migration path
-
-### 3. Tighten Deployment and Build Reliability
-
-The Docker setup works as a local deployment path, but the repo notes already call out operational gaps.
-
-Priority areas:
-
-- pin frontend install behavior more reliably
-- keep the new Node 20 frontend Docker baseline healthy and revisit newer LTS adoption only when the toolchain is ready
-- verify compose assumptions around networks and Traefik usage
-- document expected production vs local deployment differences
-- confirm build and startup paths remain clean as the app grows
-- clean up startup and timestamp deprecation warnings that now appear during test and deployment runs
-- keep Playwright selectors aligned with current UI copy so full-suite verification stays trustworthy
-
-### 4. Improve API and Domain Consistency
-
-The product direction is getting more workflow-driven, so consistency matters more now.
-
-Priority areas:
-
-- standardize terminology around savings and investments
-- standardize where the UI says `Budget Cycle` while backend and API continue using `period`
-- standardize health terminology around surplus, deficit, tolerance, threshold, and escalation
-- preserve backend naming stability while refining frontend wording
-- keep balance movement read-only and transaction-derived
-- avoid introducing edit paths that weaken ledger trust
-- keep actual-entry workflows transaction-first across income, expenses, and investments unless a deliberate exception is introduced
-
-### 5. Close Out And Reconciliation Handoff
-
-The app now has the foundation for closing a cycle, but the correction path after closure still needs deliberate design.
-
-Priority areas:
-
-- define the reconciliation workflow for fixing issues discovered after a cycle is closed
-- make closed-cycle read-only behavior consistent across all remaining write paths
-- decide which historical views should show close-out comments, goals, and snapshotted health data
-- determine whether additional sign-off or audit fields are needed once user identity exists
-- extend end-to-end coverage from the current close-out happy path into post-close correction and reconciliation workflows
-
-### 6. Refine Budget Health Personalisation Experience
-
-The first personalisation pass is implemented, but it still needs usability refinement from real use.
-
-Priority areas:
-
-- make the interaction between deficit percentage and maximum deficit amount clearer
-- check whether any remaining slider labels or helper text still feel abstract
-- decide whether some health evidence lines should mirror the personalisation wording more closely
-- align the overall budget health detail view with the dedicated current-period health check so the active-period story does not conflict between the two surfaces
-- keep the section lightweight rather than turning it into an intimidating settings panel
-
-### 7. Continue Navigation And Information Architecture Cleanup
-
-The sidebar redesign has created a much stronger structure, but it also established some navigation rules that future work should preserve.
-
-Priority areas:
-
-- keep the sidebar centered on one active budget context at a time
-- add new first-class sections carefully so the nav does not grow back into a crowded tree
-- preserve the compact/collapsible desktop mode as new features arrive
-- keep overflow affordances honest when the user is already on the destination page
-- avoid duplicate edit or setup entry points on the same screen unless they serve clearly different purposes
-- preserve the cleanup that removed duplicate budget detail text from the `Current Budget` panel and moved utility controls away from the banner collision area
-
-### 8. Expand Budget Summary Reporting Value
-
-The Budgets page is now the main landing surface and already carries health and current balance context, so it is a strong candidate for the first reporting-oriented summaries.
-
-Priority areas:
-
-- add richer historical and trend summaries without turning the page into a dashboard clone
-- continue favoring live money position and practical status over repeated setup actions
-- identify the next summary card that best complements current balance and health without duplicating period-listing data
-- keep the period-detail summary card set under review before introducing user-controlled drag-and-drop ordering
-
-### 9. Establish Localisation Foundations
-
-The product already carries regional assumptions in formatting and cadence, so localisation should become an explicit engineering concern before those assumptions spread further.
-
-Priority areas:
-
-- centralize frontend currency, date, and number formatting
-- decide where locale, timezone, and currency preferences are stored and resolved
-- separate copy decisions from calculation rules wherever regional behavior may differ
-- identify backend responses that should stay neutral versus pre-formatted for display
-- add tests around locale-sensitive display and period-boundary assumptions where practical
-
-### 10. Define Cash Management Foundations
-
-Balances, transfers, and planned outflows already exist in the model, but the app still needs a clear foundation for turning those records into a trustworthy cash management workflow.
-
-Priority areas:
-
-- define what Dosh means by available cash, committed cash, and reserved cash
-- decide which calculations belong in backend summary endpoints versus frontend presentation
-- identify which existing balance and transaction data can support cash position summaries without duplicating logic
-- design the first cash management review surface before adding more balance-related UI fragments
-- add tests around cash-position calculations once the workflow definition is settled
-
-### 11. Prepare Export and Backup Foundations
-
-Export and backup do not need to be immediate release blockers, but they should be planned before the data model and operational assumptions become harder to untangle.
-
-Priority areas:
-
-- define stable export shapes for the most important financial records
-- decide whether backups are database-level, app-level, or both
-- identify which metadata, settings, and reference tables must be included for useful restore
-- document restore expectations and what level of compatibility Dosh intends to maintain across versions
-- add tests or validation around export completeness once the first format is defined
+- [TEST_RESULTS_SUMMARY.md](/home/ubuntu/dosh/docs/tests/TEST_RESULTS_SUMMARY.md)
 
 ## Recommended Session Backlog
 

@@ -31,6 +31,7 @@ Observed current state:
 - backend test dependencies are listed in [backend/requirements-dev.txt](/home/ubuntu/dosh/backend/requirements-dev.txt)
 - backend test configuration is defined in [backend/pytest.ini](/home/ubuntu/dosh/backend/pytest.ini)
 - frontend now uses a Vite build with standalone Jest plus React Testing Library, and includes user-facing workflow coverage
+- frontend Jest coverage now also includes a dedicated layout-navigation baseline for current sidebar hierarchy, setup-link visibility, and cycle-shortcut affordances
 - frontend also now has a Playwright end-to-end harness under [frontend/e2e](/home/ubuntu/dosh/frontend/e2e)
 - the project now has a credible regression foundation for controlled enhancement work
 - coverage is still selective rather than exhaustive, so new behavior should continue to be added together with tests
@@ -108,6 +109,7 @@ These areas deserve extra caution whenever product work touches them:
 - health scoring, evidence payloads, and historical snapshot integrity
 - setup edits whose consequences show up only in later workflows
 - demo-mode gating and seeded demo-budget behavior, especially additive-only import safety and health-signal credibility
+- sidebar current-budget navigation behavior, especially empty-state actions, same-destination affordances, and explicit `View all ...` deep-link behavior when the compact cycle preview is incomplete
 
 ### Budget health context for tests
 

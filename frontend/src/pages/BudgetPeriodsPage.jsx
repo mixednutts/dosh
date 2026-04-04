@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { Link, useLocation, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronDownIcon, ChevronRightIcon, PlusIcon, Cog6ToothIcon, TrashIcon } from '@heroicons/react/24/outline'
 import { addDays, format, parseISO } from 'date-fns'
@@ -155,7 +155,7 @@ function PeriodSummaryRow({ summary, onDelete }) {
   )
 }
 
-function PeriodSummaryGroup({ title, summaries, collapsed = false, collapsible = false, onDelete, sessionStorageKey }) {
+function PeriodSummaryGroup({ title, summaries, collapsed = false, collapsible = false, onDelete, sessionStorageKey, groupId, forceOpen = false }) {
   const [open, setOpen] = useState(() => {
     if (!collapsible || !sessionStorageKey || typeof window === 'undefined') {
       return !collapsed
@@ -169,6 +169,16 @@ function PeriodSummaryGroup({ title, summaries, collapsed = false, collapsible =
 
     return storedValue === 'true'
   })
+
+  useEffect(() => {
+    if (!forceOpen) return
+
+    setOpen(true)
+
+    if (collapsible && sessionStorageKey && typeof window !== 'undefined') {
+      window.sessionStorage.setItem(`${PERIOD_GROUP_SESSION_KEY_PREFIX}:${sessionStorageKey}`, 'true')
+    }
+  }, [forceOpen, collapsible, sessionStorageKey])
 
   if (summaries.length === 0) return null
 
@@ -187,7 +197,7 @@ function PeriodSummaryGroup({ title, summaries, collapsed = false, collapsible =
   }
 
   return (
-    <section className="card overflow-hidden">
+    <section id={groupId} className="card overflow-hidden scroll-mt-6">
       <div className="border-b border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-800 dark:bg-gray-900/70">
         <button
           type="button"
@@ -251,6 +261,7 @@ function PeriodSummaryGroup({ title, summaries, collapsed = false, collapsible =
 
 export default function BudgetPeriodsPage() {
   const { budgetId } = useParams()
+  const location = useLocation()
   const id = parseInt(budgetId, 10)
   const qc = useQueryClient()
   const [showGenerate, setShowGenerate] = useState(false)
@@ -387,14 +398,36 @@ export default function BudgetPeriodsPage() {
         <div className="space-y-4">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Budget Cycles</h2>
           <div className="space-y-4">
-            <PeriodSummaryGroup title="Current" summaries={groupedSummaries.current} collapsible onDelete={summary => { setDeleteMode(summary.delete_mode || 'single'); setDeleteTarget(summary) }} />
-            <PeriodSummaryGroup title="Upcoming" summaries={groupedSummaries.upcoming} collapsed collapsible onDelete={summary => { setDeleteMode(summary.delete_mode || 'single'); setDeleteTarget(summary) }} />
             <PeriodSummaryGroup
+              key={`current-${id}`}
+              title="Current"
+              summaries={groupedSummaries.current}
+              collapsible
+              sessionStorageKey={`budget-${id}-current`}
+              groupId="current"
+              forceOpen={location.hash === '#current'}
+              onDelete={summary => { setDeleteMode(summary.delete_mode || 'single'); setDeleteTarget(summary) }}
+            />
+            <PeriodSummaryGroup
+              key={`upcoming-${id}`}
+              title="Upcoming"
+              summaries={groupedSummaries.upcoming}
+              collapsed
+              collapsible
+              sessionStorageKey={`budget-${id}-upcoming`}
+              groupId="upcoming"
+              forceOpen={location.hash === '#upcoming'}
+              onDelete={summary => { setDeleteMode(summary.delete_mode || 'single'); setDeleteTarget(summary) }}
+            />
+            <PeriodSummaryGroup
+              key={`historical-${id}`}
               title="Historical"
               summaries={groupedSummaries.historical}
               collapsed
               collapsible
               sessionStorageKey={`budget-${id}-historical`}
+              groupId="historical"
+              forceOpen={location.hash === '#historical'}
               onDelete={summary => { setDeleteMode(summary.delete_mode || 'single'); setDeleteTarget(summary) }}
             />
           </div>

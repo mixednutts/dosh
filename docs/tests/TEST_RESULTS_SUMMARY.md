@@ -4,6 +4,67 @@ This document records meaningful automated test results from major working sessi
 
 It exists separately from [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) so the strategy can stay stable while future sessions still have a record of what was actually run and verified.
 
+## Latest Session: Period-Detail Workflow Polish, Sidebar Navigation Baseline Coverage, And Deployment Verification
+
+Session outcomes verified in this run:
+
+- the period detail page now has corrected footer behavior for the total income row, section totals for investments and balances, and a more consistent investment spent-pill workflow
+- the budget cycles and sidebar navigation surfaces were refined to keep the current budget context clearer, align `Historical` wording, and make extra-cycle navigation more explicit
+- the budget cycles page now preserves the `Upcoming` section collapse state for the browser session
+- the sidebar no longer duplicates setup entry on the budget cycles page, and current-budget navigation behavior now has a dedicated Jest regression baseline
+- the stack was rebuilt and redeployed multiple times during the session as the period-detail and sidebar refinements were iterated through user testing
+
+### Frontend verification
+
+Commands run during this session:
+
+```bash
+cd frontend
+npm test -- --runInBand --watchAll=false src/__tests__/PeriodDetailPage.test.jsx
+npm test -- --runInBand --watchAll=false src/__tests__/Layout.test.jsx
+npm run build
+```
+
+Result:
+
+- focused period-detail coverage passed after the totals-row and investment-status fixes
+- the new dedicated layout-navigation regression suite passed and now captures the current sidebar hierarchy, setup-link baseline, and `View all ...` cycle-link behavior
+- frontend production builds passed after the budget cycles page and sidebar layout changes
+- 2 focused frontend suites were run successfully during the session
+- 14 focused frontend tests passed across the two touched suites
+
+Files with meaningful frontend test or harness updates in this session:
+
+- [PeriodDetailPage.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/PeriodDetailPage.test.jsx)
+- [Layout.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/Layout.test.jsx)
+- [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx)
+- [Layout.jsx](/home/ubuntu/dosh/frontend/src/components/Layout.jsx)
+- [BudgetPeriodsPage.jsx](/home/ubuntu/dosh/frontend/src/pages/BudgetPeriodsPage.jsx)
+
+### Deployment verification
+
+Commands run:
+
+```bash
+docker compose -f docker-compose.yml up -d --build
+docker compose -f docker-compose.yml ps
+curl -sS http://127.0.0.1:3080/api/health
+```
+
+Result:
+
+- backend container rebuilt and restarted successfully
+- frontend container rebuilt and restarted successfully
+- frontend remained available on port `3080`
+- backend health endpoint returned `{"status":"ok","app":"Dosh"}`
+- the final deployed state includes the latest period-detail fixes, sidebar navigation refinements, and navigation regression coverage in the working tree
+
+### Test failures and resolution notes
+
+- the first version of the new layout-navigation test assumed a sidebar `Setup` link would still appear when setup needed attention, but the current live UI intentionally keeps setup actions off the sidebar baseline in those routed contexts
+- the test was updated to reflect the actual current behavior rather than an earlier design assumption
+- no unresolved automated test failures remained at the end of the session
+
 ## Latest Session: Demo Budget Workflow, Shared Dev-Mode Gating, Health-Relevant Demo Activity, And Deployment Verification
 
 Session outcomes verified in this run:

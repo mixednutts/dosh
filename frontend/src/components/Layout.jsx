@@ -8,16 +8,16 @@ import { useQuery } from '@tanstack/react-query'
 import clsx from 'clsx'
 import { format, parseISO } from 'date-fns'
 import { useDarkMode } from '../hooks/useDarkMode'
-import { getBudgets, getPeriodDetail, getPeriodsForBudget } from '../api/client'
+import { getBudgets, getBudgetSetupAssessment, getPeriodDetail, getPeriodsForBudget } from '../api/client'
 
-function PeriodShortcutGroup({ title, periods, activePeriodId, onNav, emptyMessage = null, moreLabel = null, moreTo = null, moreMuted = false }) {
+function PeriodShortcutGroup({ title, periods, activePeriodId, onNav, emptyMessage = null, moreText = null, moreTo = null, moreSubtle = false }) {
   if (periods.length === 0 && !emptyMessage) return null
 
   return (
     <div className="space-y-1.5">
-      <span className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-dosh-400">{title}</span>
+      <span className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-dosh-600 dark:text-dosh-400">{title}</span>
       {periods.length === 0 ? (
-        <p className="rounded-xl border border-slate-800 bg-slate-950/50 px-3 py-2 text-xs text-slate-300">
+        <p className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs text-gray-500 dark:border-slate-800 dark:bg-slate-950/85 dark:text-slate-300">
           {emptyMessage}
         </p>
       ) : (
@@ -31,7 +31,7 @@ function PeriodShortcutGroup({ title, periods, activePeriodId, onNav, emptyMessa
                 'flex items-center justify-between gap-3 rounded-xl border px-3 py-2 text-xs transition-colors',
                 period.finperiodid === activePeriodId
                   ? 'border-dosh-400 bg-dosh-600 text-white'
-                  : 'border-slate-800 bg-slate-950/50 text-slate-200 hover:border-dosh-700 hover:bg-slate-800 hover:text-white'
+                  : 'border-gray-200 bg-white text-gray-700 hover:border-dosh-400 hover:bg-dosh-50 hover:text-dosh-900 dark:border-slate-800 dark:bg-slate-950/85 dark:text-slate-200 dark:hover:border-dosh-700 dark:hover:bg-slate-900 dark:hover:text-white'
               )}
             >
               <span className="min-w-0 truncate">
@@ -40,28 +40,24 @@ function PeriodShortcutGroup({ title, periods, activePeriodId, onNav, emptyMessa
               <ChevronRightIcon className="h-3.5 w-3.5 shrink-0" />
             </Link>
           ))}
-          {moreLabel ? (
-            moreMuted ? (
-              <span className="inline-flex items-center gap-1.5 px-1 py-0.5 text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500">
-                <span>More</span>
-                <div className="flex items-center">
-                  <ChevronRightIcon className="h-3 w-3 opacity-70" />
-                  <ChevronRightIcon className="-ml-1 h-3 w-3" />
-                </div>
-              </span>
-            ) : (
-              <Link
-                to={moreTo}
-                onClick={onNav}
-                className="inline-flex items-center gap-1.5 px-1 py-0.5 text-[11px] font-medium uppercase tracking-[0.18em] text-dosh-300 transition-colors hover:text-white"
-              >
-                <span>More</span>
-                <div className="flex items-center">
-                  <ChevronRightIcon className="h-3 w-3 opacity-70" />
-                  <ChevronRightIcon className="-ml-1 h-3 w-3" />
-                </div>
-              </Link>
-            )
+          {moreText ? (
+            <Link
+              to={moreTo}
+              onClick={onNav}
+              className={clsx(
+                'flex items-center justify-between gap-3 rounded-xl border px-3 py-2 text-xs font-medium transition-colors',
+                moreSubtle
+                  ? 'border-dosh-200 bg-dosh-50 text-dosh-800 hover:border-dosh-400 hover:bg-dosh-100 dark:border-dosh-900/70 dark:bg-dosh-950/55 dark:text-dosh-200 dark:hover:border-dosh-700 dark:hover:bg-dosh-900/60'
+                  : 'border-dosh-300 bg-dosh-100 text-dosh-900 hover:border-dosh-500 hover:bg-dosh-200 dark:border-dosh-800 dark:bg-dosh-950/65 dark:text-dosh-100 dark:hover:border-dosh-600 dark:hover:bg-dosh-900/70'
+              )}
+              title={moreText}
+            >
+              <span>{moreText}</span>
+              <div className="flex items-center">
+                <ChevronRightIcon className="h-3.5 w-3.5 opacity-70" />
+                <ChevronRightIcon className="-ml-1 h-3.5 w-3.5" />
+              </div>
+            </Link>
           ) : null}
         </>
       )}
@@ -73,10 +69,10 @@ function BudgetList({ budgets, currentBudgetId, onNav }) {
   if (budgets.length === 0) return null
 
   return (
-    <div className="mt-3 space-y-2 rounded-2xl border border-dosh-700/75 bg-dosh-950/28 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+    <div className="mt-3 space-y-2 rounded-2xl border border-dosh-200 bg-dosh-50/60 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.4)] dark:border-dosh-700/75 dark:bg-slate-950 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-dosh-300">Budget List</span>
-        <span className="text-[11px] text-dosh-400">{budgets.length}</span>
+        <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-dosh-700 dark:text-dosh-300">Budget List</span>
+        <span className="text-[11px] text-dosh-600 dark:text-dosh-400">{budgets.length}</span>
       </div>
       <div className="space-y-1.5">
         {budgets.map(budget => (
@@ -88,11 +84,11 @@ function BudgetList({ budgets, currentBudgetId, onNav }) {
               'block rounded-xl border px-3 py-2 text-sm transition-colors',
               budget.budgetid === currentBudgetId
                 ? 'border-dosh-400 bg-dosh-600 text-white'
-                : 'border-slate-800 bg-slate-900/60 text-slate-200 hover:border-dosh-700 hover:bg-slate-800 hover:text-white'
+                : 'border-gray-200 bg-white text-gray-700 hover:border-dosh-400 hover:bg-dosh-50 hover:text-dosh-900 dark:border-slate-800 dark:bg-slate-950/85 dark:text-slate-200 dark:hover:border-dosh-700 dark:hover:bg-slate-900 dark:hover:text-white'
             )}
           >
             <span className="block truncate font-medium">{budget.description || 'Untitled'}</span>
-            <span className={clsx('mt-0.5 block truncate text-xs', budget.budgetid === currentBudgetId ? 'text-dosh-100' : 'text-dosh-400')}>
+            <span className={clsx('mt-0.5 block truncate text-xs', budget.budgetid === currentBudgetId ? 'text-dosh-100' : 'text-dosh-600 dark:text-dosh-400')}>
               {budget.budgetowner} · {budget.budget_frequency}
             </span>
           </Link>
@@ -102,13 +98,53 @@ function BudgetList({ budgets, currentBudgetId, onNav }) {
   )
 }
 
+function CompactCurrentBudgetContext({ budget, activePeriodId, onNav }) {
+  const initials = (budget.description || budget.budgetowner || 'Budget')
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(part => part[0]?.toUpperCase() || '')
+    .join('')
+
+  return (
+    <div className="mt-3 hidden flex-col items-center gap-2 lg:flex">
+      <Link
+        to={`/budgets/${budget.budgetid}`}
+        onClick={onNav}
+        title={`Current budget: ${budget.description || 'Untitled Budget'}`}
+        className="flex h-10 w-10 items-center justify-center rounded-2xl border border-cyan-400 bg-cyan-600 text-xs font-bold text-white transition-colors hover:bg-cyan-500"
+      >
+        {initials || 'B'}
+      </Link>
+      {activePeriodId ? (
+        <Link
+          to={`/periods/${activePeriodId}`}
+          onClick={onNav}
+          title="Open current budget cycle context"
+          className="flex h-9 w-9 items-center justify-center rounded-2xl border border-cyan-800 bg-cyan-950/40 text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-200 transition-colors hover:border-cyan-500 hover:bg-cyan-900/40 hover:text-white"
+        >
+          Cy
+        </Link>
+      ) : null}
+    </div>
+  )
+}
+
 function CurrentBudgetPanel({ budget, activePeriodId, onNav }) {
   const periodsMatch = useMatch('/budgets/:budgetId')
+  const setupMatch = useMatch('/budgets/:budgetId/setup')
   const viewingBudgetPeriods = periodsMatch?.params?.budgetId === String(budget.budgetid)
+  const viewingBudgetSetup = setupMatch?.params?.budgetId === String(budget.budgetid)
+  const viewingBudgetContext = viewingBudgetPeriods || viewingBudgetSetup
 
   const { data: periods = [] } = useQuery({
     queryKey: ['periods', budget.budgetid],
     queryFn: () => getPeriodsForBudget(budget.budgetid),
+    staleTime: 60_000,
+  })
+  const { data: setupAssessment } = useQuery({
+    queryKey: ['budget-setup-assessment', budget.budgetid],
+    queryFn: () => getBudgetSetupAssessment(budget.budgetid),
     staleTime: 60_000,
   })
 
@@ -120,12 +156,15 @@ function CurrentBudgetPanel({ budget, activePeriodId, onNav }) {
   const historicalPeriods = allHistoricalPeriods.slice(-4).reverse()
   const hasMoreFuturePeriods = allFuturePeriods.length > futurePeriods.length
   const hasMoreHistoricalPeriods = allHistoricalPeriods.length > historicalPeriods.length
+  const hiddenFutureCount = Math.max(0, allFuturePeriods.length - futurePeriods.length)
+  const hiddenHistoricalCount = Math.max(0, allHistoricalPeriods.length - historicalPeriods.length)
+  const needsSetupAttention = setupAssessment ? !setupAssessment.can_generate : false
 
   return (
-    <div className="space-y-3 rounded-2xl border border-cyan-700/75 bg-cyan-950/22 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+    <div className="space-y-3 rounded-2xl border border-cyan-200 bg-cyan-50/70 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.45)] dark:border-cyan-700/75 dark:bg-slate-950 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
       <div className="space-y-1">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-300">Current Budget</span>
-        <p className="text-xs text-cyan-100/80">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-700 dark:text-cyan-300">Current Budget</span>
+        <p className="text-xs text-cyan-800/80 dark:text-cyan-100/80">
           Quick links and shortcuts for the budget you&apos;re working in now.
         </p>
       </div>
@@ -136,32 +175,50 @@ function CurrentBudgetPanel({ budget, activePeriodId, onNav }) {
           onClick={onNav}
           className={clsx(
             'rounded-xl border px-3 py-2 text-sm font-medium transition-colors',
-            periodsMatch
+            viewingBudgetPeriods
               ? 'border-cyan-300 bg-cyan-600 text-white'
-              : 'border-cyan-700/75 bg-cyan-950/20 text-cyan-100 hover:border-cyan-400 hover:bg-cyan-900/35 hover:text-white'
+              : 'border-cyan-200 bg-white text-cyan-900 hover:border-cyan-400 hover:bg-cyan-100 hover:text-cyan-950 dark:border-cyan-700/75 dark:bg-cyan-950/20 dark:text-cyan-100 dark:hover:border-cyan-400 dark:hover:bg-cyan-900/35 dark:hover:text-white'
           )}
         >
           Budget Cycles
         </Link>
+        {needsSetupAttention && !viewingBudgetPeriods ? (
+          <Link
+            to={`/budgets/${budget.budgetid}/setup`}
+            onClick={onNav}
+            className={clsx(
+              'rounded-xl border px-3 py-2 text-sm font-medium transition-colors',
+              viewingBudgetSetup
+                ? 'border-cyan-300 bg-cyan-600 text-white'
+                : 'border-cyan-200 bg-white text-cyan-900 hover:border-cyan-400 hover:bg-cyan-100 hover:text-cyan-950 dark:border-cyan-700/75 dark:bg-cyan-950/20 dark:text-cyan-100 dark:hover:border-cyan-400 dark:hover:bg-cyan-900/35 dark:hover:text-white'
+            )}
+          >
+            Setup
+          </Link>
+        ) : null}
       </div>
 
-      <div className="space-y-3 border-t border-cyan-800/80 pt-3">
+      <div className="space-y-3 border-t border-cyan-200 pt-3 dark:border-cyan-800/80">
         <div className="flex items-center justify-between gap-2">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-300">Budget Cycle Shortcuts</span>
+          <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-700 dark:text-cyan-300">Budget Cycle Shortcuts</span>
         </div>
 
         {periods.length === 0 ? (
           <div className="space-y-2">
-            <p className="rounded-xl border border-slate-800 bg-slate-900/60 px-3 py-2 text-xs text-slate-300">
-              No budget cycles yet. Finish setup, then generate your first budget cycle.
+            <p className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs text-gray-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+              {needsSetupAttention
+                ? 'No budget cycles yet. Finish setup, then generate your first budget cycle.'
+                : 'No budget cycles yet. Open Budget Cycles to generate your first budget cycle.'}
             </p>
-            <Link
-              to={`/budgets/${budget.budgetid}/setup`}
-              onClick={onNav}
-              className="inline-flex rounded-xl border border-dosh-700 px-3 py-2 text-xs font-medium text-dosh-200 transition-colors hover:bg-slate-800 hover:text-white"
-            >
-              Open setup
-            </Link>
+            {needsSetupAttention ? (
+              <Link
+                to={`/budgets/${budget.budgetid}/setup`}
+                onClick={onNav}
+                className="inline-flex rounded-xl border border-dosh-700 px-3 py-2 text-xs font-medium text-dosh-200 transition-colors hover:bg-slate-900 hover:text-white"
+              >
+                Open setup
+              </Link>
+            ) : null}
           </div>
         ) : (
           <div className="space-y-3">
@@ -177,18 +234,18 @@ function CurrentBudgetPanel({ budget, activePeriodId, onNav }) {
               periods={futurePeriods}
               activePeriodId={activePeriodId}
               onNav={onNav}
-              moreLabel={hasMoreFuturePeriods ? 'more' : null}
-              moreTo={hasMoreFuturePeriods ? `/budgets/${budget.budgetid}` : null}
-              moreMuted={hasMoreFuturePeriods && viewingBudgetPeriods}
+              moreText={hasMoreFuturePeriods ? `View all ${allFuturePeriods.length} upcoming cycles (${hiddenFutureCount} more)` : null}
+              moreTo={hasMoreFuturePeriods ? `/budgets/${budget.budgetid}#upcoming` : null}
+              moreSubtle={hasMoreFuturePeriods && viewingBudgetContext}
             />
             <PeriodShortcutGroup
-              title="Recent"
+              title="Historical"
               periods={historicalPeriods}
               activePeriodId={activePeriodId}
               onNav={onNav}
-              moreLabel={hasMoreHistoricalPeriods ? 'more' : null}
-              moreTo={hasMoreHistoricalPeriods ? `/budgets/${budget.budgetid}` : null}
-              moreMuted={hasMoreHistoricalPeriods && viewingBudgetPeriods}
+              moreText={hasMoreHistoricalPeriods ? `View all ${allHistoricalPeriods.length} historical cycles (${hiddenHistoricalCount} more)` : null}
+              moreTo={hasMoreHistoricalPeriods ? `/budgets/${budget.budgetid}#historical` : null}
+              moreSubtle={hasMoreHistoricalPeriods && viewingBudgetContext}
             />
           </div>
         )}
@@ -203,7 +260,7 @@ function LayoutNav({ budgets, currentBudgetId, activePeriodId, budgetsExpanded, 
   return (
     <div className="space-y-3">
       <div className="space-y-2">
-        <span className="block px-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Workspace</span>
+        <span className="block px-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-slate-400">Workspace</span>
         <div className="flex items-center gap-2">
           <NavLink
             to="/budgets"
@@ -214,7 +271,7 @@ function LayoutNav({ budgets, currentBudgetId, activePeriodId, budgetsExpanded, 
                 'flex flex-1 items-center gap-2.5 rounded-2xl border px-3 py-3 text-sm font-medium transition-colors',
                 (isActive || onBudgetOrPeriod)
                   ? 'border-dosh-300 bg-dosh-600 text-white'
-                  : 'border-dosh-700/75 bg-dosh-950/30 text-dosh-100 hover:border-dosh-500 hover:bg-dosh-900/55 hover:text-white'
+                  : 'border-dosh-200 bg-dosh-50 text-dosh-900 hover:border-dosh-400 hover:bg-dosh-100 hover:text-dosh-950 dark:border-dosh-700/75 dark:bg-dosh-950/55 dark:text-dosh-100 dark:hover:border-dosh-500 dark:hover:bg-dosh-900/70 dark:hover:text-white'
               )
             }
           >
@@ -228,7 +285,7 @@ function LayoutNav({ budgets, currentBudgetId, activePeriodId, budgetsExpanded, 
               'rounded-2xl border p-3 transition-colors',
               budgetsExpanded
                 ? 'border-dosh-300 bg-dosh-600 text-white hover:bg-dosh-500'
-                : 'border-dosh-700/75 bg-dosh-950/30 text-dosh-200 hover:border-dosh-500 hover:bg-dosh-900/55 hover:text-white'
+                : 'border-dosh-200 bg-dosh-50 text-dosh-700 hover:border-dosh-400 hover:bg-dosh-100 hover:text-dosh-950 dark:border-dosh-700/75 dark:bg-dosh-950/55 dark:text-dosh-200 dark:hover:border-dosh-500 dark:hover:bg-dosh-900/70 dark:hover:text-white'
             )}
           >
             {budgetsExpanded ? <ChevronDownIcon className="h-4 w-4" /> : <ChevronRightIcon className="h-4 w-4" />}
@@ -237,21 +294,19 @@ function LayoutNav({ budgets, currentBudgetId, activePeriodId, budgetsExpanded, 
       </div>
 
       {budgetsExpanded ? (
-        <>
-          <BudgetList
-            budgets={budgets}
-            currentBudgetId={currentBudgetId}
-            onNav={onNav}
-          />
+        <BudgetList
+          budgets={budgets}
+          currentBudgetId={currentBudgetId}
+          onNav={onNav}
+        />
+      ) : null}
 
-          {currentBudget ? (
-            <CurrentBudgetPanel
-              budget={currentBudget}
-              activePeriodId={activePeriodId}
-              onNav={onNav}
-            />
-          ) : null}
-        </>
+      {currentBudget ? (
+        <CurrentBudgetPanel
+          budget={currentBudget}
+          activePeriodId={activePeriodId}
+          onNav={onNav}
+        />
       ) : null}
     </div>
   )
@@ -290,6 +345,7 @@ export default function Layout() {
   })
 
   const currentBudgetId = activeBudgetId ?? periodData?.period?.budgetid ?? null
+  const currentBudget = budgets.find(budget => budget.budgetid === currentBudgetId) ?? null
   const onBudgetOrPeriod = !!(budgetMatch || budgetSetupMatch || periodMatch)
 
   useEffect(() => {
@@ -304,25 +360,25 @@ export default function Layout() {
     <div className="min-h-screen flex">
       <aside
         className={clsx(
-          'fixed inset-y-0 left-0 z-40 flex flex-col bg-slate-950 text-white transition-all duration-200',
+          'fixed inset-y-0 left-0 z-40 flex flex-col border-r border-gray-200 bg-white text-gray-900 transition-all duration-200 dark:border-slate-800 dark:bg-slate-950 dark:text-white',
           open ? 'translate-x-0' : '-translate-x-full',
           sidebarCollapsed ? 'lg:w-20' : 'lg:w-56',
           'w-56 lg:static lg:flex lg:translate-x-0'
         )}
       >
-        <div className={clsx('border-b border-slate-800 py-4', sidebarCollapsed ? 'px-3 lg:px-2' : 'px-5')}>
+        <div className={clsx('border-b border-gray-200 py-4 dark:border-slate-800', sidebarCollapsed ? 'px-3 lg:px-2' : 'px-5')}>
           <div className={clsx('flex items-start', sidebarCollapsed ? 'justify-center' : 'justify-between gap-3')}>
             <Link
               to="/budgets"
               onClick={() => setOpen(false)}
-              className={clsx('flex min-w-0 items-center transition-colors hover:text-dosh-200', sidebarCollapsed ? 'justify-center' : 'gap-3')}
+              className={clsx('flex min-w-0 items-center transition-colors hover:text-dosh-700 dark:hover:text-dosh-200', sidebarCollapsed ? 'justify-center' : 'gap-3')}
               title="Go to budgets"
             >
               <img src="/icon.svg" alt="Dosh" className="h-8 w-8 rounded-full" />
               {!sidebarCollapsed ? (
                 <div className="min-w-0">
-                  <span className="block text-2xl font-black tracking-tight text-white">Do$h</span>
-                  <span className="mt-1 block text-[10px] font-semibold uppercase leading-tight tracking-[0.18em] text-dosh-300">
+                  <span className="block text-2xl font-black tracking-tight text-gray-900 dark:text-white">Do$h</span>
+                  <span className="mt-1 block text-[10px] font-semibold uppercase leading-tight tracking-[0.18em] text-dosh-700 dark:text-dosh-300">
                     <span className="block">Personal</span>
                     <span className="block">Finance</span>
                     <span className="block">Management</span>
@@ -333,11 +389,11 @@ export default function Layout() {
             {!sidebarCollapsed ? (
               <div className="hidden flex-col items-end gap-1 lg:flex">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-medium uppercase tracking-[0.18em] text-dosh-400">v1.0</span>
+                  <span className="text-[10px] font-medium uppercase tracking-[0.18em] text-dosh-600 dark:text-dosh-400">v1.0</span>
                   <button
                     onClick={() => setDark(value => !value)}
                     title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
-                    className="rounded-md p-1.5 text-dosh-300 transition-colors hover:bg-slate-900 hover:text-white"
+                    className="rounded-md p-1.5 text-dosh-700 transition-colors hover:bg-dosh-100 hover:text-dosh-900 dark:text-dosh-300 dark:hover:bg-slate-950 dark:hover:text-white"
                   >
                     {dark ? <SunIcon className="h-4 w-4" /> : <MoonIcon className="h-4 w-4" />}
                   </button>
@@ -346,7 +402,7 @@ export default function Layout() {
                   type="button"
                   onClick={() => setSidebarCollapsed(true)}
                   title="Collapse sidebar"
-                  className="shrink-0 rounded-md p-1.5 text-dosh-300 transition-colors hover:bg-slate-900 hover:text-white"
+                  className="shrink-0 rounded-md p-1.5 text-dosh-700 transition-colors hover:bg-dosh-100 hover:text-dosh-900 dark:text-dosh-300 dark:hover:bg-slate-950 dark:hover:text-white"
                 >
                   <ChevronLeftIcon className="h-4 w-4" />
                 </button>
@@ -359,19 +415,26 @@ export default function Layout() {
               <button
                 onClick={() => setDark(value => !value)}
                 title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
-                className="rounded-md p-1.5 text-dosh-300 transition-colors hover:bg-slate-900 hover:text-white"
+                className="rounded-md p-1.5 text-dosh-700 transition-colors hover:bg-dosh-100 hover:text-dosh-900 dark:text-dosh-300 dark:hover:bg-slate-950 dark:hover:text-white"
               >
                 {dark ? <SunIcon className="h-4 w-4" /> : <MoonIcon className="h-4 w-4" />}
               </button>
-              <span className="text-[9px] font-medium uppercase tracking-[0.18em] text-dosh-400">v1.0</span>
+              <span className="text-[9px] font-medium uppercase tracking-[0.18em] text-dosh-600 dark:text-dosh-400">v1.0</span>
               <button
                 type="button"
                 onClick={() => setSidebarCollapsed(false)}
                 title="Expand sidebar"
-                className="rounded-md p-1.5 text-dosh-300 transition-colors hover:bg-slate-900 hover:text-white"
+                className="rounded-md p-1.5 text-dosh-700 transition-colors hover:bg-dosh-100 hover:text-dosh-900 dark:text-dosh-300 dark:hover:bg-slate-950 dark:hover:text-white"
               >
                 <ChevronRightIcon className="h-4 w-4" />
               </button>
+              {currentBudget ? (
+                <CompactCurrentBudgetContext
+                  budget={currentBudget}
+                  activePeriodId={activePeriodId}
+                  onNav={() => setOpen(false)}
+                />
+              ) : null}
             </div>
           ) : null}
         </div>
@@ -389,7 +452,7 @@ export default function Layout() {
                     'flex items-center justify-center rounded-2xl border px-3 py-3 transition-colors',
                     (isActive || onBudgetOrPeriod)
                       ? 'border-dosh-400 bg-dosh-700 text-white'
-                      : 'border-slate-800 bg-slate-900/60 text-slate-200 hover:border-dosh-700 hover:bg-slate-800 hover:text-white'
+                      : 'border-dosh-200 bg-dosh-50 text-dosh-800 hover:border-dosh-400 hover:bg-dosh-100 hover:text-dosh-950 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-dosh-700 dark:hover:bg-slate-900 dark:hover:text-white'
                   )
                 }
               >
@@ -399,7 +462,7 @@ export default function Layout() {
                 type="button"
                 onClick={() => setSidebarCollapsed(false)}
                 title="Expand navigation"
-                className="flex w-full items-center justify-center rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-3 text-slate-300 transition-colors hover:border-dosh-700 hover:bg-slate-800 hover:text-white"
+                className="flex w-full items-center justify-center rounded-2xl border border-dosh-200 bg-dosh-50 px-3 py-3 text-dosh-700 transition-colors hover:border-dosh-400 hover:bg-dosh-100 hover:text-dosh-950 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:border-dosh-700 dark:hover:bg-slate-900 dark:hover:text-white"
               >
                 <ChevronRightIcon className="h-5 w-5" />
               </button>
