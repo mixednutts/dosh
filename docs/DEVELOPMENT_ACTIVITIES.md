@@ -487,6 +487,7 @@ Status:
 
 - fix the empty visual artifact at the end of the total income line on the period detail page
 - align the investment spent pill wording and behavior with the expense spent pill so both outflow workflows feel consistent
+- ensure `Surplus (Budget)` reflects deficit on expense lines even when the affected expense line is already in `Paid` state
 
 #### Activity Group: Test Coverage
 
