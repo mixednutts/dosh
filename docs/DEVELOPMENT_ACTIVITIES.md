@@ -496,6 +496,8 @@ Status:
 - preserve the compact or collapsible desktop mode as new features arrive
 - keep overflow affordances honest when the user is already on the destination page
 - avoid duplicate edit or setup entry points on the same screen unless they serve clearly different purposes
+- replace the `Edit` text label on the budget cycle details page with a more appropriate icon-based affordance where that action is already visually established elsewhere
+- align the `+`, `-`, and details affordances properly in the income section of the budget cycle details page so row actions read as one intentional control set
 - add a delete-current-budget action to the `No budget cycles yet` card so an abandoned or exploratory budget can be removed directly from that empty state
 - preserve the cleanup that removed duplicate budget detail text from the `Current Budget` panel and moved utility controls away from the banner collision area
 - expand budget summary reporting value without turning the page into a dashboard clone
