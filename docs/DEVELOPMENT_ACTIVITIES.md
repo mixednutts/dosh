@@ -83,6 +83,7 @@ Working rules for this document:
 
 Status convention used in this document:
 
+- `Idea`: worth capturing, but still exploratory and not yet shaped into near-term implementation work
 - `Active`: already underway or the clearest live continuation area
 - `Next`: not yet active, but a strong near-term candidate
 - `Later`: worth tracking, but not a current near-term priority
@@ -174,6 +175,26 @@ Cross-links:
 - Period Close Out
 - Setup Assessment And Protected Configuration
 - Quality > Test Coverage
+
+#### Activity Group: Transaction Correction and Reversal Handling
+
+Status:
+
+- `Idea`
+
+- consider whether deleting a recorded transaction from income, expense, or investment modals should create a reversal transaction rather than hard-deleting the original row
+
+Notes:
+
+- current behavior hard-deletes the transaction while the cycle remains open, then recomputes derived state from the remaining ledger rows
+- reversal-style correction would better match stronger financial audit methodology and preserve a visible correction trail
+- hard delete is currently simpler for end-user understanding, especially in an open-cycle budgeting workflow that is not yet presenting itself as a full accounting ledger
+- any future change should distinguish clearly between open-cycle usability, closed-cycle historical integrity, and whether users are allowed to void, reverse, or fully remove erroneous entries
+
+Cross-links:
+
+- Period Close Out
+- Quality > Enhancements
 
 ### 3. Period Close Out
 
