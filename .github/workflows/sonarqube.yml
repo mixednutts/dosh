@@ -51,6 +51,12 @@ jobs:
         working-directory: frontend
         run: npm run test:coverage
 
+      - name: Check Sonar config presence
+        run: |
+          [ -n "${{ secrets.SONAR_TOKEN }}" ] && echo "SONAR_TOKEN present" || (echo "SONAR_TOKEN missing" && exit 1)
+          [ -n "${{ vars.SONAR_HOST_URL }}" ] && echo "SONAR_HOST_URL present" || (echo "SONAR_HOST_URL missing" && exit 1)
+          [ -n "${{ vars.SONAR_PROJECT_KEY }}" ] && echo "SONAR_PROJECT_KEY present" || (echo "SONAR_PROJECT_KEY missing" && exit 1)
+
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@26c51824c8330b026f261a3205f94958d4b1bc5c
         env:
@@ -59,3 +65,4 @@ jobs:
         with:
           args: >
             --define sonar.projectKey=${{ vars.SONAR_PROJECT_KEY }}
+            --define sonar.organization=mixednutts
