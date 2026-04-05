@@ -334,6 +334,7 @@ Status:
 
 - keep development and demo data realistic enough that health surfaces remain meaningful during walkthroughs and regression checks
 - keep the demo seed aligned with later budget-health scoring changes so walkthrough data does not become misleading or stale
+- expand the demo seed to include expense items with varied types and recurrence patterns so calendar, timing, and workflow walkthroughs better reflect real use
 - consider whether more than one demo seed profile is needed later, such as `healthy`, `under pressure`, or `recovery`, without weakening the current additive-only demo import behavior
 
 Cross-links:
@@ -496,7 +497,7 @@ Status:
 - preserve the cleanup that removed duplicate budget detail text from the `Current Budget` panel and moved utility controls away from the banner collision area
 - expand budget summary reporting value without turning the page into a dashboard clone
 - identify the next summary card that best complements current balance and health without duplicating period-listing data
-- add a calendar-style view of income timing and expense due dates to the budget overview page, replacing the historical `# periods` summary card
+- `Completed`: add a calendar-style view of income timing and expense due dates to the budget overview page, replacing the historical `# periods` summary card
 - keep the period-detail summary card set under review before introducing user-controlled drag-and-drop ordering
 - review sidebar and budget-summary polish after real use, especially around future first-class sections
 - revisit summary-card customization only after the current period-detail card set feels stable in real use
@@ -505,11 +506,12 @@ Status:
 
 Status:
 
-- `Completed`
+- `Next`
 
-- fix the empty visual artifact at the end of the total income line on the period detail page
-- align the investment spent pill wording and behavior with the expense spent pill so both outflow workflows feel consistent
-- ensure `Surplus (Budget)` reflects deficit on expense lines even when the affected expense line is already in `Paid` state
+- `Completed`: fix the empty visual artifact at the end of the total income line on the period detail page
+- `Completed`: align the investment spent pill wording and behavior with the expense spent pill so both outflow workflows feel consistent
+- `Completed`: ensure `Surplus (Budget)` reflects deficit on expense lines even when the affected expense line is already in `Paid` state
+- fix the sidebar budget chevron behavior so collapsing a budget in the navigation panel also collapses its budget cycles reliably
 
 #### Activity Group: Enhancements
 

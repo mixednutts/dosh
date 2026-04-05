@@ -4,6 +4,65 @@ This document records meaningful automated test results from major working sessi
 
 It exists separately from [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) so the strategy can stay stable while future sessions still have a record of what was actually run and verified.
 
+## Latest Session: Budget Overview Calendar Expansion, Interaction Polish, And Repeated Deployment Verification
+
+Session outcomes verified in this run:
+
+- the old historical `# periods` summary on the Budgets page was replaced by a compact month-view calendar card
+- the calendar now includes a full-calendar modal, month navigation, clickable day details, and a dedicated cycle-start marker
+- calendar visibility now includes active and upcoming periods within a bounded 3-month window
+- the compact summary card was iterated repeatedly to reduce visual weight, remove redundant copy, compress day cells, and keep the richer detail in the modal instead
+- the earlier Budgets page test warning caused by demo-budget navigation to an unmatched route was removed cleanly by mocking navigation directly
+- the stack was rebuilt and redeployed repeatedly during the session as calendar behavior and layout were refined through review
+
+### Frontend verification
+
+Commands run during this session:
+
+```bash
+cd frontend
+npm test -- --runInBand --watchAll=false src/__tests__/BudgetsPage.test.jsx
+npm run build
+```
+
+Result:
+
+- focused Budgets page coverage passed repeatedly as the calendar interaction model evolved
+- the Budgets page suite now protects compact summary rendering, full-calendar behavior, bounded 3-month lookahead, day-event modal behavior, and cycle-start event rendering
+- the demo-budget test warning about unmatched `/budgets/88` navigation was resolved without broadening the shared test harness
+- frontend production builds passed after the calendar card, modal, and event-model refinements
+- 1 focused frontend suite passed
+- 6 focused frontend tests passed in the latest verified state
+
+Files with meaningful frontend test or harness updates in this session:
+
+- [BudgetsPage.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/BudgetsPage.test.jsx)
+- [BudgetsPage.jsx](/home/ubuntu/dosh/frontend/src/pages/BudgetsPage.jsx)
+
+### Deployment verification
+
+Commands run:
+
+```bash
+docker compose -f docker-compose.yml up -d --build
+docker compose -f docker-compose.yml ps
+curl -sS http://127.0.0.1:3080/api/health
+```
+
+Result:
+
+- backend container rebuilt and restarted successfully
+- frontend container rebuilt and restarted successfully
+- frontend remained available on port `3080`
+- backend health endpoint returned `{"status":"ok","app":"Dosh"}`
+- the final deployed state includes the compact summary calendar, full-calendar modal, day-event interactions, and cycle-start marker
+
+### Test failures and resolution notes
+
+- the initial Budgets page test emitted a React Router warning because the demo-budget workflow navigated to `/budgets/88` while the test harness only mounted `/budgets`
+- the warning was resolved by mocking `useNavigate` and asserting the navigation call directly instead of widening the route harness
+- no unresolved automated test failures remained at the end of the session
+
 ## Latest Session: Period-Detail Workflow Polish, Sidebar Navigation Baseline Coverage, And Deployment Verification
 
 Session outcomes verified in this run:

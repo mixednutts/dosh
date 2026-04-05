@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
-import { ArrowTrendingDownIcon, ArrowTrendingUpIcon, MinusIcon, PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline'
-import { differenceInCalendarDays, format, parseISO } from 'date-fns'
+import { ArrowLeftIcon, ArrowRightIcon, ArrowTrendingDownIcon, ArrowTrendingUpIcon, CalendarDaysIcon, MinusIcon, PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline'
+import { addMonths, differenceInCalendarDays, endOfMonth, endOfWeek, format, isSameDay, isSameMonth, parseISO, startOfMonth, startOfWeek, subMonths } from 'date-fns'
 import { getBudgets, createBudget, createDemoBudget, deleteBudget, getPeriodsForBudget, getBudgetHealth, getPeriodDetail } from '../api/client'
 import Modal from '../components/Modal'
 import Spinner from '../components/Spinner'
@@ -66,6 +66,426 @@ function groupPeriods(periods) {
 
 function formatPeriodRange(period) {
   return `${format(parseISO(period.startdate), 'dd MMM yy')} - ${format(parseISO(period.enddate), 'dd MMM yy')}`
+}
+
+function startOfDay(date) {
+  const value = new Date(date)
+  value.setHours(0, 0, 0, 0)
+  return value
+}
+
+function expenseOccurrencesInRange(expense, periodStart, periodEnd) {
+  if (!expense?.freqtype || expense.freqtype === 'Always') return []
+
+  if (expense.freqtype === 'Fixed Day of Month') {
+    const day = parseInt(expense.frequency_value, 10)
+    if (!day) return []
+
+    const occurrences = []
+    const cursor = new Date(periodStart.getFullYear(), periodStart.getMonth(), 1)
+    while (cursor <= periodEnd) {
+      const candidate = new Date(cursor.getFullYear(), cursor.getMonth(), day)
+      if (
+        candidate.getMonth() === cursor.getMonth() &&
+        candidate >= periodStart &&
+        candidate <= periodEnd
+      ) {
+        occurrences.push(candidate)
+      }
+      cursor.setMonth(cursor.getMonth() + 1, 1)
+    }
+    return occurrences
+  }
+
+  if (expense.freqtype === 'Every N Days') {
+    const interval = parseInt(expense.frequency_value, 10)
+    if (!interval || !expense.effectivedate) return []
+
+    const occurrences = []
+    let cursor = startOfDay(parseISO(expense.effectivedate))
+    if (cursor > periodEnd) return []
+
+    if (cursor < periodStart) {
+      const deltaDays = Math.ceil((periodStart - cursor) / 86400000)
+      const steps = Math.ceil(deltaDays / interval)
+      cursor = new Date(cursor)
+      cursor.setDate(cursor.getDate() + (steps * interval))
+    }
+
+    while (cursor <= periodEnd) {
+      occurrences.push(new Date(cursor))
+      cursor = new Date(cursor)
+      cursor.setDate(cursor.getDate() + interval)
+    }
+
+    return occurrences
+  }
+
+  return []
+}
+
+function buildCalendarEvents(currentPeriod, currentPeriodDetail) {
+  const details = Array.isArray(currentPeriodDetail) ? currentPeriodDetail.filter(Boolean) : []
+
+  if (details.length === 0) {
+    return {
+      events: [],
+    }
+  }
+
+  const allEvents = details.flatMap(detail => {
+    const periodStart = startOfDay(parseISO(detail.period.startdate))
+    const periodEnd = startOfDay(parseISO(detail.period.enddate))
+    const incomes = detail.incomes ?? []
+    const expenses = detail.expenses ?? []
+
+    const cycleStartEvent = {
+      key: `cycle-start-${detail.period.finperiodid}`,
+      date: periodStart,
+      kind: 'cycle-start',
+      title: 'Budget cycle starts',
+      amount: null,
+      finperiodid: detail.period.finperiodid,
+      cycleStatus: detail.period.cycle_status,
+    }
+
+    const incomeEvents = incomes
+      .filter(income => Number(income.budgetamount ?? 0) > 0)
+      .map(income => ({
+        key: `income-${detail.period.finperiodid}-${income.incomedesc}`,
+        date: periodStart,
+        kind: 'income',
+        title: income.incomedesc,
+        amount: income.budgetamount,
+        finperiodid: detail.period.finperiodid,
+        cycleStatus: detail.period.cycle_status,
+      }))
+
+    const expenseEvents = expenses.flatMap(expense =>
+      expenseOccurrencesInRange(expense, periodStart, periodEnd).map((date, index) => ({
+        key: `expense-${detail.period.finperiodid}-${expense.expensedesc}-${index}-${date.toISOString()}`,
+        date,
+        kind: 'expense',
+        title: expense.expensedesc,
+        amount: expense.budgetamount,
+        finperiodid: detail.period.finperiodid,
+        cycleStatus: detail.period.cycle_status,
+      }))
+    )
+
+    return [cycleStartEvent, ...incomeEvents, ...expenseEvents]
+  })
+
+  const sortedEvents = allEvents.sort((a, b) => {
+    if (a.date.getTime() !== b.date.getTime()) return a.date - b.date
+    const rank = { 'cycle-start': 0, income: 1, expense: 2 }
+    if (a.kind !== b.kind) return rank[a.kind] - rank[b.kind]
+    return a.title.localeCompare(b.title)
+  })
+
+  return {
+    events: sortedEvents,
+  }
+}
+
+function buildMonthGrid(monthDate) {
+  const monthStart = startOfMonth(monthDate)
+  const calendarStart = startOfWeek(monthStart, { weekStartsOn: 1 })
+  const calendarEnd = endOfWeek(endOfMonth(monthDate), { weekStartsOn: 1 })
+  const days = []
+
+  for (let cursor = new Date(calendarStart); cursor <= calendarEnd; cursor.setDate(cursor.getDate() + 1)) {
+    days.push(new Date(cursor))
+  }
+
+  const weeks = []
+  for (let index = 0; index < days.length; index += 7) {
+    weeks.push(days.slice(index, index + 7))
+  }
+  return weeks
+}
+
+function getCalendarDefaultMonth(currentPeriod, today) {
+  if (!currentPeriod) return today
+
+  const cycleStart = startOfDay(parseISO(currentPeriod.startdate))
+  const cycleEnd = startOfDay(parseISO(currentPeriod.enddate))
+  if (today >= cycleStart && today <= cycleEnd) return today
+  return cycleStart
+}
+
+function buildEventsByDate(events, visibleMonth) {
+  return events
+    .filter(event => isSameMonth(event.date, visibleMonth))
+    .reduce((acc, event) => {
+      const key = format(event.date, 'yyyy-MM-dd')
+      acc[key] = [...(acc[key] ?? []), event]
+      return acc
+    }, {})
+}
+
+function buildCompactDayIndicators(dayEvents) {
+  const incomeEvents = dayEvents.filter(event => event.kind === 'income')
+  const expenseEvents = dayEvents.filter(event => event.kind === 'expense')
+
+  const indicators = []
+
+  if (incomeEvents.length > 0) {
+    indicators.push({
+      key: 'income',
+      kind: 'income',
+      title: incomeEvents.map(event => `${event.title} · ${fmtCurrency(event.amount)}`).join('\n'),
+    })
+  }
+
+  if (expenseEvents.length > 0) {
+    indicators.push({
+      key: 'expense',
+      kind: 'expense',
+      title: expenseEvents.map(event => `${event.title} · ${fmtCurrency(event.amount)}`).join('\n'),
+    })
+  }
+
+  return indicators
+}
+
+function buildDayEventsTitle(dayEvents) {
+  return dayEvents
+    .map(event => {
+      if (event.kind === 'cycle-start') return event.title
+      return `${event.title} · ${fmtCurrency(event.amount)}`
+    })
+    .join('\n')
+}
+
+function CalendarDayEventsModal({ date, events, onClose }) {
+  const orderedEvents = [...events].sort((a, b) => {
+    const rank = { 'cycle-start': 0, income: 1, expense: 2 }
+    if (a.kind !== b.kind) return rank[a.kind] - rank[b.kind]
+    return a.title.localeCompare(b.title)
+  })
+
+  return (
+    <Modal title={format(date, 'EEEE d MMMM yyyy')} onClose={onClose} size="md">
+      <div className="space-y-2">
+        {orderedEvents.map(event => (
+          <div
+            key={`day-event-${event.key}`}
+            className={`rounded-md border px-3 py-2 ${
+              event.kind === 'cycle-start'
+                ? 'border-sky-200 bg-sky-50 dark:border-sky-800 dark:bg-sky-950/20'
+                : event.kind === 'income'
+                ? 'border-dosh-200 bg-dosh-50 dark:border-dosh-800 dark:bg-dosh-950/20'
+                : 'border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20'
+            }`}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-gray-900 dark:text-gray-100">{event.title}</p>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                  {event.kind === 'cycle-start' ? 'Cycle start' : event.kind === 'income' ? 'Income' : 'Expense'}
+                </p>
+              </div>
+              {event.amount !== null ? (
+                <span className="shrink-0 text-sm font-semibold text-gray-900 dark:text-gray-100">{fmtCurrency(event.amount)}</span>
+              ) : null}
+            </div>
+          </div>
+        ))}
+      </div>
+    </Modal>
+  )
+}
+
+function getCalendarRelevantPeriods(periods, today) {
+  const lookaheadEnd = endOfMonth(addMonths(today, 2))
+
+  return periods.filter(period => {
+    if (!['ACTIVE', 'PLANNED'].includes(period.cycle_status)) return false
+    const periodStart = startOfDay(parseISO(period.startdate))
+    const periodEnd = startOfDay(parseISO(period.enddate))
+    return periodStart <= lookaheadEnd && periodEnd >= today
+  })
+}
+
+function dayFallsWithinPeriods(day, periods) {
+  return periods.some(period => {
+    const periodStart = startOfDay(parseISO(period.startdate))
+    const periodEnd = startOfDay(parseISO(period.enddate))
+    return day >= periodStart && day <= periodEnd
+  })
+}
+
+function CalendarMonthGrid({ periods, visibleMonth, onChangeMonth, today, events, compact = false, onSelectDay = null }) {
+  const monthWeeks = buildMonthGrid(visibleMonth)
+  const eventsByDate = buildEventsByDate(events, visibleMonth)
+
+  return (
+    <div className={`rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900 ${compact ? 'p-2.5' : 'p-3'}`}>
+      <div className={`flex items-center justify-between gap-2 ${compact ? 'mb-2' : 'mb-3'}`}>
+        <button
+          type="button"
+          className={`inline-flex items-center justify-center rounded-full border border-gray-200 text-gray-600 transition hover:border-dosh-300 hover:text-dosh-700 dark:border-gray-700 dark:text-gray-300 dark:hover:border-dosh-700 dark:hover:text-dosh-300 ${compact ? 'h-7 w-7' : 'h-8 w-8'}`}
+          onClick={() => onChangeMonth(startOfMonth(subMonths(visibleMonth, 1)))}
+          aria-label="Previous month"
+        >
+          <ArrowLeftIcon className={compact ? 'h-3.5 w-3.5' : 'h-4 w-4'} />
+        </button>
+        <div className="text-center">
+          <p className={`${compact ? 'text-xs' : 'text-sm'} font-semibold text-gray-900 dark:text-gray-100`}>
+            {format(visibleMonth, 'MMMM yyyy')}
+          </p>
+          {!compact ? (
+            <p className="text-[11px] text-gray-500 dark:text-gray-400">Current cycle timing</p>
+          ) : null}
+        </div>
+        <button
+          type="button"
+          className={`inline-flex items-center justify-center rounded-full border border-gray-200 text-gray-600 transition hover:border-dosh-300 hover:text-dosh-700 dark:border-gray-700 dark:text-gray-300 dark:hover:border-dosh-700 dark:hover:text-dosh-300 ${compact ? 'h-7 w-7' : 'h-8 w-8'}`}
+          onClick={() => onChangeMonth(startOfMonth(addMonths(visibleMonth, 1)))}
+          aria-label="Next month"
+        >
+          <ArrowRightIcon className={compact ? 'h-3.5 w-3.5' : 'h-4 w-4'} />
+        </button>
+      </div>
+      <div className={`grid grid-cols-7 gap-1 text-center font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 ${compact ? 'text-[9px]' : 'text-[10px]'}`}>
+        {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
+          <div key={day} className={compact ? 'py-0.5' : 'py-1'}>{day}</div>
+        ))}
+      </div>
+      <div className={compact ? 'mt-1 space-y-1' : 'mt-1 space-y-1'}>
+        {monthWeeks.map((week, weekIndex) => (
+          <div key={`${format(visibleMonth, 'yyyy-MM')}-week-${weekIndex}`} className="grid grid-cols-7 gap-1">
+            {week.map(day => {
+              const dateKey = format(day, 'yyyy-MM-dd')
+              const dayEvents = eventsByDate[dateKey] ?? []
+              const hasCycleStart = dayEvents.some(event => event.kind === 'cycle-start')
+              const inCurrentMonth = isSameMonth(day, visibleMonth)
+              const isToday = isSameDay(day, today)
+              const isCycleDay = dayFallsWithinPeriods(day, periods)
+              const canOpenDay = dayEvents.length > 0 && typeof onSelectDay === 'function'
+              const dayTitle = canOpenDay ? buildDayEventsTitle(dayEvents) : undefined
+
+              return (
+                <button
+                  type="button"
+                  key={dateKey}
+                  className={`rounded-md border px-1 py-1 ${
+                    compact ? 'min-h-[36px]' : 'min-h-[72px]'
+                  } ${
+                    isToday
+                      ? 'border-dosh-400 bg-dosh-50 shadow-sm dark:border-dosh-500 dark:bg-dosh-950/30'
+                      : hasCycleStart
+                        ? 'border-sky-300 bg-sky-50 shadow-sm dark:border-sky-600 dark:bg-sky-950/30'
+                      : isCycleDay
+                        ? 'border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800/70'
+                        : 'border-transparent bg-transparent'
+                  } ${canOpenDay ? 'cursor-pointer hover:border-dosh-300 dark:hover:border-dosh-700' : 'cursor-default'}`}
+                  onClick={() => {
+                    if (canOpenDay) onSelectDay(day, dayEvents)
+                  }}
+                  disabled={!canOpenDay}
+                  aria-label={canOpenDay ? `View events for ${format(day, 'd MMMM yyyy')}` : undefined}
+                  title={dayTitle}
+                >
+                    <div className="flex items-center justify-between gap-1">
+                      <span className={`${compact ? 'text-[9px]' : 'text-[11px]'} font-semibold ${
+                        inCurrentMonth ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-600'
+                      }`}>
+                        {format(day, 'd')}
+                      </span>
+                  </div>
+                  {compact ? (
+                    <div className="mt-0.5 flex items-center gap-0.5">
+                      {buildCompactDayIndicators(dayEvents).map(indicator => (
+                        <span
+                          key={`${dateKey}-${indicator.key}`}
+                          className={`h-1.5 w-2.5 rounded-full ${indicator.kind === 'income' ? 'bg-dosh-500' : 'bg-amber-500'}`}
+                          title={indicator.title}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="mt-1 space-y-1">
+                      {dayEvents.slice(0, 2).map(event => (
+                        <div
+                          key={event.key}
+                          className={`rounded px-1.5 py-1 text-[10px] leading-tight ${
+                            event.kind === 'cycle-start'
+                              ? 'bg-sky-100 text-sky-900 dark:bg-sky-900/30 dark:text-sky-100'
+                              : event.kind === 'income'
+                              ? 'bg-dosh-100 text-dosh-900 dark:bg-dosh-900/40 dark:text-dosh-100'
+                              : 'bg-amber-100 text-amber-900 dark:bg-amber-900/30 dark:text-amber-100'
+                          }`}
+                          title={event.kind === 'cycle-start' ? event.title : `${event.title} · ${fmtCurrency(event.amount)}`}
+                        >
+                          <div className="truncate font-semibold">{event.title}</div>
+                          <div className="truncate opacity-80">
+                            {event.kind === 'cycle-start' ? 'Cycle start' : fmtCurrency(event.amount)}
+                          </div>
+                        </div>
+                      ))}
+                      {dayEvents.length > 2 ? (
+                        <div className="text-[10px] font-semibold text-gray-500 dark:text-gray-400">
+                          +{dayEvents.length - 2} more
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function FullCalendarModal({ budgetName, periods, events, today, onClose }) {
+  const todayMonth = startOfMonth(getCalendarDefaultMonth(periods[0], today))
+  const [visibleMonth, setVisibleMonth] = useState(todayMonth)
+  const viewingTodayMonth = isSameMonth(visibleMonth, todayMonth)
+  const [selectedDay, setSelectedDay] = useState(null)
+
+  return (
+    <>
+      <Modal title={`Calendar for ${budgetName || 'Untitled Budget'}`} onClose={onClose} size="xl">
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="rounded-full border border-dosh-200 bg-dosh-50 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-dosh-800 dark:border-dosh-800 dark:bg-dosh-950/30 dark:text-dosh-200">
+              Today {format(today, 'dd MMM')}
+            </div>
+            <button
+              type="button"
+              className={`btn-secondary ${viewingTodayMonth ? 'cursor-default opacity-50' : ''}`}
+              onClick={() => {
+                if (!viewingTodayMonth) setVisibleMonth(todayMonth)
+              }}
+              disabled={viewingTodayMonth}
+            >
+              Today
+            </button>
+          </div>
+          <CalendarMonthGrid
+            periods={periods}
+            visibleMonth={visibleMonth}
+            onChangeMonth={setVisibleMonth}
+            today={today}
+            events={events}
+            onSelectDay={(date, dayEvents) => setSelectedDay({ date, events: dayEvents })}
+          />
+        </div>
+      </Modal>
+      {selectedDay ? (
+        <CalendarDayEventsModal
+          date={selectedDay.date}
+          events={selectedDay.events}
+          onClose={() => setSelectedDay(null)}
+        />
+      ) : null}
+    </>
+  )
 }
 
 function TrafficLight({ status }) {
@@ -156,7 +576,90 @@ function BalanceSummaryCard({ currentPeriod, currentPeriodDetail, isLoading }) {
   )
 }
 
-function BudgetStats({ periods = [], currentPeriodDetail, currentPeriodDetailLoading, health, onOpenHealth, onOpenCurrentPeriodCheck }) {
+function CalendarSummaryCard({ currentPeriod, calendarPeriods, calendarPeriodDetails, isLoading, budgetName }) {
+  const today = startOfDay(new Date())
+  const defaultMonth = getCalendarDefaultMonth(currentPeriod, today)
+  const [visibleMonth, setVisibleMonth] = useState(startOfMonth(defaultMonth))
+  const [showFullCalendar, setShowFullCalendar] = useState(false)
+  const [selectedDay, setSelectedDay] = useState(null)
+
+  useEffect(() => {
+    setVisibleMonth(startOfMonth(defaultMonth))
+  }, [defaultMonth.getTime()])
+
+  if (!currentPeriod) {
+    return (
+      <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 dark:border-gray-700 dark:bg-gray-800/50">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Calendar</p>
+        <p className="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">No active budget cycle</p>
+        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Generate a budget cycle to map income timing and due dates</p>
+      </div>
+    )
+  }
+
+  if (isLoading || calendarPeriodDetails.length === 0) {
+    return (
+      <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 dark:border-gray-700 dark:bg-gray-800/50">
+        <div className="h-3 w-16 rounded bg-gray-200 dark:bg-gray-700" />
+        <div className="mt-2 h-4 w-32 rounded bg-gray-200 dark:bg-gray-700" />
+        <div className="mt-3 space-y-2">
+          <div className="h-8 rounded bg-gray-200 dark:bg-gray-700" />
+          <div className="h-8 rounded bg-gray-200 dark:bg-gray-700" />
+        </div>
+      </div>
+    )
+  }
+
+  const { events } = buildCalendarEvents(currentPeriod, calendarPeriodDetails)
+
+  return (
+    <>
+    <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 dark:border-gray-700 dark:bg-gray-800/50">
+      <div className="rounded-lg border border-gray-200 bg-white p-2.5 dark:border-gray-700 dark:bg-gray-900">
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Calendar</p>
+          <button
+            type="button"
+            className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 transition hover:border-dosh-300 hover:text-dosh-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:border-dosh-700 dark:hover:text-dosh-300"
+            onClick={() => setShowFullCalendar(true)}
+            aria-label="Open full calendar"
+            title="Open full calendar"
+          >
+            <CalendarDaysIcon className="h-3.5 w-3.5" />
+          </button>
+        </div>
+        <CalendarMonthGrid
+          periods={calendarPeriods}
+          visibleMonth={visibleMonth}
+          onChangeMonth={setVisibleMonth}
+          today={today}
+          events={events}
+          compact
+          onSelectDay={(date, dayEvents) => setSelectedDay({ date, events: dayEvents })}
+        />
+      </div>
+    </div>
+    {selectedDay ? (
+      <CalendarDayEventsModal
+        date={selectedDay.date}
+        events={selectedDay.events}
+        onClose={() => setSelectedDay(null)}
+      />
+    ) : null}
+    {showFullCalendar ? (
+      <FullCalendarModal
+        budgetName={budgetName}
+        periods={calendarPeriods}
+        events={events}
+        today={today}
+        onClose={() => setShowFullCalendar(false)}
+      />
+    ) : null}
+    </>
+  )
+}
+
+function BudgetStats({ budgetName, periods = [], currentPeriodDetail, calendarPeriods = [], calendarPeriodDetails = [], currentPeriodDetailLoading, health, onOpenHealth, onOpenCurrentPeriodCheck }) {
   const grouped = useMemo(() => groupPeriods(periods), [periods])
   const currentPeriod = grouped.current[0] ?? null
   const daysRemaining = currentPeriod
@@ -166,14 +669,6 @@ function BudgetStats({ periods = [], currentPeriodDetail, currentPeriodDetailLoa
   const currentPeriodDetailText = currentPeriod
     ? `${daysRemaining} day${daysRemaining === 1 ? '' : 's'} remaining`
     : 'Generate a budget cycle to begin tracking'
-
-  const stats = [
-    {
-      label: 'Historical',
-      value: grouped.historical.length,
-      detail: grouped.historical.length === 1 ? 'completed budget cycle' : 'completed budget cycles',
-    },
-  ]
 
   return (
     <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -217,13 +712,13 @@ function BudgetStats({ periods = [], currentPeriodDetail, currentPeriodDetailLoa
         currentPeriodDetail={currentPeriodDetail}
         isLoading={currentPeriodDetailLoading}
       />
-      {stats.map(stat => (
-        <div key={stat.label} className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 dark:border-gray-700 dark:bg-gray-800/50">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{stat.label}</p>
-          <p className="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">{stat.value}</p>
-          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{stat.detail}</p>
-        </div>
-      ))}
+      <CalendarSummaryCard
+        currentPeriod={currentPeriod}
+        calendarPeriods={calendarPeriods}
+        calendarPeriodDetails={calendarPeriodDetails}
+        isLoading={currentPeriodDetailLoading}
+        budgetName={budgetName}
+      />
       <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 dark:border-gray-700 dark:bg-gray-800/50">
         <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Budget Health</p>
         {health ? (
@@ -419,6 +914,7 @@ export default function BudgetsPage() {
   const [modal, setModal] = useState(null)
   const [healthModal, setHealthModal] = useState(null)
   const [currentCheckModal, setCurrentCheckModal] = useState(null)
+  const today = startOfDay(new Date())
 
   const { data: budgets = [], isLoading } = useQuery({ queryKey: ['budgets'], queryFn: getBudgets })
   const periodQueries = useQueries({
@@ -435,19 +931,41 @@ export default function BudgetsPage() {
       staleTime: 60_000,
     })),
   })
-  const currentPeriodDetailQueries = useQueries({
-    queries: budgets.map((budget, index) => {
-      const periods = periodQueries[index]?.data ?? []
-      const currentPeriod = groupPeriods(periods).current[0]
-
-      return {
-        queryKey: ['budget-current-period-detail', budget.budgetid, currentPeriod?.finperiodid ?? 'none'],
-        queryFn: () => getPeriodDetail(currentPeriod.finperiodid),
-        enabled: Boolean(currentPeriod?.finperiodid),
-        staleTime: 60_000,
-      }
-    }),
+  const calendarPeriodMeta = budgets.flatMap((budget, index) => {
+    const periods = periodQueries[index]?.data ?? []
+    return getCalendarRelevantPeriods(periods, today).map(period => ({
+      budgetid: budget.budgetid,
+      finperiodid: period.finperiodid,
+      period,
+    }))
   })
+  const calendarPeriodDetailQueries = useQueries({
+    queries: calendarPeriodMeta.map(meta => ({
+      queryKey: ['budget-calendar-period-detail', meta.budgetid, meta.finperiodid],
+      queryFn: () => getPeriodDetail(meta.finperiodid),
+      staleTime: 60_000,
+    })),
+  })
+  const calendarPeriodDetailsById = useMemo(
+    () => Object.fromEntries(
+      calendarPeriodMeta.map((meta, index) => [meta.finperiodid, calendarPeriodDetailQueries[index]?.data ?? null])
+    ),
+    [calendarPeriodMeta, calendarPeriodDetailQueries]
+  )
+  const calendarBudgetLoadingByBudgetId = useMemo(
+    () => Object.fromEntries(
+      budgets.map((budget, budgetIndex) => {
+        const periods = periodQueries[budgetIndex]?.data ?? []
+        const relevantIds = getCalendarRelevantPeriods(periods, today).map(period => period.finperiodid)
+        const isLoadingDetails = relevantIds.some(finperiodid => {
+          const metaIndex = calendarPeriodMeta.findIndex(meta => meta.finperiodid === finperiodid)
+          return metaIndex >= 0 && calendarPeriodDetailQueries[metaIndex]?.isLoading
+        })
+        return [budget.budgetid, isLoadingDetails]
+      })
+    ),
+    [budgets, periodQueries, today, calendarPeriodMeta, calendarPeriodDetailQueries]
+  )
 
   const create = useMutation({
     mutationFn: createBudget,
@@ -528,9 +1046,17 @@ export default function BudgetsPage() {
                 </div>
               ) : (
                 <BudgetStats
+                  budgetName={b.description || 'Untitled Budget'}
                   periods={periodQueries[index]?.data ?? []}
-                  currentPeriodDetail={currentPeriodDetailQueries[index]?.data ?? null}
-                  currentPeriodDetailLoading={currentPeriodDetailQueries[index]?.isLoading}
+                  currentPeriodDetail={(() => {
+                    const currentPeriod = groupPeriods(periodQueries[index]?.data ?? []).current[0]
+                    return currentPeriod ? calendarPeriodDetailsById[currentPeriod.finperiodid] ?? null : null
+                  })()}
+                  calendarPeriods={getCalendarRelevantPeriods(periodQueries[index]?.data ?? [], today)}
+                  calendarPeriodDetails={getCalendarRelevantPeriods(periodQueries[index]?.data ?? [], today)
+                    .map(period => calendarPeriodDetailsById[period.finperiodid])
+                    .filter(Boolean)}
+                  currentPeriodDetailLoading={calendarBudgetLoadingByBudgetId[b.budgetid]}
                   health={healthQueries[index]?.data ?? null}
                   onOpenHealth={() => healthQueries[index]?.data && setHealthModal({ budget: b, health: healthQueries[index].data })}
                   onOpenCurrentPeriodCheck={() => healthQueries[index]?.data && setCurrentCheckModal({

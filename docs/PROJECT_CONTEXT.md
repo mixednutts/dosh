@@ -168,6 +168,7 @@ The repository already supports:
 - transaction-backed income, expense, and investment updates
 - account balance viewing with transaction-based movement explanation
 - current budget summary cards, current balance summary, and current-period health check
+- a compact budget-overview calendar card with month navigation, a full-calendar modal, clickable day details, and bounded 3-month lookahead into active and upcoming cycles
 - historical close-out snapshot review for closed cycles
 - seeded demo-budget creation with historical close-outs, a current cycle, upcoming cycles, and health-relevant activity
 - budget-level primary-account display naming with `Transaction`, `Everyday`, and `Checking` as user-facing options while the stored account type remains `Transaction`
@@ -178,6 +179,14 @@ The repository already supports:
 - a sidebar current-budget workspace that stays separate from the expanded budget list, uses explicit `View all ...` cycle links when more cycles exist, and avoids duplicating setup entry on the budget cycles page
 
 Current frontend wording trends toward `Budget Cycle` for user clarity while backend naming still uses `period` for stability.
+
+Current budget-summary calendar behavior to preserve unless deliberately redesigned:
+
+- budgeted income is represented on the cycle start date, which is currently treated as the practical income-receipt anchor for the cycle
+- the overview card stays compact and uses indicator-level density rather than large event blocks
+- the full calendar modal is the richer review surface, while the inline card stays summary-oriented
+- calendar expansion is intentionally bounded to the current month plus the next 2 months to avoid unbounded event generation
+- cycle-start timing is represented as its own calendar event and visual marker so users can distinguish the start of a new budget cycle from ordinary income or expense timing
 
 ## Active Product Streams
 
@@ -205,6 +214,7 @@ The most useful enabling work for future sessions is:
 5. improve API and domain wording consistency while preserving backend stability
 6. keep closed-cycle correction design aligned with reconciliation rather than reopening normal edit paths
 7. harden deployment by addressing Node engine drift and startup deprecation warnings
+8. continue improving summary and calendar usability without letting the budget overview become a dashboard clone
 
 ## Testing Posture
 

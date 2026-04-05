@@ -32,6 +32,7 @@ Observed current state:
 - backend test configuration is defined in [backend/pytest.ini](/home/ubuntu/dosh/backend/pytest.ini)
 - frontend now uses a Vite build with standalone Jest plus React Testing Library, and includes user-facing workflow coverage
 - frontend Jest coverage now also includes a dedicated layout-navigation baseline for current sidebar hierarchy, setup-link visibility, and cycle-shortcut affordances
+- frontend Jest coverage now also includes Budgets page calendar behavior, including compact summary rendering, full-calendar interaction, bounded 3-month lookahead, and day-event modal behavior
 - frontend also now has a Playwright end-to-end harness under [frontend/e2e](/home/ubuntu/dosh/frontend/e2e)
 - the project now has a credible regression foundation for controlled enhancement work
 - coverage is still selective rather than exhaustive, so new behavior should continue to be added together with tests
@@ -110,6 +111,7 @@ These areas deserve extra caution whenever product work touches them:
 - setup edits whose consequences show up only in later workflows
 - demo-mode gating and seeded demo-budget behavior, especially additive-only import safety and health-signal credibility
 - sidebar current-budget navigation behavior, especially empty-state actions, same-destination affordances, and explicit `View all ...` deep-link behavior when the compact cycle preview is incomplete
+- budget-summary calendar behavior, especially cycle-start markers, bounded future lookahead, and compact-cell event affordances that must stay aligned with day-detail modal content
 
 ### Budget health context for tests
 

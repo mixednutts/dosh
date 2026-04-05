@@ -27,6 +27,77 @@ For recent concrete verification outcomes, read [TEST_RESULTS_SUMMARY.md](/home/
 
 For the dedicated implementation plan that drove the income transaction unification and legacy-ledger cleanup work in this session, read [INCOME_TRANSACTIONS_UNIFICATION_AND_LEGACY_LEDGER_CLEANUP_PLAN.md](/home/ubuntu/dosh/docs/plans/INCOME_TRANSACTIONS_UNIFICATION_AND_LEGACY_LEDGER_CLEANUP_PLAN.md).
 
+## Latest Session: Budget Overview Calendar Expansion, Interaction Polish, Demo-Data Follow-Up, And Deployment Verification
+
+This session focused on replacing the old historical-count summary on the Budgets page with a practical calendar view, then tightening the interaction model and compactness through repeated review-driven refinement.
+
+Important direction now in place:
+
+- the Budgets page now uses a calendar-style summary card in place of the historical `# periods` stat
+- the calendar reflects month-view timing with previous and next navigation, a compact inline summary, and a larger modal review surface
+- calendar behavior is intentionally bounded to the current month plus the next 2 months so active and upcoming cycle timing remains visible without unbounded future expansion
+- budgeted income is currently anchored to cycle start because the product assumption for now is that users generally align their budget cycle with when income is received
+- the start of a budget cycle is now represented as its own event and visual marker rather than being implied only through income timing
+- clicking a day with events now opens a day-detail modal, and hover or title affordances stay aligned with the same event model
+- the demo-data roadmap now explicitly calls for more varied expense types and recurrence patterns so calendar walkthroughs stay realistic
+
+### 1. The budget overview now has a dedicated calendar surface
+
+The old historical-count summary card on the Budgets page was replaced with a calendar-oriented summary.
+
+Current behavior:
+
+- the budget overview shows a compact month grid rather than a simple historical count
+- the inline card stays intentionally dense and compact rather than growing into a large dashboard panel
+- the richer review surface lives in a full-calendar modal opened from the card header
+- the modal title now uses the budget name directly
+
+Important product meaning:
+
+- the budget summary page now answers timing questions more directly, especially around income arrival and due-date clustering
+- the inline card should remain useful as a glanceable timing surface rather than competing with full reporting views
+
+### 2. Calendar events now use one shared interaction model
+
+This session moved the calendar away from passive decoration and into a reusable event-based view.
+
+Current behavior:
+
+- income, expenses, and budget-cycle start are all represented as calendar events
+- compact cells use indicator-level density rather than stacking repeated event blocks
+- days with events are clickable and open a day-detail modal
+- hover and title text use the same underlying event information as the day-detail modal
+
+Important engineering meaning:
+
+- future calendar enhancements should continue to extend the shared event model rather than adding one-off cell decorations that bypass day-detail behavior
+- the cycle-start marker is now part of the product language and should not be removed casually
+
+### 3. Future visibility is intentionally bounded
+
+The calendar now reaches beyond the active cycle, but only within an explicit limit.
+
+Current behavior:
+
+- the calendar includes relevant active and planned periods that intersect the current month plus the next 2 months
+- event generation is intentionally bounded to avoid performance drift from scanning too far ahead
+- current and upcoming periods share the same frontend rendering path and detail fetch boundary
+
+Important engineering meaning:
+
+- future work should preserve the explicit lookahead boundary unless the event-generation model is deliberately redesigned
+- the current implementation should be treated as an internal feature slice, not as a separate reusable package yet
+
+### 4. Test and deployment flow were extended together with the UI
+
+This session repeatedly paired calendar refinements with focused frontend verification and redeployment.
+
+Current behavior:
+
+- Budgets page tests now cover compact calendar rendering, full-calendar interaction, bounded lookahead, day-event modal behavior, and cycle-start markers
+- the earlier demo-budget navigation warning in the Budgets page test was removed cleanly by asserting navigation directly
+- Docker Compose rebuild and health verification were used repeatedly during the review cycle, and the latest deployed state includes the calendar refinements
+
 ## Latest Session: Period-Detail Polish, Sidebar Navigation Refinement, Navigation Regression Coverage, And Repeated Deployment Verification
 
 This session focused on tightening the budget-cycle and period-detail workflow surfaces after user testing, then locking the resulting navigation behavior into frontend tests.

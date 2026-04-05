@@ -2,7 +2,7 @@
 
 Dosh is a workflow-driven personal finance application with a FastAPI backend and a Vite-powered React frontend.
 
-The current product supports guided budget setup, budget-cycle planning, income and expense tracking, transaction-backed balance movement, savings and investment planning, close-out workflows, and a meaningful automated regression baseline.
+The current product supports guided budget setup, budget-cycle planning, income and expense tracking, transaction-backed balance movement, savings and investment planning, close-out workflows, a budget-overview calendar with bounded upcoming-cycle visibility, and a meaningful automated regression baseline.
 
 ## Start Here
 
@@ -26,7 +26,7 @@ For new AI or agent sessions:
 - Frontend: React 18, Vite, React Query, React Router
 - Testing: `pytest`, Jest with React Testing Library, Playwright
 - Deployment path: Docker Compose
-- Core product shape: guided budgeting, explicit budget-cycle lifecycle, ledger-backed transaction movement, close-out flow, setup assessment, and budget health
+- Core product shape: guided budgeting, explicit budget-cycle lifecycle, ledger-backed transaction movement, close-out flow, setup assessment, budget health, and calendar-based timing visibility on the budget overview
 
 ## Repository Layout
 
