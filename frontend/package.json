@@ -16,6 +16,7 @@
     "start": "vite",
     "build": "vite build",
     "test": "jest --runInBand",
+    "test:coverage": "jest --runInBand --coverage",
     "test:e2e": "playwright test",
     "test:watch": "jest --watch"
   },

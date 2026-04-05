@@ -81,3 +81,21 @@ dosh/
 - `Budget Cycle` is the preferred user-facing wording where it improves clarity, while backend naming may still use `period` for stability.
 - The product direction is practical, supportive, and workflow-driven rather than accounting-heavy.
 - Detailed roadmap, plan, and testing content should live in the next-layer documents above rather than growing this README.
+
+## SonarQube
+
+The repository includes a GitHub Actions workflow at [.github/workflows/sonarqube.yml](/home/ubuntu/dosh/.github/workflows/sonarqube.yml) and scanner settings in [sonar-project.properties](/home/ubuntu/dosh/sonar-project.properties).
+
+To enable analysis in your GitHub repository:
+
+1. create the project in SonarQube
+2. add a repository variable named `SONAR_HOST_URL`
+3. add a repository variable named `SONAR_PROJECT_KEY`
+4. add a repository secret named `SONAR_TOKEN`
+
+The workflow generates:
+
+- Python coverage at `backend/coverage.xml`
+- JavaScript coverage at `frontend/coverage/lcov.info`
+
+Those reports are then consumed by SonarQube during the scan step.
