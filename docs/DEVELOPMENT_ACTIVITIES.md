@@ -489,6 +489,15 @@ Status:
 - align the investment spent pill wording and behavior with the expense spent pill so both outflow workflows feel consistent
 - ensure `Surplus (Budget)` reflects deficit on expense lines even when the affected expense line is already in `Paid` state
 
+#### Activity Group: Enhancements
+
+Status:
+
+- `Next`
+
+- change modal wording in expense, investment, and income workflows from `Add Full` to `Add Remaining` for clearer and more consistent transaction-entry language
+- make modal `Add Remaining` values in expense, investment, and income workflows resolve as budget amount minus total recorded amount, with deficit outcomes clamped to `$0.00`
+
 #### Activity Group: Test Coverage
 
 Status:
