@@ -1,9 +1,16 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from ..database import get_db
-from ..models import Budget, FinancialPeriod, IncomeType, PeriodTransaction
-from ..schemas import IncomeTypeCreate, IncomeTypeOut, IncomeTypeUpdate, SetupHistoryEntryOut, SetupHistoryOut
+from ..models import Budget, IncomeType
+from ..schemas import IncomeTypeCreate, IncomeTypeOut, IncomeTypeUpdate, SetupHistoryOut
 from ..setup_assessment import income_assessment
+from ..setup_history import (
+    build_changed_fields,
+    build_setup_history_entries,
+    next_supported_revisionnum,
+    rebase_item_revisionnum,
+    record_setup_revision_event,
+)
 
 router = APIRouter(prefix="/budgets/{budgetid}/income-types", tags=["income-types"])
 
@@ -37,7 +44,11 @@ def _assert_income_delete_allowed(budgetid: int, incomedesc: str, db: Session) -
 @router.get("/", response_model=list[IncomeTypeOut])
 def list_income_types(budgetid: int, db: Session = Depends(get_db)):
     _get_budget_or_404(budgetid, db)
-    return db.query(IncomeType).filter(IncomeType.budgetid == budgetid).all()
+    items = db.query(IncomeType).filter(IncomeType.budgetid == budgetid).all()
+    for item in items:
+        rebase_item_revisionnum(item, budgetid=budgetid, category="income", item_desc=item.incomedesc, db=db)
+    db.commit()
+    return items
 
 
 @router.post("/", response_model=IncomeTypeOut, status_code=201)
@@ -65,14 +76,28 @@ def update_income_type(
     _assert_income_edit_allowed(budgetid, incomedesc, db)
     data = payload.model_dump(exclude_none=True)
     revision_fields = {"amount"}
-    is_revision = any(field in data and getattr(it, field) != data[field] for field in revision_fields)
+    changed_fields = build_changed_fields(it, data, revision_fields)
+    is_revision = bool(changed_fields)
     for field, value in data.items():
         setattr(it, field, value)
     # enforce autoinclude when isfixed
     if it.isfixed:
         it.autoinclude = True
     if is_revision:
-        it.revisionnum = (it.revisionnum or 0) + 1
+        it.revisionnum = next_supported_revisionnum(
+            db,
+            budgetid=budgetid,
+            category="income",
+            item_desc=incomedesc,
+        )
+        record_setup_revision_event(
+            db,
+            budgetid=budgetid,
+            category="income",
+            item_desc=incomedesc,
+            revisionnum=it.revisionnum,
+            changed_fields=changed_fields,
+        )
     db.commit()
     db.refresh(it)
     return it
@@ -81,48 +106,13 @@ def update_income_type(
 @router.get("/{incomedesc}/history", response_model=SetupHistoryOut)
 def get_income_type_history(budgetid: int, incomedesc: str, db: Session = Depends(get_db)):
     item = _get_income_type_or_404(budgetid, incomedesc, db)
-    rows = (
-        db.query(PeriodTransaction, FinancialPeriod)
-        .join(FinancialPeriod, FinancialPeriod.finperiodid == PeriodTransaction.finperiodid)
-        .filter(
-            PeriodTransaction.budgetid == budgetid,
-            PeriodTransaction.source == "income",
-            PeriodTransaction.source_key == incomedesc,
-            PeriodTransaction.type == "BUDGETADJ",
-        )
-        .order_by(PeriodTransaction.entrydate.desc(), PeriodTransaction.id.desc())
-        .all()
-    )
+    current_revisionnum = rebase_item_revisionnum(item, budgetid=budgetid, category="income", item_desc=incomedesc, db=db)
+    db.commit()
     return SetupHistoryOut(
         item_desc=incomedesc,
         category="income",
-        current_revisionnum=item.revisionnum or 0,
-        entries=[
-            SetupHistoryEntryOut(
-                id=tx.id,
-                finperiodid=tx.finperiodid,
-                period_startdate=period.startdate,
-                period_enddate=period.enddate,
-                source=tx.source,
-                type=tx.type,
-                amount=tx.amount,
-                note=tx.note,
-                entrydate=tx.entrydate,
-                is_system=tx.is_system,
-                system_reason=tx.system_reason,
-                source_key=tx.source_key,
-                source_label=tx.source_label,
-                affected_account_desc=tx.affected_account_desc,
-                related_account_desc=tx.related_account_desc,
-                linked_incomedesc=tx.linked_incomedesc,
-                entry_kind=getattr(tx, "entry_kind", "movement"),
-                line_status=getattr(tx, "line_status", None),
-                budget_scope=getattr(tx, "budget_scope", None),
-                budget_before_amount=getattr(tx, "budget_before_amount", None),
-                budget_after_amount=getattr(tx, "budget_after_amount", None),
-            )
-            for tx, period in rows
-        ],
+        current_revisionnum=current_revisionnum,
+        entries=build_setup_history_entries(db, budgetid=budgetid, category="income", item_desc=incomedesc),
     )
 
 

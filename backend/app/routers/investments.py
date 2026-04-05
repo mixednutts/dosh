@@ -1,9 +1,16 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from ..database import get_db
-from ..models import Budget, FinancialPeriod, InvestmentItem, PeriodTransaction
-from ..schemas import InvestmentItemCreate, InvestmentItemOut, InvestmentItemUpdate, SetupHistoryEntryOut, SetupHistoryOut
+from ..models import Budget, InvestmentItem
+from ..schemas import InvestmentItemCreate, InvestmentItemOut, InvestmentItemUpdate, SetupHistoryOut
 from ..setup_assessment import investment_assessment
+from ..setup_history import (
+    build_changed_fields,
+    build_setup_history_entries,
+    next_supported_revisionnum,
+    rebase_item_revisionnum,
+    record_setup_revision_event,
+)
 
 router = APIRouter(prefix="/budgets/{budgetid}/investment-items", tags=["investment-items"])
 
@@ -42,7 +49,11 @@ def _assert_investment_delete_allowed(budgetid: int, investmentdesc: str, db: Se
 @router.get("/", response_model=list[InvestmentItemOut])
 def list_investment_items(budgetid: int, db: Session = Depends(get_db)):
     _get_budget_or_404(budgetid, db)
-    return db.query(InvestmentItem).filter(InvestmentItem.budgetid == budgetid).all()
+    items = db.query(InvestmentItem).filter(InvestmentItem.budgetid == budgetid).all()
+    for item in items:
+        rebase_item_revisionnum(item, budgetid=budgetid, category="investment", item_desc=item.investmentdesc, db=db)
+    db.commit()
+    return items
 
 
 @router.post("/", response_model=InvestmentItemOut, status_code=201)
@@ -72,7 +83,8 @@ def update_investment_item(
     _assert_investment_edit_allowed(budgetid, investmentdesc, db)
     updates = payload.model_dump(exclude_none=True)
     revision_fields = {"planned_amount"}
-    is_revision = any(field in updates and getattr(item, field) != updates[field] for field in revision_fields)
+    changed_fields = build_changed_fields(item, updates, revision_fields)
+    is_revision = bool(changed_fields)
     next_active = updates.get("active", item.active)
     next_is_primary = updates.get("is_primary", item.is_primary)
 
@@ -82,7 +94,20 @@ def update_investment_item(
     for field, value in updates.items():
         setattr(item, field, value)
     if is_revision:
-        item.revisionnum = (item.revisionnum or 0) + 1
+        item.revisionnum = next_supported_revisionnum(
+            db,
+            budgetid=budgetid,
+            category="investment",
+            item_desc=investmentdesc,
+        )
+        record_setup_revision_event(
+            db,
+            budgetid=budgetid,
+            category="investment",
+            item_desc=investmentdesc,
+            revisionnum=item.revisionnum,
+            changed_fields=changed_fields,
+        )
     if not item.active:
         item.is_primary = False
     elif item.is_primary:
@@ -97,48 +122,13 @@ def get_investment_item_history(budgetid: int, investmentdesc: str, db: Session 
     item = db.get(InvestmentItem, (budgetid, investmentdesc))
     if not item:
         raise HTTPException(404, "Investment item not found")
-    rows = (
-        db.query(PeriodTransaction, FinancialPeriod)
-        .join(FinancialPeriod, FinancialPeriod.finperiodid == PeriodTransaction.finperiodid)
-        .filter(
-            PeriodTransaction.budgetid == budgetid,
-            PeriodTransaction.source == "investment",
-            PeriodTransaction.source_key == investmentdesc,
-            PeriodTransaction.type == "BUDGETADJ",
-        )
-        .order_by(PeriodTransaction.entrydate.desc(), PeriodTransaction.id.desc())
-        .all()
-    )
+    current_revisionnum = rebase_item_revisionnum(item, budgetid=budgetid, category="investment", item_desc=investmentdesc, db=db)
+    db.commit()
     return SetupHistoryOut(
         item_desc=investmentdesc,
         category="investment",
-        current_revisionnum=item.revisionnum or 0,
-        entries=[
-            SetupHistoryEntryOut(
-                id=tx.id,
-                finperiodid=tx.finperiodid,
-                period_startdate=period.startdate,
-                period_enddate=period.enddate,
-                source=tx.source,
-                type=tx.type,
-                amount=tx.amount,
-                note=tx.note,
-                entrydate=tx.entrydate,
-                is_system=tx.is_system,
-                system_reason=tx.system_reason,
-                source_key=tx.source_key,
-                source_label=tx.source_label,
-                affected_account_desc=tx.affected_account_desc,
-                related_account_desc=tx.related_account_desc,
-                linked_incomedesc=tx.linked_incomedesc,
-                entry_kind=getattr(tx, "entry_kind", "movement"),
-                line_status=getattr(tx, "line_status", None),
-                budget_scope=getattr(tx, "budget_scope", None),
-                budget_before_amount=getattr(tx, "budget_before_amount", None),
-                budget_after_amount=getattr(tx, "budget_after_amount", None),
-            )
-            for tx, period in rows
-        ],
+        current_revisionnum=current_revisionnum,
+        entries=build_setup_history_entries(db, budgetid=budgetid, category="investment", item_desc=investmentdesc),
     )
 
 

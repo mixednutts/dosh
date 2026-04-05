@@ -355,6 +355,7 @@ export default function ExpenseItemsTab({ budgetId }) {
           historyQuery={historyQuery}
           itemDesc={historyItem.expensedesc}
           category="expense"
+          currentItem={historyItem}
           onClose={() => setHistoryItem(null)}
         />
       )}

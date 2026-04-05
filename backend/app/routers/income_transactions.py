@@ -38,6 +38,7 @@ def _to_income_tx_out(tx: PeriodTransaction) -> IncomeTxOut:
         budget_scope=getattr(tx, "budget_scope", None),
         budget_before_amount=getattr(tx, "budget_before_amount", None),
         budget_after_amount=getattr(tx, "budget_after_amount", None),
+        revisionnum=getattr(tx, "revisionnum", None),
     )
 
 

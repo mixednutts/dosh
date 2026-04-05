@@ -2,10 +2,17 @@ from decimal import Decimal
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from ..database import get_db
-from ..models import Budget, ExpenseItem, FinancialPeriod, PeriodExpense, PeriodTransaction
-from ..schemas import ExpenseItemCreate, ExpenseItemOut, ExpenseItemUpdate, ExpenseItemReorderRequest, SetupHistoryEntryOut, SetupHistoryOut
+from ..models import Budget, ExpenseItem, FinancialPeriod, PeriodExpense
+from ..schemas import ExpenseItemCreate, ExpenseItemOut, ExpenseItemUpdate, ExpenseItemReorderRequest, SetupHistoryOut
 from ..period_logic import expense_occurs_in_period
 from ..setup_assessment import expense_assessment
+from ..setup_history import (
+    build_changed_fields,
+    build_setup_history_entries,
+    next_supported_revisionnum,
+    rebase_item_revisionnum,
+    record_setup_revision_event,
+)
 
 router = APIRouter(prefix="/budgets/{budgetid}/expense-items", tags=["expense-items"])
 
@@ -42,7 +49,11 @@ def list_expense_items(budgetid: int, active_only: bool = False, db: Session = D
     q = db.query(ExpenseItem).filter(ExpenseItem.budgetid == budgetid)
     if active_only:
         q = q.filter(ExpenseItem.active == True)  # noqa: E712
-    return q.order_by(ExpenseItem.sort_order, ExpenseItem.expensedesc).all()
+    items = q.order_by(ExpenseItem.sort_order, ExpenseItem.expensedesc).all()
+    for item in items:
+        rebase_item_revisionnum(item, budgetid=budgetid, category="expense", item_desc=item.expensedesc, db=db)
+    db.commit()
+    return items
 
 
 @router.patch("/reorder", status_code=204)
@@ -70,7 +81,10 @@ def create_expense_item(budgetid: int, payload: ExpenseItemCreate, db: Session =
 
 @router.get("/{expensedesc}", response_model=ExpenseItemOut)
 def get_expense_item(budgetid: int, expensedesc: str, db: Session = Depends(get_db)):
-    return _get_expense_or_404(budgetid, expensedesc, db)
+    item = _get_expense_or_404(budgetid, expensedesc, db)
+    rebase_item_revisionnum(item, budgetid=budgetid, category="expense", item_desc=expensedesc, db=db)
+    db.commit()
+    return item
 
 
 @router.patch("/{expensedesc}", response_model=ExpenseItemOut)
@@ -85,16 +99,27 @@ def update_expense_item(
 
     # Detect whether a revision-worthy field changed
     revision_fields = {"freqtype", "frequency_value", "effectivedate", "expenseamount"}
-    is_revision = bump or any(
-        f in data and getattr(ei, f) != data[f]
-        for f in revision_fields
-    )
+    changed_fields = build_changed_fields(ei, data, revision_fields)
+    is_revision = bump or bool(changed_fields)
 
     for field, value in data.items():
         setattr(ei, field, value)
 
     if is_revision:
-        ei.revisionnum = (ei.revisionnum or 0) + 1
+        ei.revisionnum = next_supported_revisionnum(
+            db,
+            budgetid=budgetid,
+            category="expense",
+            item_desc=expensedesc,
+        )
+        record_setup_revision_event(
+            db,
+            budgetid=budgetid,
+            category="expense",
+            item_desc=expensedesc,
+            revisionnum=ei.revisionnum,
+            changed_fields=changed_fields,
+        )
         # Propagate updated budget amounts to future unlocked periods
         future_periods = (
             db.query(FinancialPeriod)
@@ -139,48 +164,13 @@ def update_expense_item(
 @router.get("/{expensedesc}/history", response_model=SetupHistoryOut)
 def get_expense_item_history(budgetid: int, expensedesc: str, db: Session = Depends(get_db)):
     item = _get_expense_or_404(budgetid, expensedesc, db)
-    rows = (
-        db.query(PeriodTransaction, FinancialPeriod)
-        .join(FinancialPeriod, FinancialPeriod.finperiodid == PeriodTransaction.finperiodid)
-        .filter(
-            PeriodTransaction.budgetid == budgetid,
-            PeriodTransaction.source == "expense",
-            PeriodTransaction.source_key == expensedesc,
-            PeriodTransaction.type == "BUDGETADJ",
-        )
-        .order_by(PeriodTransaction.entrydate.desc(), PeriodTransaction.id.desc())
-        .all()
-    )
+    current_revisionnum = rebase_item_revisionnum(item, budgetid=budgetid, category="expense", item_desc=expensedesc, db=db)
+    db.commit()
     return SetupHistoryOut(
         item_desc=expensedesc,
         category="expense",
-        current_revisionnum=item.revisionnum or 0,
-        entries=[
-            SetupHistoryEntryOut(
-                id=tx.id,
-                finperiodid=tx.finperiodid,
-                period_startdate=period.startdate,
-                period_enddate=period.enddate,
-                source=tx.source,
-                type=tx.type,
-                amount=tx.amount,
-                note=tx.note,
-                entrydate=tx.entrydate,
-                is_system=tx.is_system,
-                system_reason=tx.system_reason,
-                source_key=tx.source_key,
-                source_label=tx.source_label,
-                affected_account_desc=tx.affected_account_desc,
-                related_account_desc=tx.related_account_desc,
-                linked_incomedesc=tx.linked_incomedesc,
-                entry_kind=getattr(tx, "entry_kind", "movement"),
-                line_status=getattr(tx, "line_status", None),
-                budget_scope=getattr(tx, "budget_scope", None),
-                budget_before_amount=getattr(tx, "budget_before_amount", None),
-                budget_after_amount=getattr(tx, "budget_after_amount", None),
-            )
-            for tx, period in rows
-        ],
+        current_revisionnum=current_revisionnum,
+        entries=build_setup_history_entries(db, budgetid=budgetid, category="expense", item_desc=expensedesc),
     )
 
 

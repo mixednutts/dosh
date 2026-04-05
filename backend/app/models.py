@@ -275,6 +275,7 @@ class PeriodTransaction(Base):
     budget_scope = Column(String, nullable=True)
     budget_before_amount = Column(Numeric(10, 2), nullable=True)
     budget_after_amount = Column(Numeric(10, 2), nullable=True)
+    revisionnum = Column(Integer, nullable=True)
 
     period = relationship("FinancialPeriod", back_populates="period_transactions")
 
@@ -296,3 +297,15 @@ class PeriodCloseoutSnapshot(Base):
     created_at = Column(DateTime, default=dt.utcnow, nullable=False)
 
     period = relationship("FinancialPeriod", back_populates="closeout_snapshot")
+
+
+class SetupRevisionEvent(Base):
+    __tablename__ = "setuprevisionevents"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    budgetid = Column(Integer, ForeignKey("budgets.budgetid"), nullable=False)
+    category = Column(String, nullable=False)
+    item_desc = Column(String, nullable=False)
+    revisionnum = Column(Integer, nullable=False)
+    changed_fields_json = Column(Text, nullable=False, default="[]")
+    created_at = Column(DateTime, default=dt.utcnow, nullable=False)

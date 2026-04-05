@@ -1,6 +1,6 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional
+from typing import Any, Optional
 from pydantic import BaseModel, field_validator, model_validator
 
 
@@ -236,12 +236,13 @@ class ExpenseItemOut(ExpenseItemBase):
 
 class SetupHistoryEntryOut(BaseModel):
     id: int
-    finperiodid: int
+    history_kind: str = "budget_adjustment"
+    finperiodid: Optional[int] = None
     period_startdate: Optional[datetime] = None
     period_enddate: Optional[datetime] = None
-    source: str
+    source: Optional[str] = None
     type: Optional[str] = None
-    amount: Decimal
+    amount: Optional[Decimal] = None
     note: Optional[str] = None
     entrydate: datetime
     is_system: bool = False
@@ -256,6 +257,8 @@ class SetupHistoryEntryOut(BaseModel):
     budget_scope: Optional[str] = None
     budget_before_amount: Optional[Decimal] = None
     budget_after_amount: Optional[Decimal] = None
+    revisionnum: Optional[int] = None
+    change_details: list[dict[str, Any]] = []
 
 
 class SetupHistoryOut(BaseModel):
@@ -550,6 +553,7 @@ class InvestmentTxOut(BaseModel):
     budget_scope: Optional[str] = None
     budget_before_amount: Optional[Decimal] = None
     budget_after_amount: Optional[Decimal] = None
+    revisionnum: Optional[int] = None
     model_config = {"from_attributes": True}
 
 
@@ -575,6 +579,7 @@ class IncomeTxOut(BaseModel):
     budget_scope: Optional[str] = None
     budget_before_amount: Optional[Decimal] = None
     budget_after_amount: Optional[Decimal] = None
+    revisionnum: Optional[int] = None
     model_config = {"from_attributes": True}
 
 
@@ -599,6 +604,7 @@ class PeriodTransactionOut(BaseModel):
     budget_scope: Optional[str] = None
     budget_before_amount: Optional[Decimal] = None
     budget_after_amount: Optional[Decimal] = None
+    revisionnum: Optional[int] = None
     model_config = {"from_attributes": True}
 
 
@@ -623,6 +629,7 @@ class ExpenseEntryOut(BaseModel):
     budget_scope: Optional[str] = None
     budget_before_amount: Optional[Decimal] = None
     budget_after_amount: Optional[Decimal] = None
+    revisionnum: Optional[int] = None
     model_config = {"from_attributes": True}
 
 

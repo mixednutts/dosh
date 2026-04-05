@@ -4,6 +4,91 @@ This document records meaningful automated test results from major working sessi
 
 It exists separately from [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) so the strategy can stay stable while future sessions still have a record of what was actually run and verified.
 
+## Latest Session: Setup-Revision History Expansion, Revision-Number Alignment, Live Schema Recovery, And Follow-Up UI Regression Fixes
+
+Session outcomes verified in this run:
+
+- setup-item history now includes direct setup-revision events with changed-field detail instead of relying only on `BUDGETADJ` rows
+- setup-item revision numbers now map to real stored history records, including setup-affecting future budget adjustments
+- the setup history modal now restores a current setup summary above the revision and adjustment timeline
+- the live deployment required an additional SQLite schema patch for `periodtransactions.revisionnum` and the new `setuprevisionevents` table before the budget setup sections could load again
+- the income action rail on the budget-cycle detail page now uses a fixed slot layout so delete availability no longer shifts the visual column alignment
+
+### Backend verification
+
+Commands run during this session:
+
+```bash
+cd backend
+/tmp/dosh-test-venv/bin/python -m pytest /home/ubuntu/dosh/backend/tests/test_budget_adjustments.py -q
+```
+
+Result:
+
+- focused backend coverage passed for setup-revision history creation, revision-number rebasing, and revision-linked future budget adjustments
+- 1 focused backend suite passed
+- 8 focused backend tests passed in the latest verified state
+
+Files with meaningful backend test or harness updates in this session:
+
+- [test_budget_adjustments.py](/home/ubuntu/dosh/backend/tests/test_budget_adjustments.py)
+
+### Frontend verification
+
+Commands run during this session:
+
+```bash
+cd frontend
+npm test -- --runInBand --watchAll=false src/__tests__/ExpenseItemsTab.test.jsx src/__tests__/IncomeTypesTab.test.jsx src/__tests__/InvestmentItemsTab.test.jsx
+npm test -- --runInBand --watchAll=false src/__tests__/PeriodDetailPage.test.jsx
+```
+
+Result:
+
+- focused setup-tab coverage passed after restoring the current setup summary inside the history modal
+- focused period-detail coverage passed after fixing the income action-slot alignment drift
+- 4 focused frontend suites passed across the final verified state
+- 31 focused frontend tests passed across those suites in the latest verified state
+
+Files with meaningful frontend test or harness updates in this session:
+
+- [ExpenseItemsTab.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/ExpenseItemsTab.test.jsx)
+- [PeriodDetailPage.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/PeriodDetailPage.test.jsx)
+- [SetupItemHistoryModal.jsx](/home/ubuntu/dosh/frontend/src/components/SetupItemHistoryModal.jsx)
+- [ExpenseItemsTab.jsx](/home/ubuntu/dosh/frontend/src/pages/tabs/ExpenseItemsTab.jsx)
+- [IncomeTypesTab.jsx](/home/ubuntu/dosh/frontend/src/pages/tabs/IncomeTypesTab.jsx)
+- [InvestmentItemsTab.jsx](/home/ubuntu/dosh/frontend/src/pages/tabs/InvestmentItemsTab.jsx)
+- [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx)
+
+### Deployment verification
+
+Commands run:
+
+```bash
+docker compose -f docker-compose.yml up -d --build
+docker compose -f docker-compose.yml ps
+curl -sS http://127.0.0.1:3080/api/health
+curl -sS http://127.0.0.1:3080/api/budgets/1/income-types/
+curl -sS http://127.0.0.1:3080/api/budgets/1/expense-items/
+curl -sS http://127.0.0.1:3080/api/budgets/1/investment-items/
+```
+
+Result:
+
+- backend and frontend containers rebuilt and restarted successfully across the session’s deploy passes
+- the live health endpoint continued returning `{"status":"ok","app":"Dosh"}`
+- the first live deploy of setup-revision history support exposed a schema mismatch that caused the budget setup sections to fail with `500` and appear empty in the UI
+- the live SQLite database was backed up and patched in place, after which the income, expense, and investment setup endpoints resumed returning live data
+- the final deployed state includes the restored setup summary in the history modal and the fixed-slot income action rail alignment
+
+### Test failures and resolution notes
+
+- the first live deployment of setup-revision history support failed because the live database did not yet have `periodtransactions.revisionnum`
+- the same live recovery also required the new `setuprevisionevents` table before the merged setup-history path could operate safely
+- after the live schema patch, a follow-up UI regression remained where the setup history modal had lost current setup-line visibility; the modal was updated to show a `Current Setup` summary again
+- a second UI regression then left the income-table action rail visually misaligned when delete availability differed by row; the action rail was corrected to use a fixed four-slot layout with a reserved placeholder slot
+- no unresolved automated test failures remained at the end of the session
+
 ## Latest Session: Income-Modal Remediation, Budget-Column Edit-Affordance Refinement, Empty-State Budget Delete, And Deployment Verification
 
 Session outcomes verified in this run:

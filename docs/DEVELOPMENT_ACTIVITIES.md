@@ -498,6 +498,10 @@ Status:
 - `Completed`: add a delete-current-budget action to the `No budget cycles yet` card so an abandoned or exploratory budget can be removed directly from that empty state
 - `Completed`: identify the next summary card that best complements current balance and health without duplicating period-listing data, which was implemented as the calendar-style budget overview card
 - `Completed`: add a calendar-style view of income timing and expense due dates to the budget overview page, replacing the historical `# periods` summary card
+- `Completed`: restore current setup-line visibility inside the budget setup history modal while keeping revision and adjustment history visible alongside it
+- `Completed`: stabilize income-table action-column alignment on the budget-cycle detail page so delete-availability does not shift the numeric columns
+- hide `Current Only` budget adjustment entries from the budget setup history modal so setup history stays focused on setup-level meaning
+- add revision and active-status columns to budget setup sections where that state is currently missing
 - add summary information to the budget cycles list page section headers, with the exact summary content still to be defined
 
 #### Activity Group: Bugs
@@ -512,6 +516,8 @@ Status:
 - `Completed`: fix the sidebar budget chevron behavior so collapsing a budget in the navigation panel also collapses its budget cycles reliably
 - `Completed`: fix the `Go to budget cycles` action from Setup Assessment on the project setup page, which currently results in a blank screen
 - `Completed`: fix the `Add New Income Item` modal so it supports creating a brand-new income line inline, matching the supported `Add New Expense Item` modal workflow
+- fix the inability to edit an income line from budget setup
+- `Completed`: recover the budget setup sections after the live setup-history schema mismatch temporarily made income, expense, and investment lines appear missing
 
 #### Activity Group: Enhancements
 
@@ -522,6 +528,9 @@ Status:
 - `Completed`: move budget editing for income, expense, and investment lines onto a shared modal-driven adjustment workflow with note capture and current-or-future-unlocked scope
 - `Completed`: add setup-level history review for income, expense, and investment items using the shared `PeriodTransaction` and `BUDGETADJ` model
 - `Completed`: allow the add-income modal to create a brand-new income setup item inline, matching the supported expense workflow more closely
+- `Completed`: extend setup-item history so revision-number increases can show the actual changed setup fields, not only `BUDGETADJ` entries
+- `Completed`: align setup revision numbers with real stored history records and link setup-affecting future budget adjustments into that revision sequence
+- provide an activation workflow for income lines in budget setup and align that workflow consistently across income, investment, and expense setup sections
 - change modal wording in expense, investment, and income workflows from `Add Full` to `Add Remaining` for clearer and more consistent transaction-entry language
 - make modal `Add Remaining` values in expense, investment, and income workflows resolve as budget amount minus total recorded amount, with deficit outcomes clamped to `$0.00`
 
@@ -550,6 +559,7 @@ Status:
 - `Active`
 
 - `Completed`: align the deployed SQLite schema to the new budget-adjustment and transaction-line-state code after deployment exposed the gap
+- `Completed`: align the live SQLite schema again after setup-history revision support exposed the missing `periodtransactions.revisionnum` column and `setuprevisionevents` table
 - pin frontend install behavior more reliably
 - keep the Node 20 frontend Docker baseline healthy and revisit newer LTS adoption only when the toolchain is ready
 - verify compose assumptions around networks and Traefik usage

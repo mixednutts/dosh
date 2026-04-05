@@ -1400,89 +1400,94 @@ export default function PeriodDetailPage() {
             </button>
           )}
         </div>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-gray-100 dark:border-gray-800">
-              <th className="table-header-cell text-left">Description</th>
-              <th className="table-header-cell text-right col-budget">Budget</th>
-              <th className="table-header-cell text-right col-actual">
-                <span title="Sum of all transactions — read-only">Actual ∑</span>
-              </th>
-              <th className="table-header-cell text-right">Variance</th>
-              <th className="table-header-cell"></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
-            {incomes.length === 0 && <tr><td colSpan={5} className="px-4 py-4 text-center text-gray-400 italic text-sm">No income entries</td></tr>}
-            {incomes.map(i => (
-              <tr key={i.incomedesc} className="table-row">
-                <td className="table-cell font-medium">
-                  <div className="flex items-center gap-2">
-                    <span>{i.incomedesc}</span>
-                    {i.system_key === 'carry_forward' && <span className="badge-blue">System</span>}
-                  </div>
-                </td>
-                <td className="table-cell-muted text-right col-budget">
-                  <BudgetAmountCell
-                    amount={i.budgetamount}
-                    canEdit={!locked && !closed && i.system_key !== 'carry_forward'}
-                    onEdit={() => setBudgetAdjustModal({ category: 'income', desc: i.incomedesc, budgetamount: i.budgetamount, title: i.incomedesc })}
-                    label={i.incomedesc}
-                  />
-                </td>
-                <td className="table-cell text-right col-actual font-semibold text-gray-800 dark:text-gray-200">{fmt(i.actualamount)}</td>
-                <td className="table-cell text-right">
-                  <span className={`font-medium ${Number(i.actualamount) >= Number(i.budgetamount) ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'}`}>
-                    {fmt(Number(i.actualamount) - Number(i.budgetamount))}
-                  </span>
-                </td>
-                <td className="px-3 py-2">
-                  <div className="flex items-center justify-center gap-1 whitespace-nowrap">
-                    <button
-                      disabled={closed}
-                      onClick={() => setIncomeModal({ incomedesc: i.incomedesc, budgetamount: i.budgetamount, actualamount: i.actualamount, defaultType: 'credit' })}
-                      title="Add income transaction"
-                      className={`flex items-center justify-center w-7 h-7 rounded-full font-bold text-sm transition-colors ${closed ? 'opacity-30 cursor-not-allowed bg-gray-100 text-gray-400' : 'bg-success-100 text-success-700 hover:bg-success-200 dark:bg-success-900/40 dark:text-success-400 dark:hover:bg-success-900/60'}`}>
-                      <PlusIcon className="w-4 h-4" />
-                    </button>
-                    <button
-                      disabled={closed}
-                      onClick={() => setIncomeModal({ incomedesc: i.incomedesc, budgetamount: i.budgetamount, actualamount: i.actualamount, defaultType: 'debit' })}
-                      title="Add income correction"
-                      className={`flex items-center justify-center w-7 h-7 rounded-full font-bold text-sm transition-colors ${closed ? 'opacity-30 cursor-not-allowed bg-gray-100 text-gray-400' : 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/40 dark:text-red-400 dark:hover:bg-red-900/60'}`}>
-                      <MinusIcon className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => setIncomeModal({ incomedesc: i.incomedesc, budgetamount: i.budgetamount, actualamount: i.actualamount, defaultType: 'credit', readOnly: closed })}
-                      title="View transactions"
-                      className="flex items-center justify-center w-7 h-7 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                      <ListBulletIcon className="w-4 h-4" />
-                    </button>
-                    {!locked && !closed && i.system_key !== 'carry_forward' && (
-                      <button
-                        onClick={() => { if (window.confirm(`Remove "${i.incomedesc}" from this budget cycle?`)) deleteIncomeLine.mutate(i.incomedesc) }}
-                        title="Remove from budget cycle"
-                        className="flex items-center justify-center w-7 h-7 rounded-full text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
-                        <TrashIcon className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-                </td>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-100 dark:border-gray-800">
+                <th className="table-header-cell text-left">Description</th>
+                <th className="table-header-cell text-right col-budget">Budget</th>
+                <th className="table-header-cell text-right col-actual">
+                  <span title="Sum of all transactions — read-only">Actual ∑</span>
+                </th>
+                <th className="table-header-cell text-right">Variance</th>
+                <th className="table-header-cell text-center w-[152px]">Actions</th>
               </tr>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr className="border-t-2 border-gray-200 dark:border-gray-700 font-semibold bg-gray-50 dark:bg-gray-800">
-              <td className="px-4 py-2 text-gray-700 dark:text-gray-300 text-sm">Total Income</td>
-              <td className="px-4 py-2 text-right text-gray-600 dark:text-gray-400 text-sm">{fmt(totalIncomeBudget)}</td>
-              <td className="px-4 py-2 text-right text-success-700 dark:text-success-400 text-sm">{fmt(totalIncomeActual)}</td>
-              <td className="px-4 py-2 text-right text-sm">
-                <span className={totalIncomeActual >= totalIncomeBudget ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'}>{fmt(totalIncomeActual - totalIncomeBudget)}</span>
-              </td>
-              <td className="px-3 py-2" aria-hidden="true"></td>
-            </tr>
-          </tfoot>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
+              {incomes.length === 0 && <tr><td colSpan={5} className="px-4 py-4 text-center text-gray-400 italic text-sm">No income entries</td></tr>}
+              {incomes.map(i => (
+                <tr key={i.incomedesc} className="table-row">
+                  <td className="table-cell font-medium">
+                    <div className="flex items-center gap-2">
+                      <span>{i.incomedesc}</span>
+                      {i.system_key === 'carry_forward' && <span className="badge-blue">System</span>}
+                    </div>
+                  </td>
+                  <td className="table-cell-muted text-right col-budget">
+                    <BudgetAmountCell
+                      amount={i.budgetamount}
+                      canEdit={!locked && !closed && i.system_key !== 'carry_forward'}
+                      onEdit={() => setBudgetAdjustModal({ category: 'income', desc: i.incomedesc, budgetamount: i.budgetamount, title: i.incomedesc })}
+                      label={i.incomedesc}
+                    />
+                  </td>
+                  <td className="table-cell text-right col-actual font-semibold text-gray-800 dark:text-gray-200">{fmt(i.actualamount)}</td>
+                  <td className="table-cell text-right">
+                    <span className={`font-medium ${Number(i.actualamount) >= Number(i.budgetamount) ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'}`}>
+                      {fmt(Number(i.actualamount) - Number(i.budgetamount))}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2 w-[152px]">
+                    <div className="ml-auto grid w-[116px] grid-cols-4 justify-items-center gap-1">
+                      <button
+                        disabled={closed}
+                        onClick={() => setIncomeModal({ incomedesc: i.incomedesc, budgetamount: i.budgetamount, actualamount: i.actualamount, defaultType: 'credit' })}
+                        title="Add income transaction"
+                        className={`flex items-center justify-center w-7 h-7 rounded-full font-bold text-sm transition-colors ${closed ? 'opacity-30 cursor-not-allowed bg-gray-100 text-gray-400' : 'bg-success-100 text-success-700 hover:bg-success-200 dark:bg-success-900/40 dark:text-success-400 dark:hover:bg-success-900/60'}`}>
+                        <PlusIcon className="w-4 h-4" />
+                      </button>
+                      <button
+                        disabled={closed}
+                        onClick={() => setIncomeModal({ incomedesc: i.incomedesc, budgetamount: i.budgetamount, actualamount: i.actualamount, defaultType: 'debit' })}
+                        title="Add income correction"
+                        className={`flex items-center justify-center w-7 h-7 rounded-full font-bold text-sm transition-colors ${closed ? 'opacity-30 cursor-not-allowed bg-gray-100 text-gray-400' : 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/40 dark:text-red-400 dark:hover:bg-red-900/60'}`}>
+                        <MinusIcon className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => setIncomeModal({ incomedesc: i.incomedesc, budgetamount: i.budgetamount, actualamount: i.actualamount, defaultType: 'credit', readOnly: closed })}
+                        title="View transactions"
+                        className="flex items-center justify-center w-7 h-7 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                        <ListBulletIcon className="w-4 h-4" />
+                      </button>
+                      {!locked && !closed && i.system_key !== 'carry_forward' && (
+                        <button
+                          onClick={() => { if (window.confirm(`Remove "${i.incomedesc}" from this budget cycle?`)) deleteIncomeLine.mutate(i.incomedesc) }}
+                          title="Remove from budget cycle"
+                          className="flex items-center justify-center w-7 h-7 rounded-full text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                          <TrashIcon className="w-4 h-4" />
+                        </button>
+                      )}
+                      {(locked || closed || i.system_key === 'carry_forward') && (
+                        <span aria-hidden="true" className="block w-7 h-7" />
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="border-t-2 border-gray-200 dark:border-gray-700 font-semibold bg-gray-50 dark:bg-gray-800">
+                <td className="px-4 py-2 text-gray-700 dark:text-gray-300 text-sm">Total Income</td>
+                <td className="px-4 py-2 text-right text-gray-600 dark:text-gray-400 text-sm">{fmt(totalIncomeBudget)}</td>
+                <td className="px-4 py-2 text-right text-success-700 dark:text-success-400 text-sm">{fmt(totalIncomeActual)}</td>
+                <td className="px-4 py-2 text-right text-sm">
+                  <span className={totalIncomeActual >= totalIncomeBudget ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'}>{fmt(totalIncomeActual - totalIncomeBudget)}</span>
+                </td>
+                <td className="px-3 py-2 w-[152px]" aria-hidden="true"></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
       </div>
 
       {/* Expenses */}

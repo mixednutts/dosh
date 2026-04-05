@@ -243,6 +243,7 @@ export default function InvestmentItemsTab({ budgetId, budget }) {
           historyQuery={historyQuery}
           itemDesc={historyItem.investmentdesc}
           category="investment"
+          currentItem={historyItem}
           onClose={() => setHistoryItem(null)}
         />
       )}

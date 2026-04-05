@@ -287,6 +287,7 @@ describe('PeriodDetailPage', () => {
     expect(screen.getByTitle('Add income correction')).toBeTruthy()
     expect(screen.getByTitle('View transactions')).toBeTruthy()
     expect(screen.getByTitle('Remove from budget cycle')).toBeTruthy()
+    expect(screen.getByText('Actions')).toBeTruthy()
 
     fireEvent.click(screen.getByLabelText('Edit budget for Salary'))
     expect(await screen.findByText('Edit Line Budget — Salary')).toBeTruthy()

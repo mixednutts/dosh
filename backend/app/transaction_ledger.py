@@ -69,6 +69,7 @@ def add_period_transaction(
     budget_scope: str | None = None,
     budget_before_amount=None,
     budget_after_amount=None,
+    revisionnum: int | None = None,
 ):
     amount = _rounded(_as_decimal(amount))
     if amount == Decimal("0.00"):
@@ -118,6 +119,7 @@ def add_period_transaction(
         budget_scope=budget_scope,
         budget_before_amount=_rounded(_as_decimal(budget_before_amount)) if budget_before_amount is not None else None,
         budget_after_amount=_rounded(_as_decimal(budget_after_amount)) if budget_after_amount is not None else None,
+        revisionnum=revisionnum,
     )
     db.add(tx)
     db.flush()
@@ -310,6 +312,7 @@ def build_budget_adjustment_tx(
     source_label: str | None = None,
     dedupe_key: str | None = None,
     line_status: str | None = None,
+    revisionnum: int | None = None,
 ):
     return add_period_transaction(
         db,
@@ -330,6 +333,7 @@ def build_budget_adjustment_tx(
         budget_scope=budget_scope,
         budget_before_amount=budget_before_amount,
         budget_after_amount=budget_after_amount,
+        revisionnum=revisionnum,
     )
 
 

@@ -29,6 +29,83 @@ For the dedicated implementation plan that drove the income transaction unificat
 
 For the dedicated workflow plan that now owns budget-adjustment, revision-history, and setup-history rules in this area, read [BUDGET_ADJUSTMENT_REVISION_HISTORY_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_ADJUSTMENT_REVISION_HISTORY_PLAN.md).
 
+## Latest Session: Setup-Revision History Expansion, Revision-Number Alignment, Live Schema Recovery, And Income-Table Alignment Repair
+
+This session focused on making setup-item history trustworthy, aligning revision numbering to real stored history records, recovering the live setup pages after a schema mismatch, and correcting follow-on UI regressions introduced during that work.
+
+Important direction now in place:
+
+- setup-item history no longer relies only on `BUDGETADJ` entries; direct setup edits now create dedicated setup-revision history records with field-level before or after detail
+- setup-item `revisionnum` is now intended to reflect actual stored revision history, not unsupported legacy increments with no backing history record
+- future-scope budget adjustments that update setup now carry a linked revision number, while current-only budget adjustments remain ordinary period-level planning changes rather than setup revisions
+- the setup history modal now restores visibility of the current setup-line summary alongside revision and adjustment history instead of replacing setup context with history-only content
+- the live deployment exposed another schema-alignment gap, this time for `periodtransactions.revisionnum` and the new `setuprevisionevents` table, and the live SQLite database was patched in place so the budget setup pages could load again
+- the income section action rail on the budget-cycle detail page now uses a fixed four-slot layout so rows with and without delete affordances keep the numeric columns aligned
+
+### 1. Setup-item revision history now preserves actual setup changes
+
+The prior history modal showed only budget-adjustment transactions, which made revision numbers difficult to trust when the underlying change was a setup-field edit such as scheduling, amount, or account linkage.
+
+Current behavior:
+
+- direct setup edits for income, expense, and investment items now write a dedicated setup-revision history event
+- setup-revision history captures changed fields only, with field-level before and after payloads
+- budget setup history endpoints now merge setup-revision events with `BUDGETADJ` history into one ordered history surface
+- the modal now shows a `Current Setup` summary block above the combined revision and adjustment timeline
+
+Important product meaning:
+
+- future sessions should treat setup revision history as a first-class product concept rather than as a side effect of period-level transactions
+- setup history should continue to answer both questions clearly:
+- what is this line configured as right now?
+- what changed over time and why?
+
+### 2. Revision numbers now map to stored history instead of unsupported increments
+
+The old revision number could drift away from the real recorded history because some increments had no stored history record to support them.
+
+Current behavior:
+
+- direct setup edits allocate the next supported revision number and create a matching setup-revision event
+- future-scope budget adjustments that change setup allocate the next supported revision number and stamp it onto the related `BUDGETADJ` rows
+- current-only budget adjustments do not create a setup revision number because they do not change setup
+- setup-item reads and setup-history reads now rebase stale stored `revisionnum` values back to the highest revision number that is actually backed by stored history
+
+Important engineering meaning:
+
+- later work should not reintroduce revision increments that are not backed by either a setup-revision event or a setup-affecting `BUDGETADJ`
+- if new setup-affecting workflows are introduced, they should participate in this shared revision sequence deliberately
+
+### 3. Live recovery required another explicit schema patch
+
+After deployment, the budget setup page appeared to lose line data, but the underlying issue was that the new code expected schema elements the live SQLite database did not yet have.
+
+Current behavior:
+
+- setup list endpoints initially failed with `500` because `periodtransactions.revisionnum` did not exist in the live database
+- the setup pages also required the new `setuprevisionevents` table to exist for the merged history path
+- the live SQLite database was backed up and then patched in place to add the missing column and table
+- once patched, the budget setup sections resumed returning income, expense, and investment line data correctly
+
+Important engineering meaning:
+
+- schema evolution is still a live operational risk until Dosh has real versioned migrations
+- future sessions should verify live schema compatibility before assuming a UI regression means the underlying setup data has disappeared
+
+### 4. UI follow-up fixes restored setup context and stabilized row alignment
+
+The session did not stop at the backend history model; it also corrected two follow-on frontend regressions.
+
+Current behavior:
+
+- the setup history modal now shows the current setup-line details again instead of history alone
+- the income table in the period-detail page now uses a fixed action-slot layout so rows with or without delete affordances no longer shift the visual alignment of the numeric columns
+
+Important product meaning:
+
+- history improvements should not hide the current setup meaning users still need in order to interpret that history
+- action affordance availability should not change the visual alignment of financial columns in review-heavy tables
+
 ## Latest Session: Income-Modal Remediation, Period-Detail Budget-Affordance Refinement, Empty-State Budget Delete, Documentation Alignment, And Deployment Verification
 
 This session focused on finishing and correcting a few active workflow and UI items rather than introducing a new large feature slice.

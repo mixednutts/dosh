@@ -155,10 +155,27 @@ describe('ExpenseItemsTab', () => {
       current_revisionnum: 2,
       entries: [
         {
+          id: 10,
+          entrydate: '2026-04-10T08:00:00',
+          history_kind: 'setup_revision',
+          entry_kind: 'setup_revision',
+          revisionnum: 2,
+          change_details: [
+            {
+              field: 'freqtype',
+              label: 'Schedule type',
+              before_value: 'Always',
+              after_value: 'Every N Days',
+            },
+          ],
+        },
+        {
           id: 11,
           finperiodid: 2,
           period_startdate: '2026-04-14T00:00:00',
           period_enddate: '2026-04-27T00:00:00',
+          history_kind: 'budget_adjustment',
+          revisionnum: 2,
           source: 'expense',
           type: 'BUDGETADJ',
           amount: '100.00',
@@ -178,6 +195,12 @@ describe('ExpenseItemsTab', () => {
     fireEvent.click(screen.getByTitle('View history details'))
 
     expect(await screen.findByText('History Details — Rent')).toBeTruthy()
+    expect(await screen.findByText('Current Setup')).toBeTruthy()
+    expect((await screen.findAllByText('Pay Type')).length).toBeGreaterThan(0)
+    expect((await screen.findAllByText('Commencement Date')).length).toBeGreaterThan(1)
+    expect(await screen.findByText('Setup revision 2')).toBeTruthy()
+    expect(await screen.findByText(/Schedule type:/)).toBeTruthy()
+    expect(await screen.findByText('Revision 2')).toBeTruthy()
     expect(await screen.findByText('Rent increased mid-cycle.')).toBeTruthy()
     expect(client.getExpenseItemHistory).toHaveBeenCalledWith(1, 'Rent')
   })

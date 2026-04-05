@@ -59,6 +59,8 @@ These guidelines apply across the project as a whole and should continue guiding
 - centralized setup assessment must remain the source of truth for readiness and protection
 - do not reintroduce scattered page-local readiness assumptions
 - keep setup editable where safe, but protect records once downstream dependence exists
+- setup revision numbers should map to stored history records rather than unsupported counter drift
+- setup history should preserve both the current setup summary and the revision or adjustment timeline needed to explain changes
 
 ### Budget Health
 
@@ -137,6 +139,7 @@ Operational note:
 - Docker Compose `DEV_MODE` is now the shared control point for dev-only demo-budget behavior across frontend build visibility and backend runtime enforcement
 - `PeriodTransaction` is now the sole live transaction store; older expense and investment transaction tables have been removed from the active schema
 - the deployed database has already been manually aligned to the current post-session schema expectations, including budget-adjustment and transaction line-state fields
+- the deployed database has since required another explicit live patch for setup-revision history support, including `periodtransactions.revisionnum` and the `setuprevisionevents` table, which reinforces that proper migrations remain an active engineering need
 
 ## Core Domain Rules
 
@@ -179,6 +182,7 @@ The repository already supports:
 - account balance viewing with transaction-based movement explanation
 - current budget summary cards, current balance summary, and current-period health check
 - setup-level history review for income, expense, and investment items using the shared transaction history model
+- setup-level history review for income, expense, and investment items now includes both direct setup-revision events and setup-affecting budget-adjustment revisions, while also restoring a current setup summary in the modal
 - a compact budget-overview calendar card with month navigation, a full-calendar modal, clickable day details, and bounded 3-month lookahead into active and upcoming cycles
 - historical close-out snapshot review for closed cycles
 - seeded demo-budget creation with historical close-outs, a current cycle, upcoming cycles, and health-relevant activity
@@ -188,6 +192,7 @@ The repository already supports:
 - period-detail summary cards that now include both `Projected Savings` and `Remaining Expenses`
 - period-detail footer totals for investments and balances, while keeping balance movement read-only and intentionally not totaled
 - period-detail budget edit affordances for income, expense, and investment rows now live in the budget column as icon actions beside the budget amount, while transaction and line-item actions remain grouped separately
+- period-detail income action controls now use a fixed four-slot layout so rows with and without a delete affordance keep the budget, actual, variance, and action columns visually aligned
 - a sidebar current-budget workspace that stays separate from the expanded budget list, uses explicit `View all ...` cycle links when more cycles exist, and avoids duplicating setup entry on the budget cycles page
 - the `No budget cycles yet` state on the budget cycles page now offers direct budget deletion for abandoned or exploratory budgets
 - add-income-from-period flow that can either reuse an existing setup item or create a brand-new income item inline
@@ -249,6 +254,7 @@ Highest-risk areas:
 - transaction-backed balances and ledger trust
 - income transaction history and actual sync behavior
 - budget-adjustment history, revision-state capture, and their exclusion from balance and actual calculations
+- setup-revision history, revision-number rebasing, and the linkage between setup-affecting `BUDGETADJ` entries and revision numbering
 - expense and investment paid or revised behavior
 - health scoring and personalised thresholds
 

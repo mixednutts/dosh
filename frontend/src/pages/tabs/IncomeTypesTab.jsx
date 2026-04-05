@@ -233,6 +233,7 @@ export default function IncomeTypesTab({ budgetId, budget }) {
           historyQuery={historyQuery}
           itemDesc={historyItem.incomedesc}
           category="income"
+          currentItem={historyItem}
           onClose={() => setHistoryItem(null)}
         />
       )}

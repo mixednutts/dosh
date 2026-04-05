@@ -48,6 +48,7 @@ from ..schemas import (
 )
 from ..period_logic import calc_period_end, periods_overlap, expense_occurs_in_period
 from ..setup_assessment import budget_setup_assessment
+from ..setup_history import next_supported_revisionnum
 from ..time_utils import app_now_naive
 from ..transaction_ledger import (
     build_budget_adjustment_tx,
@@ -125,6 +126,7 @@ def _record_budget_adjustment(
     before_amount: Decimal,
     after_amount: Decimal,
     line_status: str | None,
+    revisionnum: int | None,
     db: Session,
 ):
     if before_amount == after_amount:
@@ -140,6 +142,7 @@ def _record_budget_adjustment(
         budget_before_amount=before_amount,
         budget_after_amount=after_amount,
         line_status=line_status,
+        revisionnum=revisionnum,
     )
 
 
@@ -1104,7 +1107,12 @@ def update_income_budget(
         if not income_type:
             raise HTTPException(409, "Only setup-backed income lines can be updated across future unlocked periods")
         income_type.amount = payload.budgetamount
-        income_type.revisionnum = (income_type.revisionnum or 0) + 1
+        income_type.revisionnum = next_supported_revisionnum(
+            db,
+            budgetid=period.budgetid,
+            category="income",
+            item_desc=incomedesc,
+        )
         revision_snapshot = income_type.revisionnum
     else:
         revision_snapshot = pi.revision_snapshot
@@ -1129,6 +1137,7 @@ def update_income_budget(
             before_amount=before_amount,
             after_amount=after_amount,
             line_status=None,
+            revisionnum=revision_snapshot if payload.scope == "future" else None,
             db=db,
         )
         changed_period_ids.add(target.finperiodid)
@@ -1168,7 +1177,12 @@ def update_expense_budget(
         if not expense_item:
             raise HTTPException(409, "Only setup-backed expense lines can be updated across future unlocked periods")
         expense_item.expenseamount = payload.budgetamount
-        expense_item.revisionnum = (expense_item.revisionnum or 0) + 1
+        expense_item.revisionnum = next_supported_revisionnum(
+            db,
+            budgetid=period.budgetid,
+            category="expense",
+            item_desc=expensedesc,
+        )
         revision_snapshot = expense_item.revisionnum
     else:
         expense_item = None
@@ -1203,6 +1217,7 @@ def update_expense_budget(
             before_amount=before_amount,
             after_amount=after_amount,
             line_status=getattr(row, "status", WORKING) or WORKING,
+            revisionnum=revision_snapshot if payload.scope == "future" else None,
             db=db,
         )
         changed_period_ids.add(target.finperiodid)
@@ -1321,7 +1336,12 @@ def update_investment_budget(
         if not item:
             raise HTTPException(409, "Only setup-backed investment lines can be updated across future unlocked periods")
         item.planned_amount = payload.budgetamount
-        item.revisionnum = (item.revisionnum or 0) + 1
+        item.revisionnum = next_supported_revisionnum(
+            db,
+            budgetid=period.budgetid,
+            category="investment",
+            item_desc=investmentdesc,
+        )
         revision_snapshot = item.revisionnum
     else:
         revision_snapshot = pi.revision_snapshot
@@ -1347,6 +1367,7 @@ def update_investment_budget(
             before_amount=before_amount,
             after_amount=after_amount,
             line_status=getattr(row, "status", WORKING) or WORKING,
+            revisionnum=revision_snapshot if payload.scope == "future" else None,
             db=db,
         )
         changed_period_ids.add(target.finperiodid)

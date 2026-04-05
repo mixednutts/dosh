@@ -27,6 +27,7 @@ def _to_expense_entry_out(tx: PeriodTransaction) -> ExpenseEntryOut:
         budget_scope=getattr(tx, "budget_scope", None),
         budget_before_amount=getattr(tx, "budget_before_amount", None),
         budget_after_amount=getattr(tx, "budget_after_amount", None),
+        revisionnum=getattr(tx, "revisionnum", None),
     )
 
 

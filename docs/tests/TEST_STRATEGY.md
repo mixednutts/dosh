@@ -109,6 +109,7 @@ These areas deserve extra caution whenever product work touches them:
 - transaction-backed expense, balance, and investment behavior
 - transaction-backed income behavior, including dedicated income transaction history rather than inline actual overrides
 - modal-driven budget adjustment behavior across income, expense, and investment, including setup-history readback through the shared transaction model
+- setup-revision history behavior, including field-level change capture, revision-number rebasing, and the distinction between setup-affecting future budget adjustments and current-only period adjustments
 - post-paid revise flows and read-only guards on closed cycles
 - transaction line-state capture and budget-health off-plan interpretation
 - health scoring, evidence payloads, and historical snapshot integrity
@@ -116,6 +117,7 @@ These areas deserve extra caution whenever product work touches them:
 - demo-mode gating and seeded demo-budget behavior, especially additive-only import safety and health-signal credibility
 - sidebar current-budget navigation behavior, especially empty-state actions, same-destination affordances, and explicit `View all ...` deep-link behavior when the compact cycle preview is incomplete
 - budget-summary calendar behavior, especially cycle-start markers, bounded future lookahead, and compact-cell event affordances that must stay aligned with day-detail modal content
+- setup history and period-detail table layouts where missing or conditional action affordances can shift column alignment and weaken readability
 
 ### Budget health context for tests
 
