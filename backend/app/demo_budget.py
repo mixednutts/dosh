@@ -11,7 +11,13 @@ from .models import BalanceType, Budget, ExpenseItem, IncomeType, InvestmentItem
 from .routers.periods import generate_period
 from .schemas import PeriodGenerateRequest
 from .time_utils import app_now_naive
-from .transaction_ledger import build_expense_tx, build_income_tx, build_investment_tx, sync_period_state
+from .transaction_ledger import (
+    build_budget_adjustment_tx,
+    build_expense_tx,
+    build_income_tx,
+    build_investment_tx,
+    sync_period_state,
+)
 
 
 def _month_start(value):
@@ -136,6 +142,7 @@ def _create_demo_setup(db: Session) -> Budget:
             investmentdesc="Emergency Fund",
             active=True,
             initial_value=Decimal("5400.00"),
+            planned_amount=Decimal("550.00"),
             linked_account_desc="Rainy Day Savings",
             is_primary=True,
         ),
@@ -205,6 +212,63 @@ def _apply_current_period_health_pressure(period) -> None:
     if groceries:
         groceries.status = "Revised"
         groceries.revision_comment = "Food costs ran ahead of plan after hosting family this month."
+
+
+def _add_demo_budget_adjustments(period, db: Session) -> None:
+    income_by_desc = {income.incomedesc: income for income in period.period_incomes}
+    expenses_by_desc = {expense.expensedesc: expense for expense in period.period_expenses}
+    investments_by_desc = {investment.investmentdesc: investment for investment in period.period_investments}
+
+    salary = income_by_desc.get("Salary")
+    if salary:
+        before_amount = Decimal(str(salary.budgetamount))
+        after_amount = Decimal("4350.00")
+        salary.budgetamount = after_amount
+        build_budget_adjustment_tx(
+            period.finperiodid,
+            period.budgetid,
+            "income",
+            "Salary",
+            db,
+            note="Adjusted after an in-cycle pay review.",
+            budget_scope="current",
+            budget_before_amount=before_amount,
+            budget_after_amount=after_amount,
+        )
+
+    subscriptions = expenses_by_desc.get("Subscriptions")
+    if subscriptions:
+        before_amount = Decimal(str(subscriptions.budgetamount))
+        after_amount = Decimal("110.00")
+        subscriptions.budgetamount = after_amount
+        build_budget_adjustment_tx(
+            period.finperiodid,
+            period.budgetid,
+            "expense",
+            "Subscriptions",
+            db,
+            note="Streaming services increased during the current cycle.",
+            budget_scope="current",
+            budget_before_amount=before_amount,
+            budget_after_amount=after_amount,
+        )
+
+    emergency_fund = investments_by_desc.get("Emergency Fund")
+    if emergency_fund:
+        before_amount = Decimal(str(emergency_fund.budgeted_amount))
+        after_amount = Decimal("900.00")
+        emergency_fund.budgeted_amount = after_amount
+        build_budget_adjustment_tx(
+            period.finperiodid,
+            period.budgetid,
+            "investment",
+            "Emergency Fund",
+            db,
+            note="Savings target was lifted for the rest of the cycle.",
+            budget_scope="current",
+            budget_before_amount=before_amount,
+            budget_after_amount=after_amount,
+        )
 
 
 def create_standard_demo_budget(db: Session) -> Budget:
@@ -279,6 +343,7 @@ def create_standard_demo_budget(db: Session) -> Budget:
 
     _seed_period_activity(periods[3], db=db, **current_pattern)
     _apply_current_period_health_pressure(periods[3])
+    _add_demo_budget_adjustments(periods[3], db)
     sync_period_state(periods[3].finperiodid, db)
 
     for target_index, pattern in enumerate(historical_patterns):

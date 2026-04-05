@@ -29,6 +29,7 @@ from .models import (
     PeriodExpense,
     PeriodIncome,
     PeriodInvestment,
+    PeriodTransaction,
 )
 from .period_logic import calc_period_end, expense_occurs_in_period
 from .time_utils import app_now_naive
@@ -72,8 +73,15 @@ def has_cycle_actuals(finperiodid: int, db: Session) -> bool:
 
 
 def has_cycle_transactions(finperiodid: int, db: Session) -> bool:
-    period = db.get(FinancialPeriod, finperiodid)
-    return bool(period and period.period_transactions)
+    movement_like_tx = (
+        db.query(PeriodTransaction.id)
+        .filter(
+            PeriodTransaction.finperiodid == finperiodid,
+            PeriodTransaction.type != "BUDGETADJ",
+        )
+        .first()
+    )
+    return movement_like_tx is not None
 
 
 def carry_forward_amount_for_period(period: FinancialPeriod) -> Decimal:
@@ -93,6 +101,7 @@ def upsert_carried_forward_line(finperiodid: int, budgetid: int, amount: Decimal
             varianceamount=Decimal("0.00") - amount,
             is_system=True,
             system_key=CARRIED_FORWARD_SYSTEM_KEY,
+            revision_snapshot=0,
         )
         db.add(row)
     else:
@@ -215,6 +224,7 @@ def create_next_cycle(period: FinancialPeriod, budget: Budget, db: Session) -> F
             budgetamount=Decimal(str(income_type.amount)) if income_type.isfixed else Decimal("0.00"),
             actualamount=Decimal("0.00"),
             varianceamount=Decimal("0.00"),
+            revision_snapshot=income_type.revisionnum,
         ))
 
     for expense_item in expense_items:
@@ -262,8 +272,9 @@ def create_next_cycle(period: FinancialPeriod, budget: Budget, db: Session) -> F
             investmentdesc=investment_item.investmentdesc,
             opening_value=Decimal(str(investment_item.initial_value)),
             closing_value=Decimal(str(investment_item.initial_value)),
-            budgeted_amount=Decimal("0.00"),
+            budgeted_amount=Decimal(str(investment_item.planned_amount or 0)),
             actualamount=Decimal("0.00"),
+            revision_snapshot=investment_item.revisionnum,
             status=WORKING,
         ))
 

@@ -79,6 +79,7 @@ class IncomeType(Base):
     autoinclude = Column(Boolean, default=False, nullable=False)
     amount = Column(Numeric(10, 2), default=0)
     linked_account = Column(String, nullable=True)
+    revisionnum = Column(Integer, default=0, nullable=False)
 
     budget = relationship("Budget", back_populates="income_types")
 
@@ -94,6 +95,7 @@ class PeriodIncome(Base):
     varianceamount = Column(Numeric(10, 2), default=0)
     is_system = Column(Boolean, nullable=False, default=False)
     system_key = Column(String, nullable=True)
+    revision_snapshot = Column(Integer, default=0, nullable=False)
 
     period = relationship("FinancialPeriod", back_populates="period_incomes")
 
@@ -130,8 +132,6 @@ class PeriodExpense(Base):
     sort_order = Column(Integer, default=0, nullable=False)
     # snapshot of revisionnum at time of period generation — identifies historical revision
     revision_snapshot = Column(Integer, default=0, nullable=False)
-    note = Column(String, nullable=True)
-
     # Current | Paid | Revised
     status = Column(String, default='Current', nullable=False)
     revision_comment = Column(String, nullable=True)
@@ -205,9 +205,11 @@ class InvestmentItem(Base):
     active = Column(Boolean, default=True, nullable=False)
     effectivedate = Column(DateTime)
     initial_value = Column(Numeric(10, 2), default=0)
+    planned_amount = Column(Numeric(10, 2), default=0)
     # optional link to an account balance (contributions credited to that account)
     linked_account_desc = Column(String, nullable=True)
     is_primary = Column(Boolean, default=False, nullable=False)
+    revisionnum = Column(Integer, default=0, nullable=False)
 
     budget = relationship("Budget", back_populates="investment_items")
     period_investments = relationship("PeriodInvestment", back_populates="investment_item")
@@ -227,6 +229,7 @@ class PeriodInvestment(Base):
     # budget/actual tracking (like expense items)
     budgeted_amount = Column(Numeric(10, 2), default=0)
     actualamount = Column(Numeric(10, 2), default=0)
+    revision_snapshot = Column(Integer, default=0, nullable=False)
     status = Column(String, default='Current', nullable=False)
     revision_comment = Column(String, nullable=True)
 
@@ -267,6 +270,10 @@ class PeriodTransaction(Base):
     legacy_table = Column(String, nullable=True)
     legacy_id = Column(Integer, nullable=True)
     dedupe_key = Column(String, nullable=True)
+    entry_kind = Column(String, nullable=False, default="movement")
+    budget_scope = Column(String, nullable=True)
+    budget_before_amount = Column(Numeric(10, 2), nullable=True)
+    budget_after_amount = Column(Numeric(10, 2), nullable=True)
 
     period = relationship("FinancialPeriod", back_populates="period_transactions")
 

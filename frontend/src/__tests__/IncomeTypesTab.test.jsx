@@ -9,6 +9,7 @@ jest.mock('../api/client', () => ({
   createIncomeType: jest.fn(),
   updateIncomeType: jest.fn(),
   deleteIncomeType: jest.fn(),
+  getIncomeTypeHistory: jest.fn(),
   getBalanceTypes: jest.fn(),
   getBudgetSetupAssessment: jest.fn(),
 }))
@@ -35,6 +36,7 @@ describe('IncomeTypesTab', () => {
       expense_items: [],
       investment_items: [],
     })
+    client.getIncomeTypeHistory.mockResolvedValue({ item_desc: 'Salary', category: 'income', current_revisionnum: 0, entries: [] })
   })
 
   it('auto-sets auto-include when a fixed income type is created', async () => {
@@ -123,7 +125,7 @@ describe('IncomeTypesTab', () => {
     renderWithProviders(<IncomeTypesTab budgetId={1} />)
 
     expect(await screen.findByText('Salary')).toBeTruthy()
-    fireEvent.click(screen.getAllByRole('button')[1])
+    fireEvent.click(screen.getAllByRole('button').find(button => button.className.includes('btn-secondary') && !button.title))
     expect(await screen.findByRole('heading', { name: 'Edit Income Type' })).toBeTruthy()
 
     fireEvent.change(screen.getByRole('spinbutton'), {
@@ -181,7 +183,7 @@ describe('IncomeTypesTab', () => {
 
     expect(await screen.findByText('Salary')).toBeTruthy()
     expect(screen.getByText('In Use')).toBeTruthy()
-    const deleteButton = screen.getAllByRole('button')[2]
+    const deleteButton = screen.getAllByRole('button').find(button => button.className.includes('btn-danger'))
     expect(deleteButton.disabled).toBe(true)
   })
 
@@ -198,5 +200,50 @@ describe('IncomeTypesTab', () => {
 
     fireEvent.click(await screen.findByText('Add Income Type'))
     expect(await screen.findByRole('option', { name: 'Everyday (Checking)' })).toBeTruthy()
+  })
+
+  it('shows history details for an income type using budget adjustment entries', async () => {
+    client.getIncomeTypes.mockResolvedValue([
+      {
+        incomedesc: 'Salary',
+        issavings: false,
+        isfixed: true,
+        autoinclude: true,
+        amount: 2500,
+        linked_account: 'Everyday',
+        revisionnum: 2,
+      },
+    ])
+    client.getIncomeTypeHistory.mockResolvedValue({
+      item_desc: 'Salary',
+      category: 'income',
+      current_revisionnum: 2,
+      entries: [
+        {
+          id: 9,
+          finperiodid: 3,
+          period_startdate: '2026-04-28T00:00:00',
+          period_enddate: '2026-05-11T00:00:00',
+          source: 'income',
+          type: 'BUDGETADJ',
+          amount: '100.00',
+          note: 'Pay rise landed.',
+          entrydate: '2026-04-10T09:00:00',
+          entry_kind: 'budget_adjustment',
+          budget_scope: 'future',
+          budget_before_amount: '2500.00',
+          budget_after_amount: '2600.00',
+        },
+      ],
+    })
+
+    renderWithProviders(<IncomeTypesTab budgetId={1} />)
+
+    expect(await screen.findByText('Salary')).toBeTruthy()
+    fireEvent.click(screen.getByTitle('View history details'))
+
+    expect(await screen.findByText('History Details — Salary')).toBeTruthy()
+    expect(await screen.findByText('Pay rise landed.')).toBeTruthy()
+    expect(client.getIncomeTypeHistory).toHaveBeenCalledWith(1, 'Salary')
   })
 })

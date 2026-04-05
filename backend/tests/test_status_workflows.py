@@ -24,7 +24,7 @@ def test_paid_expense_requires_revision_before_more_changes(client, db_session):
 
     budget_edit = client.patch(
         f"/api/periods/{active_period['finperiodid']}/expense/Rent/budget",
-        json={"budgetamount": "1300.00"},
+        json={"budgetamount": "1300.00", "scope": "current", "note": "Increase current period budget"},
     )
     assert budget_edit.status_code == 423
 
@@ -48,7 +48,7 @@ def test_paid_expense_requires_revision_before_more_changes(client, db_session):
 
     updated_budget = client.patch(
         f"/api/periods/{active_period['finperiodid']}/expense/Rent/budget",
-        json={"budgetamount": "1300.00"},
+        json={"budgetamount": "1300.00", "scope": "current", "note": "Increase current period budget"},
     )
     assert updated_budget.status_code == 200, updated_budget.text
     assert updated_budget.json()["status"] == "Revised"
@@ -73,7 +73,7 @@ def test_paid_investment_requires_revision_before_more_changes(client, db_sessio
 
     budget_edit = client.patch(
         f"/api/periods/{active_period['finperiodid']}/investment/Emergency%20Fund/budget",
-        json={"budgetamount": "250.00"},
+        json={"budgetamount": "250.00", "scope": "current", "note": "Increase current period contribution"},
     )
     assert budget_edit.status_code == 423
 
@@ -97,7 +97,7 @@ def test_paid_investment_requires_revision_before_more_changes(client, db_sessio
 
     updated_budget = client.patch(
         f"/api/periods/{active_period['finperiodid']}/investment/Emergency%20Fund/budget",
-        json={"budgetamount": "250.00"},
+        json={"budgetamount": "250.00", "scope": "current", "note": "Increase current period contribution"},
     )
     assert updated_budget.status_code == 200, updated_budget.text
     assert updated_budget.json()["status"] == "Revised"

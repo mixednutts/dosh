@@ -2,8 +2,8 @@ from decimal import Decimal
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from ..database import get_db
-from ..models import Budget, ExpenseItem, FinancialPeriod, PeriodExpense
-from ..schemas import ExpenseItemCreate, ExpenseItemOut, ExpenseItemUpdate, ExpenseItemReorderRequest
+from ..models import Budget, ExpenseItem, FinancialPeriod, PeriodExpense, PeriodTransaction
+from ..schemas import ExpenseItemCreate, ExpenseItemOut, ExpenseItemUpdate, ExpenseItemReorderRequest, SetupHistoryEntryOut, SetupHistoryOut
 from ..period_logic import expense_occurs_in_period
 from ..setup_assessment import expense_assessment
 
@@ -134,6 +134,53 @@ def update_expense_item(
     db.commit()
     db.refresh(ei)
     return ei
+
+
+@router.get("/{expensedesc}/history", response_model=SetupHistoryOut)
+def get_expense_item_history(budgetid: int, expensedesc: str, db: Session = Depends(get_db)):
+    item = _get_expense_or_404(budgetid, expensedesc, db)
+    rows = (
+        db.query(PeriodTransaction, FinancialPeriod)
+        .join(FinancialPeriod, FinancialPeriod.finperiodid == PeriodTransaction.finperiodid)
+        .filter(
+            PeriodTransaction.budgetid == budgetid,
+            PeriodTransaction.source == "expense",
+            PeriodTransaction.source_key == expensedesc,
+            PeriodTransaction.type == "BUDGETADJ",
+        )
+        .order_by(PeriodTransaction.entrydate.desc(), PeriodTransaction.id.desc())
+        .all()
+    )
+    return SetupHistoryOut(
+        item_desc=expensedesc,
+        category="expense",
+        current_revisionnum=item.revisionnum or 0,
+        entries=[
+            SetupHistoryEntryOut(
+                id=tx.id,
+                finperiodid=tx.finperiodid,
+                period_startdate=period.startdate,
+                period_enddate=period.enddate,
+                source=tx.source,
+                type=tx.type,
+                amount=tx.amount,
+                note=tx.note,
+                entrydate=tx.entrydate,
+                is_system=tx.is_system,
+                system_reason=tx.system_reason,
+                source_key=tx.source_key,
+                source_label=tx.source_label,
+                affected_account_desc=tx.affected_account_desc,
+                related_account_desc=tx.related_account_desc,
+                linked_incomedesc=tx.linked_incomedesc,
+                entry_kind=getattr(tx, "entry_kind", "movement"),
+                budget_scope=getattr(tx, "budget_scope", None),
+                budget_before_amount=getattr(tx, "budget_before_amount", None),
+                budget_after_amount=getattr(tx, "budget_after_amount", None),
+            )
+            for tx, period in rows
+        ],
+    )
 
 
 @router.delete("/{expensedesc}", status_code=204)

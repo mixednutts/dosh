@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from ..database import get_db
-from ..models import Budget, InvestmentItem
-from ..schemas import InvestmentItemCreate, InvestmentItemOut, InvestmentItemUpdate
+from ..models import Budget, FinancialPeriod, InvestmentItem, PeriodTransaction
+from ..schemas import InvestmentItemCreate, InvestmentItemOut, InvestmentItemUpdate, SetupHistoryEntryOut, SetupHistoryOut
 from ..setup_assessment import investment_assessment
 
 router = APIRouter(prefix="/budgets/{budgetid}/investment-items", tags=["investment-items"])
@@ -53,7 +53,7 @@ def create_investment_item(budgetid: int, payload: InvestmentItemCreate, db: Ses
         raise HTTPException(409, "Investment item with this description already exists")
     if payload.is_primary and not payload.active:
         raise HTTPException(422, "Primary investment items must be active")
-    item = InvestmentItem(budgetid=budgetid, **payload.model_dump())
+    item = InvestmentItem(budgetid=budgetid, revisionnum=0, **payload.model_dump())
     if item.is_primary:
         _clear_other_primary_investments(budgetid, item.investmentdesc, db)
     db.add(item)
@@ -71,6 +71,8 @@ def update_investment_item(
         raise HTTPException(404, "Investment item not found")
     _assert_investment_edit_allowed(budgetid, investmentdesc, db)
     updates = payload.model_dump(exclude_none=True)
+    revision_fields = {"planned_amount"}
+    is_revision = any(field in updates and getattr(item, field) != updates[field] for field in revision_fields)
     next_active = updates.get("active", item.active)
     next_is_primary = updates.get("is_primary", item.is_primary)
 
@@ -79,6 +81,8 @@ def update_investment_item(
 
     for field, value in updates.items():
         setattr(item, field, value)
+    if is_revision:
+        item.revisionnum = (item.revisionnum or 0) + 1
     if not item.active:
         item.is_primary = False
     elif item.is_primary:
@@ -86,6 +90,55 @@ def update_investment_item(
     db.commit()
     db.refresh(item)
     return item
+
+
+@router.get("/{investmentdesc}/history", response_model=SetupHistoryOut)
+def get_investment_item_history(budgetid: int, investmentdesc: str, db: Session = Depends(get_db)):
+    item = db.get(InvestmentItem, (budgetid, investmentdesc))
+    if not item:
+        raise HTTPException(404, "Investment item not found")
+    rows = (
+        db.query(PeriodTransaction, FinancialPeriod)
+        .join(FinancialPeriod, FinancialPeriod.finperiodid == PeriodTransaction.finperiodid)
+        .filter(
+            PeriodTransaction.budgetid == budgetid,
+            PeriodTransaction.source == "investment",
+            PeriodTransaction.source_key == investmentdesc,
+            PeriodTransaction.type == "BUDGETADJ",
+        )
+        .order_by(PeriodTransaction.entrydate.desc(), PeriodTransaction.id.desc())
+        .all()
+    )
+    return SetupHistoryOut(
+        item_desc=investmentdesc,
+        category="investment",
+        current_revisionnum=item.revisionnum or 0,
+        entries=[
+            SetupHistoryEntryOut(
+                id=tx.id,
+                finperiodid=tx.finperiodid,
+                period_startdate=period.startdate,
+                period_enddate=period.enddate,
+                source=tx.source,
+                type=tx.type,
+                amount=tx.amount,
+                note=tx.note,
+                entrydate=tx.entrydate,
+                is_system=tx.is_system,
+                system_reason=tx.system_reason,
+                source_key=tx.source_key,
+                source_label=tx.source_label,
+                affected_account_desc=tx.affected_account_desc,
+                related_account_desc=tx.related_account_desc,
+                linked_incomedesc=tx.linked_incomedesc,
+                entry_kind=getattr(tx, "entry_kind", "movement"),
+                budget_scope=getattr(tx, "budget_scope", None),
+                budget_before_amount=getattr(tx, "budget_before_amount", None),
+                budget_after_amount=getattr(tx, "budget_after_amount", None),
+            )
+            for tx, period in rows
+        ],
+    )
 
 
 @router.delete("/{investmentdesc}", status_code=204)

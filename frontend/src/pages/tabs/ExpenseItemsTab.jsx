@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { PlusIcon, PencilIcon, TrashIcon, ChevronUpIcon, ChevronDownIcon } from '@heroicons/react/24/outline'
+import { PlusIcon, PencilIcon, TrashIcon, ChevronUpIcon, ChevronDownIcon, ClockIcon } from '@heroicons/react/24/outline'
 import { format, parseISO, addDays } from 'date-fns'
-import { getExpenseItems, createExpenseItem, updateExpenseItem, deleteExpenseItem, reorderExpenseItems, getBudgetSetupAssessment } from '../../api/client'
+import { getExpenseItems, createExpenseItem, updateExpenseItem, deleteExpenseItem, reorderExpenseItems, getBudgetSetupAssessment, getExpenseItemHistory } from '../../api/client'
 import Modal from '../../components/Modal'
+import SetupItemHistoryModal from '../../components/SetupItemHistoryModal'
 
 const FREQTYPES = ['Always', 'Fixed Day of Month', 'Every N Days']
 const PAYTYPES = ['AUTO', 'MANUAL']
@@ -153,6 +154,7 @@ function FreqBadge({ freqtype, frequencyValue }) {
 export default function ExpenseItemsTab({ budgetId }) {
   const qc = useQueryClient()
   const [modal, setModal] = useState(null)
+  const [historyItem, setHistoryItem] = useState(null)
   const [showInactive, setShowInactive] = useState(false)
   const [actionError, setActionError] = useState('')
 
@@ -163,6 +165,11 @@ export default function ExpenseItemsTab({ budgetId }) {
   const { data: setupAssessment } = useQuery({
     queryKey: ['budget-setup-assessment', budgetId],
     queryFn: () => getBudgetSetupAssessment(budgetId),
+  })
+  const historyQuery = useQuery({
+    queryKey: ['expense-item-history', budgetId, historyItem?.expensedesc],
+    queryFn: () => getExpenseItemHistory(budgetId, historyItem.expensedesc),
+    enabled: !!historyItem,
   })
 
   const create = useMutation({
@@ -302,6 +309,9 @@ export default function ExpenseItemsTab({ budgetId }) {
                     </td>
                     <td className="px-3 py-2">
                       <div className="flex gap-1">
+                        <button className="btn-secondary" title="View history details" onClick={() => setHistoryItem(item)}>
+                          <ClockIcon className="w-3 h-3" />
+                        </button>
                         <button className="btn-secondary" onClick={() => setModal({ mode: 'edit', item })}>
                           <PencilIcon className="w-3 h-3" />
                         </button>
@@ -338,6 +348,15 @@ export default function ExpenseItemsTab({ budgetId }) {
             loading={create.isPending || update.isPending}
           />
         </Modal>
+      )}
+
+      {historyItem && (
+        <SetupItemHistoryModal
+          historyQuery={historyQuery}
+          itemDesc={historyItem.expensedesc}
+          category="expense"
+          onClose={() => setHistoryItem(null)}
+        />
       )}
     </div>
   )

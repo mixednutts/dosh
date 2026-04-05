@@ -105,12 +105,15 @@ def create_investment_item(
     budgetid: int,
     investmentdesc: str = "Emergency Fund",
     initial_value: Decimal = Decimal("250.00"),
+    planned_amount: Decimal = Decimal("0.00"),
     is_primary: bool = True,
 ) -> InvestmentItem:
     investment = InvestmentItem(
         budgetid=budgetid,
         investmentdesc=investmentdesc,
         initial_value=initial_value,
+        planned_amount=planned_amount,
+        revisionnum=0,
         is_primary=is_primary,
         active=True,
     )

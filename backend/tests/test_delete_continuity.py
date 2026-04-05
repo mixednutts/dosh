@@ -5,6 +5,7 @@ from decimal import Decimal
 
 from app.cycle_constants import CARRIED_FORWARD_DESC
 from app.models import FinancialPeriod, PeriodIncome
+from app.transaction_ledger import build_budget_adjustment_tx
 from app.time_utils import app_now_naive
 
 from .factories import create_minimum_budget_setup, generate_periods, iso_date
@@ -108,3 +109,37 @@ def test_delete_and_regenerate_trailing_cycle_recomputes_carried_forward(client,
     assert regenerated_carried_forward is not None
     assert Decimal(str(regenerated_carried_forward.budgetamount)) == Decimal("1600.00")
     assert Decimal(str(regenerated_carried_forward.actualamount)) == Decimal("0.00")
+
+
+def test_planned_cycle_delete_ignores_budget_adjustment_history(client, db_session):
+    setup = create_minimum_budget_setup(db_session)
+    budget = setup["budget"]
+    periods = generate_periods(
+        client,
+        budgetid=budget.budgetid,
+        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        count=3,
+    )
+    first_planned_period = next(period for period in periods if period["cycle_status"] == "PLANNED")
+
+    build_budget_adjustment_tx(
+        first_planned_period["finperiodid"],
+        budget.budgetid,
+        "income",
+        "Salary",
+        db_session,
+        note="Planning adjustment only",
+        budget_scope="future",
+        budget_before_amount=Decimal("2500.00"),
+        budget_after_amount=Decimal("2600.00"),
+    )
+    db_session.commit()
+
+    options_response = client.get(f"/api/periods/{first_planned_period['finperiodid']}/delete-options")
+    assert options_response.status_code == 200, options_response.text
+    options = options_response.json()
+    assert options["can_delete_single"] is False
+    assert options["can_delete_future_chain"] is True
+
+    chain_delete = client.delete(f"/api/periods/{first_planned_period['finperiodid']}?delete_mode=future_chain")
+    assert chain_delete.status_code == 204, chain_delete.text

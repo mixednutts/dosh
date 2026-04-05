@@ -21,7 +21,10 @@ TX_TYPE_CREDIT = "CREDIT"
 TX_TYPE_DEBIT = "DEBIT"
 TX_TYPE_ADJUST = "ADJUST"
 TX_TYPE_TRANSFER = "TRANSFER"
+TX_TYPE_BUDGET_ADJ = "BUDGETADJ"
 TRANSFER_PREFIX = "Transfer from "
+ENTRY_KIND_MOVEMENT = "movement"
+ENTRY_KIND_BUDGET_ADJUSTMENT = "budget_adjustment"
 
 
 def _as_decimal(value) -> Decimal:
@@ -61,6 +64,10 @@ def add_period_transaction(
     legacy_table: str | None = None,
     legacy_id: int | None = None,
     dedupe_key: str | None = None,
+    entry_kind: str = ENTRY_KIND_MOVEMENT,
+    budget_scope: str | None = None,
+    budget_before_amount=None,
+    budget_after_amount=None,
 ):
     amount = _rounded(_as_decimal(amount))
     if amount == Decimal("0.00"):
@@ -105,6 +112,10 @@ def add_period_transaction(
         legacy_table=legacy_table,
         legacy_id=legacy_id,
         dedupe_key=dedupe_key,
+        entry_kind=entry_kind,
+        budget_scope=budget_scope,
+        budget_before_amount=_rounded(_as_decimal(budget_before_amount)) if budget_before_amount is not None else None,
+        budget_after_amount=_rounded(_as_decimal(budget_after_amount)) if budget_after_amount is not None else None,
     )
     db.add(tx)
     db.flush()
@@ -269,6 +280,44 @@ def build_balance_adjustment_tx(
     )
 
 
+def build_budget_adjustment_tx(
+    finperiodid: int,
+    budgetid: int,
+    source: str,
+    source_key: str,
+    db: Session,
+    *,
+    note: str,
+    budget_scope: str,
+    budget_before_amount,
+    budget_after_amount,
+    is_system: bool = False,
+    system_reason: str | None = None,
+    entrydate: dt | None = None,
+    source_label: str | None = None,
+    dedupe_key: str | None = None,
+):
+    return add_period_transaction(
+        db,
+        finperiodid=finperiodid,
+        budgetid=budgetid,
+        source=source,
+        tx_type=TX_TYPE_BUDGET_ADJ,
+        amount=_rounded(_as_decimal(budget_after_amount) - _as_decimal(budget_before_amount)),
+        note=note,
+        entrydate=entrydate,
+        is_system=is_system,
+        system_reason=system_reason,
+        source_key=source_key,
+        source_label=source_label or source_key,
+        dedupe_key=dedupe_key,
+        entry_kind=ENTRY_KIND_BUDGET_ADJUSTMENT,
+        budget_scope=budget_scope,
+        budget_before_amount=budget_before_amount,
+        budget_after_amount=budget_after_amount,
+    )
+
+
 def _sum_amount(query_result) -> Decimal:
     return _rounded(sum((_as_decimal(row.amount) for row in query_result), Decimal("0.00")))
 
@@ -290,6 +339,7 @@ def expense_amount_from_ledger(finperiodid: int, budgetid: int, expensedesc: str
             PeriodTransaction.budgetid == budgetid,
             PeriodTransaction.source == "expense",
             PeriodTransaction.source_key == expensedesc,
+            PeriodTransaction.entry_kind == ENTRY_KIND_MOVEMENT,
         )
         .all()
     )
@@ -305,6 +355,7 @@ def income_amount_from_ledger(finperiodid: int, budgetid: int, incomedesc: str, 
             PeriodTransaction.budgetid == budgetid,
             PeriodTransaction.source == source,
             PeriodTransaction.source_key == incomedesc,
+            PeriodTransaction.entry_kind == ENTRY_KIND_MOVEMENT,
         )
         .all()
     )
@@ -319,6 +370,7 @@ def investment_amount_from_ledger(finperiodid: int, budgetid: int, investmentdes
             PeriodTransaction.budgetid == budgetid,
             PeriodTransaction.source == "investment",
             PeriodTransaction.source_key == investmentdesc,
+            PeriodTransaction.entry_kind == ENTRY_KIND_MOVEMENT,
         )
         .all()
     )
@@ -326,6 +378,8 @@ def investment_amount_from_ledger(finperiodid: int, budgetid: int, investmentdes
 
 
 def account_delta_for_transaction(tx: PeriodTransaction, balancedesc: str) -> Decimal:
+    if getattr(tx, "entry_kind", ENTRY_KIND_MOVEMENT) != ENTRY_KIND_MOVEMENT:
+        return Decimal("0.00")
     amount = _as_decimal(tx.amount)
     if tx.source == "expense":
         return -amount if tx.affected_account_desc == balancedesc else Decimal("0.00")

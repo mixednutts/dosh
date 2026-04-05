@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline'
-import { getIncomeTypes, createIncomeType, updateIncomeType, deleteIncomeType, getBalanceTypes, getBudgetSetupAssessment } from '../../api/client'
+import { PlusIcon, PencilIcon, TrashIcon, ClockIcon } from '@heroicons/react/24/outline'
+import { getIncomeTypes, createIncomeType, updateIncomeType, deleteIncomeType, getBalanceTypes, getBudgetSetupAssessment, getIncomeTypeHistory } from '../../api/client'
 import Modal from '../../components/Modal'
+import SetupItemHistoryModal from '../../components/SetupItemHistoryModal'
 import { getBalanceTypeLabel } from '../../utils/accountNaming'
 
 const emptyForm = { incomedesc: '', issavings: false, isfixed: false, autoinclude: false, amount: '', linked_account: '' }
@@ -83,6 +84,7 @@ const fmt = v => Number(v).toLocaleString('en-AU', { style: 'currency', currency
 export default function IncomeTypesTab({ budgetId, budget }) {
   const qc = useQueryClient()
   const [modal, setModal] = useState(null)
+  const [historyItem, setHistoryItem] = useState(null)
   const [actionError, setActionError] = useState('')
 
   const { data: types = [], isLoading } = useQuery({
@@ -92,6 +94,11 @@ export default function IncomeTypesTab({ budgetId, budget }) {
   const { data: setupAssessment } = useQuery({
     queryKey: ['budget-setup-assessment', budgetId],
     queryFn: () => getBudgetSetupAssessment(budgetId),
+  })
+  const historyQuery = useQuery({
+    queryKey: ['income-type-history', budgetId, historyItem?.incomedesc],
+    queryFn: () => getIncomeTypeHistory(budgetId, historyItem.incomedesc),
+    enabled: !!historyItem,
   })
 
   const create = useMutation({
@@ -181,6 +188,9 @@ export default function IncomeTypesTab({ budgetId, budget }) {
                   <td className="table-cell text-center">{t.autoinclude ? <span className="badge-green">Yes</span> : <span className="badge-gray">No</span>}</td>
                   <td className="table-cell">
                     <div className="flex gap-1 justify-end">
+                      <button className="btn-secondary" title="View history details" onClick={() => setHistoryItem(t)}>
+                        <ClockIcon className="w-3 h-3" />
+                      </button>
                       <button className="btn-secondary" onClick={() => setModal({ mode: 'edit', item: t })}>
                         <PencilIcon className="w-3 h-3" />
                       </button>
@@ -216,6 +226,15 @@ export default function IncomeTypesTab({ budgetId, budget }) {
             accountNamingPreference={accountNamingPreference}
           />
         </Modal>
+      )}
+
+      {historyItem && (
+        <SetupItemHistoryModal
+          historyQuery={historyQuery}
+          itemDesc={historyItem.incomedesc}
+          category="income"
+          onClose={() => setHistoryItem(null)}
+        />
       )}
     </div>
   )

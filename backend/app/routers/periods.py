@@ -40,14 +40,20 @@ from ..schemas import (
     AddExpenseToPeriodRequest, AddIncomeToPeriodRequest,
     SavingsTransferRequest,
     PeriodBalanceOut, PeriodExpenseReorderRequest, PeriodInvestmentOut,
-    PeriodExpenseStatusUpdate, PeriodExpenseBudgetUpdate, PeriodExpenseNoteUpdate,
+    PeriodExpenseStatusUpdate, PeriodExpenseBudgetUpdate, PeriodLineBudgetAdjustRequest,
     PeriodCloseoutPreviewOut, PeriodCloseoutRequest, PeriodDeleteOptionsOut,
     PeriodInvestmentStatusUpdate,
 )
 from ..period_logic import calc_period_end, periods_overlap, expense_occurs_in_period
 from ..setup_assessment import budget_setup_assessment
 from ..time_utils import app_now_naive
-from ..transaction_ledger import build_expense_tx, build_income_tx, get_primary_account_desc, sync_period_state
+from ..transaction_ledger import (
+    build_budget_adjustment_tx,
+    build_expense_tx,
+    build_income_tx,
+    get_primary_account_desc,
+    sync_period_state,
+)
 
 router = APIRouter(prefix="/periods", tags=["periods"])
 
@@ -90,6 +96,63 @@ def _assert_primary_account_configured(budgetid: int, db: Session, *, action: st
     if assessment and assessment["can_generate"] and get_primary_account_desc(budgetid, db):
         return
     raise HTTPException(422, f"Set one account as the primary account before {action}.")
+
+
+def _future_unlocked_periods(period: FinancialPeriod, db: Session) -> list[FinancialPeriod]:
+    return (
+        db.query(FinancialPeriod)
+        .filter(
+            FinancialPeriod.budgetid == period.budgetid,
+            FinancialPeriod.startdate > period.startdate,
+            FinancialPeriod.islocked == False,  # noqa: E712
+            FinancialPeriod.cycle_status != CLOSED,
+        )
+        .order_by(FinancialPeriod.startdate)
+        .all()
+    )
+
+
+def _record_budget_adjustment(
+    *,
+    finperiodid: int,
+    budgetid: int,
+    source: str,
+    source_key: str,
+    note: str,
+    scope: str,
+    before_amount: Decimal,
+    after_amount: Decimal,
+    db: Session,
+):
+    if before_amount == after_amount:
+        return None
+    return build_budget_adjustment_tx(
+        finperiodid,
+        budgetid,
+        source,
+        source_key,
+        db,
+        note=note,
+        budget_scope=scope,
+        budget_before_amount=before_amount,
+        budget_after_amount=after_amount,
+    )
+
+
+def _expense_budget_for_period(item: ExpenseItem, period: FinancialPeriod, fallback_amount: Decimal) -> Decimal:
+    if item.freqtype == "Always":
+        return Decimal(str(item.expenseamount))
+    if item.freqtype and item.frequency_value and item.effectivedate:
+        budgeted = expense_occurs_in_period(
+            freqtype=item.freqtype,
+            frequency_value=item.frequency_value,
+            effectivedate=item.effectivedate,
+            period_start=period.startdate,
+            period_end=period.enddate,
+            expense_amount=Decimal(str(item.expenseamount)),
+        )
+        return Decimal(str(budgeted or 0))
+    return Decimal(str(fallback_amount))
 
 
 def _enrich_expenses(expenses: list[PeriodExpense], db: Session) -> list[PeriodExpenseOut]:
@@ -245,6 +308,7 @@ def generate_period(payload: PeriodGenerateRequest, db: Session = Depends(get_db
                 budgetamount=budget_amount,
                 actualamount=Decimal("0.00"),
                 varianceamount=Decimal("0.00"),
+                revision_snapshot=it.revisionnum,
             ))
 
         # Populate expense rows for active expense items
@@ -319,7 +383,9 @@ def generate_period(payload: PeriodGenerateRequest, db: Session = Depends(get_db
             else:
                 opening = Decimal(str(ii.initial_value))
             budgeted_amount = Decimal("0.00")
-            if auto_surplus_target and ii.investmentdesc == auto_surplus_target.investmentdesc:
+            if Decimal(str(ii.planned_amount or 0)) != Decimal("0.00"):
+                budgeted_amount = Decimal(str(ii.planned_amount))
+            elif auto_surplus_target and ii.investmentdesc == auto_surplus_target.investmentdesc:
                 budgeted_amount = auto_surplus_amount
             db.add(PeriodInvestment(
                 finperiodid=period.finperiodid,
@@ -329,6 +395,7 @@ def generate_period(payload: PeriodGenerateRequest, db: Session = Depends(get_db
                 closing_value=opening,
                 budgeted_amount=budgeted_amount,
                 actualamount=Decimal("0.00"),
+                revision_snapshot=ii.revisionnum,
                 status=WORKING,
             ))
 
@@ -715,6 +782,7 @@ def add_expense_to_period(
         varianceamount=Decimal("0.00"),
         is_oneoff=is_oneoff,
         status=WORKING,
+        revision_snapshot=ei.revisionnum,
     )
     db.add(pe)
 
@@ -761,8 +829,22 @@ def add_expense_to_period(
                     actualamount=Decimal("0.00"),
                     varianceamount=Decimal("0.00"),
                     is_oneoff=False,
+                    revision_snapshot=ei.revisionnum,
                     status=WORKING,
                 ))
+
+    if payload.note:
+        _record_budget_adjustment(
+            finperiodid=finperiodid,
+            budgetid=payload.budgetid,
+            source="expense",
+            source_key=payload.expensedesc,
+            note=payload.note.strip(),
+            scope="future" if payload.scope == "future" else "current",
+            before_amount=Decimal("0.00"),
+            after_amount=Decimal(str(payload.budgetamount)),
+            db=db,
+        )
 
     db.commit()
     db.refresh(pe)
@@ -800,6 +882,7 @@ def add_income_to_period(
         budgetamount=payload.budgetamount,
         actualamount=Decimal("0.00"),
         varianceamount=Decimal("0.00"),
+        revision_snapshot=it.revisionnum,
     )
     db.add(pi)
 
@@ -825,7 +908,21 @@ def add_income_to_period(
                     budgetamount=budget_amount,
                     actualamount=Decimal("0.00"),
                     varianceamount=Decimal("0.00"),
+                    revision_snapshot=it.revisionnum,
                 ))
+
+    if payload.note:
+        _record_budget_adjustment(
+            finperiodid=finperiodid,
+            budgetid=payload.budgetid,
+            source="income",
+            source_key=payload.incomedesc,
+            note=payload.note.strip(),
+            scope="future" if payload.scope == "future" else "current",
+            before_amount=Decimal("0.00"),
+            after_amount=Decimal(str(payload.budgetamount)),
+            db=db,
+        )
 
     db.commit()
     db.refresh(pi)
@@ -865,6 +962,7 @@ def savings_transfer(
         budgetamount=payload.amount,
         actualamount=Decimal("0.00"),
         varianceamount=-payload.amount,
+        revision_snapshot=0,
     )
     db.add(pi)
 
@@ -978,13 +1076,73 @@ def set_expense_status(
     return _enrich_expenses([pe], db)[0]
 
 
-# ── Edit budget amount for a period expense ────────────────────────────────────
+# ── Edit budget amount for period lines ──────────────────────────────────────
+
+@router.patch("/{finperiodid}/income/{incomedesc}/budget", response_model=PeriodIncomeOut)
+def update_income_budget(
+    finperiodid: int,
+    incomedesc: str,
+    payload: PeriodLineBudgetAdjustRequest,
+    db: Session = Depends(get_db),
+):
+    period = _get_period_or_404(finperiodid, db)
+    budget = db.get(Budget, period.budgetid)
+    _assert_budget_editable(period, budget)
+    pi = db.get(PeriodIncome, (finperiodid, incomedesc))
+    if not pi:
+        raise HTTPException(404, "Period income entry not found")
+    if pi.system_key == CARRIED_FORWARD_SYSTEM_KEY:
+        raise HTTPException(409, "System-managed carried forward income cannot be budget-adjusted")
+
+    targets = [period] if payload.scope == "current" else [period, *_future_unlocked_periods(period, db)]
+    note = payload.note.strip()
+
+    if payload.scope == "future":
+        income_type = db.get(IncomeType, (period.budgetid, incomedesc))
+        if not income_type:
+            raise HTTPException(409, "Only setup-backed income lines can be updated across future unlocked periods")
+        income_type.amount = payload.budgetamount
+        income_type.revisionnum = (income_type.revisionnum or 0) + 1
+        revision_snapshot = income_type.revisionnum
+    else:
+        revision_snapshot = pi.revision_snapshot
+
+    changed_period_ids = set()
+    for target in targets:
+        row = db.get(PeriodIncome, (target.finperiodid, incomedesc))
+        if not row:
+            continue
+        before_amount = Decimal(str(row.budgetamount))
+        after_amount = Decimal(str(payload.budgetamount))
+        row.budgetamount = after_amount
+        if payload.scope == "future":
+            row.revision_snapshot = revision_snapshot
+        _record_budget_adjustment(
+            finperiodid=target.finperiodid,
+            budgetid=target.budgetid,
+            source="income",
+            source_key=incomedesc,
+            note=note,
+            scope=payload.scope,
+            before_amount=before_amount,
+            after_amount=after_amount,
+            db=db,
+        )
+        changed_period_ids.add(target.finperiodid)
+
+    for period_id in changed_period_ids:
+        sync_period_state(period_id, db)
+
+    db.commit()
+    db.refresh(pi)
+    return pi
+
 
 @router.patch("/{finperiodid}/expense/{expensedesc}/budget", response_model=PeriodExpenseOut)
 def update_expense_budget(
     finperiodid: int,
     expensedesc: str,
-    payload: PeriodExpenseBudgetUpdate,
+    payload: PeriodLineBudgetAdjustRequest,
     db: Session = Depends(get_db),
 ):
     period = _get_period_or_404(finperiodid, db)
@@ -998,36 +1156,63 @@ def update_expense_budget(
     if not pe:
         raise HTTPException(404, "Period expense not found")
     _assert_expense_not_paid(pe)
-    pe.budgetamount = payload.budgetamount
-    pe.varianceamount = pe.actualamount - pe.budgetamount
+
+    targets = [period] if payload.scope == "current" else [period, *_future_unlocked_periods(period, db)]
+    note = payload.note.strip()
+
+    if payload.scope == "future":
+        expense_item = db.get(ExpenseItem, (period.budgetid, expensedesc))
+        if not expense_item:
+            raise HTTPException(409, "Only setup-backed expense lines can be updated across future unlocked periods")
+        expense_item.expenseamount = payload.budgetamount
+        expense_item.revisionnum = (expense_item.revisionnum or 0) + 1
+        revision_snapshot = expense_item.revisionnum
+    else:
+        expense_item = None
+        revision_snapshot = pe.revision_snapshot
+
+    changed_period_ids = set()
+    for target in targets:
+        row = (
+            db.query(PeriodExpense)
+            .filter(PeriodExpense.finperiodid == target.finperiodid, PeriodExpense.expensedesc == expensedesc)
+            .first()
+        )
+        if not row:
+            continue
+        _assert_expense_not_paid(row)
+        before_amount = Decimal(str(row.budgetamount))
+        after_amount = Decimal(str(payload.budgetamount)) if payload.scope == "current" else _expense_budget_for_period(
+            expense_item,
+            target,
+            Decimal(str(payload.budgetamount)),
+        )
+        row.budgetamount = after_amount
+        if payload.scope == "future":
+            row.revision_snapshot = revision_snapshot
+        _record_budget_adjustment(
+            finperiodid=target.finperiodid,
+            budgetid=target.budgetid,
+            source="expense",
+            source_key=expensedesc,
+            note=note,
+            scope=payload.scope,
+            before_amount=before_amount,
+            after_amount=after_amount,
+            db=db,
+        )
+        changed_period_ids.add(target.finperiodid)
+
+    for period_id in changed_period_ids:
+        sync_period_state(period_id, db)
+
     db.commit()
-    db.refresh(pe)
-    return _enrich_expenses([pe], db)[0]
-
-
-# ── Update note on a period expense ──────────────────────────────────────────
-
-@router.patch("/{finperiodid}/expense/{expensedesc}/note", response_model=PeriodExpenseOut)
-def update_expense_note(
-    finperiodid: int,
-    expensedesc: str,
-    payload: PeriodExpenseNoteUpdate,
-    db: Session = Depends(get_db),
-):
-    period = _get_period_or_404(finperiodid, db)
-    _assert_not_closed(period)
-    pe = (
+    refreshed = (
         db.query(PeriodExpense)
         .filter(PeriodExpense.finperiodid == finperiodid, PeriodExpense.expensedesc == expensedesc)
         .first()
     )
-    if not pe:
-        raise HTTPException(404, "Period expense not found")
-    _assert_expense_not_paid(pe)
-    pe.note = payload.note or None
-    db.commit()
-    db.refresh(pe)
-    return _enrich_expenses([pe], db)[0]
+    return _enrich_expenses([refreshed], db)[0]
 
 
 # ── Remove income from period ─────────────────────────────────────────────────
@@ -1052,12 +1237,22 @@ def remove_income_from_period(
             PeriodTransaction.finperiodid == finperiodid,
             PeriodTransaction.source.in_(["income", "transfer"]),
             PeriodTransaction.source_key == incomedesc,
+            PeriodTransaction.entry_kind == "movement",
         )
         .first()
         is not None
     )
     if has_transactions:
         raise HTTPException(409, "Cannot remove income with recorded transactions")
+    (
+        db.query(PeriodTransaction)
+        .filter(
+            PeriodTransaction.finperiodid == finperiodid,
+            PeriodTransaction.source_key == incomedesc,
+            PeriodTransaction.entry_kind == "budget_adjustment",
+        )
+        .delete(synchronize_session=False)
+    )
     db.delete(pi)
     db.commit()
 
@@ -1083,6 +1278,16 @@ def remove_expense_from_period(
     _assert_expense_not_paid(pe)
     if Decimal(str(pe.actualamount)) != Decimal("0"):
         raise HTTPException(409, "Cannot remove expense with recorded actuals")
+    (
+        db.query(PeriodTransaction)
+        .filter(
+            PeriodTransaction.finperiodid == finperiodid,
+            PeriodTransaction.source == "expense",
+            PeriodTransaction.source_key == expensedesc,
+            PeriodTransaction.entry_kind == "budget_adjustment",
+        )
+        .delete(synchronize_session=False)
+    )
     db.delete(pe)
     db.commit()
 
@@ -1093,7 +1298,7 @@ def remove_expense_from_period(
 def update_investment_budget(
     finperiodid: int,
     investmentdesc: str,
-    payload: PeriodExpenseBudgetUpdate,
+    payload: PeriodLineBudgetAdjustRequest,
     db: Session = Depends(get_db),
 ):
     period = _get_period_or_404(finperiodid, db)
@@ -1103,10 +1308,50 @@ def update_investment_budget(
     if not pi:
         raise HTTPException(404, "Period investment not found")
     _assert_investment_not_paid(pi)
-    pi.budgeted_amount = payload.budgetamount
+
+    targets = [period] if payload.scope == "current" else [period, *_future_unlocked_periods(period, db)]
+    note = payload.note.strip()
+
+    if payload.scope == "future":
+        item = db.get(InvestmentItem, (period.budgetid, investmentdesc))
+        if not item:
+            raise HTTPException(409, "Only setup-backed investment lines can be updated across future unlocked periods")
+        item.planned_amount = payload.budgetamount
+        item.revisionnum = (item.revisionnum or 0) + 1
+        revision_snapshot = item.revisionnum
+    else:
+        revision_snapshot = pi.revision_snapshot
+
+    changed_period_ids = set()
+    for target in targets:
+        row = db.get(PeriodInvestment, (target.finperiodid, investmentdesc))
+        if not row:
+            continue
+        _assert_investment_not_paid(row)
+        before_amount = Decimal(str(row.budgeted_amount))
+        after_amount = Decimal(str(payload.budgetamount))
+        row.budgeted_amount = after_amount
+        if payload.scope == "future":
+            row.revision_snapshot = revision_snapshot
+        _record_budget_adjustment(
+            finperiodid=target.finperiodid,
+            budgetid=target.budgetid,
+            source="investment",
+            source_key=investmentdesc,
+            note=note,
+            scope=payload.scope,
+            before_amount=before_amount,
+            after_amount=after_amount,
+            db=db,
+        )
+        changed_period_ids.add(target.finperiodid)
+
+    for period_id in changed_period_ids:
+        sync_period_state(period_id, db)
+
     db.commit()
-    db.refresh(pi)
-    return _enrich_investments([pi], db)[0]
+    refreshed = db.get(PeriodInvestment, (finperiodid, investmentdesc))
+    return _enrich_investments([refreshed], db)[0]
 
 
 @router.patch("/{finperiodid}/investment/{investmentdesc}/status", response_model=PeriodInvestmentOut)

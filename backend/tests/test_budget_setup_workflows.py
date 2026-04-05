@@ -4,7 +4,7 @@ from decimal import Decimal
 
 from app.time_utils import app_now_naive
 
-from .factories import create_budget, create_expense_item, create_income_type, generate_periods
+from .factories import create_budget, create_expense_item, create_income_type, create_investment_item, generate_periods
 
 
 def test_fixed_income_setup_enforces_autoinclude_on_create_and_update(client, db_session):
@@ -687,3 +687,68 @@ def test_missing_period_investment_reference_fails_clearly_for_downstream_activi
     )
     assert missing_investment_tx.status_code == 404
     assert "investment line item not found" in missing_investment_tx.json()["detail"].lower()
+
+
+def test_setup_history_endpoints_return_budget_adjustment_details(client, db_session):
+    budget = create_budget(db_session)
+    create_income_type(db_session, budgetid=budget.budgetid, incomedesc="Salary", amount=Decimal("2500.00"))
+    create_expense_item(db_session, budgetid=budget.budgetid, expensedesc="Rent", expenseamount=Decimal("1200.00"))
+    create_investment_item(db_session, budgetid=budget.budgetid, investmentdesc="Emergency Fund")
+    primary_balance = client.post(
+        f"/api/budgets/{budget.budgetid}/balance-types/",
+        json={
+            "balancedesc": "Main Account",
+            "balance_type": "Transaction",
+            "opening_balance": "1000.00",
+            "active": True,
+            "is_primary": True,
+        },
+    )
+    assert primary_balance.status_code == 201, primary_balance.text
+
+    active_period = generate_periods(
+        client,
+        budgetid=budget.budgetid,
+        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        count=1,
+    )[0]
+
+    income_adjust = client.patch(
+        f"/api/periods/{active_period['finperiodid']}/income/Salary/budget",
+        json={"budgetamount": "2600.00", "scope": "current", "note": "Pay review landed"},
+    )
+    assert income_adjust.status_code == 200, income_adjust.text
+
+    expense_adjust = client.patch(
+        f"/api/periods/{active_period['finperiodid']}/expense/Rent/budget",
+        json={"budgetamount": "1300.00", "scope": "current", "note": "Rent increased"},
+    )
+    assert expense_adjust.status_code == 200, expense_adjust.text
+
+    investment_adjust = client.patch(
+        f"/api/periods/{active_period['finperiodid']}/investment/Emergency%20Fund/budget",
+        json={"budgetamount": "100.00", "scope": "current", "note": "Boost savings target"},
+    )
+    assert investment_adjust.status_code == 200, investment_adjust.text
+
+    income_history = client.get(f"/api/budgets/{budget.budgetid}/income-types/Salary/history")
+    assert income_history.status_code == 200, income_history.text
+    income_payload = income_history.json()
+    assert income_payload["category"] == "income"
+    assert income_payload["item_desc"] == "Salary"
+    assert income_payload["entries"][0]["type"] == "BUDGETADJ"
+    assert income_payload["entries"][0]["note"] == "Pay review landed"
+
+    expense_history = client.get(f"/api/budgets/{budget.budgetid}/expense-items/Rent/history")
+    assert expense_history.status_code == 200, expense_history.text
+    expense_payload = expense_history.json()
+    assert expense_payload["category"] == "expense"
+    assert expense_payload["entries"][0]["type"] == "BUDGETADJ"
+    assert expense_payload["entries"][0]["note"] == "Rent increased"
+
+    investment_history = client.get(f"/api/budgets/{budget.budgetid}/investment-items/Emergency%20Fund/history")
+    assert investment_history.status_code == 200, investment_history.text
+    investment_payload = investment_history.json()
+    assert investment_payload["category"] == "investment"
+    assert investment_payload["entries"][0]["type"] == "BUDGETADJ"
+    assert investment_payload["entries"][0]["note"] == "Boost savings target"

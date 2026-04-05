@@ -9,6 +9,7 @@ jest.mock('../api/client', () => ({
   createInvestmentItem: jest.fn(),
   updateInvestmentItem: jest.fn(),
   deleteInvestmentItem: jest.fn(),
+  getInvestmentItemHistory: jest.fn(),
   getBalanceTypes: jest.fn(),
   getBudgetSetupAssessment: jest.fn(),
 }))
@@ -35,6 +36,7 @@ describe('InvestmentItemsTab', () => {
       expense_items: [],
       investment_items: [],
     })
+    client.getInvestmentItemHistory.mockResolvedValue({ item_desc: 'Emergency Fund', category: 'investment', current_revisionnum: 0, entries: [] })
   })
 
   it('creates a primary investment line with a linked account', async () => {
@@ -50,10 +52,10 @@ describe('InvestmentItemsTab', () => {
     fireEvent.change(screen.getByPlaceholderText('e.g. ETF Portfolio'), {
       target: { value: 'ETF Portfolio' },
     })
-    fireEvent.change(screen.getByPlaceholderText('0.00'), {
+    fireEvent.change(screen.getAllByPlaceholderText('0.00')[0], {
       target: { value: '500' },
     })
-    fireEvent.change(screen.getByDisplayValue(''), {
+    fireEvent.change(document.querySelector('input[type="date"]'), {
       target: { value: '2026-08-01' },
     })
 
@@ -72,6 +74,7 @@ describe('InvestmentItemsTab', () => {
         active: true,
         effectivedate: '2026-08-01',
         initial_value: 500,
+        planned_amount: 0,
         linked_account_desc: 'Savings',
         is_primary: true,
       })
@@ -98,6 +101,7 @@ describe('InvestmentItemsTab', () => {
         active: true,
         effectivedate: null,
         initial_value: 0,
+        planned_amount: 0,
         linked_account_desc: null,
         is_primary: false,
       })
@@ -124,13 +128,13 @@ describe('InvestmentItemsTab', () => {
     renderWithProviders(<InvestmentItemsTab budgetId={1} />)
 
     expect(await screen.findByText('Brokerage')).toBeTruthy()
-    fireEvent.click(screen.getAllByRole('button')[1])
+    fireEvent.click(screen.getAllByRole('button').find(button => button.className.includes('btn-secondary') && !button.title))
     expect(await screen.findByRole('heading', { name: 'Edit Investment' })).toBeTruthy()
 
     const descriptionInput = screen.getByPlaceholderText('e.g. ETF Portfolio')
     expect(descriptionInput.disabled).toBe(true)
 
-    fireEvent.change(screen.getByPlaceholderText('0.00'), {
+    fireEvent.change(screen.getAllByPlaceholderText('0.00')[0], {
       target: { value: '1500' },
     })
     fireEvent.change(screen.getByDisplayValue('2026-08-01'), {
@@ -152,6 +156,7 @@ describe('InvestmentItemsTab', () => {
         active: true,
         effectivedate: '2026-08-15',
         initial_value: 1500,
+        planned_amount: 0,
         linked_account_desc: 'Broker Cash',
         is_primary: true,
       })
@@ -175,7 +180,7 @@ describe('InvestmentItemsTab', () => {
     renderWithProviders(<InvestmentItemsTab budgetId={1} />)
 
     expect(await screen.findByText('Holiday Fund')).toBeTruthy()
-    fireEvent.click(screen.getAllByRole('button')[1])
+    fireEvent.click(screen.getAllByRole('button').find(button => button.className.includes('btn-secondary') && !button.title))
 
     const toggles = screen.getAllByRole('checkbox')
     fireEvent.click(toggles[0])
@@ -187,6 +192,7 @@ describe('InvestmentItemsTab', () => {
         active: false,
         effectivedate: null,
         initial_value: 0,
+        planned_amount: 0,
         linked_account_desc: null,
         is_primary: true,
       })
@@ -211,7 +217,7 @@ describe('InvestmentItemsTab', () => {
     renderWithProviders(<InvestmentItemsTab budgetId={1} />)
 
     expect(await screen.findByText('Legacy Fund')).toBeTruthy()
-    fireEvent.click(screen.getAllByRole('button')[2])
+    fireEvent.click(screen.getAllByRole('button').find(button => button.className.includes('btn-danger')))
 
     await waitFor(() => {
       expect(confirmSpy).toHaveBeenCalledWith('Delete "Legacy Fund"?')
@@ -257,7 +263,7 @@ describe('InvestmentItemsTab', () => {
 
     expect(await screen.findByText('Emergency Fund')).toBeTruthy()
     expect(screen.getByText('In Use')).toBeTruthy()
-    const deleteButton = screen.getAllByRole('button')[2]
+    const deleteButton = screen.getAllByRole('button').find(button => button.className.includes('btn-danger'))
     expect(deleteButton.disabled).toBe(true)
   })
 
@@ -274,5 +280,52 @@ describe('InvestmentItemsTab', () => {
 
     fireEvent.click(await screen.findByText('Add Investment'))
     expect(await screen.findByRole('option', { name: 'Daily Spending (Everyday)' })).toBeTruthy()
+  })
+
+  it('shows history details for an investment line', async () => {
+    client.getInvestmentItems.mockResolvedValue([
+      {
+        investmentdesc: 'Emergency Fund',
+        active: true,
+        effectivedate: null,
+        initial_value: '100.00',
+        planned_amount: '75.00',
+        linked_account_desc: 'Savings',
+        is_primary: false,
+        revisionnum: 3,
+      },
+    ])
+    client.getBalanceTypes.mockResolvedValue([])
+    client.getInvestmentItemHistory.mockResolvedValue({
+      item_desc: 'Emergency Fund',
+      category: 'investment',
+      current_revisionnum: 3,
+      entries: [
+        {
+          id: 14,
+          finperiodid: 2,
+          period_startdate: '2026-04-14T00:00:00',
+          period_enddate: '2026-04-27T00:00:00',
+          source: 'investment',
+          type: 'BUDGETADJ',
+          amount: '25.00',
+          note: 'Lifted recurring contribution.',
+          entrydate: '2026-04-09T08:30:00',
+          entry_kind: 'budget_adjustment',
+          budget_scope: 'future',
+          budget_before_amount: '75.00',
+          budget_after_amount: '100.00',
+        },
+      ],
+    })
+
+    renderWithProviders(<InvestmentItemsTab budgetId={1} />)
+
+    expect(await screen.findByText('Emergency Fund')).toBeTruthy()
+    fireEvent.click(screen.getByTitle('View history details'))
+
+    expect(await screen.findByText('History Details — Emergency Fund')).toBeTruthy()
+    expect(await screen.findByText('Lifted recurring contribution.')).toBeTruthy()
+    expect(client.getInvestmentItemHistory).toHaveBeenCalledWith(1, 'Emergency Fund')
   })
 })

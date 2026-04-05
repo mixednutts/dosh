@@ -182,6 +182,7 @@ class IncomeTypeUpdate(BaseModel):
 
 class IncomeTypeOut(IncomeTypeBase):
     budgetid: int
+    revisionnum: int = 0
     model_config = {"from_attributes": True}
 
 
@@ -231,6 +232,36 @@ class ExpenseItemOut(ExpenseItemBase):
     budgetid: int
     revisionnum: int
     model_config = {"from_attributes": True}
+
+
+class SetupHistoryEntryOut(BaseModel):
+    id: int
+    finperiodid: int
+    period_startdate: Optional[datetime] = None
+    period_enddate: Optional[datetime] = None
+    source: str
+    type: Optional[str] = None
+    amount: Decimal
+    note: Optional[str] = None
+    entrydate: datetime
+    is_system: bool = False
+    system_reason: Optional[str] = None
+    source_key: Optional[str] = None
+    source_label: Optional[str] = None
+    affected_account_desc: Optional[str] = None
+    related_account_desc: Optional[str] = None
+    linked_incomedesc: Optional[str] = None
+    entry_kind: str = "movement"
+    budget_scope: Optional[str] = None
+    budget_before_amount: Optional[Decimal] = None
+    budget_after_amount: Optional[Decimal] = None
+
+
+class SetupHistoryOut(BaseModel):
+    item_desc: str
+    category: str
+    current_revisionnum: int = 0
+    entries: list[SetupHistoryEntryOut] = []
 
 
 class ExpenseReorderItem(BaseModel):
@@ -306,6 +337,7 @@ class PeriodIncomeOut(BaseModel):
     varianceamount: Decimal
     is_system: bool = False
     system_key: Optional[str] = None
+    revision_snapshot: int = 0
     model_config = {"from_attributes": True}
 
 
@@ -332,13 +364,8 @@ class PeriodExpenseOut(BaseModel):
     frequency_value: Optional[int] = None
     paytype: Optional[str] = None
     effectivedate: Optional[datetime] = None
-    note: Optional[str] = None
     revision_comment: Optional[str] = None
     model_config = {"from_attributes": True}
-
-
-class PeriodExpenseNoteUpdate(BaseModel):
-    note: Optional[str] = None
 
 
 class PeriodExpenseStatusUpdate(BaseModel):
@@ -350,6 +377,27 @@ class PeriodExpenseBudgetUpdate(BaseModel):
     budgetamount: Decimal
 
 
+class PeriodLineBudgetAdjustRequest(BaseModel):
+    budgetamount: Decimal
+    scope: str
+    note: str
+
+    @field_validator("scope")
+    @classmethod
+    def validate_adjustment_scope(cls, v: str) -> str:
+        if v not in {"current", "future"}:
+            raise ValueError("scope must be 'current' or 'future'")
+        return v
+
+    @field_validator("note")
+    @classmethod
+    def validate_note(cls, v: str) -> str:
+        value = (v or "").strip()
+        if not value:
+            raise ValueError("note is required")
+        return value
+
+
 class PeriodExpenseActualUpdate(BaseModel):
     actualamount: Decimal
 
@@ -359,6 +407,7 @@ class AddExpenseToPeriodRequest(BaseModel):
     expensedesc: str
     budgetamount: Decimal
     scope: str
+    note: Optional[str] = None
 
     @field_validator("scope")
     @classmethod
@@ -373,6 +422,7 @@ class AddIncomeToPeriodRequest(BaseModel):
     incomedesc: str
     budgetamount: Decimal
     scope: str
+    note: Optional[str] = None
 
     @field_validator("scope")
     @classmethod
@@ -403,6 +453,7 @@ class InvestmentItemBase(BaseModel):
     active: bool = True
     effectivedate: Optional[datetime] = None
     initial_value: Decimal = Decimal("0.00")
+    planned_amount: Decimal = Decimal("0.00")
     linked_account_desc: Optional[str] = None
     is_primary: bool = False
 
@@ -415,12 +466,14 @@ class InvestmentItemUpdate(BaseModel):
     active: Optional[bool] = None
     effectivedate: Optional[datetime] = None
     initial_value: Optional[Decimal] = None
+    planned_amount: Optional[Decimal] = None
     linked_account_desc: Optional[str] = None
     is_primary: Optional[bool] = None
 
 
 class InvestmentItemOut(InvestmentItemBase):
     budgetid: int
+    revisionnum: int = 0
     model_config = {"from_attributes": True}
 
 
@@ -436,6 +489,7 @@ class PeriodInvestmentOut(BaseModel):
     actualamount: Decimal = Decimal("0")
     remaining_amount: Decimal = Decimal("0")
     linked_account_desc: Optional[str] = None
+    revision_snapshot: int = 0
     status: str = "Current"
     revision_comment: Optional[str] = None
     model_config = {"from_attributes": True}
@@ -489,6 +543,11 @@ class InvestmentTxOut(BaseModel):
     note: Optional[str] = None
     entrydate: datetime
     linked_incomedesc: Optional[str] = None
+    type: Optional[str] = None
+    entry_kind: str = "movement"
+    budget_scope: Optional[str] = None
+    budget_before_amount: Optional[Decimal] = None
+    budget_after_amount: Optional[Decimal] = None
     model_config = {"from_attributes": True}
 
 
@@ -506,8 +565,13 @@ class IncomeTxOut(BaseModel):
     note: Optional[str] = None
     entrydate: datetime
     source: str
+    type: Optional[str] = None
     affected_account_desc: Optional[str] = None
     related_account_desc: Optional[str] = None
+    entry_kind: str = "movement"
+    budget_scope: Optional[str] = None
+    budget_before_amount: Optional[Decimal] = None
+    budget_after_amount: Optional[Decimal] = None
     model_config = {"from_attributes": True}
 
 
@@ -527,6 +591,10 @@ class PeriodTransactionOut(BaseModel):
     affected_account_desc: Optional[str] = None
     related_account_desc: Optional[str] = None
     linked_incomedesc: Optional[str] = None
+    entry_kind: str = "movement"
+    budget_scope: Optional[str] = None
+    budget_before_amount: Optional[Decimal] = None
+    budget_after_amount: Optional[Decimal] = None
     model_config = {"from_attributes": True}
 
 
@@ -545,6 +613,11 @@ class ExpenseEntryOut(BaseModel):
     amount: Decimal
     note: Optional[str] = None
     entrydate: datetime
+    type: Optional[str] = None
+    entry_kind: str = "movement"
+    budget_scope: Optional[str] = None
+    budget_before_amount: Optional[Decimal] = None
+    budget_after_amount: Optional[Decimal] = None
     model_config = {"from_attributes": True}
 
 

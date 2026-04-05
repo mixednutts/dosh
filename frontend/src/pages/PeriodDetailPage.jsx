@@ -5,7 +5,6 @@ import { format, parseISO, addDays } from 'date-fns'
 import {
   LockClosedIcon, LockOpenIcon, ChevronRightIcon, PlusIcon,
   MinusIcon, TrashIcon, ListBulletIcon, Bars2Icon,
-  ChatBubbleOvalLeftEllipsisIcon,
 } from '@heroicons/react/24/outline'
 import {
   getPeriodDetail, getBudget, setPeriodLock,
@@ -16,7 +15,7 @@ import {
   reorderPeriodExpenses, getBalanceTransactions,
   getInvestmentTransactions, addInvestmentTransaction, deleteInvestmentTransaction,
   setPeriodExpenseStatus, updatePeriodExpenseBudget, removePeriodExpense,
-  updatePeriodInvestmentBudget, getBalanceTypes, updateExpenseNote, removePeriodIncome,
+  updatePeriodInvestmentBudget, getBalanceTypes, removePeriodIncome, updatePeriodIncomeBudget,
   setPeriodInvestmentStatus, getPeriodCloseoutPreview, closeOutPeriod,
 } from '../api/client'
 import Modal from '../components/Modal'
@@ -118,7 +117,9 @@ function IncomeTransactionsModal({ periodId, incomedesc, budgetamount, actualamo
     add.mutate({ amount: type === 'credit' ? n : -n, note: note || null })
   }
 
-  const runningTotal = transactions.reduce((s, tx) => s + Number(tx.amount), 0)
+  const runningTotal = transactions
+    .filter(tx => tx.entry_kind !== 'budget_adjustment')
+    .reduce((s, tx) => s + Number(tx.amount), 0)
   const variance = Number(actualamount) - Number(budgetamount)
 
   return (
@@ -149,20 +150,28 @@ function IncomeTransactionsModal({ periodId, incomedesc, budgetamount, actualamo
           <div className="divide-y divide-gray-100 dark:divide-gray-800 max-h-52 overflow-y-auto">
             {transactions.map(tx => (
               <div key={tx.id} className="flex items-center gap-2 px-3 py-2">
-                <span className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold
-                  ${Number(tx.amount) >= 0
-                    ? 'bg-success-100 text-success-700 dark:bg-success-900/40 dark:text-success-400'
-                    : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400'}`}>
-                  {Number(tx.amount) >= 0 ? '+' : '−'}
+                <span className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold
+                  ${tx.entry_kind === 'budget_adjustment'
+                    ? 'bg-dosh-100 text-dosh-700 dark:bg-dosh-900/40 dark:text-dosh-300'
+                    : Number(tx.amount) >= 0
+                      ? 'bg-success-100 text-success-700 dark:bg-success-900/40 dark:text-success-400'
+                      : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400'}`}>
+                  {tx.entry_kind === 'budget_adjustment' ? 'Adj' : Number(tx.amount) >= 0 ? '+' : '−'}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <p className={`text-sm font-medium ${Number(tx.amount) >= 0 ? 'text-success-700 dark:text-success-400' : 'text-red-700 dark:text-red-400'}`}>
-                    {fmt(Math.abs(tx.amount))}
-                  </p>
+                  {tx.entry_kind === 'budget_adjustment' ? (
+                    <p className="text-sm font-medium text-dosh-700 dark:text-dosh-300">
+                      Budget {fmt(tx.budget_before_amount)} {'->'} {fmt(tx.budget_after_amount)}
+                    </p>
+                  ) : (
+                    <p className={`text-sm font-medium ${Number(tx.amount) >= 0 ? 'text-success-700 dark:text-success-400' : 'text-red-700 dark:text-red-400'}`}>
+                      {fmt(Math.abs(tx.amount))}
+                    </p>
+                  )}
                   {tx.note && <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{tx.note}</p>}
                   <p className="text-xs text-gray-400">{format(parseISO(tx.entrydate), 'dd MMM yyyy HH:mm')}</p>
                 </div>
-                {!locked && (
+                {!locked && tx.entry_kind !== 'budget_adjustment' && (
                   <button onClick={() => remove.mutate(tx.id)}
                     className="p-1 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
                     <TrashIcon className="w-3.5 h-3.5" />
@@ -329,7 +338,7 @@ function ExpenseEntriesModal({ periodId, budgetId, expensedesc, budgetamount, ac
     add.mutate({ amount: type === 'debit' ? n : -n, note: note || null })
   }
 
-  const runningTotal = entries.reduce((s, e) => s + Number(e.amount), 0)
+  const runningTotal = entries.filter(entry => entry.entry_kind !== 'budget_adjustment').reduce((s, e) => s + Number(e.amount), 0)
 
   return (
     <div className="space-y-4">
@@ -360,20 +369,28 @@ function ExpenseEntriesModal({ periodId, budgetId, expensedesc, budgetamount, ac
           <div className="divide-y divide-gray-100 dark:divide-gray-800 max-h-52 overflow-y-auto">
             {entries.map(entry => (
               <div key={entry.id} className="flex items-center gap-2 px-3 py-2">
-                <span className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold
-                  ${Number(entry.amount) >= 0
-                    ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400'
-                    : 'bg-dosh-100 text-dosh-700 dark:bg-dosh-900/40 dark:text-dosh-400'}`}>
-                  {Number(entry.amount) >= 0 ? '+' : '−'}
+                <span className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold
+                  ${entry.entry_kind === 'budget_adjustment'
+                    ? 'bg-dosh-100 text-dosh-700 dark:bg-dosh-900/40 dark:text-dosh-300'
+                    : Number(entry.amount) >= 0
+                      ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400'
+                      : 'bg-dosh-100 text-dosh-700 dark:bg-dosh-900/40 dark:text-dosh-400'}`}>
+                  {entry.entry_kind === 'budget_adjustment' ? 'Adj' : Number(entry.amount) >= 0 ? '+' : '−'}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <p className={`text-sm font-medium ${Number(entry.amount) >= 0 ? 'text-red-700 dark:text-red-400' : 'text-dosh-700 dark:text-dosh-400'}`}>
-                    {fmt(Math.abs(entry.amount))}
-                  </p>
+                  {entry.entry_kind === 'budget_adjustment' ? (
+                    <p className="text-sm font-medium text-dosh-700 dark:text-dosh-300">
+                      Budget {fmt(entry.budget_before_amount)} {'->'} {fmt(entry.budget_after_amount)}
+                    </p>
+                  ) : (
+                    <p className={`text-sm font-medium ${Number(entry.amount) >= 0 ? 'text-red-700 dark:text-red-400' : 'text-dosh-700 dark:text-dosh-400'}`}>
+                      {fmt(Math.abs(entry.amount))}
+                    </p>
+                  )}
                   {entry.note && <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{entry.note}</p>}
                   <p className="text-xs text-gray-400">{format(parseISO(entry.entrydate), 'dd MMM yyyy HH:mm')}</p>
                 </div>
-                {!locked && (
+                {!locked && entry.entry_kind !== 'budget_adjustment' && (
                   <button onClick={() => remove.mutate(entry.id)}
                     className="p-1 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
                     <TrashIcon className="w-3.5 h-3.5" />
@@ -474,7 +491,7 @@ function InvestmentTxModal({ periodId, investmentdesc, openingValue, closingValu
   }
 
   // Derive actual from transactions total for live display
-  const txTotal = transactions.reduce((s, t) => s + Number(t.amount), 0)
+  const txTotal = transactions.filter(tx => tx.entry_kind !== 'budget_adjustment').reduce((s, t) => s + Number(t.amount), 0)
   const liveRemaining = Number(budgetedAmount ?? 0) - txTotal
 
   return (
@@ -505,20 +522,28 @@ function InvestmentTxModal({ periodId, investmentdesc, openingValue, closingValu
           <div className="divide-y divide-gray-100 dark:divide-gray-800 max-h-52 overflow-y-auto">
             {transactions.map(tx => (
               <div key={tx.id} className="flex items-center gap-2 px-3 py-2">
-                <span className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold
-                  ${Number(tx.amount) >= 0
-                    ? 'bg-dosh-100 text-dosh-700 dark:bg-dosh-900/40 dark:text-dosh-400'
-                    : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400'}`}>
-                  {Number(tx.amount) >= 0 ? '+' : '−'}
+                <span className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold
+                  ${tx.entry_kind === 'budget_adjustment'
+                    ? 'bg-dosh-100 text-dosh-700 dark:bg-dosh-900/40 dark:text-dosh-300'
+                    : Number(tx.amount) >= 0
+                      ? 'bg-dosh-100 text-dosh-700 dark:bg-dosh-900/40 dark:text-dosh-400'
+                      : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400'}`}>
+                  {tx.entry_kind === 'budget_adjustment' ? 'Adj' : Number(tx.amount) >= 0 ? '+' : '−'}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <p className={`text-sm font-medium ${Number(tx.amount) >= 0 ? 'text-dosh-700 dark:text-dosh-400' : 'text-red-700 dark:text-red-400'}`}>
-                    {fmt(Math.abs(tx.amount))}
-                  </p>
+                  {tx.entry_kind === 'budget_adjustment' ? (
+                    <p className="text-sm font-medium text-dosh-700 dark:text-dosh-300">
+                      Budget {fmt(tx.budget_before_amount)} {'->'} {fmt(tx.budget_after_amount)}
+                    </p>
+                  ) : (
+                    <p className={`text-sm font-medium ${Number(tx.amount) >= 0 ? 'text-dosh-700 dark:text-dosh-400' : 'text-red-700 dark:text-red-400'}`}>
+                      {fmt(Math.abs(tx.amount))}
+                    </p>
+                  )}
                   {tx.note && <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{tx.note}</p>}
                   <p className="text-xs text-gray-400">{format(parseISO(tx.entrydate), 'dd MMM yyyy HH:mm')}</p>
                 </div>
-                {!locked && (
+                {!locked && tx.entry_kind !== 'budget_adjustment' && (
                   <button onClick={() => remove.mutate(tx.id)}
                     className="p-1 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
                     <TrashIcon className="w-3.5 h-3.5" />
@@ -574,33 +599,72 @@ function InvestmentTxModal({ periodId, investmentdesc, openingValue, closingValu
   )
 }
 
-// ── Inline Budget / Movement Cell (click to edit) ────────────────────────────
-function BudgetEditCell({ value, onSave, allowNegative = false }) {
-  const [editing, setEditing] = useState(false)
-  const [draft, setDraft] = useState('')
+function BudgetAdjustmentModal({ title, currentAmount, onSubmit, onClose }) {
+  const [budgetamount, setBudgetAmount] = useState(String(Number(currentAmount ?? 0)))
+  const [scope, setScope] = useState('current')
+  const [note, setNote] = useState('')
+  const [error, setError] = useState('')
 
-  const save = () => {
-    const n = parseFloat(draft)
-    if (!isNaN(n)) onSave(n)
-    setEditing(false)
-  }
-
-  if (editing) {
-    return (
-      <input autoFocus type="number" step="0.01" min={allowNegative ? undefined : '0'} value={draft}
-        onChange={e => setDraft(e.target.value)}
-        onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(false) }}
-        onBlur={save}
-        className="w-24 rounded border border-dosh-400 px-1 py-0.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-dosh-500 dark:bg-gray-800 dark:text-white" />
-    )
+  const handleSubmit = e => {
+    e.preventDefault()
+    const amount = parseFloat(budgetamount)
+    if (Number.isNaN(amount) || amount < 0) {
+      setError('Enter a valid budget amount')
+      return
+    }
+    if (!note.trim()) {
+      setError('A comment is required')
+      return
+    }
+    setError('')
+    onSubmit({ budgetamount: amount, scope, note: note.trim() })
   }
 
   return (
-    <span onClick={() => { setDraft(String(Number(value ?? 0))); setEditing(true) }}
-      className="cursor-pointer rounded px-1.5 py-0.5 text-gray-600 dark:text-gray-400 border border-transparent hover:border-dosh-300 hover:bg-dosh-50 dark:hover:bg-dosh-900/20 transition-colors"
-      title="Click to edit">
-      {fmt(value ?? 0)}
-    </span>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <p className="text-sm text-gray-500 dark:text-gray-400">{title}</p>
+        <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">Future unlocked updates also refresh the setup amount for later cycles.</p>
+      </div>
+      <div>
+        <label className="label">Budget Amount ($)</label>
+        <input
+          autoFocus
+          type="number"
+          min="0"
+          step="0.01"
+          className="input"
+          value={budgetamount}
+          onChange={e => setBudgetAmount(e.target.value)}
+        />
+      </div>
+      <div>
+        <label className="label">Apply to</label>
+        <div className="space-y-1.5 mt-1">
+          {[['current', 'Current period only'], ['future', 'Current + future unlocked periods']].map(([value, label]) => (
+            <label key={value} className="flex items-center gap-2 text-sm cursor-pointer">
+              <input type="radio" name="budget-adjust-scope" value={value} checked={scope === value} onChange={() => setScope(value)} />
+              {label}
+            </label>
+          ))}
+        </div>
+      </div>
+      <div>
+        <label className="label">Comment</label>
+        <textarea
+          className="input w-full resize-none"
+          rows={4}
+          value={note}
+          onChange={e => setNote(e.target.value)}
+          placeholder="Why is this budget changing?"
+        />
+      </div>
+      {error && <p className="text-sm text-red-600">{error}</p>}
+      <div className="flex justify-end gap-2">
+        <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
+        <button type="submit" className="btn-primary">Save Budget Change</button>
+      </div>
+    </form>
   )
 }
 
@@ -660,40 +724,6 @@ function ExpenseStatusPill({ expense, onMarkPaid, onRevise }) {
         {isOver && <span className="absolute inset-y-0 right-0 w-1 bg-red-700 dark:bg-red-400" />}
       </span>
     </button>
-  )
-}
-
-// ── Expense Note Modal ────────────────────────────────────────────────────────
-function ExpenseNoteModal({ periodId, expensedesc, initialNote, readOnly = false, onClose }) {
-  const qc = useQueryClient()
-  const [note, setNote] = useState(initialNote ?? '')
-
-  const save = useMutation({
-    mutationFn: () => updateExpenseNote(periodId, expensedesc, note.trim() || null),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['period', periodId] }); onClose() },
-  })
-
-  return (
-    <div className="space-y-3">
-      <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">{expensedesc}</p>
-      <textarea
-        className="input w-full resize-none"
-        rows={5}
-        placeholder={readOnly ? 'No note' : 'Add a note…'}
-        value={note}
-        onChange={e => setNote(e.target.value)}
-        readOnly={readOnly}
-        autoFocus
-      />
-      <div className="flex justify-end gap-2">
-        <button className="btn-secondary" onClick={onClose}>{readOnly ? 'Close' : 'Cancel'}</button>
-        {!readOnly && (
-          <button className="btn-primary" onClick={() => save.mutate()} disabled={save.isPending}>
-            {save.isPending ? 'Saving…' : 'Save'}
-          </button>
-        )}
-      </div>
-    </div>
   )
 }
 
@@ -965,6 +995,7 @@ function AddIncomeModal({ periodId, budgetId, existingDescs, onClose }) {
   const [selected, setSelected] = useState('')
   const [amount, setAmount] = useState('')
   const [scope, setScope] = useState('oneoff')
+  const [note, setNote] = useState('')
   const [error, setError] = useState('')
 
   const { data: incomeTypes = [] } = useQuery({
@@ -1008,7 +1039,7 @@ function AddIncomeModal({ periodId, budgetId, existingDescs, onClose }) {
     if (mode === 'savings') {
       addTransfer.mutate({ budgetid: budgetId, balancedesc: selected, amount: parseFloat(amount) || 0 })
     } else {
-      add.mutate({ budgetid: budgetId, incomedesc: selected, budgetamount: parseFloat(amount) || 0, scope })
+      add.mutate({ budgetid: budgetId, incomedesc: selected, budgetamount: parseFloat(amount) || 0, scope, note: note || null })
     }
   }
 
@@ -1047,6 +1078,12 @@ function AddIncomeModal({ periodId, budgetId, existingDescs, onClose }) {
       </div>
       {mode === 'existing' && (
         <div>
+          <label className="label">Comment / Note</label>
+          <textarea className="input w-full resize-none" rows={3} value={note} onChange={e => setNote(e.target.value)} placeholder="Why are you adding this line?" />
+        </div>
+      )}
+      {mode === 'existing' && (
+        <div>
           <label className="label">Include in</label>
           <div className="space-y-1.5 mt-1">
             {[['oneoff', 'This budget cycle only'], ['future', 'This + future unlocked budget cycles']].map(([val, label]) => (
@@ -1074,6 +1111,7 @@ function AddExpenseModal({ periodId, budgetId, existingDescs, onClose }) {
   const [selected, setSelected] = useState('')
   const [amount, setAmount] = useState('')
   const [scope, setScope] = useState('oneoff')
+  const [note, setNote] = useState('')
   const [error, setError] = useState('')
   const [newDesc, setNewDesc] = useState('')
   const [newFreqtype, setNewFreqtype] = useState('Fixed Day of Month')
@@ -1101,10 +1139,10 @@ function AddExpenseModal({ periodId, budgetId, existingDescs, onClose }) {
       if (mode === 'new') {
         if (!newDesc.trim()) { setError('Enter a description'); return }
         await createItem.mutateAsync({ expensedesc: newDesc.trim(), active: true, freqtype: newFreqtype || null, frequency_value: newFreqVal ? parseInt(newFreqVal) : null, paytype: newPaytype || null, effectivedate: newEffDate || null, expenseamount: parseFloat(amount) || 0 })
-        addToperiod.mutate({ budgetid: budgetId, expensedesc: newDesc.trim(), budgetamount: parseFloat(amount) || 0, scope })
+        addToperiod.mutate({ budgetid: budgetId, expensedesc: newDesc.trim(), budgetamount: parseFloat(amount) || 0, scope, note: note || null })
       } else {
         if (!selected) { setError('Select an expense item'); return }
-        addToperiod.mutate({ budgetid: budgetId, expensedesc: selected, budgetamount: parseFloat(amount) || 0, scope })
+        addToperiod.mutate({ budgetid: budgetId, expensedesc: selected, budgetamount: parseFloat(amount) || 0, scope, note: note || null })
       }
     } catch (err) { setError(err.response?.data?.detail ?? 'Failed') }
   }
@@ -1144,6 +1182,10 @@ function AddExpenseModal({ periodId, budgetId, existingDescs, onClose }) {
       )}
       <div><label className="label">Budget Amount ($)</label><input type="number" step="0.01" min="0" className="input" value={amount} onChange={e => setAmount(e.target.value)} /></div>
       <div>
+        <label className="label">Comment / Note</label>
+        <textarea className="input w-full resize-none" rows={3} value={note} onChange={e => setNote(e.target.value)} placeholder="Why are you adding this line?" />
+      </div>
+      <div>
         <label className="label">Include in</label>
         <div className="space-y-1.5 mt-1">
           {[['oneoff', 'This budget cycle only (one-off)'], ['future', 'This + future unlocked budget cycles']].map(([val, label]) => (
@@ -1172,7 +1214,7 @@ export default function PeriodDetailPage() {
   const [showAddIncome, setShowAddIncome] = useState(false)
   const [incomeModal, setIncomeModal] = useState(null) // { incomedesc, budgetamount, actualamount, readOnly, defaultType }
   const [entriesModal, setEntriesModal] = useState(null) // { expensedesc, budgetamount, actualamount }
-  const [noteModal, setNoteModal] = useState(null) // { expensedesc, note }
+  const [budgetAdjustModal, setBudgetAdjustModal] = useState(null) // { category, desc, budgetamount, title }
   const [reviseModal, setReviseModal] = useState(null) // { expensedesc }
   const [confirmPaidModal, setConfirmPaidModal] = useState(null) // { expense }
   const [reviseInvestmentModal, setReviseInvestmentModal] = useState(null)
@@ -1196,10 +1238,11 @@ export default function PeriodDetailPage() {
   const lock = useMutation({ mutationFn: islocked => setPeriodLock(id, islocked), onSuccess: () => qc.invalidateQueries({ queryKey: ['period', id] }) })
   const setExpenseStatus = useMutation({ mutationFn: ({ desc, status, revisionComment = null }) => setPeriodExpenseStatus(id, desc, status, revisionComment), onSuccess: () => qc.invalidateQueries({ queryKey: ['period', id] }) })
   const setInvestmentStatus = useMutation({ mutationFn: ({ desc, status, revisionComment = null }) => setPeriodInvestmentStatus(id, desc, status, revisionComment), onSuccess: () => qc.invalidateQueries({ queryKey: ['period', id] }) })
-  const editExpenseBudget = useMutation({ mutationFn: ({ desc, budgetamount }) => updatePeriodExpenseBudget(id, desc, budgetamount), onSuccess: () => qc.invalidateQueries({ queryKey: ['period', id] }) })
+  const editIncomeBudget = useMutation({ mutationFn: ({ desc, data }) => updatePeriodIncomeBudget(id, desc, data), onSuccess: () => qc.invalidateQueries({ queryKey: ['period', id] }) })
+  const editExpenseBudget = useMutation({ mutationFn: ({ desc, data }) => updatePeriodExpenseBudget(id, desc, data), onSuccess: () => qc.invalidateQueries({ queryKey: ['period', id] }) })
   const deleteExpenseLine = useMutation({ mutationFn: desc => removePeriodExpense(id, desc), onSuccess: () => qc.invalidateQueries({ queryKey: ['period', id] }) })
   const deleteIncomeLine = useMutation({ mutationFn: desc => removePeriodIncome(id, desc), onSuccess: () => qc.invalidateQueries({ queryKey: ['period', id] }) })
-  const editInvBudget = useMutation({ mutationFn: ({ desc, budgetamount }) => updatePeriodInvestmentBudget(id, desc, budgetamount), onSuccess: () => qc.invalidateQueries({ queryKey: ['period', id] }) })
+  const editInvBudget = useMutation({ mutationFn: ({ desc, data }) => updatePeriodInvestmentBudget(id, desc, data), onSuccess: () => qc.invalidateQueries({ queryKey: ['period', id] }) })
 
   // Reset local drag-reorder when server data refreshes
   useEffect(() => { setLocalExpenses(null) }, [data])
@@ -1383,7 +1426,20 @@ export default function PeriodDetailPage() {
                     {i.system_key === 'carry_forward' && <span className="badge-blue">System</span>}
                   </div>
                 </td>
-                <td className="table-cell-muted text-right col-budget">{fmt(i.budgetamount)}</td>
+                <td className="table-cell-muted text-right col-budget">
+                  <div className="flex items-center justify-end gap-2">
+                    <span>{fmt(i.budgetamount)}</span>
+                    {!locked && !closed && i.system_key !== 'carry_forward' && (
+                      <button
+                        type="button"
+                        className="text-xs font-medium text-dosh-700 hover:underline dark:text-dosh-400"
+                        onClick={() => setBudgetAdjustModal({ category: 'income', desc: i.incomedesc, budgetamount: i.budgetamount, title: i.incomedesc })}
+                      >
+                        Edit
+                      </button>
+                    )}
+                  </div>
+                </td>
                 <td className="table-cell text-right col-actual font-semibold text-gray-800 dark:text-gray-200">{fmt(i.actualamount)}</td>
                 <td className="table-cell text-right">
                   <span className={`font-medium ${Number(i.actualamount) >= Number(i.budgetamount) ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'}`}>
@@ -1473,7 +1529,7 @@ export default function PeriodDetailPage() {
                 const isOver = dragOver === e.expensedesc
                 const isPaid = e.status === 'Paid'
                 const canDelete = !locked && !closed && Number(e.actualamount) === 0 && Number(e.budgetamount) === 0
-                const canEditBudget = !locked && !closed && !isPaid && (e.freqtype === 'Always' || e.is_oneoff)
+                const canEditBudget = !locked && !closed && !isPaid
                 return (
                   <tr
                     key={e.expensedesc}
@@ -1490,17 +1546,20 @@ export default function PeriodDetailPage() {
                     <td className="table-cell font-medium">
                       <div className="flex items-center gap-1.5">
                         <span>{e.expensedesc}</span>
-                        <button
-                          onClick={() => setNoteModal({ expensedesc: e.expensedesc, note: e.note ?? '', readOnly: locked || closed || isPaid })}
-                          title={locked || closed || isPaid ? 'View note' : e.note ? 'View/edit note' : 'Add note'}
-                          className={`flex-shrink-0 transition-colors ${e.note ? 'text-dosh-500 dark:text-dosh-400 hover:text-dosh-700' : 'text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400'}`}>
-                          <ChatBubbleOvalLeftEllipsisIcon className="w-4 h-4" />
-                        </button>
                       </div>
                     </td>
                     <td className="table-cell-muted text-right col-budget">
                       {canEditBudget ? (
-                        <BudgetEditCell value={e.budgetamount} onSave={val => editExpenseBudget.mutate({ desc: e.expensedesc, budgetamount: val })} />
+                        <div className="flex items-center justify-end gap-2">
+                          <span>{fmt(e.budgetamount)}</span>
+                          <button
+                            type="button"
+                            className="text-xs font-medium text-dosh-700 hover:underline dark:text-dosh-400"
+                            onClick={() => setBudgetAdjustModal({ category: 'expense', desc: e.expensedesc, budgetamount: e.budgetamount, title: e.expensedesc })}
+                          >
+                            Edit
+                          </button>
+                        </div>
                       ) : fmt(e.budgetamount)}
                     </td>
                     <td className="table-cell text-right col-actual font-semibold text-gray-800 dark:text-gray-200">
@@ -1601,8 +1660,17 @@ export default function PeriodDetailPage() {
                     <tr key={inv.investmentdesc} className="table-row">
                       <td className="table-cell font-medium">{inv.investmentdesc}</td>
                       <td className="table-cell-muted text-right col-budget">
-                        {!locked && !closed ? (
-                          <BudgetEditCell value={inv.budgeted_amount} onSave={val => editInvBudget.mutate({ desc: inv.investmentdesc, budgetamount: val })} />
+                        {!locked && !closed && inv.status !== 'Paid' ? (
+                          <div className="flex items-center justify-end gap-2">
+                            <span>{fmt(inv.budgeted_amount)}</span>
+                            <button
+                              type="button"
+                              className="text-xs font-medium text-dosh-700 hover:underline dark:text-dosh-400"
+                              onClick={() => setBudgetAdjustModal({ category: 'investment', desc: inv.investmentdesc, budgetamount: inv.budgeted_amount, title: inv.investmentdesc })}
+                            >
+                              Edit
+                            </button>
+                          </div>
                         ) : fmt(inv.budgeted_amount)}
                       </td>
                       <td className="table-cell text-right col-actual font-semibold text-gray-800 dark:text-gray-200">{fmt(inv.actualamount)}</td>
@@ -1765,9 +1833,21 @@ export default function PeriodDetailPage() {
           <AddIncomeModal periodId={id} budgetId={period.budgetid} existingDescs={incomes.map(i => i.incomedesc)} onClose={() => setShowAddIncome(false)} />
         </Modal>
       )}
-      {noteModal && (
-        <Modal title="Expense Note" onClose={() => setNoteModal(null)}>
-          <ExpenseNoteModal periodId={id} expensedesc={noteModal.expensedesc} initialNote={noteModal.note} readOnly={noteModal.readOnly} onClose={() => setNoteModal(null)} />
+      {budgetAdjustModal && (
+        <Modal title={`Edit Line Budget — ${budgetAdjustModal.title}`} onClose={() => setBudgetAdjustModal(null)}>
+          <BudgetAdjustmentModal
+            title={budgetAdjustModal.title}
+            currentAmount={budgetAdjustModal.budgetamount}
+            onClose={() => setBudgetAdjustModal(null)}
+            onSubmit={data => {
+              const mutation = budgetAdjustModal.category === 'income'
+                ? editIncomeBudget
+                : budgetAdjustModal.category === 'expense'
+                  ? editExpenseBudget
+                  : editInvBudget
+              mutation.mutate({ desc: budgetAdjustModal.desc, data }, { onSuccess: () => setBudgetAdjustModal(null) })
+            }}
+          />
         </Modal>
       )}
       {balanceModal && (

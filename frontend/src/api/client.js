@@ -23,6 +23,8 @@ export const updateIncomeType = (budgetId, desc, data) =>
   api.patch(`/budgets/${budgetId}/income-types/${encodeURIComponent(desc)}`, data).then(r => r.data)
 export const deleteIncomeType = (budgetId, desc) =>
   api.delete(`/budgets/${budgetId}/income-types/${encodeURIComponent(desc)}`)
+export const getIncomeTypeHistory = (budgetId, desc) =>
+  api.get(`/budgets/${budgetId}/income-types/${encodeURIComponent(desc)}/history`).then(r => r.data)
 
 // ── Expense Items ─────────────────────────────────────────────────────────────
 export const getExpenseItems = (budgetId, activeOnly = false) =>
@@ -35,6 +37,8 @@ export const deleteExpenseItem = (budgetId, desc) =>
   api.delete(`/budgets/${budgetId}/expense-items/${encodeURIComponent(desc)}`)
 export const reorderExpenseItems = (budgetId, items) =>
   api.patch(`/budgets/${budgetId}/expense-items/reorder`, { items })
+export const getExpenseItemHistory = (budgetId, desc) =>
+  api.get(`/budgets/${budgetId}/expense-items/${encodeURIComponent(desc)}/history`).then(r => r.data)
 
 // ── Investment Items ──────────────────────────────────────────────────────────
 export const getInvestmentItems = budgetId =>
@@ -45,6 +49,8 @@ export const updateInvestmentItem = (budgetId, desc, data) =>
   api.patch(`/budgets/${budgetId}/investment-items/${encodeURIComponent(desc)}`, data).then(r => r.data)
 export const deleteInvestmentItem = (budgetId, desc) =>
   api.delete(`/budgets/${budgetId}/investment-items/${encodeURIComponent(desc)}`)
+export const getInvestmentItemHistory = (budgetId, desc) =>
+  api.get(`/budgets/${budgetId}/investment-items/${encodeURIComponent(desc)}/history`).then(r => r.data)
 
 // ── Periods ───────────────────────────────────────────────────────────────────
 export const getPeriodsForBudget = budgetId =>
@@ -117,18 +123,19 @@ export const getBalanceTransactions = (periodId, balancedesc) =>
 export const setPeriodExpenseStatus = (periodId, desc, status, revision_comment = null) =>
   api.patch(`/periods/${periodId}/expense/${encodeURIComponent(desc)}/status`, { status, revision_comment }).then(r => r.data)
 
-export const updatePeriodExpenseBudget = (periodId, desc, budgetamount) =>
-  api.patch(`/periods/${periodId}/expense/${encodeURIComponent(desc)}/budget`, { budgetamount }).then(r => r.data)
+export const updatePeriodExpenseBudget = (periodId, desc, data) =>
+  api.patch(`/periods/${periodId}/expense/${encodeURIComponent(desc)}/budget`, data).then(r => r.data)
+
+export const updatePeriodIncomeBudget = (periodId, desc, data) =>
+  api.patch(`/periods/${periodId}/income/${encodeURIComponent(desc)}/budget`, data).then(r => r.data)
 
 export const removePeriodExpense = (periodId, desc) =>
   api.delete(`/periods/${periodId}/expense/${encodeURIComponent(desc)}`)
 export const removePeriodIncome = (periodId, desc) =>
   api.delete(`/periods/${periodId}/income/${encodeURIComponent(desc)}`)
-export const updateExpenseNote = (periodId, desc, note) =>
-  api.patch(`/periods/${periodId}/expense/${encodeURIComponent(desc)}/note`, { note }).then(r => r.data)
 
-export const updatePeriodInvestmentBudget = (periodId, desc, budgetamount) =>
-  api.patch(`/periods/${periodId}/investment/${encodeURIComponent(desc)}/budget`, { budgetamount }).then(r => r.data)
+export const updatePeriodInvestmentBudget = (periodId, desc, data) =>
+  api.patch(`/periods/${periodId}/investment/${encodeURIComponent(desc)}/budget`, data).then(r => r.data)
 export const setPeriodInvestmentStatus = (periodId, desc, status, revision_comment = null) =>
   api.patch(`/periods/${periodId}/investment/${encodeURIComponent(desc)}/status`, { status, revision_comment }).then(r => r.data)
 

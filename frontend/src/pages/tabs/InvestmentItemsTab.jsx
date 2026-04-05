@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline'
+import { PlusIcon, PencilIcon, TrashIcon, ClockIcon } from '@heroicons/react/24/outline'
 import { format, parseISO } from 'date-fns'
-import { getInvestmentItems, createInvestmentItem, updateInvestmentItem, deleteInvestmentItem, getBalanceTypes, getBudgetSetupAssessment } from '../../api/client'
+import { getInvestmentItems, createInvestmentItem, updateInvestmentItem, deleteInvestmentItem, getBalanceTypes, getBudgetSetupAssessment, getInvestmentItemHistory } from '../../api/client'
 import Modal from '../../components/Modal'
+import SetupItemHistoryModal from '../../components/SetupItemHistoryModal'
 import { getBalanceTypeLabel } from '../../utils/accountNaming'
 
-const emptyForm = { investmentdesc: '', active: true, effectivedate: '', initial_value: '', linked_account_desc: '', is_primary: false }
+const emptyForm = { investmentdesc: '', active: true, effectivedate: '', initial_value: '', planned_amount: '', linked_account_desc: '', is_primary: false }
 
 function InvestmentForm({ initial = emptyForm, isEdit = false, onSubmit, onClose, loading, balanceTypes = [], structureLocked = false, lockReasons = [], accountNamingPreference = 'Transaction' }) {
   const [form, setForm] = useState(initial)
@@ -19,6 +20,7 @@ function InvestmentForm({ initial = emptyForm, isEdit = false, onSubmit, onClose
         ...form,
         effectivedate: form.effectivedate || null,
         initial_value: parseFloat(form.initial_value) || 0,
+        planned_amount: parseFloat(form.planned_amount) || 0,
         linked_account_desc: form.linked_account_desc || null,
         is_primary: !!form.is_primary,
       })
@@ -33,6 +35,12 @@ function InvestmentForm({ initial = emptyForm, isEdit = false, onSubmit, onClose
         <input disabled={structureLocked} type="number" step="0.01" min="0" className="input" value={form.initial_value}
           onChange={e => set('initial_value', e.target.value)} placeholder="0.00" />
         <p className="text-xs text-gray-400 mt-1">Starting balance or initial investment amount</p>
+      </div>
+      <div>
+        <label className="label">Planned Contribution ($)</label>
+        <input disabled={structureLocked} type="number" step="0.01" min="0" className="input" value={form.planned_amount}
+          onChange={e => set('planned_amount', e.target.value)} placeholder="0.00" />
+        <p className="text-xs text-gray-400 mt-1">Used as the default budgeted amount for future budget cycles when you want a planned contribution.</p>
       </div>
       <div>
         <label className="label">Effective Date</label>
@@ -80,6 +88,7 @@ function InvestmentForm({ initial = emptyForm, isEdit = false, onSubmit, onClose
 export default function InvestmentItemsTab({ budgetId, budget }) {
   const qc = useQueryClient()
   const [modal, setModal] = useState(null)
+  const [historyItem, setHistoryItem] = useState(null)
   const [actionError, setActionError] = useState('')
 
   const { data: items = [] } = useQuery({
@@ -94,6 +103,11 @@ export default function InvestmentItemsTab({ budgetId, budget }) {
   const { data: setupAssessment } = useQuery({
     queryKey: ['budget-setup-assessment', budgetId],
     queryFn: () => getBudgetSetupAssessment(budgetId),
+  })
+  const historyQuery = useQuery({
+    queryKey: ['investment-item-history', budgetId, historyItem?.investmentdesc],
+    queryFn: () => getInvestmentItemHistory(budgetId, historyItem.investmentdesc),
+    enabled: !!historyItem,
   })
 
   const create = useMutation({
@@ -168,6 +182,11 @@ export default function InvestmentItemsTab({ budgetId, budget }) {
                     seed: {Number(item.initial_value).toLocaleString('en-AU', { style: 'currency', currency: 'AUD' })}
                   </span>
                 )}
+                {Number(item.planned_amount ?? 0) > 0 && (
+                  <span className="ml-2 text-xs text-dosh-600 dark:text-dosh-400">
+                    planned: {Number(item.planned_amount).toLocaleString('en-AU', { style: 'currency', currency: 'AUD' })}
+                  </span>
+                )}
                 {item.is_primary && (
                   <span className="ml-2 badge-blue">Primary</span>
                 )}
@@ -177,6 +196,9 @@ export default function InvestmentItemsTab({ budgetId, budget }) {
               </div>
               <div className="flex items-center gap-2">
                 {item.active ? <span className="badge-green">Active</span> : <span className="badge-gray">Inactive</span>}
+                <button className="btn-secondary" title="View history details" onClick={() => setHistoryItem(item)}>
+                  <ClockIcon className="w-3 h-3" />
+                </button>
                 <button className="btn-secondary" onClick={() => setModal({ mode: 'edit', item })}>
                   <PencilIcon className="w-3 h-3" />
                 </button>
@@ -197,6 +219,7 @@ export default function InvestmentItemsTab({ budgetId, budget }) {
               active: modal.item.active,
               effectivedate: modal.item.effectivedate ? format(parseISO(modal.item.effectivedate), 'yyyy-MM-dd') : '',
               initial_value: modal.item.initial_value ?? '',
+              planned_amount: modal.item.planned_amount ?? '',
               linked_account_desc: modal.item.linked_account_desc ?? '',
               is_primary: !!modal.item.is_primary,
             } : emptyForm}
@@ -213,6 +236,15 @@ export default function InvestmentItemsTab({ budgetId, budget }) {
             loading={create.isPending || update.isPending}
           />
         </Modal>
+      )}
+
+      {historyItem && (
+        <SetupItemHistoryModal
+          historyQuery={historyQuery}
+          itemDesc={historyItem.investmentdesc}
+          category="investment"
+          onClose={() => setHistoryItem(null)}
+        />
       )}
     </div>
   )

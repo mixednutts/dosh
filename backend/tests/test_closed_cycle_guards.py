@@ -31,11 +31,11 @@ def test_closed_cycle_rejects_common_write_paths(client, db_session):
     assert income_update.status_code == 423
     assert "closed" in income_update.json()["detail"].lower()
 
-    expense_note_update = client.patch(
-        f"/api/periods/{closed_period_id}/expense/Rent/note",
-        json={"note": "Should not be editable"},
+    expense_budget_update = client.patch(
+        f"/api/periods/{closed_period_id}/expense/Rent/budget",
+        json={"budgetamount": "1250.00", "scope": "current", "note": "Should not be editable"},
     )
-    assert expense_note_update.status_code == 423
+    assert expense_budget_update.status_code == 423
 
     expense_entry = client.post(
         f"/api/periods/{closed_period_id}/expenses/Rent/entries/",
@@ -65,4 +65,3 @@ def test_closed_cycle_rejects_common_write_paths(client, db_session):
 
     delete_response = client.delete(f"/api/periods/{closed_period_id}?delete_mode=single")
     assert delete_response.status_code == 423
-

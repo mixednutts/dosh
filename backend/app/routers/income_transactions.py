@@ -30,8 +30,13 @@ def _to_income_tx_out(tx: PeriodTransaction) -> IncomeTxOut:
         note=tx.note,
         entrydate=tx.entrydate,
         source=tx.source,
+        type=tx.type,
         affected_account_desc=tx.affected_account_desc,
         related_account_desc=tx.related_account_desc,
+        entry_kind=getattr(tx, "entry_kind", "movement"),
+        budget_scope=getattr(tx, "budget_scope", None),
+        budget_before_amount=getattr(tx, "budget_before_amount", None),
+        budget_after_amount=getattr(tx, "budget_after_amount", None),
     )
 
 
@@ -49,8 +54,8 @@ def list_transactions(finperiodid: int, incomedesc: str, db: Session = Depends(g
         db.query(PeriodTransaction)
         .filter(
             PeriodTransaction.finperiodid == finperiodid,
-            PeriodTransaction.source == _transaction_source(incomedesc),
             PeriodTransaction.source_key == incomedesc,
+            PeriodTransaction.source.in_([_transaction_source(incomedesc), "income"]),
         )
         .order_by(PeriodTransaction.entrydate, PeriodTransaction.id)
         .all()
