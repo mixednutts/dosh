@@ -130,7 +130,7 @@ function CompactCurrentBudgetContext({ budget, activePeriodId, onNav }) {
   )
 }
 
-function CurrentBudgetPanel({ budget, activePeriodId, onNav }) {
+function CurrentBudgetPanel({ budget, activePeriodId, onNav, shortcutsExpanded = true }) {
   const periodsMatch = useMatch('/budgets/:budgetId')
   const setupMatch = useMatch('/budgets/:budgetId/setup')
   const viewingBudgetPeriods = periodsMatch?.params?.budgetId === String(budget.budgetid)
@@ -162,11 +162,8 @@ function CurrentBudgetPanel({ budget, activePeriodId, onNav }) {
 
   return (
     <div className="space-y-3 rounded-2xl border border-cyan-200 bg-cyan-50/70 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.45)] dark:border-cyan-700/75 dark:bg-slate-950 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
-      <div className="space-y-1">
+      <div>
         <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-700 dark:text-cyan-300">Current Budget</span>
-        <p className="text-xs text-cyan-800/80 dark:text-cyan-100/80">
-          Quick links and shortcuts for the budget you&apos;re working in now.
-        </p>
       </div>
 
       <div className="grid grid-cols-1 gap-2">
@@ -198,58 +195,60 @@ function CurrentBudgetPanel({ budget, activePeriodId, onNav }) {
         ) : null}
       </div>
 
-      <div className="space-y-3 border-t border-cyan-200 pt-3 dark:border-cyan-800/80">
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-700 dark:text-cyan-300">Budget Cycle Shortcuts</span>
-        </div>
+      {shortcutsExpanded ? (
+        <div className="space-y-3 border-t border-cyan-200 pt-3 dark:border-cyan-800/80">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-700 dark:text-cyan-300">Budget Cycle Shortcuts</span>
+          </div>
 
-        {periods.length === 0 ? (
-          <div className="space-y-2">
-            <p className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs text-gray-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-              {needsSetupAttention
-                ? 'No budget cycles yet. Finish setup, then generate your first budget cycle.'
-                : 'No budget cycles yet. Open Budget Cycles to generate your first budget cycle.'}
-            </p>
-            {needsSetupAttention ? (
-              <Link
-                to={`/budgets/${budget.budgetid}/setup`}
-                onClick={onNav}
-                className="inline-flex rounded-xl border border-dosh-700 px-3 py-2 text-xs font-medium text-dosh-200 transition-colors hover:bg-slate-900 hover:text-white"
-              >
-                Open setup
-              </Link>
-            ) : null}
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <PeriodShortcutGroup
-              title="Current"
-              periods={currentPeriods}
-              activePeriodId={activePeriodId}
-              onNav={onNav}
-              emptyMessage="No active budget cycle right now."
-            />
-            <PeriodShortcutGroup
-              title="Upcoming"
-              periods={futurePeriods}
-              activePeriodId={activePeriodId}
-              onNav={onNav}
-              moreText={hasMoreFuturePeriods ? `View all ${allFuturePeriods.length} upcoming cycles (${hiddenFutureCount} more)` : null}
-              moreTo={hasMoreFuturePeriods ? `/budgets/${budget.budgetid}#upcoming` : null}
-              moreSubtle={hasMoreFuturePeriods && viewingBudgetContext}
-            />
-            <PeriodShortcutGroup
-              title="Historical"
-              periods={historicalPeriods}
-              activePeriodId={activePeriodId}
-              onNav={onNav}
-              moreText={hasMoreHistoricalPeriods ? `View all ${allHistoricalPeriods.length} historical cycles (${hiddenHistoricalCount} more)` : null}
-              moreTo={hasMoreHistoricalPeriods ? `/budgets/${budget.budgetid}#historical` : null}
-              moreSubtle={hasMoreHistoricalPeriods && viewingBudgetContext}
-            />
-          </div>
-        )}
-      </div>
+          {periods.length === 0 ? (
+            <div className="space-y-2">
+              <p className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs text-gray-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+                {needsSetupAttention
+                  ? 'No budget cycles yet. Finish setup, then generate your first budget cycle.'
+                  : 'No budget cycles yet. Open Budget Cycles to generate your first budget cycle.'}
+              </p>
+              {needsSetupAttention ? (
+                <Link
+                  to={`/budgets/${budget.budgetid}/setup`}
+                  onClick={onNav}
+                  className="inline-flex rounded-xl border border-dosh-700 px-3 py-2 text-xs font-medium text-dosh-200 transition-colors hover:bg-slate-900 hover:text-white"
+                >
+                  Open setup
+                </Link>
+              ) : null}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <PeriodShortcutGroup
+                title="Current"
+                periods={currentPeriods}
+                activePeriodId={activePeriodId}
+                onNav={onNav}
+                emptyMessage="No active budget cycle right now."
+              />
+              <PeriodShortcutGroup
+                title="Upcoming"
+                periods={futurePeriods}
+                activePeriodId={activePeriodId}
+                onNav={onNav}
+                moreText={hasMoreFuturePeriods ? `View all ${allFuturePeriods.length} upcoming cycles (${hiddenFutureCount} more)` : null}
+                moreTo={hasMoreFuturePeriods ? `/budgets/${budget.budgetid}#upcoming` : null}
+                moreSubtle={hasMoreFuturePeriods && viewingBudgetContext}
+              />
+              <PeriodShortcutGroup
+                title="Historical"
+                periods={historicalPeriods}
+                activePeriodId={activePeriodId}
+                onNav={onNav}
+                moreText={hasMoreHistoricalPeriods ? `View all ${allHistoricalPeriods.length} historical cycles (${hiddenHistoricalCount} more)` : null}
+                moreTo={hasMoreHistoricalPeriods ? `/budgets/${budget.budgetid}#historical` : null}
+                moreSubtle={hasMoreHistoricalPeriods && viewingBudgetContext}
+              />
+            </div>
+          )}
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -301,11 +300,12 @@ function LayoutNav({ budgets, currentBudgetId, activePeriodId, budgetsExpanded, 
         />
       ) : null}
 
-      {currentBudget ? (
+      {budgetsExpanded && currentBudget ? (
         <CurrentBudgetPanel
           budget={currentBudget}
           activePeriodId={activePeriodId}
           onNav={onNav}
+          shortcutsExpanded={budgetsExpanded}
         />
       ) : null}
     </div>

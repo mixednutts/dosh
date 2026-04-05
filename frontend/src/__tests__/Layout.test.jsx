@@ -111,11 +111,35 @@ describe('Layout navigation', () => {
     expect(screen.getByText('No budget cycles yet. Open Budget Cycles to generate your first budget cycle.')).toBeTruthy()
   })
 
-  it('keeps the setup route sidebar focused on budget cycles without duplicating a setup card', async () => {
+  it('collapses the current budget cycle shortcuts when the budget list is collapsed', async () => {
+    client.getBudgetSetupAssessment.mockResolvedValue({
+      budgetid: 1,
+      can_generate: true,
+      blocking_issues: [],
+      warnings: [],
+      accounts: [],
+    })
+
+    renderLayout('/budgets/1')
+
+    fireEvent.click(await screen.findByTitle('Show budget list'))
+
+    expect(await screen.findByText('Budget Cycle Shortcuts')).toBeTruthy()
+    expect(screen.getByText('Current Budget')).toBeTruthy()
+
+    fireEvent.click(screen.getByTitle('Hide budget list'))
+
+    expect(screen.queryByText('Current Budget')).toBeNull()
+    expect(screen.queryByText('Budget Cycle Shortcuts')).toBeNull()
+    expect(screen.queryByText('No budget cycles yet. Open Budget Cycles to generate your first budget cycle.')).toBeNull()
+  })
+
+  it('keeps the setup route sidebar collapsed until the budget layer is expanded', async () => {
     renderLayout('/budgets/1/setup')
 
-    expect(await screen.findByText('Current Budget')).toBeTruthy()
-    expect(screen.getByRole('link', { name: 'Budget Cycles' }).getAttribute('href')).toBe('/budgets/1')
+    expect(await screen.findByTitle('Show budget list')).toBeTruthy()
+    expect(screen.queryByText('Current Budget')).toBeNull()
+    expect(screen.queryByRole('link', { name: 'Budget Cycles' })).toBeNull()
     expect(screen.queryByRole('link', { name: 'Setup' })).toBeNull()
   })
 
@@ -185,6 +209,8 @@ describe('Layout navigation', () => {
     ])
 
     renderLayout('/budgets/1')
+
+    fireEvent.click(await screen.findByTitle('Show budget list'))
 
     expect(await screen.findByText('Historical')).toBeTruthy()
 

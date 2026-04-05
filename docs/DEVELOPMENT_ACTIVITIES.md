@@ -512,8 +512,8 @@ Status:
 - `Completed`: fix the empty visual artifact at the end of the total income line on the period detail page
 - `Completed`: align the investment spent pill wording and behavior with the expense spent pill so both outflow workflows feel consistent
 - `Completed`: ensure `Surplus (Budget)` reflects deficit on expense lines even when the affected expense line is already in `Paid` state
-- fix the sidebar budget chevron behavior so collapsing a budget in the navigation panel also collapses its budget cycles reliably
-- fix the `Go to budget cycles` action from Setup Assessment on the project setup page, which currently results in a blank screen
+- `Completed`: fix the sidebar budget chevron behavior so collapsing a budget in the navigation panel also collapses its budget cycles reliably
+- `Completed`: fix the `Go to budget cycles` action from Setup Assessment on the project setup page, which currently results in a blank screen
 
 #### Activity Group: Enhancements
 

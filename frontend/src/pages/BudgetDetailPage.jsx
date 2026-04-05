@@ -354,7 +354,7 @@ export default function BudgetDetailPage() {
               </p>
               {setupAssessment.can_generate ? (
                 <Link
-                  to={`/budgets/${id}/periods`}
+                  to={`/budgets/${id}`}
                   className="mt-2 inline-flex text-sm font-medium text-dosh-700 hover:underline dark:text-dosh-400"
                 >
                   Go to budget cycles

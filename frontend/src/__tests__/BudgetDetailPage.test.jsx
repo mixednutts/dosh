@@ -111,7 +111,7 @@ describe('BudgetDetailPage', () => {
     expect(screen.queryByText(/Create at least one account first so linked investment accounts are available when needed\./)).toBeNull()
     expect(screen.queryByText(/Set one account as the primary account so expense movements have a default home\./)).toBeNull()
     expect(screen.getByText(/Ready for budget cycle generation/)).toBeTruthy()
-    expect(screen.getByRole('link', { name: 'Go to budget cycles' }).getAttribute('href')).toBe('/budgets/1/periods')
+    expect(screen.getByRole('link', { name: 'Go to budget cycles' }).getAttribute('href')).toBe('/budgets/1')
     expect(screen.getAllByText('1 In Use')).toHaveLength(4)
     expect(screen.getByText(/Some setup items are already in downstream use and are now protected\./)).toBeTruthy()
   })
@@ -146,7 +146,7 @@ describe('BudgetDetailPage', () => {
     expect(screen.queryByText(/Create at least one account first so linked investment accounts are available when needed\./)).toBeNull()
     expect(screen.queryByText(/Set one account as the primary account so expense movements have a default home\./)).toBeNull()
     expect(screen.getByText(/Ready for budget cycle generation/)).toBeTruthy()
-    expect(screen.getByRole('link', { name: 'Go to budget cycles' }).getAttribute('href')).toBe('/budgets/1/periods')
+    expect(screen.getByRole('link', { name: 'Go to budget cycles' }).getAttribute('href')).toBe('/budgets/1')
     expect(screen.getAllByText('Ready')).toHaveLength(4)
   })
 
