@@ -496,6 +496,7 @@ Status:
 - preserve the cleanup that removed duplicate budget detail text from the `Current Budget` panel and moved utility controls away from the banner collision area
 - expand budget summary reporting value without turning the page into a dashboard clone
 - identify the next summary card that best complements current balance and health without duplicating period-listing data
+- add a calendar-style view of income timing and expense due dates to the budget overview page, replacing the historical `# periods` summary card
 - keep the period-detail summary card set under review before introducing user-controlled drag-and-drop ordering
 - review sidebar and budget-summary polish after real use, especially around future first-class sections
 - revisit summary-card customization only after the current period-detail card set feels stable in real use
