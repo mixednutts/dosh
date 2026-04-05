@@ -29,6 +29,61 @@ For the dedicated implementation plan that drove the income transaction unificat
 
 For the dedicated workflow plan that now owns budget-adjustment, revision-history, and setup-history rules in this area, read [BUDGET_ADJUSTMENT_REVISION_HISTORY_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_ADJUSTMENT_REVISION_HISTORY_PLAN.md).
 
+## Latest Session: Income-Modal Remediation, Period-Detail Budget-Affordance Refinement, Empty-State Budget Delete, Documentation Alignment, And Deployment Verification
+
+This session focused on finishing and correcting a few active workflow and UI items rather than introducing a new large feature slice.
+
+Important direction now in place:
+
+- the add-income-from-period modal now correctly supports creating a brand-new income line inline, including linked-account selection, matching the intended expense-side workflow more closely
+- the period-detail page now uses icon-based budget edit affordances in the budget column for income, expense, and investment rows rather than mixing budget editing into the transaction action rail
+- income row action grouping was tightened so budget editing stays attached to the budget amount while transaction and remove actions remain in their own rail
+- the `No budget cycles yet` state on the budget cycles page now includes a direct `Delete Budget` action for abandoned or exploratory budgets
+- the related development activities for these items were confirmed complete and the project handoff, history, and test-result documents were aligned to the live state
+
+### 1. Add-income inline creation now matches the intended supported workflow
+
+The session began by correcting a mismatch between the recorded product state and the actual current UI behavior.
+
+Current behavior:
+
+- the `Add New Income Item` modal now loads account choices when creating a brand-new income line
+- new inline-created income lines can now capture linked-account selection before being added to the current cycle
+- the modal pending state now covers both setup-item creation and adding the line to the cycle
+
+Important product meaning:
+
+- future sessions should treat inline creation of a new income line from the period-detail flow as supported current behavior rather than an unfinished idea
+- the income-side workflow should stay aligned with the supported expense-side creation path where that improves predictability
+
+### 2. Budget editing now lives visually with budget values instead of the transaction rail
+
+The initial icon-based edit pass solved the wording problem but placed the edit affordance in the wrong visual group.
+
+Current behavior:
+
+- income, expense, and investment rows now show their budget edit affordance in the budget column beside the budget amount
+- budget values still read as a consistent right-aligned numeric column
+- transaction add, correction, view, status, and remove controls remain grouped in their own action area
+
+Important product meaning:
+
+- budget editing should read as a change to the plan, not as just another transaction action
+- future UI refinements in these tables should preserve the visual separation between plan-editing controls and transaction-entry controls
+
+### 3. Empty-state budget management now supports direct cleanup
+
+The budget cycles page now gives users a cleaner way to discard a budget that never progressed into generated cycles.
+
+Current behavior:
+
+- the `No budget cycles yet` card now includes a `Delete Budget` action with confirmation
+- successful deletion routes the user back to the budgets list
+
+Important product meaning:
+
+- empty states should support the realistic cleanup path for exploratory or abandoned budgets rather than forcing users through unrelated screens
+
 ## Latest Session: Budget Adjustment History, Revision-Workflow Simplification, Setup History Review, Close-Out Carry-Forward Fix, And Live Schema Alignment
 
 This session focused on turning budget-line changes into first-class revision history, simplifying the paid-to-revised workflow, and tightening the current-period meaning that budget health derives from those events.

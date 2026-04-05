@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format, parseISO, addDays } from 'date-fns'
 import {
   LockClosedIcon, LockOpenIcon, ChevronRightIcon, PlusIcon,
-  MinusIcon, TrashIcon, ListBulletIcon, Bars2Icon,
+  MinusIcon, TrashIcon, ListBulletIcon, Bars2Icon, PencilSquareIcon,
 } from '@heroicons/react/24/outline'
 import {
   getPeriodDetail, getBudget, setPeriodLock,
@@ -78,6 +78,25 @@ function freqLabel(freqtype, frequencyValue) {
   if (freqtype === 'Fixed Day of Month') return `Recurring: Day ${frequencyValue}`
   if (freqtype === 'Every N Days') return `Recurring: Every ${frequencyValue}d`
   return freqtype
+}
+
+function BudgetAmountCell({ amount, canEdit, onEdit, label }) {
+  return (
+    <div className="flex w-full items-center justify-end gap-1.5">
+      {canEdit && (
+        <button
+          type="button"
+          onClick={onEdit}
+          title={`Edit ${label} budget`}
+          aria-label={`Edit budget for ${label}`}
+          className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-dosh-700 transition-colors hover:bg-dosh-50 dark:text-dosh-400 dark:hover:bg-dosh-900/20"
+        >
+          <PencilSquareIcon className="w-4 h-4" />
+        </button>
+      )}
+      <span>{fmt(amount)}</span>
+    </div>
+  )
 }
 
 function IncomeTransactionsModal({ periodId, incomedesc, budgetamount, actualamount, locked, onClose, defaultType = 'credit' }) {
@@ -926,7 +945,7 @@ function AddIncomeModal({ periodId, budgetId, existingDescs, onClose }) {
   const { data: balanceTypes = [] } = useQuery({
     queryKey: ['balance-types', budgetId],
     queryFn: () => getBalanceTypes(budgetId),
-    enabled: mode === 'savings',
+    enabled: mode === 'new' || mode === 'savings',
   })
 
   const available = incomeTypes.filter(i => !existingDescs.includes(i.incomedesc))
@@ -957,7 +976,7 @@ function AddIncomeModal({ periodId, budgetId, existingDescs, onClose }) {
     onError: err => setError(err.response?.data?.detail ?? 'Failed to record transfer'),
   })
 
-  const isPending = add.isPending || addTransfer.isPending
+  const isPending = createItem.isPending || add.isPending || addTransfer.isPending
 
   const handleSubmit = async e => {
     e.preventDefault(); setError('')
@@ -1003,12 +1022,12 @@ function AddIncomeModal({ periodId, budgetId, existingDescs, onClose }) {
       {mode === 'new' ? (
         <div className="space-y-3">
           <div>
-            <label className="label">Description</label>
-            <input required className="input" value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="e.g. Bonus" />
+            <label className="label" htmlFor="add-income-new-desc">Description</label>
+            <input id="add-income-new-desc" required className="input" value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="e.g. Bonus" />
           </div>
           <div>
-            <label className="label">Paid into Account</label>
-            <select className="input" value={newLinkedAccount} onChange={e => setNewLinkedAccount(e.target.value)}>
+            <label className="label" htmlFor="add-income-linked-account">Paid into Account</label>
+            <select id="add-income-linked-account" className="input" value={newLinkedAccount} onChange={e => setNewLinkedAccount(e.target.value)}>
               <option value="">— none —</option>
               {balanceTypes.map(bt => (
                 <option key={bt.balancedesc} value={bt.balancedesc}>{bt.balancedesc}</option>
@@ -1032,12 +1051,12 @@ function AddIncomeModal({ periodId, budgetId, existingDescs, onClose }) {
         </div>
       ) : (
         <div>
-          <label className="label">{mode === 'savings' ? 'Savings Account' : 'Income Type'}</label>
+          <label className="label" htmlFor="add-income-existing-select">{mode === 'savings' ? 'Savings Account' : 'Income Type'}</label>
           {currentList.length === 0
             ? <p className="text-sm text-gray-500 italic">
                 {mode === 'savings' ? 'No savings accounts available. Add a Savings account in budget settings.' : 'All income types already in this budget cycle. Use "New income".'}
               </p>
-            : <select required className="input" value={selected} onChange={e => {
+            : <select id="add-income-existing-select" required className="input" value={selected} onChange={e => {
                 setSelected(e.target.value)
                 if (mode !== 'savings') {
                   const it = incomeTypes.find(i => i.incomedesc === e.target.value)
@@ -1052,13 +1071,13 @@ function AddIncomeModal({ periodId, budgetId, existingDescs, onClose }) {
         </div>
       )}
       <div>
-        <label className="label">{mode === 'savings' ? 'Budget Amount ($)' : 'Budget Amount ($)'}</label>
-        <input type="number" step="0.01" min="0" className="input" value={amount} onChange={e => setAmount(e.target.value)} />
+        <label className="label" htmlFor="add-income-amount">{mode === 'savings' ? 'Budget Amount ($)' : 'Budget Amount ($)'}</label>
+        <input id="add-income-amount" type="number" step="0.01" min="0" className="input" value={amount} onChange={e => setAmount(e.target.value)} />
       </div>
       {mode !== 'savings' && (
         <div>
-          <label className="label">Comment / Note</label>
-          <textarea className="input w-full resize-none" rows={3} value={note} onChange={e => setNote(e.target.value)} placeholder="Why are you adding this line?" />
+          <label className="label" htmlFor="add-income-note">Comment / Note</label>
+          <textarea id="add-income-note" className="input w-full resize-none" rows={3} value={note} onChange={e => setNote(e.target.value)} placeholder="Why are you adding this line?" />
         </div>
       )}
       {mode !== 'savings' && (
@@ -1404,18 +1423,12 @@ export default function PeriodDetailPage() {
                   </div>
                 </td>
                 <td className="table-cell-muted text-right col-budget">
-                  <div className="flex items-center justify-end gap-2">
-                    <span>{fmt(i.budgetamount)}</span>
-                    {!locked && !closed && i.system_key !== 'carry_forward' && (
-                      <button
-                        type="button"
-                        className="text-xs font-medium text-dosh-700 hover:underline dark:text-dosh-400"
-                        onClick={() => setBudgetAdjustModal({ category: 'income', desc: i.incomedesc, budgetamount: i.budgetamount, title: i.incomedesc })}
-                      >
-                        Edit
-                      </button>
-                    )}
-                  </div>
+                  <BudgetAmountCell
+                    amount={i.budgetamount}
+                    canEdit={!locked && !closed && i.system_key !== 'carry_forward'}
+                    onEdit={() => setBudgetAdjustModal({ category: 'income', desc: i.incomedesc, budgetamount: i.budgetamount, title: i.incomedesc })}
+                    label={i.incomedesc}
+                  />
                 </td>
                 <td className="table-cell text-right col-actual font-semibold text-gray-800 dark:text-gray-200">{fmt(i.actualamount)}</td>
                 <td className="table-cell text-right">
@@ -1424,7 +1437,7 @@ export default function PeriodDetailPage() {
                   </span>
                 </td>
                 <td className="px-3 py-2">
-                  <div className="flex items-center justify-center gap-1 flex-wrap">
+                  <div className="flex items-center justify-center gap-1 whitespace-nowrap">
                     <button
                       disabled={closed}
                       onClick={() => setIncomeModal({ incomedesc: i.incomedesc, budgetamount: i.budgetamount, actualamount: i.actualamount, defaultType: 'credit' })}
@@ -1526,18 +1539,12 @@ export default function PeriodDetailPage() {
                       </div>
                     </td>
                     <td className="table-cell-muted text-right col-budget">
-                      {canEditBudget ? (
-                        <div className="flex items-center justify-end gap-2">
-                          <span>{fmt(e.budgetamount)}</span>
-                          <button
-                            type="button"
-                            className="text-xs font-medium text-dosh-700 hover:underline dark:text-dosh-400"
-                            onClick={() => setBudgetAdjustModal({ category: 'expense', desc: e.expensedesc, budgetamount: e.budgetamount, title: e.expensedesc })}
-                          >
-                            Edit
-                          </button>
-                        </div>
-                      ) : fmt(e.budgetamount)}
+                      <BudgetAmountCell
+                        amount={e.budgetamount}
+                        canEdit={canEditBudget}
+                        onEdit={() => setBudgetAdjustModal({ category: 'expense', desc: e.expensedesc, budgetamount: e.budgetamount, title: e.expensedesc })}
+                        label={e.expensedesc}
+                      />
                     </td>
                     <td className="table-cell text-right col-actual font-semibold text-gray-800 dark:text-gray-200">
                       {fmt(e.actualamount)}
@@ -1637,18 +1644,12 @@ export default function PeriodDetailPage() {
                     <tr key={inv.investmentdesc} className="table-row">
                       <td className="table-cell font-medium">{inv.investmentdesc}</td>
                       <td className="table-cell-muted text-right col-budget">
-                        {!locked && !closed && inv.status !== 'Paid' ? (
-                          <div className="flex items-center justify-end gap-2">
-                            <span>{fmt(inv.budgeted_amount)}</span>
-                            <button
-                              type="button"
-                              className="text-xs font-medium text-dosh-700 hover:underline dark:text-dosh-400"
-                              onClick={() => setBudgetAdjustModal({ category: 'investment', desc: inv.investmentdesc, budgetamount: inv.budgeted_amount, title: inv.investmentdesc })}
-                            >
-                              Edit
-                            </button>
-                          </div>
-                        ) : fmt(inv.budgeted_amount)}
+                        <BudgetAmountCell
+                          amount={inv.budgeted_amount}
+                          canEdit={!locked && !closed && inv.status !== 'Paid'}
+                          onEdit={() => setBudgetAdjustModal({ category: 'investment', desc: inv.investmentdesc, budgetamount: inv.budgeted_amount, title: inv.investmentdesc })}
+                          label={inv.investmentdesc}
+                        />
                       </td>
                       <td className="table-cell text-right col-actual font-semibold text-gray-800 dark:text-gray-200">{fmt(inv.actualamount)}</td>
                       <td className="table-cell text-right">

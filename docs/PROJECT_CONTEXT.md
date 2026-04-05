@@ -36,6 +36,9 @@ These guidelines apply across the project as a whole and should continue guiding
 - keep the product practical, supportive, and workflow-driven rather than corporate or accounting-heavy
 - workflow meaning should take priority over isolated CRUD convenience
 - user-facing wording may evolve for clarity, while stable backend or domain naming should only change when clearly justified
+- preserve the compact or collapsible desktop mode as new features arrive
+- avoid duplicate edit or setup entry points on the same screen unless they serve clearly different purposes
+- keep budget-edit affordances visually attached to the budget amount they change rather than mixing them into transaction-action rails
 
 ### Domain Integrity
 
@@ -184,7 +187,9 @@ The repository already supports:
 - budget-cycle grouping using `Current`, `Upcoming`, and `Historical`, with the budget cycles page now remembering both upcoming and historical section collapse state for the browser session
 - period-detail summary cards that now include both `Projected Savings` and `Remaining Expenses`
 - period-detail footer totals for investments and balances, while keeping balance movement read-only and intentionally not totaled
+- period-detail budget edit affordances for income, expense, and investment rows now live in the budget column as icon actions beside the budget amount, while transaction and line-item actions remain grouped separately
 - a sidebar current-budget workspace that stays separate from the expanded budget list, uses explicit `View all ...` cycle links when more cycles exist, and avoids duplicating setup entry on the budget cycles page
+- the `No budget cycles yet` state on the budget cycles page now offers direct budget deletion for abandoned or exploratory budgets
 - add-income-from-period flow that can either reuse an existing setup item or create a brand-new income item inline
 
 Current frontend wording trends toward `Budget Cycle` for user clarity while backend naming still uses `period` for stability.

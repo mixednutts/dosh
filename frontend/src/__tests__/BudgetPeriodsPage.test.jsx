@@ -4,13 +4,21 @@ import { fireEvent, screen, waitFor } from '@testing-library/react'
 import BudgetPeriodsPage from '../pages/BudgetPeriodsPage'
 import { renderWithProviders } from '../testUtils'
 
+const mockNavigate = jest.fn()
+
 jest.mock('../api/client', () => ({
+  deleteBudget: jest.fn(),
   getBudget: jest.fn(),
   getBudgetSetupAssessment: jest.fn(),
   getPeriodDeleteOptions: jest.fn(),
   getPeriodSummariesForBudget: jest.fn(),
   generatePeriod: jest.fn(),
   deletePeriod: jest.fn(),
+}))
+
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useNavigate: () => mockNavigate,
 }))
 
 const client = require('../api/client')
@@ -25,6 +33,33 @@ describe('BudgetPeriodsPage', () => {
       blocking_issues: [],
       warnings: [],
       accounts: [],
+    })
+  })
+
+  it('allows deleting the current budget directly from the empty budget cycles state', async () => {
+    client.getBudget.mockResolvedValue({
+      budgetid: 1,
+      budgetowner: 'Alex',
+      description: 'Home Budget',
+      budget_frequency: 'Monthly',
+    })
+    client.getPeriodSummariesForBudget.mockResolvedValue([])
+    client.deleteBudget.mockResolvedValue({})
+    window.confirm = jest.fn(() => true)
+
+    renderWithProviders(<BudgetPeriodsPage />, {
+      route: '/budgets/1',
+      path: '/budgets/:budgetId',
+    })
+
+    expect(await screen.findByText('No budget cycles yet')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Budget' }))
+
+    await waitFor(() => {
+      expect(client.deleteBudget).toHaveBeenCalledWith(1)
+    })
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith('/budgets')
     })
   })
 

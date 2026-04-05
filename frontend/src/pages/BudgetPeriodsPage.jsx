@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useLocation, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronDownIcon, ChevronRightIcon, PlusIcon, Cog6ToothIcon, TrashIcon } from '@heroicons/react/24/outline'
 import { addDays, format, parseISO } from 'date-fns'
-import { deletePeriod, getBudget, getBudgetSetupAssessment, getPeriodDeleteOptions, getPeriodSummariesForBudget, generatePeriod } from '../api/client'
+import { deleteBudget, deletePeriod, getBudget, getBudgetSetupAssessment, getPeriodDeleteOptions, getPeriodSummariesForBudget, generatePeriod } from '../api/client'
 import clsx from 'clsx'
 import Modal from '../components/Modal'
 import Spinner from '../components/Spinner'
@@ -262,6 +262,7 @@ function PeriodSummaryGroup({ title, summaries, collapsed = false, collapsible =
 export default function BudgetPeriodsPage() {
   const { budgetId } = useParams()
   const location = useLocation()
+  const navigate = useNavigate()
   const id = parseInt(budgetId, 10)
   const qc = useQueryClient()
   const [showGenerate, setShowGenerate] = useState(false)
@@ -337,6 +338,14 @@ export default function BudgetPeriodsPage() {
     },
   })
 
+  const removeBudget = useMutation({
+    mutationFn: () => deleteBudget(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['budgets'] })
+      navigate('/budgets')
+    },
+  })
+
   if (budgetLoading || periodsLoading) {
     return <div className="flex justify-center pt-16"><Spinner /></div>
   }
@@ -391,6 +400,18 @@ export default function BudgetPeriodsPage() {
             </Link>
             <button className="btn-primary" onClick={() => { setGenerateError(''); setShowGenerate(true) }} disabled={!canGenerate}>
               <PlusIcon className="w-4 h-4" /> Generate First Budget Cycle
+            </button>
+            <button
+              type="button"
+              className="btn-danger"
+              onClick={() => {
+                if (window.confirm('Delete this budget? This removes the budget and its setup.')) {
+                  removeBudget.mutate()
+                }
+              }}
+              disabled={removeBudget.isPending}
+            >
+              <TrashIcon className="w-4 h-4" /> {removeBudget.isPending ? 'Deleting…' : 'Delete Budget'}
             </button>
           </div>
         </div>

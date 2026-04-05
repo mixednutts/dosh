@@ -4,6 +4,69 @@ This document records meaningful automated test results from major working sessi
 
 It exists separately from [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) so the strategy can stay stable while future sessions still have a record of what was actually run and verified.
 
+## Latest Session: Income-Modal Remediation, Budget-Column Edit-Affordance Refinement, Empty-State Budget Delete, And Deployment Verification
+
+Session outcomes verified in this run:
+
+- the add-income-from-period modal now correctly supports creating a brand-new income line inline, including linked-account selection
+- period-detail budget editing for income, expense, and investment rows now uses icon affordances in the budget column rather than text `Edit` labels or action-rail placement
+- the income row action rail now keeps transaction and remove actions separate from budget editing
+- the budget cycles empty state now offers direct budget deletion for abandoned or exploratory budgets
+- the stack was rebuilt and redeployed twice during the session, including one follow-up deployment after user review clarified the desired edit-icon placement
+
+### Frontend verification
+
+Commands run during this session:
+
+```bash
+cd frontend
+npm test -- --runInBand --watchAll=false src/__tests__/PeriodDetailPage.test.jsx -t "allows creating a new income type directly from the add income modal"
+npm test -- --runInBand --watchAll=false src/__tests__/PeriodDetailPage.test.jsx
+npm test -- --runInBand --watchAll=false src/__tests__/BudgetPeriodsPage.test.jsx
+```
+
+Result:
+
+- focused period-detail coverage passed after the income-modal remediation and the budget-column edit-affordance correction
+- focused budget-cycles coverage passed after adding the empty-state budget-delete action
+- 2 focused frontend suites passed
+- 22 focused frontend tests passed across the two touched suites in the latest verified state
+
+Files with meaningful frontend test or harness updates in this session:
+
+- [PeriodDetailPage.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/PeriodDetailPage.test.jsx)
+- [BudgetPeriodsPage.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/BudgetPeriodsPage.test.jsx)
+- [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx)
+- [BudgetPeriodsPage.jsx](/home/ubuntu/dosh/frontend/src/pages/BudgetPeriodsPage.jsx)
+
+### Deployment verification
+
+Commands run:
+
+```bash
+docker compose -f docker-compose.yml up -d --build
+docker compose -f docker-compose.yml ps
+curl -sS http://127.0.0.1:3080/api/health
+docker compose -f docker-compose.yml up -d --build
+docker compose -f docker-compose.yml ps
+curl -sS http://127.0.0.1:3080/api/health
+```
+
+Result:
+
+- backend and frontend containers rebuilt and restarted successfully in both deploy passes
+- frontend remained available on port `3080`
+- backend health checks returned `{"status":"ok","app":"Dosh"}`
+- the final deployed state reflects the corrected budget-column edit-icon placement rather than the earlier action-rail placement
+
+### Test failures and resolution notes
+
+- the first income-modal regression test enhancement initially failed because linked-account options load asynchronously when switching the modal into `New income` mode
+- the test was updated to wait for the account option before selecting it, and the modal markup was improved with explicit label-control associations
+- the first icon-affordance implementation placed the income edit icon in the transaction action rail instead of beside the budget amount
+- the UI was then corrected across income, expense, and investment rows so budget editing sits in the budget column, and the stack was redeployed
+- no unresolved automated test failures remained at the end of the session
+
 ## Latest Session: Budget Adjustment History, Revision Workflow Simplification, Carry-Forward Timing Fix, And Backend Cleanup Deployment
 
 Session outcomes verified in this run:

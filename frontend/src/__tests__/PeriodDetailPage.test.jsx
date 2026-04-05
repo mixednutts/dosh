@@ -240,6 +240,138 @@ describe('PeriodDetailPage', () => {
     })
   })
 
+  it('uses icon actions for income rows and opens budget editing from the action rail', async () => {
+    client.getBudget.mockResolvedValue({
+      budgetid: 1,
+      budgetowner: 'Alex',
+      description: 'Home Budget',
+      budget_frequency: 'Monthly',
+      allow_cycle_lock: true,
+    })
+    client.getPeriodDetail.mockResolvedValue({
+      period: {
+        finperiodid: 57,
+        budgetid: 1,
+        startdate: '2026-05-01T00:00:00',
+        enddate: '2026-05-31T00:00:00',
+        islocked: false,
+        cycle_status: 'ACTIVE',
+      },
+      incomes: [
+        {
+          finperiodid: 57,
+          budgetid: 1,
+          incomedesc: 'Salary',
+          budgetamount: '2000.00',
+          actualamount: '1500.00',
+          varianceamount: '-500.00',
+          is_system: false,
+          system_key: null,
+        },
+      ],
+      expenses: [],
+      investments: [],
+      balances: [],
+      closeout_snapshot: null,
+    })
+
+    renderWithProviders(<PeriodDetailPage />, {
+      route: '/periods/57',
+      path: '/periods/:periodId',
+    })
+
+    expect(await screen.findByText('Salary')).toBeTruthy()
+    expect(screen.queryByText('Edit')).toBeNull()
+    expect(screen.getByLabelText('Edit budget for Salary')).toBeTruthy()
+    expect(screen.getByTitle('Add income transaction')).toBeTruthy()
+    expect(screen.getByTitle('Add income correction')).toBeTruthy()
+    expect(screen.getByTitle('View transactions')).toBeTruthy()
+    expect(screen.getByTitle('Remove from budget cycle')).toBeTruthy()
+
+    fireEvent.click(screen.getByLabelText('Edit budget for Salary'))
+    expect(await screen.findByText('Edit Line Budget — Salary')).toBeTruthy()
+  })
+
+  it('uses budget-column edit icons consistently for income, expense, and investment rows', async () => {
+    client.getBudget.mockResolvedValue({
+      budgetid: 1,
+      budgetowner: 'Alex',
+      description: 'Home Budget',
+      budget_frequency: 'Monthly',
+      allow_cycle_lock: true,
+    })
+    client.getPeriodDetail.mockResolvedValue({
+      period: {
+        finperiodid: 58,
+        budgetid: 1,
+        startdate: '2026-05-01T00:00:00',
+        enddate: '2026-05-31T00:00:00',
+        islocked: false,
+        cycle_status: 'ACTIVE',
+      },
+      incomes: [
+        {
+          finperiodid: 58,
+          budgetid: 1,
+          incomedesc: 'Salary',
+          budgetamount: '2000.00',
+          actualamount: '1500.00',
+          varianceamount: '-500.00',
+          is_system: false,
+          system_key: null,
+        },
+      ],
+      expenses: [
+        {
+          finperiodid: 58,
+          budgetid: 1,
+          expensedesc: 'Groceries',
+          budgetamount: '300.00',
+          actualamount: '120.00',
+          remaining_amount: '180.00',
+          freqtype: 'Always',
+          frequency_value: null,
+          effectivedate: null,
+          paytype: 'MANUAL',
+          is_oneoff: true,
+          note: null,
+          status: 'Current',
+          revision_comment: null,
+        },
+      ],
+      investments: [
+        {
+          finperiodid: 58,
+          budgetid: 1,
+          investmentdesc: 'ETF',
+          budgeted_amount: '250.00',
+          actualamount: '100.00',
+          remaining_amount: '150.00',
+          opening_value: '5000.00',
+          closing_value: '5100.00',
+          linked_account_desc: 'Brokerage',
+          status: 'Current',
+        },
+      ],
+      balances: [],
+      closeout_snapshot: null,
+    })
+
+    renderWithProviders(<PeriodDetailPage />, {
+      route: '/periods/58',
+      path: '/periods/:periodId',
+    })
+
+    expect(await screen.findByText('Salary')).toBeTruthy()
+    expect(screen.queryByText('Edit')).toBeNull()
+    expect(screen.getByLabelText('Edit budget for Salary')).toBeTruthy()
+    expect(screen.getByLabelText('Edit budget for Groceries')).toBeTruthy()
+    expect(screen.getByLabelText('Edit budget for ETF')).toBeTruthy()
+
+    fireEvent.click(screen.getByLabelText('Edit budget for Groceries'))
+    expect(await screen.findByText('Edit Line Budget — Groceries')).toBeTruthy()
+  })
+
   it('shows lock guidance and hides structure-edit actions while a cycle is locked', async () => {
     client.getIncomeTransactions.mockResolvedValue([])
     client.getExpenseEntries.mockResolvedValue([])
@@ -467,6 +599,8 @@ describe('PeriodDetailPage', () => {
     fireEvent.click(await screen.findByText('Add New Income Line Item'))
     fireEvent.click(screen.getByText('New income'))
     fireEvent.change(screen.getByPlaceholderText('e.g. Bonus'), { target: { value: 'Bonus' } })
+    await screen.findByRole('option', { name: 'Everyday Account' })
+    fireEvent.change(screen.getByLabelText('Paid into Account'), { target: { value: 'Everyday Account' } })
     fireEvent.change(screen.getAllByRole('spinbutton')[0], { target: { value: '450.00' } })
     fireEvent.change(screen.getByPlaceholderText('Why are you adding this line?'), { target: { value: 'Added for this quarter' } })
     fireEvent.click(screen.getByLabelText('This + future unlocked budget cycles'))
@@ -479,7 +613,7 @@ describe('PeriodDetailPage', () => {
         isfixed: true,
         autoinclude: true,
         amount: 450,
-        linked_account: null,
+        linked_account: 'Everyday Account',
       })
     })
 

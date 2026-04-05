@@ -492,33 +492,26 @@ Status:
 
 - `Completed`: tighten period-detail UI polish around totals and status affordances, especially for the income, investment, and balance sections
 - `Completed`: add period-detail totals for investments and balances while keeping movement read-only and avoiding a meaningless movement total
-- continue navigation and information architecture cleanup so the sidebar stays centered on one active budget context at a time
-- preserve the compact or collapsible desktop mode as new features arrive
-- keep overflow affordances honest when the user is already on the destination page
-- avoid duplicate edit or setup entry points on the same screen unless they serve clearly different purposes
-- replace the `Edit` text label on the budget cycle details page with a more appropriate icon-based affordance where that action is already visually established elsewhere
-- align the `+`, `-`, and details affordances properly in the income section of the budget cycle details page so row actions read as one intentional control set
-- add a delete-current-budget action to the `No budget cycles yet` card so an abandoned or exploratory budget can be removed directly from that empty state
-- preserve the cleanup that removed duplicate budget detail text from the `Current Budget` panel and moved utility controls away from the banner collision area
-- expand budget summary reporting value without turning the page into a dashboard clone
-- identify the next summary card that best complements current balance and health without duplicating period-listing data
+- `Completed`: continue navigation and information architecture cleanup so the sidebar stays centered on one active budget context at a time
+- `Completed`: replace the `Edit` text label on the budget cycle details page with a more appropriate icon-based affordance where that action is already visually established elsewhere
+- `Completed`: align the `+`, `-`, and details affordances properly in the income section of the budget cycle details page so row actions read as one intentional control set
+- `Completed`: add a delete-current-budget action to the `No budget cycles yet` card so an abandoned or exploratory budget can be removed directly from that empty state
+- `Completed`: identify the next summary card that best complements current balance and health without duplicating period-listing data, which was implemented as the calendar-style budget overview card
 - `Completed`: add a calendar-style view of income timing and expense due dates to the budget overview page, replacing the historical `# periods` summary card
 - add summary information to the budget cycles list page section headers, with the exact summary content still to be defined
-- keep the period-detail summary card set under review before introducing user-controlled drag-and-drop ordering
-- review sidebar and budget-summary polish after real use, especially around future first-class sections
-- revisit summary-card customization only after the current period-detail card set feels stable in real use
 
 #### Activity Group: Bugs
 
 Status:
 
-- `Next`
+- `Completed`
 
 - `Completed`: fix the empty visual artifact at the end of the total income line on the period detail page
 - `Completed`: align the investment spent pill wording and behavior with the expense spent pill so both outflow workflows feel consistent
 - `Completed`: ensure `Surplus (Budget)` reflects deficit on expense lines even when the affected expense line is already in `Paid` state
 - `Completed`: fix the sidebar budget chevron behavior so collapsing a budget in the navigation panel also collapses its budget cycles reliably
 - `Completed`: fix the `Go to budget cycles` action from Setup Assessment on the project setup page, which currently results in a blank screen
+- `Completed`: fix the `Add New Income Item` modal so it supports creating a brand-new income line inline, matching the supported `Add New Expense Item` modal workflow
 
 #### Activity Group: Enhancements
 
