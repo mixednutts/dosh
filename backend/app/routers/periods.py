@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from collections import defaultdict
 from datetime import datetime, timedelta
 from decimal import Decimal
@@ -122,6 +124,7 @@ def _record_budget_adjustment(
     scope: str,
     before_amount: Decimal,
     after_amount: Decimal,
+    line_status: str | None,
     db: Session,
 ):
     if before_amount == after_amount:
@@ -136,6 +139,7 @@ def _record_budget_adjustment(
         budget_scope=scope,
         budget_before_amount=before_amount,
         budget_after_amount=after_amount,
+        line_status=line_status,
     )
 
 
@@ -1048,8 +1052,6 @@ def set_expense_status(
     allowed = {WORKING, PAID, REVISED}
     if payload.status not in allowed:
         raise HTTPException(422, f"status must be one of {allowed}")
-    if payload.status == REVISED and not (payload.revision_comment or '').strip():
-        raise HTTPException(422, "revision_comment is required when revising a paid expense")
     pe = (
         db.query(PeriodExpense)
         .filter(PeriodExpense.finperiodid == finperiodid, PeriodExpense.expensedesc == expensedesc)
@@ -1066,7 +1068,7 @@ def set_expense_status(
         raise HTTPException(409, "Revised expenses must be marked Paid when edits are complete")
     pe.status = payload.status
     if payload.status == REVISED:
-        pe.revision_comment = payload.revision_comment.strip()
+        pe.revision_comment = (payload.revision_comment or "").strip() or None
     elif payload.status == PAID:
         pe.revision_comment = pe.revision_comment
     else:
@@ -1126,6 +1128,7 @@ def update_income_budget(
             scope=payload.scope,
             before_amount=before_amount,
             after_amount=after_amount,
+            line_status=None,
             db=db,
         )
         changed_period_ids.add(target.finperiodid)
@@ -1199,6 +1202,7 @@ def update_expense_budget(
             scope=payload.scope,
             before_amount=before_amount,
             after_amount=after_amount,
+            line_status=getattr(row, "status", WORKING) or WORKING,
             db=db,
         )
         changed_period_ids.add(target.finperiodid)
@@ -1342,6 +1346,7 @@ def update_investment_budget(
             scope=payload.scope,
             before_amount=before_amount,
             after_amount=after_amount,
+            line_status=getattr(row, "status", WORKING) or WORKING,
             db=db,
         )
         changed_period_ids.add(target.finperiodid)
@@ -1366,8 +1371,6 @@ def set_investment_status(
     allowed = {WORKING, PAID, REVISED}
     if payload.status not in allowed:
         raise HTTPException(422, f"status must be one of {allowed}")
-    if payload.status == REVISED and not (payload.revision_comment or "").strip():
-        raise HTTPException(422, "revision_comment is required when revising a paid investment")
 
     pi = db.get(PeriodInvestment, (finperiodid, investmentdesc))
     if not pi:
@@ -1383,7 +1386,7 @@ def set_investment_status(
 
     pi.status = payload.status
     if payload.status == REVISED:
-        pi.revision_comment = payload.revision_comment.strip()
+        pi.revision_comment = (payload.revision_comment or "").strip() or None
     elif payload.status == WORKING:
         pi.revision_comment = None
 

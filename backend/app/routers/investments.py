@@ -132,6 +132,7 @@ def get_investment_item_history(budgetid: int, investmentdesc: str, db: Session 
                 related_account_desc=tx.related_account_desc,
                 linked_incomedesc=tx.linked_incomedesc,
                 entry_kind=getattr(tx, "entry_kind", "movement"),
+                line_status=getattr(tx, "line_status", None),
                 budget_scope=getattr(tx, "budget_scope", None),
                 budget_before_amount=getattr(tx, "budget_before_amount", None),
                 budget_after_amount=getattr(tx, "budget_after_amount", None),

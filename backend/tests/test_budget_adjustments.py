@@ -66,6 +66,7 @@ def test_income_budget_adjustment_updates_current_and_future_unlocked_periods_an
     assert len(payload) == 1
     assert payload[0]["type"] == "BUDGETADJ"
     assert payload[0]["entry_kind"] == "budget_adjustment"
+    assert payload[0]["line_status"] is None
     assert payload[0]["budget_scope"] == "future"
     assert Decimal(payload[0]["budget_before_amount"]) == Decimal("2500.00")
     assert Decimal(payload[0]["budget_after_amount"]) == Decimal("3100.00")
@@ -110,6 +111,7 @@ def test_expense_budget_adjustment_stays_out_of_actuals_and_balance_movement(cli
     assert len(payload) == 1
     assert payload[0]["type"] == "BUDGETADJ"
     assert payload[0]["entry_kind"] == "budget_adjustment"
+    assert payload[0]["line_status"] == "Current"
     assert payload[0]["budget_scope"] == "current"
     assert Decimal(payload[0]["budget_before_amount"]) == Decimal("1200.00")
     assert Decimal(payload[0]["budget_after_amount"]) == Decimal("1300.00")
@@ -177,6 +179,7 @@ def test_investment_budget_adjustment_updates_setup_and_future_unlocked_periods_
     assert len(payload) == 1
     assert payload[0]["type"] == "BUDGETADJ"
     assert payload[0]["entry_kind"] == "budget_adjustment"
+    assert payload[0]["line_status"] == "Current"
     assert payload[0]["budget_scope"] == "future"
     assert Decimal(payload[0]["budget_before_amount"]) == Decimal("0.00")
     assert Decimal(payload[0]["budget_after_amount"]) == Decimal("225.00")

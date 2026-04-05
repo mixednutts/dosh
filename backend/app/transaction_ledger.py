@@ -65,6 +65,7 @@ def add_period_transaction(
     legacy_id: int | None = None,
     dedupe_key: str | None = None,
     entry_kind: str = ENTRY_KIND_MOVEMENT,
+    line_status: str | None = None,
     budget_scope: str | None = None,
     budget_before_amount=None,
     budget_after_amount=None,
@@ -113,6 +114,7 @@ def add_period_transaction(
         legacy_id=legacy_id,
         dedupe_key=dedupe_key,
         entry_kind=entry_kind,
+        line_status=line_status,
         budget_scope=budget_scope,
         budget_before_amount=_rounded(_as_decimal(budget_before_amount)) if budget_before_amount is not None else None,
         budget_after_amount=_rounded(_as_decimal(budget_after_amount)) if budget_after_amount is not None else None,
@@ -138,6 +140,14 @@ def build_expense_tx(
     dedupe_key: str | None = None,
 ):
     amount = _rounded(_as_decimal(amount))
+    expense = (
+        db.query(PeriodExpense)
+        .filter(
+            PeriodExpense.finperiodid == finperiodid,
+            PeriodExpense.expensedesc == expensedesc,
+        )
+        .first()
+    )
     tx_type = TX_TYPE_ADJUST if is_system else (TX_TYPE_DEBIT if amount >= 0 else TX_TYPE_CREDIT)
     return add_period_transaction(
         db,
@@ -153,6 +163,7 @@ def build_expense_tx(
         source_key=expensedesc,
         source_label=expensedesc,
         affected_account_desc=get_primary_account_desc(budgetid, db),
+        line_status=getattr(expense, "status", None),
         legacy_table=legacy_table,
         legacy_id=legacy_id,
         dedupe_key=dedupe_key,
@@ -230,6 +241,7 @@ def build_investment_tx(
 ):
     amount = _rounded(_as_decimal(amount))
     item = db.get(InvestmentItem, (budgetid, investmentdesc))
+    investment = db.get(PeriodInvestment, (finperiodid, investmentdesc))
     tx_type = TX_TYPE_ADJUST if is_system else (TX_TYPE_CREDIT if amount >= 0 else TX_TYPE_DEBIT)
     return add_period_transaction(
         db,
@@ -246,6 +258,7 @@ def build_investment_tx(
         source_label=investmentdesc,
         affected_account_desc=item.linked_account_desc if item else None,
         linked_incomedesc=linked_incomedesc,
+        line_status=getattr(investment, "status", None),
         legacy_table=legacy_table,
         legacy_id=legacy_id,
         dedupe_key=dedupe_key,
@@ -296,6 +309,7 @@ def build_budget_adjustment_tx(
     entrydate: dt | None = None,
     source_label: str | None = None,
     dedupe_key: str | None = None,
+    line_status: str | None = None,
 ):
     return add_period_transaction(
         db,
@@ -312,6 +326,7 @@ def build_budget_adjustment_tx(
         source_label=source_label or source_key,
         dedupe_key=dedupe_key,
         entry_kind=ENTRY_KIND_BUDGET_ADJUSTMENT,
+        line_status=line_status,
         budget_scope=budget_scope,
         budget_before_amount=budget_before_amount,
         budget_after_amount=budget_after_amount,

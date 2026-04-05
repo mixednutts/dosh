@@ -5,7 +5,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from sqlalchemy.orm import Session, selectinload
 
 from .cycle_constants import ACTIVE, CLOSED, PLANNED
-from .models import Budget, ExpenseItem, FinancialPeriod, IncomeType
+from .models import Budget, ExpenseItem, FinancialPeriod, IncomeType, PeriodTransaction
 from .time_utils import app_now, app_now_naive
 
 
@@ -466,9 +466,11 @@ def _build_current_period_check(
     }
 
 
-def _build_planning_stability_pillar(budget: Budget, current_periods: list[FinancialPeriod]) -> dict:
+def _build_planning_stability_pillar(budget: Budget, current_periods: list[FinancialPeriod], db: Session) -> dict:
     current_expenses = [expense for period in current_periods for expense in period.period_expenses]
-    if not current_expenses:
+    current_investments = [investment for period in current_periods for investment in period.period_investments]
+    current_lines = current_expenses + current_investments
+    if not current_lines:
         score = 70
         return {
             "key": "planning_stability",
@@ -480,18 +482,44 @@ def _build_planning_stability_pillar(budget: Budget, current_periods: list[Finan
                 {
                     "label": "Current periods reviewed",
                     "value": str(len(current_periods)),
-                    "detail": "Planning stability starts measuring once an active period contains working expense lines.",
+                    "detail": "Planning stability starts measuring once an active period contains working expense or investment lines.",
                 },
             ],
         }
 
-    revised_lines = [expense for expense in current_expenses if (expense.status or "Current") == "Revised"]
-    revision_comment_count = sum(1 for expense in revised_lines if expense.revision_comment)
-    revised_ratio = len(revised_lines) / len(current_expenses)
+    current_period_ids = [period.finperiodid for period in current_periods]
+    transaction_rows = (
+        db.query(PeriodTransaction)
+        .filter(
+            PeriodTransaction.finperiodid.in_(current_period_ids),
+            PeriodTransaction.source.in_(["expense", "investment"]),
+        )
+        .all()
+    )
+    off_plan_keys = {
+        ("expense", expense.finperiodid, expense.expensedesc)
+        for expense in current_expenses
+        if (expense.status or "Current") == "Revised"
+    }
+    off_plan_keys.update(
+        ("investment", investment.finperiodid, investment.investmentdesc)
+        for investment in current_investments
+        if (investment.status or "Current") == "Revised"
+    )
+    off_plan_keys.update(
+        (tx.source, tx.finperiodid, tx.source_key)
+        for tx in transaction_rows
+        if tx.source_key and (
+            getattr(tx, "entry_kind", "movement") == "budget_adjustment"
+            or getattr(tx, "line_status", None) == "Revised"
+        )
+    )
+
+    off_plan_ratio = len(off_plan_keys) / len(current_lines)
     revision_sensitivity = _budget_preference(budget, "revision_sensitivity", DEFAULT_REVISION_SENSITIVITY)
     revision_ratio_weight = 45 + (revision_sensitivity * 0.35)
     revision_count_weight = 15 + (revision_sensitivity * 0.30)
-    score = _clamp_score(100 - (revised_ratio * revision_ratio_weight) - (min(len(revised_lines), 5) / 5 * revision_count_weight))
+    score = _clamp_score(100 - (off_plan_ratio * revision_ratio_weight) - (min(len(off_plan_keys), 5) / 5 * revision_count_weight))
 
     if score >= 80:
         summary = "The active period is holding together with little revision pressure."
@@ -500,7 +528,11 @@ def _build_planning_stability_pillar(budget: Budget, current_periods: list[Finan
     else:
         summary = "The active period is relying heavily on revisions, which suggests planning pressure."
 
-    affected_periods = {_period_range(period) for period in current_periods if any((expense.status or "Current") == "Revised" for expense in period.period_expenses)}
+    affected_periods = {
+        _period_range(period)
+        for period in current_periods
+        if any(key[1] == period.finperiodid for key in off_plan_keys)
+    }
     evidence = [
         {
             "label": "Current periods reviewed",
@@ -508,13 +540,13 @@ def _build_planning_stability_pillar(budget: Budget, current_periods: list[Finan
             "detail": ", ".join(_period_range(period) for period in current_periods),
         },
         {
-            "label": "Expense lines reviewed",
-            "value": str(len(current_expenses)),
-            "detail": f"{len(revised_lines)} line{'s' if len(revised_lines) != 1 else ''} currently marked Revised.",
+            "label": "Plan lines reviewed",
+            "value": str(len(current_lines)),
+            "detail": f"{len(off_plan_keys)} line{'s' if len(off_plan_keys) != 1 else ''} in the active period have moved off the initial plan.",
         },
         {
-            "label": "Revision comments captured",
-            "value": f"{revision_comment_count}/{len(revised_lines)}" if revised_lines else "0/0",
+            "label": "Off-plan activity",
+            "value": f"{len(off_plan_keys)}/{len(current_lines)}" if current_lines else "0/0",
             "detail": (
                 f"{', '.join(sorted(affected_periods))}. Sensitivity setting: {_ten_scale_display(revision_sensitivity)}/10."
                 if affected_periods
@@ -591,7 +623,7 @@ def build_budget_health_payload(db: Session, budgetid: int) -> dict | None:
     current_period_check = _build_current_period_check(budget, current_periods, future_periods, historical_periods)
     setup_pillar = _build_setup_pillar(budget, current_periods, future_periods, income_type_count, active_expense_count)
     discipline_pillar, _discipline_ratio = _build_discipline_pillar(historical_periods)
-    stability_pillar = _build_planning_stability_pillar(budget, current_periods)
+    stability_pillar = _build_planning_stability_pillar(budget, current_periods, db)
     pillars = [setup_pillar, discipline_pillar, stability_pillar]
 
     overall_score = _clamp_score(

@@ -10,7 +10,7 @@ import {
   getPeriodDetail, getBudget, setPeriodLock,
   getIncomeTransactions, addIncomeTransaction, deleteIncomeTransaction,
   addExpenseToPeriod, addIncomeToPeriod, savingsTransfer,
-  getExpenseItems, getIncomeTypes, createExpenseItem,
+  getExpenseItems, getIncomeTypes, createExpenseItem, createIncomeType,
   getExpenseEntries, addExpenseEntry, deleteExpenseEntry,
   reorderPeriodExpenses, getBalanceTransactions,
   getInvestmentTransactions, addInvestmentTransaction, deleteInvestmentTransaction,
@@ -688,7 +688,7 @@ function ExpenseStatusPill({ expense, onMarkPaid, onRevise }) {
     return (
       <button
         onClick={onRevise}
-        title={`${title} • Click to revise with a comment`}
+        title={`${title} • Click to reopen as Revised`}
         className={`inline-flex min-w-[108px] items-center justify-center rounded-full px-2.5 py-1 text-xs font-semibold transition-colors ${paidCls}`}>
         Paid
       </button>
@@ -724,54 +724,6 @@ function ExpenseStatusPill({ expense, onMarkPaid, onRevise }) {
         {isOver && <span className="absolute inset-y-0 right-0 w-1 bg-red-700 dark:bg-red-400" />}
       </span>
     </button>
-  )
-}
-
-function ReviseExpenseModal({ periodId, expensedesc, onClose }) {
-  const qc = useQueryClient()
-  const [comment, setComment] = useState('')
-  const [error, setError] = useState('')
-
-  const revise = useMutation({
-    mutationFn: () => setPeriodExpenseStatus(periodId, expensedesc, 'Revised', comment.trim()),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['period', periodId] })
-      onClose()
-    },
-    onError: err => setError(err.response?.data?.detail ?? 'Failed to revise expense'),
-  })
-
-  const handleSubmit = e => {
-    e.preventDefault()
-    if (!comment.trim()) {
-      setError('A revision comment is required')
-      return
-    }
-    setError('')
-    revise.mutate()
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-3">
-      <div>
-        <label className="label">Revision Comment</label>
-        <textarea
-          className="input w-full resize-none"
-          rows={4}
-          value={comment}
-          onChange={e => setComment(e.target.value)}
-          placeholder="Why does this paid expense need to be revised?"
-          autoFocus
-        />
-      </div>
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      <div className="flex justify-end gap-2">
-        <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
-        <button type="submit" className="btn-primary" disabled={revise.isPending}>
-          {revise.isPending ? 'Saving…' : 'Revise Expense'}
-        </button>
-      </div>
-    </form>
   )
 }
 
@@ -818,7 +770,7 @@ function InvestmentStatusPill({ investment, onMarkPaid, onRevise }) {
     return (
       <button
         onClick={onRevise}
-        title={`${title} • Click to revise with a comment`}
+        title={`${title} • Click to reopen as Revised`}
         className={`inline-flex min-w-[108px] items-center justify-center rounded-full px-2.5 py-1 text-xs font-semibold transition-colors ${paidCls}`}
       >
         Paid
@@ -856,42 +808,6 @@ function InvestmentStatusPill({ investment, onMarkPaid, onRevise }) {
         {isOver && <span className="absolute inset-y-0 right-0 w-1 bg-red-700 dark:bg-red-400" />}
       </span>
     </button>
-  )
-}
-
-function ReviseInvestmentModal({ periodId, investmentdesc, onClose }) {
-  const qc = useQueryClient()
-  const [comment, setComment] = useState('')
-  const [error, setError] = useState('')
-
-  const revise = useMutation({
-    mutationFn: () => setPeriodInvestmentStatus(periodId, investmentdesc, 'Revised', comment.trim()),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['period', periodId] })
-      onClose()
-    },
-    onError: err => setError(err.response?.data?.detail ?? 'Failed to revise investment'),
-  })
-
-  return (
-    <form onSubmit={e => {
-      e.preventDefault()
-      if (!comment.trim()) {
-        setError('A revision comment is required')
-        return
-      }
-      revise.mutate()
-    }} className="space-y-3">
-      <div>
-        <label className="label">Revision Comment</label>
-        <textarea className="input w-full resize-none" rows={4} value={comment} onChange={e => setComment(e.target.value)} />
-      </div>
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      <div className="flex justify-end gap-2">
-        <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
-        <button type="submit" className="btn-primary" disabled={revise.isPending}>{revise.isPending ? 'Saving…' : 'Revise Investment'}</button>
-      </div>
-    </form>
   )
 }
 
@@ -991,12 +907,16 @@ function CloseoutModal({ periodId, onClose }) {
 // ── Add Income Modal ──────────────────────────────────────────────────────────
 function AddIncomeModal({ periodId, budgetId, existingDescs, onClose }) {
   const qc = useQueryClient()
-  const [mode, setMode] = useState('existing') // 'existing' | 'savings'
+  const [mode, setMode] = useState('existing') // 'existing' | 'new' | 'savings'
   const [selected, setSelected] = useState('')
   const [amount, setAmount] = useState('')
   const [scope, setScope] = useState('oneoff')
   const [note, setNote] = useState('')
   const [error, setError] = useState('')
+  const [newDesc, setNewDesc] = useState('')
+  const [newLinkedAccount, setNewLinkedAccount] = useState('')
+  const [newIsFixed, setNewIsFixed] = useState(true)
+  const [newAutoInclude, setNewAutoInclude] = useState(true)
 
   const { data: incomeTypes = [] } = useQuery({
     queryKey: ['income-types', budgetId],
@@ -1019,9 +939,15 @@ function AddIncomeModal({ periodId, budgetId, existingDescs, onClose }) {
 
   const currentList = mode === 'savings' ? savingsAccounts : available
 
+  const createItem = useMutation({ mutationFn: data => createIncomeType(budgetId, data) })
+
   const add = useMutation({
     mutationFn: data => addIncomeToPeriod(periodId, data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['period', periodId] }); onClose() },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['period', periodId] })
+      qc.invalidateQueries({ queryKey: ['income-types', budgetId] })
+      onClose()
+    },
     onError: err => setError(err.response?.data?.detail ?? 'Failed to add income'),
   })
 
@@ -1033,56 +959,109 @@ function AddIncomeModal({ periodId, budgetId, existingDescs, onClose }) {
 
   const isPending = add.isPending || addTransfer.isPending
 
-  const handleSubmit = e => {
+  const handleSubmit = async e => {
     e.preventDefault(); setError('')
-    if (!selected) { setError(mode === 'savings' ? 'Select a savings account' : 'Select an income type'); return }
-    if (mode === 'savings') {
-      addTransfer.mutate({ budgetid: budgetId, balancedesc: selected, amount: parseFloat(amount) || 0 })
-    } else {
+    try {
+      if (mode === 'savings') {
+        if (!selected) { setError('Select a savings account'); return }
+        addTransfer.mutate({ budgetid: budgetId, balancedesc: selected, amount: parseFloat(amount) || 0 })
+        return
+      }
+
+      if (mode === 'new') {
+        const trimmedDesc = newDesc.trim()
+        if (!trimmedDesc) { setError('Enter a description'); return }
+        await createItem.mutateAsync({
+          incomedesc: trimmedDesc,
+          issavings: false,
+          isfixed: newIsFixed,
+          autoinclude: newIsFixed ? true : newAutoInclude,
+          amount: parseFloat(amount) || 0,
+          linked_account: newLinkedAccount || null,
+        })
+        add.mutate({ budgetid: budgetId, incomedesc: trimmedDesc, budgetamount: parseFloat(amount) || 0, scope, note: note || null })
+        return
+      }
+
+      if (!selected) { setError('Select an income type'); return }
       add.mutate({ budgetid: budgetId, incomedesc: selected, budgetamount: parseFloat(amount) || 0, scope, note: note || null })
+    } catch (err) {
+      setError(err.response?.data?.detail ?? 'Failed to add income')
     }
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="flex rounded-md border border-gray-200 dark:border-gray-700 overflow-hidden text-sm">
-        {[['existing', 'Existing income'], ['savings', 'Transfer from Savings']].map(([val, label]) => (
-          <button key={val} type="button" onClick={() => { setMode(val); setSelected(''); setAmount('') }}
+        {[['existing', 'Existing income'], ['new', 'New income'], ['savings', 'Transfer from Savings']].map(([val, label]) => (
+          <button key={val} type="button" onClick={() => { setMode(val); setSelected(''); setAmount(''); setError('') }}
             className={`flex-1 py-1.5 font-medium transition-colors ${mode === val ? 'bg-dosh-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400'}`}>
             {label}
           </button>
         ))}
       </div>
-      <div>
-        <label className="label">{mode === 'savings' ? 'Savings Account' : 'Income Type'}</label>
-        {currentList.length === 0
-          ? <p className="text-sm text-gray-500 italic">
-              {mode === 'savings' ? 'No savings accounts available. Add a Savings account in budget settings.' : 'All income types already in this budget cycle.'}
-            </p>
-          : <select required className="input" value={selected} onChange={e => {
-              setSelected(e.target.value)
-              if (mode !== 'savings') {
-                const it = incomeTypes.find(i => i.incomedesc === e.target.value)
-                if (it?.isfixed) setAmount(String(it.amount))
-              }
-            }}>
-              <option value="">— select —</option>
-              {mode === 'savings'
-                ? currentList.map(bt => <option key={bt.balancedesc} value={bt.balancedesc}>{bt.balancedesc}</option>)
-                : currentList.map(i => <option key={i.incomedesc} value={i.incomedesc}>{i.incomedesc}</option>)}
-            </select>}
-      </div>
+      {mode === 'new' ? (
+        <div className="space-y-3">
+          <div>
+            <label className="label">Description</label>
+            <input required className="input" value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="e.g. Bonus" />
+          </div>
+          <div>
+            <label className="label">Paid into Account</label>
+            <select className="input" value={newLinkedAccount} onChange={e => setNewLinkedAccount(e.target.value)}>
+              <option value="">— none —</option>
+              {balanceTypes.map(bt => (
+                <option key={bt.balancedesc} value={bt.balancedesc}>{bt.balancedesc}</option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 text-sm cursor-pointer">
+              <input type="checkbox" checked={newIsFixed} onChange={e => {
+                setNewIsFixed(e.target.checked)
+                if (e.target.checked) setNewAutoInclude(true)
+              }} className="rounded border-gray-300 text-dosh-600 focus:ring-dosh-500" />
+              Fixed amount (same every budget cycle)
+            </label>
+            <label className="flex items-center gap-2 text-sm cursor-pointer">
+              <input type="checkbox" checked={newAutoInclude} disabled={newIsFixed} onChange={e => setNewAutoInclude(e.target.checked)} className="rounded border-gray-300 text-dosh-600 focus:ring-dosh-500" />
+              Auto-include in new budget cycles
+              {newIsFixed && <span className="text-xs text-gray-400">(auto-set when fixed)</span>}
+            </label>
+          </div>
+        </div>
+      ) : (
+        <div>
+          <label className="label">{mode === 'savings' ? 'Savings Account' : 'Income Type'}</label>
+          {currentList.length === 0
+            ? <p className="text-sm text-gray-500 italic">
+                {mode === 'savings' ? 'No savings accounts available. Add a Savings account in budget settings.' : 'All income types already in this budget cycle. Use "New income".'}
+              </p>
+            : <select required className="input" value={selected} onChange={e => {
+                setSelected(e.target.value)
+                if (mode !== 'savings') {
+                  const it = incomeTypes.find(i => i.incomedesc === e.target.value)
+                  if (it?.isfixed) setAmount(String(it.amount))
+                }
+              }}>
+                <option value="">— select —</option>
+                {mode === 'savings'
+                  ? currentList.map(bt => <option key={bt.balancedesc} value={bt.balancedesc}>{bt.balancedesc}</option>)
+                  : currentList.map(i => <option key={i.incomedesc} value={i.incomedesc}>{i.incomedesc}</option>)}
+              </select>}
+        </div>
+      )}
       <div>
         <label className="label">{mode === 'savings' ? 'Budget Amount ($)' : 'Budget Amount ($)'}</label>
         <input type="number" step="0.01" min="0" className="input" value={amount} onChange={e => setAmount(e.target.value)} />
       </div>
-      {mode === 'existing' && (
+      {mode !== 'savings' && (
         <div>
           <label className="label">Comment / Note</label>
           <textarea className="input w-full resize-none" rows={3} value={note} onChange={e => setNote(e.target.value)} placeholder="Why are you adding this line?" />
         </div>
       )}
-      {mode === 'existing' && (
+      {mode !== 'savings' && (
         <div>
           <label className="label">Include in</label>
           <div className="space-y-1.5 mt-1">
@@ -1098,7 +1077,7 @@ function AddIncomeModal({ periodId, budgetId, existingDescs, onClose }) {
       {error && <p className="text-sm text-red-600">{error}</p>}
       <div className="flex justify-end gap-2">
         <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
-        <button type="submit" className="btn-primary" disabled={isPending || currentList.length === 0}>{isPending ? 'Adding…' : 'Add'}</button>
+        <button type="submit" className="btn-primary" disabled={isPending || (mode !== 'new' && currentList.length === 0)}>{isPending ? 'Adding…' : 'Add'}</button>
       </div>
     </form>
   )
@@ -1215,9 +1194,7 @@ export default function PeriodDetailPage() {
   const [incomeModal, setIncomeModal] = useState(null) // { incomedesc, budgetamount, actualamount, readOnly, defaultType }
   const [entriesModal, setEntriesModal] = useState(null) // { expensedesc, budgetamount, actualamount }
   const [budgetAdjustModal, setBudgetAdjustModal] = useState(null) // { category, desc, budgetamount, title }
-  const [reviseModal, setReviseModal] = useState(null) // { expensedesc }
   const [confirmPaidModal, setConfirmPaidModal] = useState(null) // { expense }
-  const [reviseInvestmentModal, setReviseInvestmentModal] = useState(null)
   const [confirmPaidInvestmentModal, setConfirmPaidInvestmentModal] = useState(null)
   const [balanceModal, setBalanceModal] = useState(null) // { balancedesc, movementAmount }
   const [showCloseout, setShowCloseout] = useState(false)
@@ -1582,11 +1559,11 @@ export default function PeriodDetailPage() {
                     </td>
                     <td className="px-3 py-2">
                       <div className="flex items-center justify-center gap-1 flex-wrap">
-                        <ExpenseStatusPill
-                          expense={e}
-                          onMarkPaid={() => handleMarkPaid(e)}
-                          onRevise={() => setReviseModal({ expensedesc: e.expensedesc })}
-                        />
+                          <ExpenseStatusPill
+                            expense={e}
+                            onMarkPaid={() => handleMarkPaid(e)}
+                            onRevise={() => setExpenseStatus.mutate({ desc: e.expensedesc, status: 'Revised' })}
+                          />
                         <button
                           disabled={closed || isPaid}
                           onClick={() => setEntriesModal({ expensedesc: e.expensedesc, budgetamount: e.budgetamount, actualamount: e.actualamount, defaultType: 'debit' })}
@@ -1685,7 +1662,7 @@ export default function PeriodDetailPage() {
                           <InvestmentStatusPill
                             investment={inv}
                             onMarkPaid={() => handleMarkInvestmentPaid(inv)}
-                            onRevise={() => setReviseInvestmentModal({ investmentdesc: inv.investmentdesc })}
+                            onRevise={() => setInvestmentStatus.mutate({ desc: inv.investmentdesc, status: 'Revised' })}
                           />
                           <button
                             disabled={closed || inv.status === 'Paid'}
@@ -1859,11 +1836,6 @@ export default function PeriodDetailPage() {
           />
         </Modal>
       )}
-      {reviseModal && (
-        <Modal title={`Revise Expense — ${reviseModal.expensedesc}`} onClose={() => setReviseModal(null)}>
-          <ReviseExpenseModal periodId={id} expensedesc={reviseModal.expensedesc} onClose={() => setReviseModal(null)} />
-        </Modal>
-      )}
       {confirmPaidModal && (
         <Modal title="Mark Expense as Paid?" onClose={() => setConfirmPaidModal(null)}>
           <ConfirmPaidExpenseModal
@@ -1874,11 +1846,6 @@ export default function PeriodDetailPage() {
               setConfirmPaidModal(null)
             }}
           />
-        </Modal>
-      )}
-      {reviseInvestmentModal && (
-        <Modal title={`Revise Investment — ${reviseInvestmentModal.investmentdesc}`} onClose={() => setReviseInvestmentModal(null)}>
-          <ReviseInvestmentModal periodId={id} investmentdesc={reviseInvestmentModal.investmentdesc} onClose={() => setReviseInvestmentModal(null)} />
         </Modal>
       )}
       {confirmPaidInvestmentModal && (

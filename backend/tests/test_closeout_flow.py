@@ -46,6 +46,7 @@ def test_closeout_preview_and_closeout_persist_snapshot_and_carry_forward(client
     assert preview_payload["next_cycle_exists"] is True
     assert preview_payload["period"]["cycle_status"] == "ACTIVE"
     assert Decimal(preview_payload["totals"]["surplus_actual"]) == Decimal("1750.00")
+    assert db_session.get(PeriodIncome, (next_period["finperiodid"], CARRIED_FORWARD_DESC)) is None
 
     closeout_response = client.post(
         f"/api/periods/{active_period['finperiodid']}/closeout",
@@ -80,6 +81,21 @@ def test_closeout_preview_and_closeout_persist_snapshot_and_carry_forward(client
     snapshot = db_session.get(PeriodCloseoutSnapshot, active_period["finperiodid"])
     assert snapshot is not None
     assert Decimal(str(snapshot.carry_forward_amount)) == Decimal("1750.00")
+
+
+def test_generating_upcoming_cycle_does_not_create_carried_forward_before_closeout(client, db_session):
+    setup = create_minimum_budget_setup(db_session)
+    budget = setup["budget"]
+    periods = generate_periods(
+        client,
+        budgetid=budget.budgetid,
+        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        count=2,
+    )
+    next_period = next(period for period in periods if period["cycle_status"] == "PLANNED")
+
+    carried_forward = db_session.get(PeriodIncome, (next_period["finperiodid"], CARRIED_FORWARD_DESC))
+    assert carried_forward is None
 
 
 def test_closeout_can_create_missing_next_cycle_when_requested(client, db_session):

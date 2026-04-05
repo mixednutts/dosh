@@ -4,6 +4,88 @@ This document records meaningful automated test results from major working sessi
 
 It exists separately from [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) so the strategy can stay stable while future sessions still have a record of what was actually run and verified.
 
+## Latest Session: Budget Adjustment History, Revision Workflow Simplification, Carry-Forward Timing Fix, And Backend Cleanup Deployment
+
+Session outcomes verified in this run:
+
+- budget editing for income, expense, and investment lines moved onto a shared modal-driven workflow backed by explicit `BUDGETADJ` transaction history
+- setup-level history views for income, expense, and investment now reuse the shared transaction model
+- direct `Paid` to `Revised` reopening now works without a revision-reason modal
+- current-period planning stability now uses off-plan activity and transaction line-state capture rather than revision-comment prompts
+- carry-forward is now created on close-out rather than during simple future-period generation
+- delete continuity was corrected so `BUDGETADJ` planning rows do not block deletion of upcoming cycles
+- the live database was cleaned up and aligned to the deployed schema, including removal of obsolete stored revision comments and addition of transaction `line_status`
+
+### Backend verification
+
+Commands run during this session:
+
+```bash
+cd backend
+/tmp/dosh-test-venv/bin/python -m pytest backend/tests/test_budget_adjustments.py backend/tests/test_budget_health_advanced.py backend/tests/test_status_workflows.py -q
+/tmp/dosh-test-venv/bin/python -m pytest backend/tests/test_closeout_flow.py backend/tests/test_delete_continuity.py backend/tests/test_income_transactions.py -q
+```
+
+Result:
+
+- focused backend coverage passed for budget adjustments, health interpretation, paid-to-revised workflow, carry-forward timing, delete continuity, and income transaction behavior
+- the combined verified result across those focused runs was 14 passing backend tests
+- no unresolved backend test failures remained at the end of the session
+
+Files with meaningful backend test updates in this session:
+
+- [test_budget_adjustments.py](/home/ubuntu/dosh/backend/tests/test_budget_adjustments.py)
+- [test_budget_health_advanced.py](/home/ubuntu/dosh/backend/tests/test_budget_health_advanced.py)
+- [test_status_workflows.py](/home/ubuntu/dosh/backend/tests/test_status_workflows.py)
+- [test_closeout_flow.py](/home/ubuntu/dosh/backend/tests/test_closeout_flow.py)
+
+### Frontend verification
+
+Commands run during this session:
+
+```bash
+cd frontend
+npm test -- --runInBand --watchAll=false src/__tests__/PeriodDetailPage.test.jsx
+```
+
+Result:
+
+- focused period-detail coverage passed after the new budget-adjustment flow, inline income-item creation path, and direct paid-to-revised interaction changes
+- 1 focused frontend suite passed
+- 12 focused frontend tests passed in the latest verified state
+
+Files with meaningful frontend test or harness updates in this session:
+
+- [PeriodDetailPage.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/PeriodDetailPage.test.jsx)
+- [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx)
+
+### Live cleanup and deployment verification
+
+Commands run:
+
+```bash
+docker compose -f docker-compose.yml up -d --build
+docker compose -f docker-compose.yml ps
+curl -sS http://127.0.0.1:3080/api/health
+curl -sS http://127.0.0.1:3080/api/budgets/1/health
+```
+
+Result:
+
+- the first deployment exposed a live schema mismatch introduced by the new implementation
+- the live SQLite database was then backed up and patched in place so the deployed code and schema matched
+- obsolete stored `revision_comment` values were cleared from live expense and investment rows
+- `periodtransactions.line_status` was added and backfilled for existing relevant history rows
+- the final deployed backend passed health checks and the live budget health endpoint returned the updated planning-stability wording using `Plan lines reviewed` and `Off-plan activity`
+
+### Test failures and resolution notes
+
+- the initial deployment left period-detail endpoints failing because the live database had not yet been aligned to the new schema introduced by this session
+- the issue was resolved by explicitly patching the live database schema and then redeploying the corrected backend
+- deletion of upcoming periods also regressed briefly because delete continuity treated `BUDGETADJ` rows like real financial activity
+- continuity logic was updated to ignore budget-adjustment history for deletion eligibility, and focused regression coverage was added
+- no unresolved automated test failures remained at the end of the session
+
 ## Latest Session: Budget Overview Calendar Expansion, Interaction Polish, And Repeated Deployment Verification
 
 Session outcomes verified in this run:

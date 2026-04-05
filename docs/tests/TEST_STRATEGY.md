@@ -48,6 +48,7 @@ This matters because Dosh is no longer mostly CRUD. It now contains workflow rul
 - transaction-backed totals and balances
 - expense and investment status workflows
 - budget health scoring and personalised thresholds
+- budget-adjustment history, transaction line-state capture, and planning-stability interpretation that now relies on off-plan activity rather than revision-comment prompts
 
 Important scope note:
 
@@ -93,8 +94,9 @@ The most important business rules to preserve are:
 - guided delete behavior must protect continuity, especially for non-trailing cycles
 - expense and investment lifecycle behavior should remain aligned
 - `islocked=true` on an `ACTIVE` cycle protects structural edits, but must not block recording actuals or transactions
-- paid lines should be treated as finalized unless explicitly revised through the supported workflow
+- paid lines should be treated as finalized unless explicitly revised through the supported workflow, which now allows direct `Paid` to `Revised` reopening without a required justification modal
 - balance movement trust should come from ledger-backed transactions, not manual drift
+- `BUDGETADJ` rows should remain reviewable in shared history while staying excluded from balance movement and actual calculations
 
 ### Testing-sensitive feature areas
 
@@ -106,7 +108,9 @@ These areas deserve extra caution whenever product work touches them:
 - delete continuity options such as `Delete this and all upcoming cycles`
 - transaction-backed expense, balance, and investment behavior
 - transaction-backed income behavior, including dedicated income transaction history rather than inline actual overrides
+- modal-driven budget adjustment behavior across income, expense, and investment, including setup-history readback through the shared transaction model
 - post-paid revise flows and read-only guards on closed cycles
+- transaction line-state capture and budget-health off-plan interpretation
 - health scoring, evidence payloads, and historical snapshot integrity
 - setup edits whose consequences show up only in later workflows
 - demo-mode gating and seeded demo-budget behavior, especially additive-only import safety and health-signal credibility
@@ -121,6 +125,7 @@ Tests should preserve these expectations:
 
 - visible results should be backed by inspectable evidence payloads
 - current-period health is a distinct live layer and also contributes to the overall score
+- planning-stability interpretation should reflect real off-plan activity from current line state and transaction history rather than depending on a separate revision-comment requirement
 - personalisation changes should affect future interpretation without rewriting closed-cycle history
 - timestamps, date-sensitive classification, and rendered evidence should stay aligned with intended local timezone behavior
 

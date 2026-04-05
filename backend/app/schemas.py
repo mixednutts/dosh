@@ -252,6 +252,7 @@ class SetupHistoryEntryOut(BaseModel):
     related_account_desc: Optional[str] = None
     linked_incomedesc: Optional[str] = None
     entry_kind: str = "movement"
+    line_status: Optional[str] = None
     budget_scope: Optional[str] = None
     budget_before_amount: Optional[Decimal] = None
     budget_after_amount: Optional[Decimal] = None
@@ -545,6 +546,7 @@ class InvestmentTxOut(BaseModel):
     linked_incomedesc: Optional[str] = None
     type: Optional[str] = None
     entry_kind: str = "movement"
+    line_status: Optional[str] = None
     budget_scope: Optional[str] = None
     budget_before_amount: Optional[Decimal] = None
     budget_after_amount: Optional[Decimal] = None
@@ -569,6 +571,7 @@ class IncomeTxOut(BaseModel):
     affected_account_desc: Optional[str] = None
     related_account_desc: Optional[str] = None
     entry_kind: str = "movement"
+    line_status: Optional[str] = None
     budget_scope: Optional[str] = None
     budget_before_amount: Optional[Decimal] = None
     budget_after_amount: Optional[Decimal] = None
@@ -592,6 +595,7 @@ class PeriodTransactionOut(BaseModel):
     related_account_desc: Optional[str] = None
     linked_incomedesc: Optional[str] = None
     entry_kind: str = "movement"
+    line_status: Optional[str] = None
     budget_scope: Optional[str] = None
     budget_before_amount: Optional[Decimal] = None
     budget_after_amount: Optional[Decimal] = None
@@ -615,6 +619,7 @@ class ExpenseEntryOut(BaseModel):
     entrydate: datetime
     type: Optional[str] = None
     entry_kind: str = "movement"
+    line_status: Optional[str] = None
     budget_scope: Optional[str] = None
     budget_before_amount: Optional[Decimal] = None
     budget_after_amount: Optional[Decimal] = None

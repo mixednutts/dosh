@@ -271,6 +271,7 @@ class PeriodTransaction(Base):
     legacy_id = Column(Integer, nullable=True)
     dedupe_key = Column(String, nullable=True)
     entry_kind = Column(String, nullable=False, default="movement")
+    line_status = Column(String, nullable=True)
     budget_scope = Column(String, nullable=True)
     budget_before_amount = Column(Numeric(10, 2), nullable=True)
     budget_after_amount = Column(Numeric(10, 2), nullable=True)

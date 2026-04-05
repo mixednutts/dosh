@@ -8,6 +8,7 @@ It is a synthesis of the current Markdown sources in this repository:
 - [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md)
 - [CHANGES.md](/home/ubuntu/dosh/docs/CHANGES.md)
 - [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_CYCLE_LIFECYCLE_PLAN.md)
+- [BUDGET_ADJUSTMENT_REVISION_HISTORY_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_ADJUSTMENT_REVISION_HISTORY_PLAN.md)
 - [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/docs/plans/BUDGET_HEALTH_ADDENDUM.md)
 - [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md)
 - [TEST_EXPANSION_PLAN.md](/home/ubuntu/dosh/docs/tests/TEST_EXPANSION_PLAN.md)
@@ -61,6 +62,7 @@ These guidelines apply across the project as a whole and should continue guiding
 - keep budget health supportive and explainable, not overly authoritative
 - use practical language users can reasonably trust
 - be explicit when the concept is deficit rather than surplus
+- prefer event-backed planning-change evidence over duplicated status-change justification prompts
 - do not let later personalisation rewrite the meaning of historical closed cycles
 
 ### Localisation
@@ -131,6 +133,7 @@ Operational note:
 - the frontend Docker build now uses Node 20 rather than the old Node 16 baseline
 - Docker Compose `DEV_MODE` is now the shared control point for dev-only demo-budget behavior across frontend build visibility and backend runtime enforcement
 - `PeriodTransaction` is now the sole live transaction store; older expense and investment transaction tables have been removed from the active schema
+- the deployed database has already been manually aligned to the current post-session schema expectations, including budget-adjustment and transaction line-state fields
 
 ## Core Domain Rules
 
@@ -152,8 +155,11 @@ These rules should be treated as current product invariants unless deliberately 
 - balance movement is intended to be transaction-derived rather than freely edited
 - `ACTIVE` plus `islocked=true` protects structural edits but should still allow actual-entry and transaction-recording workflows
 - expense and investment workflows should remain aligned, including `Current`, `Paid`, and `Revised` behavior
-- paid lines are treated as finalized unless intentionally revised through the supported workflow
+- paid lines are treated as finalized unless intentionally revised through the supported workflow, which now allows direct `Paid` to `Revised` reopening without a required revision-reason modal
 - setup records already used by generated cycles or downstream activity should be protected from destructive edits
+- carry-forward should only be created from close-out of the prior cycle, not from simple future-cycle generation
+- budget adjustments for income, expense, and investment lines now live in `PeriodTransaction` as `BUDGETADJ` history and must stay excluded from actual and balance calculations
+- the detailed workflow and history rules for this area are captured in [BUDGET_ADJUSTMENT_REVISION_HISTORY_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_ADJUSTMENT_REVISION_HISTORY_PLAN.md)
 
 ## Implemented User-Facing Areas
 
@@ -165,9 +171,11 @@ The repository already supports:
 - setup-assessment summary state on the budget setup page, including blocking issues, warnings, and section-level readiness or protection badges
 - budget cycle generation, listing, detail, lifecycle display, delete prevalidation, and close-out flow
 - income, expense, account, and investment activity within a cycle
+- modal-driven budget adjustment for income, expense, and investment lines, with required notes and `current` or `future unlocked` scope
 - transaction-backed income, expense, and investment updates
 - account balance viewing with transaction-based movement explanation
 - current budget summary cards, current balance summary, and current-period health check
+- setup-level history review for income, expense, and investment items using the shared transaction history model
 - a compact budget-overview calendar card with month navigation, a full-calendar modal, clickable day details, and bounded 3-month lookahead into active and upcoming cycles
 - historical close-out snapshot review for closed cycles
 - seeded demo-budget creation with historical close-outs, a current cycle, upcoming cycles, and health-relevant activity
@@ -177,6 +185,7 @@ The repository already supports:
 - period-detail summary cards that now include both `Projected Savings` and `Remaining Expenses`
 - period-detail footer totals for investments and balances, while keeping balance movement read-only and intentionally not totaled
 - a sidebar current-budget workspace that stays separate from the expanded budget list, uses explicit `View all ...` cycle links when more cycles exist, and avoids duplicating setup entry on the budget cycles page
+- add-income-from-period flow that can either reuse an existing setup item or create a brand-new income item inline
 
 Current frontend wording trends toward `Budget Cycle` for user clarity while backend naming still uses `period` for stability.
 
@@ -234,6 +243,7 @@ Highest-risk areas:
 - delete continuity
 - transaction-backed balances and ledger trust
 - income transaction history and actual sync behavior
+- budget-adjustment history, revision-state capture, and their exclusion from balance and actual calculations
 - expense and investment paid or revised behavior
 - health scoring and personalised thresholds
 

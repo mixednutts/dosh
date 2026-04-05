@@ -27,6 +27,85 @@ For recent concrete verification outcomes, read [TEST_RESULTS_SUMMARY.md](/home/
 
 For the dedicated implementation plan that drove the income transaction unification and legacy-ledger cleanup work in this session, read [INCOME_TRANSACTIONS_UNIFICATION_AND_LEGACY_LEDGER_CLEANUP_PLAN.md](/home/ubuntu/dosh/docs/plans/INCOME_TRANSACTIONS_UNIFICATION_AND_LEGACY_LEDGER_CLEANUP_PLAN.md).
 
+For the dedicated workflow plan that now owns budget-adjustment, revision-history, and setup-history rules in this area, read [BUDGET_ADJUSTMENT_REVISION_HISTORY_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_ADJUSTMENT_REVISION_HISTORY_PLAN.md).
+
+## Latest Session: Budget Adjustment History, Revision-Workflow Simplification, Setup History Review, Close-Out Carry-Forward Fix, And Live Schema Alignment
+
+This session focused on turning budget-line changes into first-class revision history, simplifying the paid-to-revised workflow, and tightening the current-period meaning that budget health derives from those events.
+
+Important direction now in place:
+
+- income, expense, and investment budget changes now use a shared modal-driven workflow and are recorded as explicit `BUDGETADJ` entries in `PeriodTransaction`
+- `BUDGETADJ` entries are intentionally part of the shared history model, but they are excluded from actual calculations, balance movement, and investment closing-value movement
+- setup-level history for income, expense, and investment items now reuses the same underlying transaction history model rather than introducing a second history store
+- direct `Paid` to `Revised` reopening is now allowed without a dedicated revision-reason modal
+- planning-change context now comes from event history and transaction line-state capture rather than duplicated revision-comment prompts
+- carry-forward creation is now tied to prior-cycle close-out, not to simple future-cycle generation
+- the deployed database was manually aligned to the new schema expectations after deployment exposed the schema gap
+
+### 1. Budget adjustments are now first-class history events
+
+Budget changes across income, expense, and investment lines were moved onto one shared model.
+
+Current behavior:
+
+- budget edits now open an `Edit Line Budget` modal rather than relying on mixed inline patterns
+- the modal captures the target amount, scope, and a required note
+- supported scope is either current period only or current plus future unlocked periods
+- the underlying history is stored in `PeriodTransaction` using explicit `BUDGETADJ` rows
+- line-item setup history can now be reviewed from budget setup using the same transaction-backed history source
+
+Important engineering meaning:
+
+- future history or reporting work should extend the shared transaction history model rather than creating a parallel note store for budget adjustments
+- any calculation that represents real movement, actuals, or closing-value change must continue to exclude `BUDGETADJ`
+
+### 2. Revision workflow and planning-stability interpretation were simplified together
+
+This session removed unnecessary duplication between state-change prompts and actual history capture.
+
+Current behavior:
+
+- expense and investment lines can now move directly from `Paid` to `Revised`
+- the old revision-reason requirement was removed from the supported workflow
+- transaction history now stores the current line state on relevant rows so later interpretation does not depend on free-text comments
+- planning stability in budget health now reads as off-plan activity rather than revision-comment capture
+
+Important product meaning:
+
+- `Paid` and `Revised` still matter as workflow signals that a line is finished or has been reopened
+- explanatory context should stay attached to the event that changed the plan or recorded the actual, not be duplicated in a separate mandatory modal
+
+### 3. Carry-forward timing and delete continuity were tightened
+
+The session also corrected lifecycle behavior that had drifted from the intended close-out model.
+
+Current behavior:
+
+- `Carried Forward` is no longer created just because a future cycle exists
+- carry-forward is now created only when the previous cycle is actually closed out
+- delete continuity logic now ignores `BUDGETADJ` planning history so upcoming cycle deletion does not get blocked by non-movement history rows
+
+Important domain meaning:
+
+- close-out remains the event that freezes one cycle and establishes the next cycle's opening state
+- planning history should stay reviewable without being mistaken for financial movement or continuity-breaking activity
+
+### 4. Live deployment required explicit schema alignment
+
+The implementation introduced new schema expectations and the deployment path surfaced that mismatch clearly.
+
+Current behavior:
+
+- the app was deployed with the new budget-adjustment and transaction-line-state code
+- the live SQLite database then required a manual schema patch so the deployed code and live schema matched
+- older stored `revision_comment` values on expense and investment rows were cleaned up after the workflow simplification
+
+Important engineering meaning:
+
+- there was no old pending migration backlog behind this work; the schema drift was created by this new implementation
+- Dosh still needs a proper versioned migration path, but the current deployed database is now aligned to the post-session schema expectations
+
 ## Latest Session: Budget Overview Calendar Expansion, Interaction Polish, Demo-Data Follow-Up, And Deployment Verification
 
 This session focused on replacing the old historical-count summary on the Budgets page with a practical calendar view, then tightening the interaction model and compactness through repeated review-driven refinement.

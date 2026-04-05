@@ -5,7 +5,7 @@ from decimal import Decimal
 from app.models import PeriodExpense, PeriodIncome
 from app.time_utils import app_now_naive
 
-from .factories import create_balance_type, create_budget, create_expense_item, create_income_type, generate_periods
+from .factories import create_balance_type, create_budget, create_expense_item, create_income_type, create_minimum_budget_setup, generate_periods
 
 
 def _health_payload(client, budgetid: int) -> dict:
@@ -54,7 +54,7 @@ def test_budget_health_revision_sensitivity_penalizes_revised_lines_more_when_hi
         assert rent_paid.status_code == 200, rent_paid.text
         rent_revised = client.patch(
             f"/api/periods/{finperiodid}/expense/Rent/status",
-            json={"status": "Revised", "revision_comment": "Adjust rent"},
+            json={"status": "Revised"},
         )
         assert rent_revised.status_code == 200, rent_revised.text
 
@@ -62,7 +62,7 @@ def test_budget_health_revision_sensitivity_penalizes_revised_lines_more_when_hi
         assert groceries_paid.status_code == 200, groceries_paid.text
         groceries_revised = client.patch(
             f"/api/periods/{finperiodid}/expense/Groceries/status",
-            json={"status": "Revised", "revision_comment": "Adjust groceries"},
+            json={"status": "Revised"},
         )
         assert groceries_revised.status_code == 200, groceries_revised.text
 
@@ -74,6 +74,48 @@ def test_budget_health_revision_sensitivity_penalizes_revised_lines_more_when_hi
     low_stability = next(pillar for pillar in low_health["pillars"] if pillar["key"] == "planning_stability")
     high_stability = next(pillar for pillar in high_health["pillars"] if pillar["key"] == "planning_stability")
     assert high_stability["score"] < low_stability["score"]
+
+
+def test_budget_health_detects_off_plan_lines_from_budget_adjustment_history_even_after_line_returns_to_paid(client, db_session):
+    setup = create_minimum_budget_setup(db_session)
+    budget = setup["budget"]
+
+    active_period = generate_periods(
+        client,
+        budgetid=budget.budgetid,
+        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        count=1,
+    )[0]
+
+    mark_paid = client.patch(
+        f"/api/periods/{active_period['finperiodid']}/expense/Rent/status",
+        json={"status": "Paid"},
+    )
+    assert mark_paid.status_code == 200, mark_paid.text
+
+    revise = client.patch(
+        f"/api/periods/{active_period['finperiodid']}/expense/Rent/status",
+        json={"status": "Revised"},
+    )
+    assert revise.status_code == 200, revise.text
+
+    adjust = client.patch(
+        f"/api/periods/{active_period['finperiodid']}/expense/Rent/budget",
+        json={"budgetamount": "1300.00", "scope": "current", "note": "Rent increased this month"},
+    )
+    assert adjust.status_code == 200, adjust.text
+
+    repay = client.patch(
+        f"/api/periods/{active_period['finperiodid']}/expense/Rent/status",
+        json={"status": "Paid"},
+    )
+    assert repay.status_code == 200, repay.text
+
+    health = _health_payload(client, budget.budgetid)
+    planning_stability = next(pillar for pillar in health["pillars"] if pillar["key"] == "planning_stability")
+    assert planning_stability["score"] < 100
+    off_plan = next(item for item in planning_stability["evidence"] if item["label"] == "Off-plan activity")
+    assert off_plan["value"] == "1/2"
 
 
 def test_budget_health_current_period_weighting_can_shift_overall_score_without_changing_other_pillars(client, db_session):

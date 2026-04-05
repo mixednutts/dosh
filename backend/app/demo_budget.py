@@ -211,7 +211,6 @@ def _apply_current_period_health_pressure(period) -> None:
     groceries = expenses_by_desc.get("Groceries")
     if groceries:
         groceries.status = "Revised"
-        groceries.revision_comment = "Food costs ran ahead of plan after hosting family this month."
 
 
 def _add_demo_budget_adjustments(period, db: Session) -> None:

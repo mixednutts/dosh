@@ -31,6 +31,7 @@ def _to_investment_tx_out(tx: PeriodTransaction) -> InvestmentTxOut:
         linked_incomedesc=tx.linked_incomedesc,
         type=tx.type,
         entry_kind=getattr(tx, "entry_kind", "movement"),
+        line_status=getattr(tx, "line_status", None),
         budget_scope=getattr(tx, "budget_scope", None),
         budget_before_amount=getattr(tx, "budget_before_amount", None),
         budget_after_amount=getattr(tx, "budget_after_amount", None),

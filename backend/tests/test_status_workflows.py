@@ -34,15 +34,9 @@ def test_paid_expense_requires_revision_before_more_changes(client, db_session):
     )
     assert add_entry.status_code == 423
 
-    missing_comment = client.patch(
-        f"/api/periods/{active_period['finperiodid']}/expense/Rent/status",
-        json={"status": "Revised"},
-    )
-    assert missing_comment.status_code == 422
-
     revise = client.patch(
         f"/api/periods/{active_period['finperiodid']}/expense/Rent/status",
-        json={"status": "Revised", "revision_comment": "Need to fix the final amount"},
+        json={"status": "Revised"},
     )
     assert revise.status_code == 200, revise.text
 
@@ -83,15 +77,9 @@ def test_paid_investment_requires_revision_before_more_changes(client, db_sessio
     )
     assert add_transaction.status_code == 423
 
-    missing_comment = client.patch(
-        f"/api/periods/{active_period['finperiodid']}/investment/Emergency%20Fund/status",
-        json={"status": "Revised"},
-    )
-    assert missing_comment.status_code == 422
-
     revise = client.patch(
         f"/api/periods/{active_period['finperiodid']}/investment/Emergency%20Fund/status",
-        json={"status": "Revised", "revision_comment": "Adjusting the transfer amount"},
+        json={"status": "Revised"},
     )
     assert revise.status_code == 200, revise.text
 

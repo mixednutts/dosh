@@ -144,7 +144,7 @@ def recalculate_budget_chain(budgetid: int, db: Session) -> None:
     previous_period: FinancialPeriod | None = None
     for period in periods:
         rebalance_period_openings(period, previous_period, db)
-        if previous_period is not None:
+        if previous_period is not None and previous_period.closed_at is not None:
             upsert_carried_forward_line(period.finperiodid, period.budgetid, carry_forward_amount_for_period(previous_period), db)
         else:
             remove_carried_forward_line(period.finperiodid, db)

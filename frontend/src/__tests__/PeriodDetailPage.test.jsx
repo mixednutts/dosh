@@ -11,6 +11,7 @@ jest.mock('../api/client', () => ({
   getIncomeTransactions: jest.fn(),
   addIncomeTransaction: jest.fn(),
   deleteIncomeTransaction: jest.fn(),
+  createIncomeType: jest.fn(),
   addExpenseToPeriod: jest.fn(),
   addIncomeToPeriod: jest.fn(),
   savingsTransfer: jest.fn(),
@@ -49,6 +50,7 @@ const client = require('../api/client')
 describe('PeriodDetailPage', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    client.createIncomeType.mockResolvedValue({})
   })
 
   it('shows closed-cycle read-only messaging and snapshot details', async () => {
@@ -408,6 +410,90 @@ describe('PeriodDetailPage', () => {
     })
   })
 
+  it('allows creating a new income type directly from the add income modal', async () => {
+    client.getBalanceTypes.mockResolvedValue([
+      { balancedesc: 'Everyday Account', balance_type: 'Transaction' },
+    ])
+    client.getIncomeTypes.mockResolvedValue([
+      {
+        incomedesc: 'Salary',
+        issavings: false,
+        isfixed: true,
+        autoinclude: true,
+        amount: '2000.00',
+        linked_account: 'Everyday Account',
+      },
+    ])
+    client.addIncomeToPeriod.mockResolvedValue({})
+    client.getBudget.mockResolvedValue({
+      budgetid: 1,
+      budgetowner: 'Alex',
+      description: 'Home Budget',
+      budget_frequency: 'Monthly',
+      allow_cycle_lock: true,
+    })
+    client.getPeriodDetail.mockResolvedValue({
+      period: {
+        finperiodid: 63,
+        budgetid: 1,
+        startdate: '2026-09-01T00:00:00',
+        enddate: '2026-09-30T00:00:00',
+        islocked: false,
+        cycle_status: 'ACTIVE',
+      },
+      incomes: [
+        {
+          finperiodid: 63,
+          budgetid: 1,
+          incomedesc: 'Salary',
+          budgetamount: '2000.00',
+          actualamount: '0.00',
+          varianceamount: '-2000.00',
+          is_system: false,
+          system_key: null,
+        },
+      ],
+      expenses: [],
+      investments: [],
+      balances: [],
+      closeout_snapshot: null,
+    })
+
+    renderWithProviders(<PeriodDetailPage />, {
+      route: '/periods/63',
+      path: '/periods/:periodId',
+    })
+
+    fireEvent.click(await screen.findByText('Add New Income Line Item'))
+    fireEvent.click(screen.getByText('New income'))
+    fireEvent.change(screen.getByPlaceholderText('e.g. Bonus'), { target: { value: 'Bonus' } })
+    fireEvent.change(screen.getAllByRole('spinbutton')[0], { target: { value: '450.00' } })
+    fireEvent.change(screen.getByPlaceholderText('Why are you adding this line?'), { target: { value: 'Added for this quarter' } })
+    fireEvent.click(screen.getByLabelText('This + future unlocked budget cycles'))
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }))
+
+    await waitFor(() => {
+      expect(client.createIncomeType).toHaveBeenCalledWith(1, {
+        incomedesc: 'Bonus',
+        issavings: false,
+        isfixed: true,
+        autoinclude: true,
+        amount: 450,
+        linked_account: null,
+      })
+    })
+
+    await waitFor(() => {
+      expect(client.addIncomeToPeriod).toHaveBeenCalledWith(63, {
+        budgetid: 1,
+        incomedesc: 'Bonus',
+        budgetamount: 450,
+        scope: 'future',
+        note: 'Added for this quarter',
+      })
+    })
+  })
+
   it('requires confirmation before marking an over-budget investment as paid', async () => {
     client.getBudget.mockResolvedValue({
       budgetid: 1,
@@ -645,7 +731,7 @@ describe('PeriodDetailPage', () => {
 
   })
 
-  it('requires a revision comment before reopening a paid expense', async () => {
+  it('reopens a paid expense as revised immediately', async () => {
     client.getBudget.mockResolvedValue({
       budgetid: 1,
       budgetowner: 'Alex',
@@ -689,24 +775,14 @@ describe('PeriodDetailPage', () => {
       path: '/periods/:periodId',
     })
 
-    fireEvent.click(await screen.findByTitle(/Click to revise with a comment/))
-
-    expect(await screen.findByText('Revise Expense — Utilities')).toBeTruthy()
-    fireEvent.click(screen.getByText('Revise Expense'))
-    expect(await screen.findByText('A revision comment is required')).toBeTruthy()
-    expect(client.setPeriodExpenseStatus).not.toHaveBeenCalled()
-
-    fireEvent.change(screen.getByPlaceholderText('Why does this paid expense need to be revised?'), {
-      target: { value: 'Bill was corrected after supplier adjustment.' },
-    })
-    fireEvent.click(screen.getByText('Revise Expense'))
+    fireEvent.click(await screen.findByTitle(/Click to reopen as Revised/))
 
     await waitFor(() => {
-      expect(client.setPeriodExpenseStatus).toHaveBeenCalledWith(59, 'Utilities', 'Revised', 'Bill was corrected after supplier adjustment.')
+      expect(client.setPeriodExpenseStatus).toHaveBeenCalledWith(59, 'Utilities', 'Revised', null)
     })
   })
 
-  it('requires a revision comment before reopening a paid investment', async () => {
+  it('reopens a paid investment as revised immediately', async () => {
     client.getBudget.mockResolvedValue({
       budgetid: 1,
       budgetowner: 'Alex',
@@ -752,18 +828,8 @@ describe('PeriodDetailPage', () => {
 
     fireEvent.click((await screen.findAllByText('Paid')).find(element => element.tagName === 'BUTTON'))
 
-    expect(await screen.findByText('Revise Investment — Brokerage')).toBeTruthy()
-    fireEvent.click(screen.getByText('Revise Investment'))
-    expect(await screen.findByText('A revision comment is required')).toBeTruthy()
-    expect(client.setPeriodInvestmentStatus).not.toHaveBeenCalled()
-
-    fireEvent.change(screen.getByRole('textbox'), {
-      target: { value: 'Reopened after brokerage correction landed late.' },
-    })
-    fireEvent.click(screen.getByText('Revise Investment'))
-
     await waitFor(() => {
-      expect(client.setPeriodInvestmentStatus).toHaveBeenCalledWith(60, 'Brokerage', 'Revised', 'Reopened after brokerage correction landed late.')
+      expect(client.setPeriodInvestmentStatus).toHaveBeenCalledWith(60, 'Brokerage', 'Revised', null)
     })
   })
 })

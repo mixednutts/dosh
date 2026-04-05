@@ -202,6 +202,37 @@ Maintenance notes:
 
 - should remain focused on the cleanup and unification topic, not general ledger behavior
 
+### BUDGET_ADJUSTMENT_REVISION_HISTORY_PLAN.md
+
+Document:
+
+- [BUDGET_ADJUSTMENT_REVISION_HISTORY_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_ADJUSTMENT_REVISION_HISTORY_PLAN.md)
+
+Document type:
+
+- domain or workflow plan
+
+Primary purpose:
+
+- define budget-adjustment workflow, revision-history behavior, and shared adjustment-history rules
+
+Primary source-of-truth scope:
+
+- budget-adjustment workflow rules
+- `BUDGETADJ` history behavior
+- revision-workflow simplification boundaries
+- setup-history sourcing for budget adjustments
+
+Key relationships:
+
+- informs health and quality roadmap items in [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md)
+- complements current-state and handoff guidance in [PROJECT_CONTEXT.md](/home/ubuntu/dosh/docs/PROJECT_CONTEXT.md)
+- relates to implementation history in [CHANGES.md](/home/ubuntu/dosh/docs/CHANGES.md)
+
+Maintenance notes:
+
+- should remain the main rules document for budget-adjustment and revision-history behavior rather than becoming a second change log
+
 ### AI_INSIGHT_ON_CLOSEOUT_PLAN.md
 
 Document:

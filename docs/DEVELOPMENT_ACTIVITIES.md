@@ -20,6 +20,7 @@ It complements:
 - [CHANGES.md](/home/ubuntu/dosh/docs/CHANGES.md) for recorded product decisions and recent implementation history
 - [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/docs/plans/BUDGET_HEALTH_ADDENDUM.md) for staged budget health direction
 - [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_CYCLE_LIFECYCLE_PLAN.md) for the detailed cycle lifecycle and close-out plan that is now partially implemented
+- [BUDGET_ADJUSTMENT_REVISION_HISTORY_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_ADJUSTMENT_REVISION_HISTORY_PLAN.md) for the budget-adjustment, revision-history, and setup-history rules implemented this session
 - [SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md](/home/ubuntu/dosh/docs/plans/SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md) for the centralized setup-validity and downstream-protection model implemented this session
 - [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) for the current proposed testing approach, priorities, and case inventory
 - [TEST_EXPANSION_PLAN.md](/home/ubuntu/dosh/docs/tests/TEST_EXPANSION_PLAN.md) for the current testing follow-up plan and next coverage slices
@@ -309,6 +310,7 @@ Status:
 
 - `Next`
 
+- `Completed`: shift current-period planning stability away from required revision-comment capture by recording transaction line state and using off-plan activity history in budget health
 - refine current-period warning signals
 - prepare for close-out metrics integration
 - align the overall budget health detail view with the dedicated current-period health check so the active-period story does not conflict between the two surfaces
@@ -332,6 +334,7 @@ Status:
 
 - `Active`
 
+- `Completed`: update the demo seed to match the lighter revision workflow and the newer transaction-backed planning-history model
 - keep development and demo data realistic enough that health surfaces remain meaningful during walkthroughs and regression checks
 - keep the demo seed aligned with later budget-health scoring changes so walkthrough data does not become misleading or stale
 - expand the demo seed to include expense items with varied types and recurrence patterns so calendar, timing, and workflow walkthroughs better reflect real use
@@ -521,6 +524,9 @@ Status:
 
 - `Next`
 
+- `Completed`: move budget editing for income, expense, and investment lines onto a shared modal-driven adjustment workflow with note capture and current-or-future-unlocked scope
+- `Completed`: add setup-level history review for income, expense, and investment items using the shared `PeriodTransaction` and `BUDGETADJ` model
+- `Completed`: allow the add-income modal to create a brand-new income setup item inline, matching the supported expense workflow more closely
 - change modal wording in expense, investment, and income workflows from `Add Full` to `Add Remaining` for clearer and more consistent transaction-entry language
 - make modal `Add Remaining` values in expense, investment, and income workflows resolve as budget amount minus total recorded amount, with deficit outcomes clamped to `$0.00`
 
@@ -530,6 +536,7 @@ Status:
 
 - `Active`
 
+- `Completed`: add regression coverage for budget-adjustment history, carry-forward-on-close-out timing, and direct paid-to-revised workflow behavior
 - keep new feature work under a test-with-change discipline rather than treating testing as a later cleanup phase
 - extend Playwright from the current happy-path lifecycle smoke into reconciliation, correction, and broader scenario-shaped flows
 - continue expanding setup-shape consequence coverage where technically valid configuration changes can still weaken later workflows
@@ -547,6 +554,7 @@ Status:
 
 - `Active`
 
+- `Completed`: align the deployed SQLite schema to the new budget-adjustment and transaction-line-state code after deployment exposed the gap
 - pin frontend install behavior more reliably
 - keep the Node 20 frontend Docker baseline healthy and revisit newer LTS adoption only when the toolchain is ready
 - verify compose assumptions around networks and Traefik usage
@@ -565,6 +573,7 @@ Status:
 
 - `Next`
 
+- `Completed`: simplify paid-to-revised reopening by removing the separate revision-reason modal and relying on transaction-backed history instead
 - standardize terminology around savings and investments
 - standardize where the UI says `Budget Cycle` while backend and API continue using `period`
 - standardize health terminology around surplus, deficit, tolerance, threshold, and escalation
