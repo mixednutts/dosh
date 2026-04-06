@@ -31,6 +31,80 @@ For the dedicated workflow plan that now owns budget-adjustment, revision-histor
 
 For the implemented amount-entry plan that now defines inline arithmetic scope, preview behavior, and parser boundaries for period-detail modals, read [INLINE_EXPRESSION_AMOUNT_INPUT_PLAN.md](/home/ubuntu/dosh/docs/plans/INLINE_EXPRESSION_AMOUNT_INPUT_PLAN.md).
 
+## Latest Session: Create-Budget Guidance Refresh, Custom Day-Cycle Support, Setup-Copy Localisation, And Repeated Deployment Verification
+
+This session focused on the walkthrough surfaces around budget creation and budget setup, including the create-budget modal, custom day-cycle support, setup-guidance wording, and small-but-user-visible alignment or interaction bugs discovered during live review.
+
+Important direction now in place:
+
+- the create-budget modal now includes a lighter guidance surface that explains budgets and budget cycles without overwhelming the form, and the help content now sits behind a compact expand or collapse control rather than opening as a large permanent block
+- Dosh now supports custom budget cycles defined as `Every N Days`, including validation and period-end calculation support for fixed-length day-based cycles such as 10-day budgets
+- the custom day-cycle input now behaves correctly while typing and only normalizes invalid values on blur, which avoids the earlier regression where entering `10` could jump through `2` and become `20`
+- budget setup assessment and helper copy were revised to be more supportive and less tied to downstream workflow jargon, while setup-page account wording now respects the budget-level account naming preference instead of always saying `transaction`
+- the budget setup income edit bug was closed by allowing rename updates through the setup edit path when the income type is not already in downstream use
+- the account setup table header alignment was tightened so the labels line up with the displayed values more cleanly
+- the stack was rebuilt and redeployed repeatedly through the override-aware compose path while the walkthrough surfaces were refined, and the live health endpoint continued returning `{\"status\":\"ok\",\"app\":\"Dosh\"}`
+
+### 1. Create-budget now explains the workflow more directly without making the modal feel heavy
+
+The earlier create-budget modal gave too little context for first-time walkthroughs, but the initial guidance pass then became too prominent and visually heavy. This session iterated that surface toward a lighter onboarding shape.
+
+Current behavior:
+
+- [BudgetsPage.jsx](/home/ubuntu/dosh/frontend/src/pages/BudgetsPage.jsx) now shows a small informational card above the form that explains the immediate next step in the workflow
+- a separate `More about Budgets and Budget Cycles` control now expands deeper explanatory text only when the user wants it
+- the help control was refined to sit close under the top card, use a smaller visual weight, and render `Show` or `Hide` as a distinct toggle affordance rather than part of the hyperlink itself
+
+Important product meaning:
+
+- the budget-create flow now better supports walkthroughs and first-time use without turning the modal into a long onboarding document
+- future copy changes in this modal should preserve the lighter card-plus-expandable-help pattern unless a more deliberate onboarding redesign is chosen
+
+### 2. Fixed-length custom day cycles are now supported end to end
+
+This session introduced the first live slice of custom day-based budget cadence support instead of limiting budgets to only weekly, fortnightly, or monthly cycles.
+
+Current behavior:
+
+- [schemas.py](/home/ubuntu/dosh/backend/app/schemas.py) now accepts `Weekly`, `Fortnightly`, `Monthly`, or `Every N Days`
+- [period_logic.py](/home/ubuntu/dosh/backend/app/period_logic.py) now calculates inclusive period end dates for `Every N Days` cycles
+- the create-budget modal now exposes a `Custom` option that writes values such as `Every 10 Days`
+- custom day cycles are constrained to `2` through `365` days
+
+Important engineering meaning:
+
+- future budgeting cadence work can now build from a real fixed-day custom baseline rather than assuming only the original three named cadences
+- the custom day-cycle input should remain tolerant while typing and only enforce normalization after the user finishes the field
+
+### 3. Setup guidance now respects localisation and walkthrough clarity better
+
+This session also refined how setup guidance is worded once the user lands on budget setup.
+
+Current behavior:
+
+- [BudgetDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/BudgetDetailPage.jsx) now uses more supportive helper text for the primary account requirement
+- setup-page rendering now localizes assessment text so `transaction account` follows the budget’s display preference, such as `Everyday` or `Checking`, when appropriate
+- [setup_assessment.py](/home/ubuntu/dosh/backend/app/setup_assessment.py) now returns softer readiness wording that focuses on what still needs to be configured rather than referencing later downstream activities too early
+
+Important product meaning:
+
+- walkthrough copy now introduces setup in a friendlier way
+- budget-level terminology preferences now apply more consistently across setup guidance rather than stopping at account lists and forms
+
+### 4. Setup edit and layout polish now cover one long-standing bug and one visual mismatch
+
+Two smaller but meaningful setup issues were also resolved during the same pass.
+
+Current behavior:
+
+- [income_types.py](/home/ubuntu/dosh/backend/app/routers/income_types.py) now supports renaming an income type through the setup edit flow when that item is not already protected by downstream use
+- [BalanceTypesTab.jsx](/home/ubuntu/dosh/frontend/src/pages/tabs/BalanceTypesTab.jsx) now aligns its heading row more closely with the displayed account values and actions
+
+Important engineering meaning:
+
+- setup-edit regression coverage should keep treating rename behavior as part of the supported income-type workflow
+- table-layout polish in setup should preserve visual alignment when future columns or badges are introduced
+
 ## Latest Session: Budget Deletion Foreign-Key Remediation And Redeployment
 
 This session focused on a backend delete-path failure where removing a budget could raise a SQLite `FOREIGN KEY constraint failed` error once setup revision history existed for that budget.

@@ -81,6 +81,10 @@ function sortBlockingIssues(issues = []) {
   })
 }
 
+function localizeSetupIssue(issue, preferredTransactionLabel) {
+  return issue.replaceAll('transaction account', `${preferredTransactionLabel.toLowerCase()} account`)
+}
+
 function SectionShell({ id, title, summary, helper, children, badge, statusBadge, collapsible = false, collapsed = false, onToggle }) {
   return (
     <section id={id} className="scroll-mt-28">
@@ -297,8 +301,9 @@ export default function BudgetDetailPage() {
   const activeExpenseItems = expenseItems.filter(item => item.active)
   const hasAccounts = accounts.length > 0
   const primaryAccount = accounts.find(account => account.is_primary)
-  const orderedBlockingIssues = sortBlockingIssues(setupAssessment?.blocking_issues)
   const preferredTransactionLabel = getPreferredTransactionLabel(budget.account_naming_preference)
+  const orderedBlockingIssues = sortBlockingIssues(setupAssessment?.blocking_issues)
+    .map(issue => localizeSetupIssue(issue, preferredTransactionLabel))
 
   const jumpToSection = sectionId => {
     setActiveSection(sectionId)
@@ -358,7 +363,7 @@ export default function BudgetDetailPage() {
       <SectionShell
         id="budget-info"
         title="Budget Info"
-        summary="Some basic information about your budget."
+        summary="Review the basics of this budget and check whether the setup has the pieces needed for a first cycle."
       >
         <BudgetInfoForm budgetId={id} budget={budget} />
         <div className="mt-4 grid gap-3 sm:grid-cols-1">
@@ -376,14 +381,14 @@ export default function BudgetDetailPage() {
             }`}>
               <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Setup Assessment</p>
               <p className="mt-1 text-sm font-medium text-gray-900 dark:text-gray-100">
-                {setupAssessment.can_generate ? 'Ready for budget cycle generation' : 'The following information is needed to allow us to generate a budget cycle:'}
+                {setupAssessment.can_generate ? 'This setup is ready for your first budget cycle.' : 'A few setup details still need attention before the first budget cycle can be created.'}
               </p>
               {setupAssessment.can_generate ? (
                 <Link
                   to={`/budgets/${id}`}
                   className="mt-2 inline-flex text-sm font-medium text-dosh-700 hover:underline dark:text-dosh-400"
                 >
-                  Go to budget cycles
+                  Review budget cycles
                 </Link>
               ) : null}
               {orderedBlockingIssues.length ? (
@@ -410,8 +415,8 @@ export default function BudgetDetailPage() {
         title="Accounts"
         badge={countLabel(accounts.length, 'account')}
         statusBadge={getSectionStatus('accounts', setupAssessment)}
-        summary="Start here by creating the accounts this budget will use for balances, savings transfers, and linked transactions."
-        helper={!primaryAccount ? `Set one account as the primary ${preferredTransactionLabel.toLowerCase()} account so expense movements have a default home.` : null}
+        summary="Start here by adding the accounts you want this budget to track for spending, savings, and cash."
+        helper={!primaryAccount ? `Choose one account as the primary ${preferredTransactionLabel.toLowerCase()} account, this allow expenses to know which account to deduct from by default.` : null}
       >
         <BalanceTypesTab budgetId={id} budget={budget} />
       </SectionShell>
@@ -421,8 +426,8 @@ export default function BudgetDetailPage() {
         title="Income Types"
         badge={countLabel(incomeTypes.length, 'income type')}
         statusBadge={getSectionStatus('income_types', setupAssessment)}
-        summary="Add the income lines you want to include in generated budget cycles, including fixed income and any savings transfers."
-        helper={!hasAccounts ? 'Create at least one account first so account-linked income options are ready when you need them.' : null}
+        summary="Add the income lines you want to plan with in each budget cycle, including steady income and optional transfers."
+        helper={!hasAccounts ? 'Add an account first if you want income to flow into a tracked account.' : null}
       >
         <IncomeTypesTab budgetId={id} budget={budget} />
       </SectionShell>
@@ -432,8 +437,8 @@ export default function BudgetDetailPage() {
         title="Expense Items"
         badge={countLabel(expenseItems.length, 'expense item')}
         statusBadge={getSectionStatus('expense_items', setupAssessment)}
-        summary="Define the recurring and one-off expenses that should appear in generated budget cycles."
-        helper={!hasAccounts ? 'Create at least one account first so expense tracking has an account structure in place as that behaviour develops.' : null}
+        summary="Define the recurring and one-off expenses you want each cycle to plan around."
+        helper={!hasAccounts ? 'Add an account first so future expense entries can be connected to one when you need that.' : null}
       >
         <ExpenseItemsTab budgetId={id} />
       </SectionShell>
@@ -443,8 +448,8 @@ export default function BudgetDetailPage() {
         title="Investments"
         badge={countLabel(investmentItems.length, 'investment')}
         statusBadge={getSectionStatus('investment_items', setupAssessment)}
-        summary="Add investment lines for contributions, balances, and account-linked investment activity."
-        helper={!hasAccounts ? 'Create at least one account first so linked investment accounts are available when needed.' : null}
+        summary="Add investment lines for contributions, balances, and longer-term goals you want this budget to reflect."
+        helper={!hasAccounts ? 'Add an account first if you want investment contributions linked to a tracked account.' : null}
       >
         <InvestmentItemsTab budgetId={id} budget={budget} />
       </SectionShell>

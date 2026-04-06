@@ -47,6 +47,27 @@ def test_fixed_income_setup_enforces_autoinclude_on_create_and_update(client, db
     assert payload["autoinclude"] is True
 
 
+def test_income_type_can_be_renamed_from_budget_setup_when_not_in_use(client, db_session):
+    budget = create_budget(db_session)
+    create_income_type(db_session, budgetid=budget.budgetid, incomedesc="Salary", amount=Decimal("2500.00"))
+
+    update_response = client.patch(
+        f"/api/budgets/{budget.budgetid}/income-types/Salary",
+        json={"incomedesc": "Main Salary", "amount": "2600.00"},
+    )
+
+    assert update_response.status_code == 200, update_response.text
+    payload = update_response.json()
+    assert payload["incomedesc"] == "Main Salary"
+    assert payload["amount"] == "2600.00"
+
+    list_response = client.get(f"/api/budgets/{budget.budgetid}/income-types/")
+    assert list_response.status_code == 200, list_response.text
+    income_descriptions = [item["incomedesc"] for item in list_response.json()]
+    assert "Main Salary" in income_descriptions
+    assert "Salary" not in income_descriptions
+
+
 def test_primary_balance_and_primary_investment_selection_stay_unique(client, db_session):
     budget = create_budget(db_session)
 

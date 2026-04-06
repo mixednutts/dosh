@@ -42,6 +42,7 @@ These guidelines apply across the project as a whole and should continue guiding
 - avoid duplicate edit or setup entry points on the same screen unless they serve clearly different purposes
 - keep budget-edit affordances visually attached to the budget amount they change rather than mixing them into transaction-action rails
 - calculation-aided amount entry should keep the raw typed expression visible and avoid treating incomplete arithmetic input as a hard validation failure while the user is still typing
+- lightweight onboarding or explainer copy in high-traffic flows should stay compact by default and expand for deeper detail only when the user asks for it
 
 ### Domain Integrity
 
@@ -77,6 +78,7 @@ These guidelines apply across the project as a whole and should continue guiding
 
 - treat localisation as explicit and centrally managed
 - prefer display-layer regional variation over unnecessary internal domain renaming
+- setup guidance and readiness messaging should respect the budget-level account naming preference rather than hard-coding `transaction` wording when a localized label such as `Everyday` or `Checking` is active
 
 ### Testing and Change Safety
 
@@ -214,6 +216,9 @@ The repository already supports:
 - add-income-from-period flow that can either reuse an existing setup item or create a brand-new income item inline
 - shared components, setup tabs, and high-traffic budget pages now have explicit React props validation as part of the frontend quality baseline
 - the browser entry HTML now includes a live Dosh favicon and touch icon sourced from the shared public brand asset
+- the create-budget modal now includes a compact guidance card plus expandable `More about Budgets and Budget Cycles` help content instead of a permanently expanded explainer block
+- budget creation now supports custom fixed-length cycles using `Every N Days`, with the create-budget form exposing that as a custom day-cycle option
+- budget setup now supports renaming an income type through the setup edit flow when that item is not already protected by downstream use
 
 Current frontend wording trends toward `Budget Cycle` for user clarity while backend naming still uses `period` for stability.
 

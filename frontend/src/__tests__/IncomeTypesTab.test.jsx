@@ -108,7 +108,7 @@ describe('IncomeTypesTab', () => {
     })
   })
 
-  it('updates an existing income type and can remove its linked account', async () => {
+  it('updates an existing income type, including renaming it and removing its linked account', async () => {
     client.getIncomeTypes.mockResolvedValue([
       {
         incomedesc: 'Salary',
@@ -128,6 +128,9 @@ describe('IncomeTypesTab', () => {
     fireEvent.click(screen.getAllByRole('button').find(button => button.className.includes('btn-secondary') && !button.title))
     expect(await screen.findByRole('heading', { name: 'Edit Income Type' })).toBeTruthy()
 
+    fireEvent.change(screen.getByPlaceholderText('e.g. Salary'), {
+      target: { value: 'Main Salary' },
+    })
     fireEvent.change(screen.getByRole('spinbutton'), {
       target: { value: '2600' },
     })
@@ -138,7 +141,7 @@ describe('IncomeTypesTab', () => {
 
     await waitFor(() => {
       expect(client.updateIncomeType).toHaveBeenCalledWith(1, 'Salary', {
-        incomedesc: 'Salary',
+        incomedesc: 'Main Salary',
         issavings: false,
         isfixed: true,
         autoinclude: true,

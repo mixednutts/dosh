@@ -143,22 +143,27 @@ export default function BalanceTypesTab({ budgetId, budget }) {
         </div>
       ) : (
         <div className="card divide-y divide-gray-100 dark:divide-gray-800">
-          <div className="grid grid-cols-[1fr_auto_auto_auto_auto_auto] gap-2 px-4 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-            <span>Account</span><span>Type</span><span>Opening Balance</span><span>Primary</span><span>Active</span><span></span>
+          <div className="grid grid-cols-[minmax(0,1.6fr)_minmax(7rem,0.9fr)_minmax(8rem,1fr)_minmax(5rem,0.7fr)_minmax(5rem,0.7fr)_auto] gap-3 px-4 py-2 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            <span>Account</span>
+            <span className="justify-self-end text-right">Type</span>
+            <span className="justify-self-end text-right">Opening Balance</span>
+            <span className="justify-self-end text-right">Primary</span>
+            <span className="justify-self-end text-right">Active</span>
+            <span></span>
           </div>
           {types.map(t => {
             const usage = accountUsageByDesc[t.balancedesc]
             return (
-            <div key={t.balancedesc} className="grid grid-cols-[1fr_auto_auto_auto_auto_auto] gap-2 items-center px-4 py-2.5 text-sm">
-              <span className="font-medium text-gray-800 dark:text-gray-100">
+            <div key={t.balancedesc} className="grid grid-cols-[minmax(0,1.6fr)_minmax(7rem,0.9fr)_minmax(8rem,1fr)_minmax(5rem,0.7fr)_minmax(5rem,0.7fr)_auto] items-center gap-3 px-4 py-2.5 text-sm">
+              <span className="min-w-0 font-medium text-gray-800 dark:text-gray-100">
                 {t.balancedesc}
                 {usage?.in_use ? <span className="ml-2 badge-amber">In Use</span> : null}
               </span>
-              <span><span className={TYPE_BADGE[t.balance_type] ?? 'badge-gray'}>{getBalanceTypeLabel(t.balance_type, accountNamingPreference)}</span></span>
-              <span className="text-gray-600 dark:text-gray-300">{fmt(t.opening_balance)}</span>
-              <span>{t.is_primary ? <span className="badge-green">Yes</span> : <span className="badge-gray">—</span>}</span>
-              <span>{t.active ? <span className="badge-green">Active</span> : <span className="badge-gray">Inactive</span>}</span>
-              <div className="flex gap-1">
+              <span className="justify-self-end text-right"><span className={TYPE_BADGE[t.balance_type] ?? 'badge-gray'}>{getBalanceTypeLabel(t.balance_type, accountNamingPreference)}</span></span>
+              <span className="justify-self-end text-right text-gray-600 dark:text-gray-300">{fmt(t.opening_balance)}</span>
+              <span className="justify-self-end text-right">{t.is_primary ? <span className="badge-green">Yes</span> : <span className="badge-gray">—</span>}</span>
+              <span className="justify-self-end text-right">{t.active ? <span className="badge-green">Active</span> : <span className="badge-gray">Inactive</span>}</span>
+              <div className="flex justify-end gap-1">
                 <button className="btn-secondary" onClick={() => setModal({ mode: 'edit', item: t })}>
                   <PencilIcon className="w-3 h-3" />
                 </button>

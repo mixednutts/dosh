@@ -9,10 +9,16 @@ import Modal from '../components/Modal'
 import Spinner from '../components/Spinner'
 
 const FREQUENCIES = ['Weekly', 'Fortnightly', 'Monthly']
+const CUSTOM_DAY_CYCLE_VALUE = '__custom_day_cycle__'
 const isDevModeEnabled = () => (typeof __DEV_MODE__ !== 'undefined' ? __DEV_MODE__ : false)
 
 const emptyForm = { description: '', budgetowner: '', budget_frequency: 'Fortnightly' }
 const fmtCurrency = value => Number(value ?? 0).toLocaleString('en-AU', { style: 'currency', currency: 'AUD' })
+
+function parseCustomDayCycle(frequency) {
+  const match = /^Every (\d+) Days$/.exec(frequency || '')
+  return match ? match[1] : ''
+}
 
 function healthDotClass(status) {
   if (status === 'Strong') return 'bg-success-500'
@@ -865,11 +871,64 @@ function BudgetHealthModal({ budget, health, onClose }) {
 
 function BudgetForm({ initial = emptyForm, onSubmit, onCreateDemo, onClose, loading, demoLoading, showDemoOption }) {
   const [form, setForm] = useState(initial)
+  const [showBudgetHelp, setShowBudgetHelp] = useState(false)
+  const [frequencySelection, setFrequencySelection] = useState(() => (
+    FREQUENCIES.includes(initial.budget_frequency) ? initial.budget_frequency : CUSTOM_DAY_CYCLE_VALUE
+  ))
+  const [customCycleDays, setCustomCycleDays] = useState(() => parseCustomDayCycle(initial.budget_frequency) || '')
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+  const resolvedFrequency = frequencySelection === CUSTOM_DAY_CYCLE_VALUE
+    ? `Every ${customCycleDays} Days`
+    : frequencySelection
+  const customCyclePreview = customCycleDays ? `Every ${customCycleDays} Days` : 'Every ___ Days'
+  const isCustomCycleInvalid = frequencySelection === CUSTOM_DAY_CYCLE_VALUE && (
+    !customCycleDays || Number(customCycleDays) < 2 || Number(customCycleDays) > 365
+  )
 
   return (
     <div className="space-y-5">
-      <form onSubmit={e => { e.preventDefault(); onSubmit(form) }} className="space-y-4">
+      <div className="space-y-1.5">
+        <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/60">
+          <p className="text-xs text-gray-600 dark:text-gray-300">
+            We will create our basic budget information here, then guide you through setup before we create your first budget cycle.
+          </p>
+        </div>
+        <div className="pl-2">
+          <button
+            type="button"
+            onClick={() => setShowBudgetHelp(current => !current)}
+            className="inline-flex items-center gap-2 text-xs transition-colors"
+            aria-expanded={showBudgetHelp}
+            aria-controls="budget-help-panel"
+          >
+            <span className="text-dosh-600 underline underline-offset-2 hover:text-dosh-700 dark:text-dosh-300 dark:hover:text-dosh-200">
+              More about Budgets and Budget Cycles
+            </span>
+            <span className="rounded border border-gray-300 px-1.5 py-0.5 text-[11px] font-medium text-gray-600 dark:border-gray-600 dark:text-gray-300">
+              {showBudgetHelp ? 'Hide' : 'Show'}
+            </span>
+          </button>
+          {showBudgetHelp ? (
+            <div id="budget-help-panel" className="mt-3 rounded-lg border border-dosh-200 bg-dosh-50/70 px-4 py-4 dark:border-dosh-800 dark:bg-dosh-950/30">
+              <p className="text-sm text-gray-600 dark:text-gray-300">
+                A budget is a financial plan that estimates income and expenses over a specific period. It acts as a roadmap for how you intend to spend, save, and manage your money.
+              </p>
+              <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                A Dosh budget is made of various Account, Expense &amp; Investment information that allows you to manage and track your personal finances through your budget cycles.
+              </p>
+              <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                A budget cycle is a repeating period in days that represents the time frame of your financial planning. The end of one budget cycle directly informs the beginning of the next while also allowing evaluation of how the budget performed during that cycle.
+              </p>
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      <form onSubmit={e => {
+        e.preventDefault()
+        if (isCustomCycleInvalid) return
+        onSubmit({ ...form, budget_frequency: resolvedFrequency })
+      }} className="space-y-4">
         <div>
           <label className="label">Description</label>
           <input className="input" value={form.description} onChange={e => set('description', e.target.value)} placeholder="e.g. Household Budget 2025" />
@@ -879,14 +938,81 @@ function BudgetForm({ initial = emptyForm, onSubmit, onCreateDemo, onClose, load
           <input required className="input" value={form.budgetowner} onChange={e => set('budgetowner', e.target.value)} placeholder="Your name" />
         </div>
         <div>
-          <label className="label">Frequency <span className="text-red-500">*</span></label>
-          <select required className="input" value={form.budget_frequency} onChange={e => set('budget_frequency', e.target.value)}>
+          <label className="label">Budget Cycle <span className="text-red-500">*</span></label>
+          <select
+            required
+            className="input"
+            value={frequencySelection}
+            onChange={e => {
+              setFrequencySelection(e.target.value)
+              if (e.target.value !== CUSTOM_DAY_CYCLE_VALUE) {
+                set('budget_frequency', e.target.value)
+              }
+            }}
+          >
             {FREQUENCIES.map(f => <option key={f}>{f}</option>)}
+            <option value={CUSTOM_DAY_CYCLE_VALUE}>Custom</option>
           </select>
+          <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+            Choose the budget cycle you want Dosh to plan around.
+          </p>
+        </div>
+        {frequencySelection === CUSTOM_DAY_CYCLE_VALUE ? (
+          <div>
+            <label className="label">Cycle length in days <span className="text-red-500">*</span></label>
+            <input
+              required
+              min="2"
+              max="365"
+              type="number"
+              className="input"
+              value={customCycleDays}
+              onChange={e => {
+                const nextValue = e.target.value
+                if (!nextValue) {
+                  setCustomCycleDays('')
+                  return
+                }
+
+                const parsedValue = Number(nextValue)
+                if (Number.isNaN(parsedValue)) {
+                  return
+                }
+                setCustomCycleDays(nextValue)
+              }}
+              onBlur={() => {
+                if (!customCycleDays) return
+                const parsedValue = Number(customCycleDays)
+                if (Number.isNaN(parsedValue)) {
+                  setCustomCycleDays('')
+                  return
+                }
+                if (parsedValue < 2) {
+                  setCustomCycleDays('2')
+                  return
+                }
+                if (parsedValue > 365) {
+                  setCustomCycleDays('365')
+                }
+              }}
+              aria-label="Cycle length in days"
+            />
+            <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+              Dosh will treat this budget as <span className="font-semibold text-gray-700 dark:text-gray-200">{customCyclePreview}</span>.
+            </p>
+            {isCustomCycleInvalid ? (
+              <p className="mt-2 text-xs text-red-600 dark:text-red-400">
+                Enter a whole number of days between 2 and 365.
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+        <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-xs text-gray-600 dark:border-gray-700 dark:bg-gray-800/60 dark:text-gray-300">
+          After saving the basic budget information, we will add accounts, income types, and expense items before generating our first budget cycle.
         </div>
         <div className="flex justify-end gap-2 pt-2">
           <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
-          <button type="submit" className="btn-primary" disabled={loading || demoLoading}>
+          <button type="submit" className="btn-primary" disabled={loading || demoLoading || isCustomCycleInvalid}>
             {loading ? 'Saving…' : 'Save'}
           </button>
         </div>

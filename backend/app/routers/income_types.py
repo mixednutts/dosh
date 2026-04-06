@@ -75,6 +75,11 @@ def update_income_type(
     it = _get_income_type_or_404(budgetid, incomedesc, db)
     _assert_income_edit_allowed(budgetid, incomedesc, db)
     data = payload.model_dump(exclude_none=True)
+    new_desc = data.get("incomedesc")
+    if new_desc and new_desc != incomedesc:
+        existing = db.get(IncomeType, (budgetid, new_desc))
+        if existing:
+            raise HTTPException(409, "Income type with this description already exists")
     revision_fields = {"amount"}
     changed_fields = build_changed_fields(it, data, revision_fields)
     is_revision = bool(changed_fields)
@@ -88,13 +93,13 @@ def update_income_type(
             db,
             budgetid=budgetid,
             category="income",
-            item_desc=incomedesc,
+            item_desc=it.incomedesc,
         )
         record_setup_revision_event(
             db,
             budgetid=budgetid,
             category="income",
-            item_desc=incomedesc,
+            item_desc=it.incomedesc,
             revisionnum=it.revisionnum,
             changed_fields=changed_fields,
         )

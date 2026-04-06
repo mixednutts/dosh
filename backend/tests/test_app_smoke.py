@@ -85,6 +85,20 @@ def test_budget_account_naming_preference_can_be_saved(client):
     assert response.json()["account_naming_preference"] == "Checking"
 
 
+def test_budget_can_be_created_with_a_custom_day_cycle(client):
+    response = client.post(
+        "/api/budgets/",
+        json={
+            "budgetowner": "Cadence User",
+            "description": "Ten Day Budget",
+            "budget_frequency": "Every 10 Days",
+        },
+    )
+
+    assert response.status_code == 201, response.text
+    assert response.json()["budget_frequency"] == "Every 10 Days"
+
+
 def test_budget_can_be_deleted_after_setup_revision_history_exists(client, db_session):
     setup = create_minimum_budget_setup(db_session)
     budget = setup["budget"]

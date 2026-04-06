@@ -84,6 +84,61 @@ describe('BudgetsPage', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/budgets/88')
   })
 
+  it('explains what a budget is and supports custom day-cycle creation', async () => {
+    renderWithProviders(<BudgetsPage />, {
+      route: '/budgets',
+      path: '/budgets',
+    })
+
+    fireEvent.click(await screen.findByText('Create Budget'))
+
+    expect(screen.getByRole('button', { name: /More about Budgets and Budget Cycles/i })).toBeTruthy()
+    expect(screen.queryByText(/A budget is a financial plan that estimates income and expenses over a specific period\./)).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /More about Budgets and Budget Cycles/i }))
+    expect(screen.getByText(/A budget is a financial plan that estimates income and expenses over a specific period\./)).toBeTruthy()
+    expect(screen.getByText(/A Dosh budget is made of various Account, Expense & Investment information/)).toBeTruthy()
+    expect(screen.getByText(/A budget cycle is a repeating period in days that represents the time frame of your financial planning\./)).toBeTruthy()
+    expect(screen.getByText(/We will create our basic budget information here, then guide you through setup before we create your first budget cycle\./)).toBeTruthy()
+    expect(screen.getByText(/Choose the budget cycle you want Dosh to plan around\./)).toBeTruthy()
+    expect(screen.getByText(/After saving the basic budget information, we will add accounts, income types, and expense items before generating our first budget cycle\./)).toBeTruthy()
+
+    fireEvent.change(screen.getByPlaceholderText('e.g. Household Budget 2025'), {
+      target: { value: 'Ten Day Budget' },
+    })
+    fireEvent.change(screen.getByPlaceholderText('Your name'), {
+      target: { value: 'Alex' },
+    })
+    fireEvent.change(screen.getByRole('combobox'), {
+      target: { value: '__custom_day_cycle__' },
+    })
+
+    expect(screen.getByRole('spinbutton', { name: 'Cycle length in days' }).value).toBe('')
+    expect(screen.getByText('Every ___ Days')).toBeTruthy()
+
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'Cycle length in days' }), {
+      target: { value: '1' },
+    })
+    expect(screen.getByRole('spinbutton', { name: 'Cycle length in days' }).value).toBe('1')
+    fireEvent.blur(screen.getByRole('spinbutton', { name: 'Cycle length in days' }))
+    expect(screen.getByRole('spinbutton', { name: 'Cycle length in days' }).value).toBe('2')
+    expect(screen.getByText('Every 2 Days')).toBeTruthy()
+
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'Cycle length in days' }), {
+      target: { value: '10' },
+    })
+    expect(screen.getByText('Every 10 Days')).toBeTruthy()
+    fireEvent.click(screen.getByText('Save'))
+
+    await waitFor(() => {
+      expect(client.createBudget.mock.calls[0][0]).toEqual({
+        description: 'Ten Day Budget',
+        budgetowner: 'Alex',
+        budget_frequency: 'Every 10 Days',
+      })
+    })
+    expect(mockNavigate).toHaveBeenCalledWith('/budgets/21/setup')
+  })
+
   it('replaces the historical stat with a calendar-style current cycle summary', async () => {
     client.getBudgets.mockResolvedValue([
       {

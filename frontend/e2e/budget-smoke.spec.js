@@ -70,7 +70,7 @@ test('creates a budget and reaches setup and budget-cycle handoff', async ({ pag
   await createBudget(page, 'E2E Household')
   await expect(page.getByText('Current Setup')).toBeVisible()
   await expect(page.getByText('0 accounts, 0 income types, 0 active expense items, 0 investments')).toBeVisible()
-  await expect(page.getByText('Set one account as the primary transaction account so expense movements have a default home.')).toBeVisible()
+  await expect(page.getByText('Choose one account as the primary transaction account so expense entries know where to land by default.')).toBeVisible()
 
   await page.goto(page.url().replace(/\/setup$/, ''))
 

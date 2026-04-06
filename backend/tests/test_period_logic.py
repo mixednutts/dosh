@@ -12,6 +12,12 @@ def test_calc_period_end_for_monthly_returns_last_day_of_month():
     assert result == datetime(2026, 2, 28)
 
 
+def test_calc_period_end_for_custom_day_cycle_uses_inclusive_length():
+    result = calc_period_end(datetime(2026, 2, 1), "Every 10 Days")
+
+    assert result == datetime(2026, 2, 10)
+
+
 def test_expense_occurs_in_period_every_n_days_counts_multiple_occurrences():
     result = expense_occurs_in_period(
         freqtype="Every N Days",

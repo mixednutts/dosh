@@ -259,7 +259,7 @@ Status:
 
 - keep centralized setup assessment as the source of truth for generation readiness
 - avoid reintroducing one-off page-level readiness logic
-- improve setup-summary visibility before users reach cycle generation
+- `Completed`: revise setup-assessment summary and section wording so it stays informative, supportive, and guiding without referring to downstream activities users may not have encountered yet
 
 #### Activity Group: Protected Configuration
 
@@ -382,6 +382,7 @@ Status:
 - `Later`
 
 - support regional budgeting cadence and terminology without fragmenting the core model
+- `Completed`: support custom budget and pay-cycle cadences defined by a fixed number of days, such as a 10-day cycle, without weakening the existing lifecycle and generation rules
 - make health language, labels, and helper copy adaptable by locale
 - prepare for country-specific conventions such as fortnightly budgeting, date ordering, and currency display
 - identify user-facing finance terminology that may need regional variants
@@ -500,6 +501,7 @@ Status:
 - `Completed`: add a calendar-style view of income timing and expense due dates to the budget overview page, replacing the historical `# periods` summary card
 - `Completed`: restore current setup-line visibility inside the budget setup history modal while keeping revision and adjustment history visible alongside it
 - `Completed`: stabilize income-table action-column alignment on the budget-cycle detail page so delete-availability does not shift the numeric columns
+- `Completed`: add create-budget modal header copy that explains what a budget is and what the setup flow will help the user define
 - hide `Current Only` budget adjustment entries from the budget setup history modal so setup history stays focused on setup-level meaning
 - add revision and active-status columns to budget setup sections where that state is currently missing
 - add summary information to the budget cycles list page section headers, with the exact summary content still to be defined
@@ -517,7 +519,8 @@ Status:
 - `Completed`: fix the `Go to budget cycles` action from Setup Assessment on the project setup page, which currently results in a blank screen
 - `Completed`: fix the `Add New Income Item` modal so it supports creating a brand-new income line inline, matching the supported `Add New Expense Item` modal workflow
 - `Completed`: resolve the dominant SonarQube frontend issue cluster by adding explicit React props validation across shared components, setup tabs, and high-traffic budget pages
-- fix the inability to edit an income line from budget setup
+- `Completed`: fix the account setup section header alignment so the headings line up cleanly with the displayed column values
+- `Completed`: fix the inability to edit an income line from budget setup
 - `Completed`: fix budget deletion so attempting to remove a budget does not fail with a SQLite `FOREIGN KEY constraint failed` error in the backend ASGI path once setup revision history exists
 - `Completed`: add the missing webpage favicon so browser tabs and installed shortcuts show the app identity correctly
 - `Completed`: recover the budget setup sections after the live setup-history schema mismatch temporarily made income, expense, and investment lines appear missing

@@ -3,6 +3,8 @@ from decimal import Decimal
 from typing import Any, Optional
 from pydantic import BaseModel, field_validator, model_validator
 
+from .period_logic import parse_budget_frequency_days
+
 
 # ── PayType ──────────────────────────────────────────────────────────────────
 
@@ -16,15 +18,20 @@ class PayTypeOut(BaseModel):
 class BudgetBase(BaseModel):
     budgetowner: str
     description: Optional[str] = None
-    budget_frequency: str  # Weekly | Fortnightly | Monthly
+    budget_frequency: str  # Weekly | Fortnightly | Monthly | Every N Days
     account_naming_preference: str = "Transaction"
 
     @field_validator("budget_frequency")
     @classmethod
     def validate_frequency(cls, v: str) -> str:
         allowed = {"Weekly", "Fortnightly", "Monthly"}
-        if v not in allowed:
-            raise ValueError(f"budget_frequency must be one of {allowed}")
+        if v in allowed:
+            return v
+        custom_days = parse_budget_frequency_days(v)
+        if custom_days is None:
+            raise ValueError("budget_frequency must be Weekly, Fortnightly, Monthly, or Every N Days")
+        if custom_days < 2 or custom_days > 365:
+            raise ValueError("Custom day cycles must be between 2 and 365 days")
         return v
 
     @field_validator("account_naming_preference")
@@ -87,6 +94,21 @@ class BudgetUpdate(BaseModel):
         allowed = {"Transaction", "Everyday", "Checking"}
         if v not in allowed:
             raise ValueError(f"account_naming_preference must be one of {allowed}")
+        return v
+
+    @field_validator("budget_frequency")
+    @classmethod
+    def validate_optional_frequency(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        allowed = {"Weekly", "Fortnightly", "Monthly"}
+        if v in allowed:
+            return v
+        custom_days = parse_budget_frequency_days(v)
+        if custom_days is None:
+            raise ValueError("budget_frequency must be Weekly, Fortnightly, Monthly, or Every N Days")
+        if custom_days < 2 or custom_days > 365:
+            raise ValueError("Custom day cycles must be between 2 and 365 days")
         return v
 
 
@@ -173,6 +195,7 @@ class IncomeTypeCreate(IncomeTypeBase):
 
 
 class IncomeTypeUpdate(BaseModel):
+    incomedesc: Optional[str] = None
     issavings: Optional[bool] = None
     isfixed: Optional[bool] = None
     autoinclude: Optional[bool] = None

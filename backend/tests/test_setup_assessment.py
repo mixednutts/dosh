@@ -22,7 +22,7 @@ def test_setup_assessment_reports_blocking_primary_account_gap(client, db_sessio
     assert response.status_code == 200, response.text
     payload = response.json()
     assert payload["can_generate"] is False
-    assert any("primary account" in issue.lower() for issue in payload["blocking_issues"])
+    assert any("primary transaction account" in issue.lower() for issue in payload["blocking_issues"])
 
 
 def test_setup_assessment_marks_generated_primary_account_as_in_use(client, db_session):

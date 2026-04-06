@@ -243,20 +243,20 @@ def budget_setup_assessment(budgetid: int, db: Session) -> dict | None:
     warnings: list[str] = []
 
     if not income_types:
-        blocking_issues.append("Add at least one income type before generating budget cycles.")
+        blocking_issues.append("Add at least one income type so your budget cycle has income to plan with.")
 
     if not active_expense_items:
-        blocking_issues.append("Add at least one active expense item before generating budget cycles.")
+        blocking_issues.append("Add at least one active expense item so your budget cycle has spending to plan for.")
 
     if not active_accounts:
-        blocking_issues.append("Add at least one active account before generating budget cycles.")
+        blocking_issues.append("Add at least one active account so Dosh has a place to track this budget's balances.")
     elif not primary_account and active_expense_items:
-        blocking_issues.append("Set one active account as the primary account before generating budget cycles.")
+        blocking_issues.append("Choose one active account as the primary transaction account so expense entries have a default home.")
 
     if budget.auto_add_surplus_to_investment:
         primary_investment = next((item for item in investment_items if item.active and item.is_primary), None)
         if not primary_investment:
-            warnings.append("Automatic surplus allocation is enabled, but no active primary investment line is configured.")
+            warnings.append("Automatic surplus allocation is turned on, but no active primary investment line is ready yet.")
 
     return {
         "budgetid": budgetid,

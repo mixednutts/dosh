@@ -4,6 +4,99 @@ This document records meaningful automated test results from major working sessi
 
 It exists separately from [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) so the strategy can stay stable while future sessions still have a record of what was actually run and verified.
 
+## Latest Session: Create-Budget Walkthrough Hardening, Setup-Copy Localisation, And Repeated Deployment Verification
+
+Session outcomes verified in this run:
+
+- the create-budget modal now includes lighter walkthrough guidance plus an expandable `More about Budgets and Budget Cycles` help surface instead of a permanently expanded onboarding block
+- Dosh now supports custom budget cycles in the create-budget flow using `Every N Days`, and period-end generation logic now supports those fixed-length cycles in the backend
+- the custom day-cycle field was corrected after an interaction bug where entering `10` could be forced through `2` and then become `20`; it now accepts normal typing and only clamps to the valid range on blur
+- budget setup helper copy and setup-assessment wording were refreshed to be more supportive, and setup-page account terminology now respects the budget’s preferred account naming instead of always rendering `transaction`
+- the budget-setup income-type edit flow now supports renaming an income line when it is not already in downstream use
+- the account setup table header alignment was refined, and the create-budget helper-link spacing and visual treatment were iterated several times before the final deployed state
+- focused frontend and backend regression checks passed, the Playwright walkthrough smoke suite passed, and the stack was redeployed successfully after each meaningful iteration
+
+### Frontend verification
+
+Commands run during this session:
+
+```bash
+cd /home/ubuntu/dosh/frontend
+npm test -- --runInBand BudgetsPage.test.jsx BudgetDetailPage.test.jsx BudgetPeriodsPage.test.jsx BalanceTypesTab.test.jsx IncomeTypesTab.test.jsx
+npm test -- --runInBand BudgetsPage.test.jsx
+npm test -- --runInBand BudgetDetailPage.test.jsx
+npm run test:e2e -- budget-smoke.spec.js
+```
+
+Result:
+
+- the focused create-budget and setup-related Jest batch passed with 5 suites and 32 tests
+- the create-budget suite was rerun repeatedly as copy, spacing, and input-behavior changes were refined, and it finished passing with 7 tests
+- the focused budget-setup suite passed after the helper copy and account-naming localisation changes
+- the Playwright smoke run passed with 4 tests, covering create budget, minimum setup, first-cycle generation, expense activity, and close-out into the next active cycle
+
+Files with meaningful frontend updates in this session:
+
+- [BudgetsPage.jsx](/home/ubuntu/dosh/frontend/src/pages/BudgetsPage.jsx)
+- [BudgetDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/BudgetDetailPage.jsx)
+- [BalanceTypesTab.jsx](/home/ubuntu/dosh/frontend/src/pages/tabs/BalanceTypesTab.jsx)
+- [BudgetsPage.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/BudgetsPage.test.jsx)
+- [BudgetDetailPage.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/BudgetDetailPage.test.jsx)
+- [BudgetPeriodsPage.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/BudgetPeriodsPage.test.jsx)
+- [IncomeTypesTab.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/IncomeTypesTab.test.jsx)
+- [budget-smoke.spec.js](/home/ubuntu/dosh/frontend/e2e/budget-smoke.spec.js)
+
+### Backend verification
+
+Commands run during this session:
+
+```bash
+cd /home/ubuntu/dosh/backend
+./.venv/bin/python -m pytest /home/ubuntu/dosh/backend/tests/test_period_logic.py /home/ubuntu/dosh/backend/tests/test_app_smoke.py /home/ubuntu/dosh/backend/tests/test_budget_setup_workflows.py /home/ubuntu/dosh/backend/tests/test_setup_assessment.py
+```
+
+Result:
+
+- the focused backend batch passed with 35 tests
+- backend verification confirmed custom day-cycle support, the income-type rename fix, and setup-assessment behavior after the copy changes
+- the backend run still emitted the known FastAPI `on_event` and `datetime.utcnow()` deprecation warnings, which remain follow-up cleanup rather than new regressions
+
+Files with meaningful backend updates in this session:
+
+- [period_logic.py](/home/ubuntu/dosh/backend/app/period_logic.py)
+- [schemas.py](/home/ubuntu/dosh/backend/app/schemas.py)
+- [setup_assessment.py](/home/ubuntu/dosh/backend/app/setup_assessment.py)
+- [income_types.py](/home/ubuntu/dosh/backend/app/routers/income_types.py)
+- [test_period_logic.py](/home/ubuntu/dosh/backend/tests/test_period_logic.py)
+- [test_app_smoke.py](/home/ubuntu/dosh/backend/tests/test_app_smoke.py)
+- [test_budget_setup_workflows.py](/home/ubuntu/dosh/backend/tests/test_budget_setup_workflows.py)
+- [test_setup_assessment.py](/home/ubuntu/dosh/backend/tests/test_setup_assessment.py)
+
+### Deployment verification
+
+Commands run during this session:
+
+```bash
+docker compose -f /home/ubuntu/dosh/docker-compose.yml -f /home/ubuntu/dosh/docker-compose.override.yml up -d --build
+docker compose -f /home/ubuntu/dosh/docker-compose.yml -f /home/ubuntu/dosh/docker-compose.override.yml ps
+curl -fsS http://localhost:3080/api/health
+curl -fsS http://localhost:3080 | head -n 5
+```
+
+Result:
+
+- backend and frontend containers rebuilt and restarted successfully through the override-aware compose path after each deployment iteration
+- the live health endpoint consistently returned `{"status":"ok","app":"Dosh"}`
+- the served root HTML remained reachable after each rollout
+
+### Test failures and resolution notes
+
+- the first version of the new setup-copy backend test expectations still assumed the old primary-account wording; the assertion was updated to the new localized transaction-account text
+- the first version of the custom day-cycle frontend test asserted directly against the React Query mutation wrapper rather than the mutation payload, so it was corrected to inspect the first call argument
+- the first version of the custom day-cycle input behavior clamped on every keystroke, which made entering `10` jump through `2` and then become `20`; the input was reworked to accept normal typing and clamp only on blur
+- several create-budget spacing and presentation refinements required repeated focused frontend reruns, but no automated test failures remained at the end of the session
+- no additional plan document was required because this session did not run in a separate plan-only mode
+
 ## Latest Session: Budget Deletion Foreign-Key Fix And Deployment Verification
 
 Session outcomes verified in this run:
