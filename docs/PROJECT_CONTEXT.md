@@ -298,7 +298,9 @@ Before starting a new feature or refactor:
 
 ## CI Operational Notes
 
-The repository now exports sanitized SonarQube workflow artifacts so future sessions can inspect analysis output without needing direct access to the Sonar token.
+The repository now has a workflow that exports sanitized SonarQube analysis artifacts so future sessions can inspect analysis output without needing direct access to the Sonar token.
+
+These Sonar outputs are not committed files in the repository checkout. They are GitHub Actions run artifacts that must be downloaded from a completed workflow run before they can be inspected locally in a session.
 
 - workflow name: `SonarQube`
 - workflow file: [.github/workflows/sonarqube.yml](/home/ubuntu/dosh/.github/workflows/sonarqube.yml)
@@ -306,7 +308,7 @@ The repository now exports sanitized SonarQube workflow artifacts so future sess
 - exported files inside the artifact: `sonar-summary.md`, `sonar-summary.json`, `sonar-issues-summary.json`, and `sonar-issues-full.json`
 - those files are generated after the Sonar scan and quality gate wait complete successfully
 
-Typical retrieval flow from a future session:
+Typical retrieval flow from a future session after pulling the latest repository docs:
 
 1. list recent workflow runs with `gh run list --workflow sonarqube.yml --limit 5`
 2. identify the relevant run id for the target branch or push
