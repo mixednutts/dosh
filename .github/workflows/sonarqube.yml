@@ -58,7 +58,9 @@ jobs:
           [ -n "${{ vars.SONAR_PROJECT_KEY }}" ] && echo "SONAR_PROJECT_KEY present" || (echo "SONAR_PROJECT_KEY missing" && exit 1)
 
       - name: SonarQube Scan
+        id: sonarqube_scan
         uses: SonarSource/sonarqube-scan-action@26c51824c8330b026f261a3205f94958d4b1bc5c
+        continue-on-error: true
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
@@ -70,6 +72,7 @@ jobs:
             --define sonar.qualitygate.timeout=300
 
       - name: Export sanitized SonarQube report
+        if: ${{ always() }}
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
@@ -395,6 +398,7 @@ jobs:
           PY
 
       - name: Upload sanitized SonarQube report artifact
+        if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
           name: sonar-summary-${{ github.run_id }}
@@ -404,3 +408,9 @@ jobs:
             sonar-issues-summary.json
             sonar-summary.md
           if-no-files-found: error
+
+      - name: Fail workflow when SonarQube scan or quality gate fails
+        if: ${{ steps.sonarqube_scan.outcome != 'success' }}
+        run: |
+          echo "SonarQube scan completed, but the scan step failed or the quality gate did not pass."
+          exit 1
