@@ -260,6 +260,36 @@ Maintenance notes:
 
 - should not become the primary lifecycle source of truth if lifecycle rules are owned elsewhere
 
+### INLINE_EXPRESSION_AMOUNT_INPUT_PLAN.md
+
+Document:
+
+- [INLINE_EXPRESSION_AMOUNT_INPUT_PLAN.md](/home/ubuntu/dosh/docs/plans/INLINE_EXPRESSION_AMOUNT_INPUT_PLAN.md)
+
+Document type:
+
+- domain or workflow plan
+
+Primary purpose:
+
+- preserve the implemented plan decisions for inline arithmetic amount entry in period-detail modals
+
+Primary source-of-truth scope:
+
+- supported inline expression scope
+- parser and evaluation boundaries
+- preview and validation behavior for modal amount fields
+
+Key relationships:
+
+- informs current-state wording in [PROJECT_CONTEXT.md](/home/ubuntu/dosh/docs/PROJECT_CONTEXT.md)
+- links to testing and implementation outcomes in [TEST_RESULTS_SUMMARY.md](/home/ubuntu/dosh/docs/tests/TEST_RESULTS_SUMMARY.md) and [CHANGES.md](/home/ubuntu/dosh/docs/CHANGES.md)
+- complements activity tracking in [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md)
+
+Maintenance notes:
+
+- should remain the main design-boundary document for inline arithmetic amount entry rather than becoming a second change log
+
 ## Testing Documents
 
 ### TEST_STRATEGY.md

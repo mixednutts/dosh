@@ -21,8 +21,16 @@ import {
 } from '../api/client'
 import Modal from '../components/Modal'
 import Spinner from '../components/Spinner'
+import AmountExpressionInput from '../components/AmountExpressionInput'
 
 const fmt = v => Number(v ?? 0).toLocaleString('en-AU', { style: 'currency', currency: 'AUD' })
+
+function getResolvedAmountValue(amountState, min = 0) {
+  if (amountState.state !== 'valid' || amountState.value == null || amountState.value < min) {
+    return null
+  }
+  return amountState.value
+}
 
 function balanceTransactionDelta(tx, balancedesc) {
   if (tx.source === 'transfer') {
@@ -103,8 +111,10 @@ function BudgetAmountCell({ amount, canEdit, onEdit, label }) {
 function IncomeTransactionsModal({ periodId, incomedesc, budgetamount, actualamount, locked, onClose, defaultType = 'credit' }) {
   const qc = useQueryClient()
   const [amount, setAmount] = useState('')
+  const [resolvedAmount, setResolvedAmount] = useState({ value: null, state: 'empty' })
   const [note, setNote] = useState('')
   const [type, setType] = useState(defaultType) // credit | debit
+  const [error, setError] = useState('')
 
   const { data: transactions = [], isLoading } = useQuery({
     queryKey: ['income-transactions', periodId, incomedesc],
@@ -117,7 +127,9 @@ function IncomeTransactionsModal({ periodId, incomedesc, budgetamount, actualamo
       qc.invalidateQueries({ queryKey: ['income-transactions', periodId, incomedesc] })
       qc.invalidateQueries({ queryKey: ['period', periodId] })
       setAmount('')
+      setResolvedAmount({ value: null, state: 'empty' })
       setNote('')
+      setError('')
       onClose()
     },
   })
@@ -132,8 +144,12 @@ function IncomeTransactionsModal({ periodId, incomedesc, budgetamount, actualamo
 
   const handleAdd = e => {
     e.preventDefault()
-    const n = parseFloat(amount)
-    if (isNaN(n) || n <= 0) return
+    const n = getResolvedAmountValue(resolvedAmount, 0.01)
+    if (n == null) {
+      setError('Enter a valid amount')
+      return
+    }
+    setError('')
     add.mutate({ amount: type === 'credit' ? n : -n, note: note || null })
   }
 
@@ -221,12 +237,26 @@ function IncomeTransactionsModal({ periodId, incomedesc, budgetamount, actualamo
             ))}
           </div>
           <div className="flex gap-2 items-center">
-            <input type="number" step="0.01" min="0.01" required value={amount}
-              onChange={e => setAmount(e.target.value)} placeholder="Amount"
-              className="input flex-1" />
+            <div className="flex-1">
+              <AmountExpressionInput
+                value={amount}
+                onChange={nextValue => {
+                  setAmount(nextValue)
+                  setError('')
+                }}
+                onResolvedChange={(value, state) => setResolvedAmount({ value, state })}
+                min={0.01}
+                placeholder="Amount"
+                className="input w-full"
+                required
+              />
+            </div>
             {Number(budgetamount) > 0 && (
               <button type="button"
-                onClick={() => setAmount(String(Number(budgetamount)))}
+                onClick={() => {
+                  setAmount(String(Number(budgetamount)))
+                  setError('')
+                }}
                 className="text-xs btn-secondary whitespace-nowrap"
                 title="Allocate full budget amount">
                 Full ({fmt(budgetamount)})
@@ -242,6 +272,7 @@ function IncomeTransactionsModal({ periodId, incomedesc, budgetamount, actualamo
               {add.isPending ? 'Saving…' : (type === 'credit' ? 'Add Income' : 'Add Correction')}
             </button>
           </div>
+          {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
         </form>
       )}
       {locked && (
@@ -325,8 +356,10 @@ function BalanceTransactionsModal({ periodId, balancedesc, movementAmount }) {
 function ExpenseEntriesModal({ periodId, budgetId, expensedesc, budgetamount, actualamount, locked, onClose, defaultType = 'debit' }) {
   const qc = useQueryClient()
   const [amount, setAmount] = useState('')
+  const [resolvedAmount, setResolvedAmount] = useState({ value: null, state: 'empty' })
   const [note, setNote] = useState('')
   const [type, setType] = useState(defaultType) // 'debit' | 'credit'
+  const [error, setError] = useState('')
 
   const { data: entries = [], isLoading } = useQuery({
     queryKey: ['expense-entries', periodId, expensedesc],
@@ -338,7 +371,10 @@ function ExpenseEntriesModal({ periodId, budgetId, expensedesc, budgetamount, ac
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['expense-entries', periodId, expensedesc] })
       qc.invalidateQueries({ queryKey: ['period', periodId] })
-      setAmount(''); setNote('')
+      setAmount('')
+      setResolvedAmount({ value: null, state: 'empty' })
+      setNote('')
+      setError('')
       onClose()
     },
   })
@@ -353,8 +389,12 @@ function ExpenseEntriesModal({ periodId, budgetId, expensedesc, budgetamount, ac
 
   const handleAdd = e => {
     e.preventDefault()
-    const n = parseFloat(amount)
-    if (isNaN(n) || n <= 0) return
+    const n = getResolvedAmountValue(resolvedAmount, 0.01)
+    if (n == null) {
+      setError('Enter a valid amount')
+      return
+    }
+    setError('')
     add.mutate({ amount: type === 'debit' ? n : -n, note: note || null })
   }
 
@@ -441,12 +481,26 @@ function ExpenseEntriesModal({ periodId, budgetId, expensedesc, budgetamount, ac
             ))}
           </div>
           <div className="flex gap-2 items-center">
-            <input type="number" step="0.01" min="0.01" required value={amount}
-              onChange={e => setAmount(e.target.value)} placeholder="Amount"
-              className="input flex-1" />
+            <div className="flex-1">
+              <AmountExpressionInput
+                value={amount}
+                onChange={nextValue => {
+                  setAmount(nextValue)
+                  setError('')
+                }}
+                onResolvedChange={(value, state) => setResolvedAmount({ value, state })}
+                min={0.01}
+                placeholder="Amount"
+                className="input w-full"
+                required
+              />
+            </div>
             {Number(budgetamount) > 0 && (
               <button type="button"
-                onClick={() => setAmount(String(Number(budgetamount)))}
+                onClick={() => {
+                  setAmount(String(Number(budgetamount)))
+                  setError('')
+                }}
                 className="text-xs btn-secondary whitespace-nowrap"
                 title="Allocate full budget amount">
                 Full ({fmt(budgetamount)})
@@ -462,6 +516,7 @@ function ExpenseEntriesModal({ periodId, budgetId, expensedesc, budgetamount, ac
               {add.isPending ? 'Saving…' : `Add ${type === 'debit' ? 'Expense' : 'Refund'}`}
             </button>
           </div>
+          {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
         </form>
       )}
       {locked && (
@@ -477,8 +532,10 @@ function ExpenseEntriesModal({ periodId, budgetId, expensedesc, budgetamount, ac
 function InvestmentTxModal({ periodId, investmentdesc, openingValue, closingValue, budgetedAmount, locked, onClose, defaultType = 'increase' }) {
   const qc = useQueryClient()
   const [amount, setAmount] = useState('')
+  const [resolvedAmount, setResolvedAmount] = useState({ value: null, state: 'empty' })
   const [note, setNote] = useState('')
   const [type, setType] = useState(defaultType)
+  const [error, setError] = useState('')
 
   const { data: transactions = [], isLoading } = useQuery({
     queryKey: ['investment-tx', periodId, investmentdesc],
@@ -490,7 +547,10 @@ function InvestmentTxModal({ periodId, investmentdesc, openingValue, closingValu
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['investment-tx', periodId, investmentdesc] })
       qc.invalidateQueries({ queryKey: ['period', periodId] })
-      setAmount(''); setNote('')
+      setAmount('')
+      setResolvedAmount({ value: null, state: 'empty' })
+      setNote('')
+      setError('')
       onClose()
     },
   })
@@ -505,8 +565,12 @@ function InvestmentTxModal({ periodId, investmentdesc, openingValue, closingValu
 
   const handleAdd = e => {
     e.preventDefault()
-    const n = parseFloat(amount)
-    if (isNaN(n) || n <= 0) return
+    const n = getResolvedAmountValue(resolvedAmount, 0.01)
+    if (n == null) {
+      setError('Enter a valid amount')
+      return
+    }
+    setError('')
     add.mutate({ amount: type === 'increase' ? n : -n, note: note || null })
   }
 
@@ -587,12 +651,26 @@ function InvestmentTxModal({ periodId, investmentdesc, openingValue, closingValu
             ))}
           </div>
           <div className="flex gap-2 items-center">
-            <input type="number" step="0.01" min="0.01" required value={amount}
-              onChange={e => setAmount(e.target.value)} placeholder="Amount"
-              className="input flex-1" />
+            <div className="flex-1">
+              <AmountExpressionInput
+                value={amount}
+                onChange={nextValue => {
+                  setAmount(nextValue)
+                  setError('')
+                }}
+                onResolvedChange={(value, state) => setResolvedAmount({ value, state })}
+                min={0.01}
+                placeholder="Amount"
+                className="input w-full"
+                required
+              />
+            </div>
             {Number(budgetedAmount ?? 0) > 0 && (
               <button type="button"
-                onClick={() => setAmount(String(Number(budgetedAmount ?? 0)))}
+                onClick={() => {
+                  setAmount(String(Number(budgetedAmount ?? 0)))
+                  setError('')
+                }}
                 className="text-xs btn-secondary whitespace-nowrap"
                 title="Allocate full budget amount">
                 Full ({fmt(budgetedAmount ?? 0)})
@@ -608,6 +686,7 @@ function InvestmentTxModal({ periodId, investmentdesc, openingValue, closingValu
               {add.isPending ? 'Saving…' : (type === 'increase' ? 'Add' : 'Subtract')}
             </button>
           </div>
+          {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
         </form>
       )}
       {locked && (
@@ -621,14 +700,15 @@ function InvestmentTxModal({ periodId, investmentdesc, openingValue, closingValu
 
 function BudgetAdjustmentModal({ title, currentAmount, onSubmit, onClose }) {
   const [budgetamount, setBudgetAmount] = useState(String(Number(currentAmount ?? 0)))
+  const [resolvedAmount, setResolvedAmount] = useState({ value: Number(currentAmount ?? 0), state: 'valid' })
   const [scope, setScope] = useState('current')
   const [note, setNote] = useState('')
   const [error, setError] = useState('')
 
   const handleSubmit = e => {
     e.preventDefault()
-    const amount = parseFloat(budgetamount)
-    if (Number.isNaN(amount) || amount < 0) {
+    const amount = getResolvedAmountValue(resolvedAmount, 0)
+    if (amount == null) {
       setError('Enter a valid budget amount')
       return
     }
@@ -647,15 +727,19 @@ function BudgetAdjustmentModal({ title, currentAmount, onSubmit, onClose }) {
         <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">Future unlocked updates also refresh the setup amount for later cycles.</p>
       </div>
       <div>
-        <label className="label">Budget Amount ($)</label>
-        <input
+        <label className="label" htmlFor="budget-adjustment-amount">Budget Amount ($)</label>
+        <AmountExpressionInput
+          id="budget-adjustment-amount"
           autoFocus
-          type="number"
-          min="0"
-          step="0.01"
-          className="input"
           value={budgetamount}
-          onChange={e => setBudgetAmount(e.target.value)}
+          onChange={nextValue => {
+            setBudgetAmount(nextValue)
+            setError('')
+          }}
+          onResolvedChange={(value, state) => setResolvedAmount({ value, state })}
+          min={0}
+          className="input w-full"
+          required
         />
       </div>
       <div>
@@ -670,8 +754,9 @@ function BudgetAdjustmentModal({ title, currentAmount, onSubmit, onClose }) {
         </div>
       </div>
       <div>
-        <label className="label">Comment</label>
+        <label className="label" htmlFor="budget-adjustment-comment">Comment</label>
         <textarea
+          id="budget-adjustment-comment"
           className="input w-full resize-none"
           rows={4}
           value={note}
@@ -930,6 +1015,7 @@ function AddIncomeModal({ periodId, budgetId, existingDescs, onClose }) {
   const [mode, setMode] = useState('existing') // 'existing' | 'new' | 'savings'
   const [selected, setSelected] = useState('')
   const [amount, setAmount] = useState('')
+  const [resolvedAmount, setResolvedAmount] = useState({ value: null, state: 'empty' })
   const [scope, setScope] = useState('oneoff')
   const [note, setNote] = useState('')
   const [error, setError] = useState('')
@@ -982,11 +1068,16 @@ function AddIncomeModal({ periodId, budgetId, existingDescs, onClose }) {
   const handleSubmit = async e => {
     e.preventDefault(); setError('')
     try {
-      if (mode === 'savings') {
+        if (mode === 'savings') {
+        const resolvedValue = getResolvedAmountValue(resolvedAmount, 0)
+        if (resolvedValue == null) { setError('Enter a valid budget amount'); return }
         if (!selected) { setError('Select a savings account'); return }
-        addTransfer.mutate({ budgetid: budgetId, balancedesc: selected, amount: parseFloat(amount) || 0 })
+        addTransfer.mutate({ budgetid: budgetId, balancedesc: selected, amount: resolvedValue })
         return
       }
+
+      const resolvedValue = getResolvedAmountValue(resolvedAmount, 0)
+      if (resolvedValue == null) { setError('Enter a valid budget amount'); return }
 
       if (mode === 'new') {
         const trimmedDesc = newDesc.trim()
@@ -996,15 +1087,15 @@ function AddIncomeModal({ periodId, budgetId, existingDescs, onClose }) {
           issavings: false,
           isfixed: newIsFixed,
           autoinclude: newIsFixed ? true : newAutoInclude,
-          amount: parseFloat(amount) || 0,
+          amount: resolvedValue,
           linked_account: newLinkedAccount || null,
         })
-        add.mutate({ budgetid: budgetId, incomedesc: trimmedDesc, budgetamount: parseFloat(amount) || 0, scope, note: note || null })
+        add.mutate({ budgetid: budgetId, incomedesc: trimmedDesc, budgetamount: resolvedValue, scope, note: note || null })
         return
       }
 
       if (!selected) { setError('Select an income type'); return }
-      add.mutate({ budgetid: budgetId, incomedesc: selected, budgetamount: parseFloat(amount) || 0, scope, note: note || null })
+      add.mutate({ budgetid: budgetId, incomedesc: selected, budgetamount: resolvedValue, scope, note: note || null })
     } catch (err) {
       setError(err.response?.data?.detail ?? 'Failed to add income')
     }
@@ -1073,7 +1164,17 @@ function AddIncomeModal({ periodId, budgetId, existingDescs, onClose }) {
       )}
       <div>
         <label className="label" htmlFor="add-income-amount">{mode === 'savings' ? 'Budget Amount ($)' : 'Budget Amount ($)'}</label>
-        <input id="add-income-amount" type="number" step="0.01" min="0" className="input" value={amount} onChange={e => setAmount(e.target.value)} />
+        <AmountExpressionInput
+          id="add-income-amount"
+          value={amount}
+          onChange={nextValue => {
+            setAmount(nextValue)
+            setError('')
+          }}
+          onResolvedChange={(value, state) => setResolvedAmount({ value, state })}
+          min={0}
+          className="input w-full"
+        />
       </div>
       {mode !== 'savings' && (
         <div>
@@ -1109,6 +1210,7 @@ function AddExpenseModal({ periodId, budgetId, existingDescs, onClose }) {
   const [mode, setMode] = useState('existing')
   const [selected, setSelected] = useState('')
   const [amount, setAmount] = useState('')
+  const [resolvedAmount, setResolvedAmount] = useState({ value: null, state: 'empty' })
   const [scope, setScope] = useState('oneoff')
   const [note, setNote] = useState('')
   const [error, setError] = useState('')
@@ -1135,13 +1237,15 @@ function AddExpenseModal({ periodId, budgetId, existingDescs, onClose }) {
   const handleSubmit = async e => {
     e.preventDefault(); setError('')
     try {
+      const resolvedValue = getResolvedAmountValue(resolvedAmount, 0)
+      if (resolvedValue == null) { setError('Enter a valid budget amount'); return }
       if (mode === 'new') {
         if (!newDesc.trim()) { setError('Enter a description'); return }
-        await createItem.mutateAsync({ expensedesc: newDesc.trim(), active: true, freqtype: newFreqtype || null, frequency_value: newFreqVal ? parseInt(newFreqVal) : null, paytype: newPaytype || null, effectivedate: newEffDate || null, expenseamount: parseFloat(amount) || 0 })
-        addToperiod.mutate({ budgetid: budgetId, expensedesc: newDesc.trim(), budgetamount: parseFloat(amount) || 0, scope, note: note || null })
+        await createItem.mutateAsync({ expensedesc: newDesc.trim(), active: true, freqtype: newFreqtype || null, frequency_value: newFreqVal ? parseInt(newFreqVal) : null, paytype: newPaytype || null, effectivedate: newEffDate || null, expenseamount: resolvedValue })
+        addToperiod.mutate({ budgetid: budgetId, expensedesc: newDesc.trim(), budgetamount: resolvedValue, scope, note: note || null })
       } else {
         if (!selected) { setError('Select an expense item'); return }
-        addToperiod.mutate({ budgetid: budgetId, expensedesc: selected, budgetamount: parseFloat(amount) || 0, scope, note: note || null })
+        addToperiod.mutate({ budgetid: budgetId, expensedesc: selected, budgetamount: resolvedValue, scope, note: note || null })
       }
     } catch (err) { setError(err.response?.data?.detail ?? 'Failed') }
   }
@@ -1158,31 +1262,44 @@ function AddExpenseModal({ periodId, budgetId, existingDescs, onClose }) {
       </div>
       {mode === 'existing' ? (
         <div>
-          <label className="label">Expense Item</label>
+          <label className="label" htmlFor="add-expense-existing-select">Expense Item</label>
           {available.length === 0
             ? <p className="text-sm text-gray-500 italic">All items already in this budget cycle. Use "New item".</p>
-            : <select required className="input" value={selected} onChange={e => { setSelected(e.target.value); const ei = expenseItems.find(i => i.expensedesc === e.target.value); if (ei) setAmount(String(ei.expenseamount)) }}>
+            : <select id="add-expense-existing-select" required className="input" value={selected} onChange={e => { setSelected(e.target.value); const ei = expenseItems.find(i => i.expensedesc === e.target.value); if (ei) setAmount(String(ei.expenseamount)) }}>
                 <option value="">— select —</option>
                 {available.map(e => <option key={e.expensedesc} value={e.expensedesc}>{e.expensedesc}</option>)}
               </select>}
         </div>
       ) : (
         <div className="space-y-3">
-          <div><label className="label">Description <span className="text-red-500">*</span></label><input required className="input" value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="e.g. Netflix" /></div>
+          <div><label className="label" htmlFor="add-expense-new-desc">Description <span className="text-red-500">*</span></label><input id="add-expense-new-desc" required className="input" value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="e.g. Netflix" /></div>
           <div className="grid grid-cols-2 gap-2">
-            <div><label className="label">Freq Type</label><select className="input" value={newFreqtype} onChange={e => setNewFreqtype(e.target.value)}><option>Always</option><option>Fixed Day of Month</option><option>Every N Days</option></select></div>
-            <div><label className="label">{newFreqtype === 'Every N Days' ? 'Interval (days)' : 'Day of Month'}</label><input type="number" min="1" className="input" value={newFreqVal} onChange={e => setNewFreqVal(e.target.value)} disabled={newFreqtype === 'Always'} /></div>
+            <div><label className="label" htmlFor="add-expense-freq-type">Freq Type</label><select id="add-expense-freq-type" className="input" value={newFreqtype} onChange={e => setNewFreqtype(e.target.value)}><option>Always</option><option>Fixed Day of Month</option><option>Every N Days</option></select></div>
+            <div><label className="label" htmlFor="add-expense-freq-value">{newFreqtype === 'Every N Days' ? 'Interval (days)' : 'Day of Month'}</label><input id="add-expense-freq-value" type="number" min="1" className="input" value={newFreqVal} onChange={e => setNewFreqVal(e.target.value)} disabled={newFreqtype === 'Always'} /></div>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <div><label className="label">Pay Type</label><select className="input" value={newPaytype} onChange={e => setNewPaytype(e.target.value)}><option>AUTO</option><option>MANUAL</option></select></div>
-            <div><label className="label">Eff. Date</label><input type="date" className="input" value={newEffDate} onChange={e => setNewEffDate(e.target.value)} /></div>
+            <div><label className="label" htmlFor="add-expense-pay-type">Pay Type</label><select id="add-expense-pay-type" className="input" value={newPaytype} onChange={e => setNewPaytype(e.target.value)}><option>AUTO</option><option>MANUAL</option></select></div>
+            <div><label className="label" htmlFor="add-expense-effective-date">Eff. Date</label><input id="add-expense-effective-date" type="date" className="input" value={newEffDate} onChange={e => setNewEffDate(e.target.value)} /></div>
           </div>
         </div>
       )}
-      <div><label className="label">Budget Amount ($)</label><input type="number" step="0.01" min="0" className="input" value={amount} onChange={e => setAmount(e.target.value)} /></div>
       <div>
-        <label className="label">Comment / Note</label>
-        <textarea className="input w-full resize-none" rows={3} value={note} onChange={e => setNote(e.target.value)} placeholder="Why are you adding this line?" />
+        <label className="label" htmlFor="add-expense-amount">Budget Amount ($)</label>
+        <AmountExpressionInput
+          id="add-expense-amount"
+          value={amount}
+          onChange={nextValue => {
+            setAmount(nextValue)
+            setError('')
+          }}
+          onResolvedChange={(value, state) => setResolvedAmount({ value, state })}
+          min={0}
+          className="input w-full"
+        />
+      </div>
+      <div>
+        <label className="label" htmlFor="add-expense-note">Comment / Note</label>
+        <textarea id="add-expense-note" className="input w-full resize-none" rows={3} value={note} onChange={e => setNote(e.target.value)} placeholder="Why are you adding this line?" />
       </div>
       <div>
         <label className="label">Include in</label>
@@ -1787,7 +1904,7 @@ export default function PeriodDetailPage() {
             incomedesc={incomeModal.incomedesc}
             budgetamount={incomeModal.budgetamount}
             actualamount={incomeModal.actualamount}
-            locked={closed || incomeModal.readOnly}
+            locked={!!(closed || incomeModal.readOnly)}
             defaultType={incomeModal.defaultType ?? 'credit'}
             onClose={() => setIncomeModal(null)}
           />
@@ -1801,7 +1918,7 @@ export default function PeriodDetailPage() {
             expensedesc={entriesModal.expensedesc}
             budgetamount={entriesModal.budgetamount}
             actualamount={entriesModal.actualamount}
-            locked={closed || entriesModal.readOnly}
+            locked={!!(closed || entriesModal.readOnly)}
             defaultType={entriesModal.defaultType ?? 'debit'}
             onClose={() => setEntriesModal(null)}
           />
@@ -1875,7 +1992,7 @@ export default function PeriodDetailPage() {
             openingValue={investmentModal.openingValue}
             closingValue={investmentModal.closingValue}
             budgetedAmount={investmentModal.budgetedAmount}
-            locked={investmentModal.readOnly || closed}
+            locked={!!(investmentModal.readOnly || closed)}
             defaultType={investmentModal.defaultType ?? 'increase'}
             onClose={() => setInvestmentModal(null)}
           />

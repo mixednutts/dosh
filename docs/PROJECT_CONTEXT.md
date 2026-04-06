@@ -14,6 +14,7 @@ It is a synthesis of the current Markdown sources in this repository:
 - [TEST_EXPANSION_PLAN.md](/home/ubuntu/dosh/docs/tests/TEST_EXPANSION_PLAN.md)
 - [TEST_RESULTS_SUMMARY.md](/home/ubuntu/dosh/docs/tests/TEST_RESULTS_SUMMARY.md)
 - [INCOME_TRANSACTIONS_UNIFICATION_AND_LEGACY_LEDGER_CLEANUP_PLAN.md](/home/ubuntu/dosh/docs/plans/INCOME_TRANSACTIONS_UNIFICATION_AND_LEGACY_LEDGER_CLEANUP_PLAN.md)
+- [INLINE_EXPRESSION_AMOUNT_INPUT_PLAN.md](/home/ubuntu/dosh/docs/plans/INLINE_EXPRESSION_AMOUNT_INPUT_PLAN.md)
 
 Use this as the quick-start development handoff. Use the source documents above when deeper detail is needed.
 
@@ -40,6 +41,7 @@ These guidelines apply across the project as a whole and should continue guiding
 - preserve the compact or collapsible desktop mode as new features arrive
 - avoid duplicate edit or setup entry points on the same screen unless they serve clearly different purposes
 - keep budget-edit affordances visually attached to the budget amount they change rather than mixing them into transaction-action rails
+- calculation-aided amount entry should keep the raw typed expression visible and avoid treating incomplete arithmetic input as a hard validation failure while the user is still typing
 
 ### Domain Integrity
 
@@ -128,6 +130,7 @@ Frontend:
 - React Query
 - Tailwind CSS
 - `prop-types` is now part of the frontend baseline so shared and page-level React components can carry explicit prop contracts for SonarQube-backed maintainability
+- period-detail modal amount expressions now use a small `jsep`-based parser plus a narrow arithmetic-only evaluator rather than a broader general-purpose math dependency
 - current route flow defined in [App.jsx](/home/ubuntu/dosh/frontend/src/App.jsx)
 
 Operational note:
@@ -137,6 +140,7 @@ Operational note:
 - proper versioned migrations still remain a near-term engineering need from that new baseline
 - backend tests now run against an isolated SQLite database per test case through [conftest.py](/home/ubuntu/dosh/backend/tests/conftest.py)
 - Docker Compose remains the active deployment path, with the frontend exposed on port `3080`
+- this repo also includes [docker-compose.override.yml](/home/ubuntu/dosh/docker-compose.override.yml) for Traefik-facing frontend deployment wiring, so deploys that need the public host path should include both compose files rather than the base file alone
 - the frontend Docker build now uses Node 20 rather than the old Node 16 baseline
 - Docker Compose `DEV_MODE` is now the shared control point for dev-only demo-budget behavior across frontend build visibility and backend runtime enforcement
 - the SonarQube workflow now exports a sanitized artifact summary, and the repo includes [fetch_latest_sonar_artifact.sh](/home/ubuntu/dosh/scripts/fetch_latest_sonar_artifact.sh) so future sessions can inspect the latest issue clusters locally before starting cleanup work
@@ -182,6 +186,7 @@ The repository already supports:
 - income, expense, account, and investment activity within a cycle
 - modal-driven budget adjustment for income, expense, and investment lines, with required notes and `current` or `future unlocked` scope
 - transaction-backed income, expense, and investment updates
+- inline arithmetic amount entry across period-detail transaction, budget-adjustment, add-income, and add-expense modals, with expression previews for valid calculations and muted in-progress summaries for incomplete arithmetic input
 - account balance viewing with transaction-based movement explanation
 - current budget summary cards, current balance summary, and current-period health check
 - setup-level history review for income, expense, and investment items using the shared transaction history model
@@ -238,7 +243,8 @@ The most useful enabling work for future sessions is:
 6. keep closed-cycle correction design aligned with reconciliation rather than reopening normal edit paths
 7. harden deployment by addressing Node engine drift and startup deprecation warnings
 8. continue improving summary and calendar usability without letting the budget overview become a dashboard clone
-9. continue SonarQube-driven cleanup by tackling the next concentrated clusters after props validation, especially nested ternaries, form-label associations, and FastAPI annotation or response-documentation warnings
+9. reduce the main frontend bundle by introducing route-level lazy loading for major pages in [App.jsx](/home/ubuntu/dosh/frontend/src/App.jsx)
+10. continue SonarQube-driven cleanup by tackling the next concentrated clusters after props validation, especially nested ternaries, form-label associations, and FastAPI annotation or response-documentation warnings
 
 ## Testing Posture
 

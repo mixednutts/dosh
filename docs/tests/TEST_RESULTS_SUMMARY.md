@@ -4,6 +4,74 @@ This document records meaningful automated test results from major working sessi
 
 It exists separately from [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) so the strategy can stay stable while future sessions still have a record of what was actually run and verified.
 
+## Latest Session: Inline Arithmetic Amount Entry, Parser Right-Sizing, Focused Modal Coverage, And Override-Aware Redeployment
+
+Session outcomes verified in this run:
+
+- period-detail amount-entry modals now support inline arithmetic expressions while keeping the raw typed expression visible
+- valid arithmetic expressions now show a resolved preview and incomplete arithmetic input now shows an in-progress summary line instead of an immediate validation error
+- the final parser choice for this feature is `jsep` plus a narrow arithmetic-only evaluator rather than a deprecated parser package or the heavier `mathjs` dependency
+- focused frontend coverage now protects both the shared amount-expression input and the affected period-detail modal workflows
+- the stack was rebuilt and redeployed successfully after correcting an initial deploy mistake that bypassed `docker-compose.override.yml`
+
+### Frontend verification
+
+Commands run during this session:
+
+```bash
+cd frontend
+npm test -- --runInBand --watchAll=false src/__tests__/AmountExpressionInput.test.jsx
+npm test -- --runInBand --watchAll=false src/__tests__/PeriodDetailPage.test.jsx
+npm test -- --runInBand --watchAll=false src/__tests__/AmountExpressionInput.test.jsx src/__tests__/PeriodDetailPage.test.jsx
+npm run build
+```
+
+Result:
+
+- focused amount-expression component coverage passed
+- focused period-detail coverage passed after the modal integration and the in-progress-summary UX refinement
+- the final combined verification result was 2 passing frontend suites and 27 passing focused frontend tests
+- the frontend production build passed after the parser swap to `jsep`
+- the Vite build still reports a slightly oversized main production chunk, but that remains follow-up performance work rather than a correctness failure
+
+Files with meaningful frontend test or harness updates in this session:
+
+- [AmountExpressionInput.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/AmountExpressionInput.test.jsx)
+- [PeriodDetailPage.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/PeriodDetailPage.test.jsx)
+- [AmountExpressionInput.jsx](/home/ubuntu/dosh/frontend/src/components/AmountExpressionInput.jsx)
+- [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx)
+
+### Deployment verification
+
+Commands run:
+
+```bash
+docker compose -f /home/ubuntu/dosh/docker-compose.yml up -d --build frontend
+docker compose -f /home/ubuntu/dosh/docker-compose.yml ps
+curl -I http://localhost:3080
+curl -i http://localhost:3080/
+curl -i http://localhost:3080/budgets
+curl -i http://localhost:3080/api/budgets/
+docker compose -f /home/ubuntu/dosh/docker-compose.yml -f /home/ubuntu/dosh/docker-compose.override.yml up -d --build frontend
+docker compose -f /home/ubuntu/dosh/docker-compose.yml -f /home/ubuntu/dosh/docker-compose.override.yml ps
+docker inspect dosh-frontend --format '{{json .NetworkSettings.Networks}}'
+docker inspect dosh-frontend --format '{{json .Config.Labels}}'
+```
+
+Result:
+
+- the first deployment pass rebuilt successfully but used only the base compose file, which meant the frontend lost the override-provided external `frontend` network and Traefik labels
+- local access on `localhost:3080` still worked in that state, which helped confirm the regression was deployment-shape-specific rather than a broken frontend build
+- the corrected deployment pass used both compose files and restored the frontend's external network attachment and Traefik labels
+- the final deployed frontend remained reachable on port `3080`, and the backend API remained reachable through the frontend proxy path
+
+### Test failures and resolution notes
+
+- the first implementation of `AmountExpressionInput` triggered a render loop because it re-emitted resolved state on every parent render; the component was corrected to notify only when the evaluation state actually changes
+- older modal tests initially failed because the new expression input replaced numeric `spinbutton` fields with labeled text inputs; the tests were updated to target the new accessible controls
+- one deployment pass initially omitted [docker-compose.override.yml](/home/ubuntu/dosh/docker-compose.override.yml), which would have broken the public Traefik-facing route even though localhost access still worked; the stack was redeployed with both compose files
+- no unresolved automated test failures remained at the end of the session
+
 ## Latest Session: SonarQube Root-Cluster Cleanup, Frontend Props Validation Baseline, And Deployment Verification
 
 Session outcomes verified in this run:

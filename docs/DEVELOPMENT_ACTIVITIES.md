@@ -531,6 +531,7 @@ Status:
 - `Completed`: allow the add-income modal to create a brand-new income setup item inline, matching the supported expense workflow more closely
 - `Completed`: extend setup-item history so revision-number increases can show the actual changed setup fields, not only `BUDGETADJ` entries
 - `Completed`: align setup revision numbers with real stored history records and link setup-affecting future budget adjustments into that revision sequence
+- `Completed`: add inline arithmetic amount entry to period-detail transaction, budget-adjustment, add-income, and add-expense modals, with resolved previews for valid calculations and in-progress summaries for incomplete arithmetic input
 - provide an activation workflow for income lines in budget setup and align that workflow consistently across income, investment, and expense setup sections
 - change modal wording in expense, investment, and income workflows from `Add Full` to `Add Remaining` for clearer and more consistent transaction-entry language
 - make modal `Add Remaining` values in expense, investment, and income workflows resolve as budget amount minus total recorded amount, with deficit outcomes clamped to `$0.00`
@@ -566,6 +567,7 @@ Status:
 - verify compose assumptions around networks and Traefik usage
 - document expected production vs local deployment differences
 - confirm build and startup paths remain clean as the app grows
+- introduce route-level lazy loading for major pages in [App.jsx](/home/ubuntu/dosh/frontend/src/App.jsx) so the frontend stops shipping one oversized initial Vite chunk
 - clean up startup and timestamp deprecation warnings that appear during test and deployment runs
 - formalize the database migration strategy by introducing proper versioned migrations
 - turn the current explicit cutover-script baseline into a real migration history

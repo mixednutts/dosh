@@ -29,6 +29,70 @@ For the dedicated implementation plan that drove the income transaction unificat
 
 For the dedicated workflow plan that now owns budget-adjustment, revision-history, and setup-history rules in this area, read [BUDGET_ADJUSTMENT_REVISION_HISTORY_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_ADJUSTMENT_REVISION_HISTORY_PLAN.md).
 
+For the implemented amount-entry plan that now defines inline arithmetic scope, preview behavior, and parser boundaries for period-detail modals, read [INLINE_EXPRESSION_AMOUNT_INPUT_PLAN.md](/home/ubuntu/dosh/docs/plans/INLINE_EXPRESSION_AMOUNT_INPUT_PLAN.md).
+
+## Latest Session: Inline Arithmetic Amount Entry, Parser Right-Sizing, Focused Modal Coverage, And Override-Aware Redeployment
+
+This session focused on improving amount entry across period-detail modal workflows, preserving the design decisions from the planning pass, and then correcting a deployment mistake that temporarily bypassed the repo's Traefik override wiring.
+
+Important direction now in place:
+
+- period-detail modal amount fields now support inline arithmetic expressions such as `1000/4+25` while keeping the raw expression visible
+- valid expressions now show a muted resolved preview, while incomplete arithmetic input such as `100+` shows an in-progress summary line instead of an immediate error
+- the implementation intentionally stays narrow and finance-oriented: only digits, decimals, whitespace, parentheses, and `+ - * /` are supported
+- the parser choice was refined during the session from a deprecated parser package, through `mathjs`, and finally to a smaller `jsep`-based parser plus a tiny arithmetic-only evaluator
+- focused regression coverage now protects both the shared amount-expression input and the affected period-detail modal flows
+- a first deployment pass used only the base compose file, which worked locally on port `3080` but bypassed the Traefik-facing override configuration; the stack was then redeployed correctly with both compose files
+- Vite still reports a slightly oversized main frontend chunk after the feature work, and route-level lazy loading in [App.jsx](/home/ubuntu/dosh/frontend/src/App.jsx) is now the recorded follow-up direction
+
+### 1. Period-detail modals now support inline arithmetic amount entry
+
+The user-facing change in this session was a workflow refinement rather than a new domain model.
+
+Current behavior:
+
+- transaction, budget-adjustment, add-income, and add-expense modals on the period-detail page now accept inline arithmetic expressions for amount entry
+- valid calculations show a muted preview line such as `= $275.00`
+- plain numeric literals still behave like ordinary amount entry and do not show the extra preview line
+- incomplete arithmetic input now stays gentle while typing by showing an in-progress summary instead of flashing a hard validation error
+- backend APIs remain unchanged because the frontend resolves the final numeric value before submit
+
+Important product meaning:
+
+- amount-entry help should remain practical and low-friction rather than introducing a calculator-heavy or accounting-heavy interaction model
+- incomplete arithmetic input should be treated as in-progress user work, not as an immediate correctness failure
+
+### 2. The final parser choice is intentionally small and narrow
+
+The session explicitly explored parser size and package health rather than stopping at the first working dependency.
+
+Current behavior:
+
+- the final implementation uses `jsep` plus a custom arithmetic-only AST evaluator
+- deprecated or heavier intermediate parser choices were intentionally replaced before wrap-up
+- supported syntax remains intentionally smaller than full mathematical or JavaScript-like expressions
+
+Important engineering meaning:
+
+- future expression-input work should preserve the narrow allowed syntax unless a broader product decision is made deliberately
+- if setup-tab amount inputs later adopt the same component, they should reuse the same parser boundary instead of reintroducing richer evaluation features ad hoc
+
+### 3. Deployment needed an override-aware correction
+
+The first deployment pass surfaced an operational detail that future sessions should not have to rediscover.
+
+Current behavior:
+
+- the repo uses [docker-compose.override.yml](/home/ubuntu/dosh/docker-compose.override.yml) to add the external `frontend` network and Traefik labels for the frontend service
+- deploying with only the base compose file recreated the stack without that override wiring
+- local access through `localhost:3080` still worked, but the public host path would not route correctly through Traefik in that state
+- the stack was then redeployed with both compose files, restoring the external network attachment and router labels
+
+Important engineering meaning:
+
+- future public-facing deployments in this repo should include both compose files rather than relying on the base file alone
+- local success on port `3080` is not enough to prove the Traefik-facing deployment shape is intact
+
 ## Latest Session: SonarQube Root-Cluster Cleanup, Frontend Props Validation Baseline, Documentation Alignment, And Deployment Verification
 
 This session focused on understanding the latest SonarQube analysis state, fixing the dominant root cluster rather than isolated findings, and then aligning the project handoff, history, activity, and testing documents to that new baseline.

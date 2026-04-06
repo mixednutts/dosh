@@ -109,6 +109,7 @@ These areas deserve extra caution whenever product work touches them:
 - transaction-backed expense, balance, and investment behavior
 - transaction-backed income behavior, including dedicated income transaction history rather than inline actual overrides
 - modal-driven budget adjustment behavior across income, expense, and investment, including setup-history readback through the shared transaction model
+- period-detail modal amount-expression behavior, including raw-expression visibility, valid-expression preview, incomplete-expression in-progress summary behavior, and resolved-value submission across income, expense, investment, add-line, and budget-adjustment flows
 - setup-revision history behavior, including field-level change capture, revision-number rebasing, and the distinction between setup-affecting future budget adjustments and current-only period adjustments
 - post-paid revise flows and read-only guards on closed cycles
 - transaction line-state capture and budget-health off-plan interpretation
@@ -286,6 +287,7 @@ Best candidates:
 - delete option presentation for single delete versus future-chain delete
 - paid or revised controls for expenses and investments
 - income transaction modal behavior for standard income, transfer-backed income, and `Carried Forward`
+- period-detail amount-expression input behavior across transaction, add-line, and budget-adjustment modals
 - key summaries that distinguish budget totals from actual totals
 - session-persisted expand or collapse behavior where setup or history panels intentionally remember user preference for the browser session
 
