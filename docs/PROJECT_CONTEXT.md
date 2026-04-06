@@ -304,19 +304,25 @@ These Sonar outputs are not committed files in the repository checkout. They are
 
 - workflow name: `SonarQube`
 - workflow file: [.github/workflows/sonarqube.yml](/home/ubuntu/dosh/.github/workflows/sonarqube.yml)
+- helper script: [fetch_latest_sonar_artifact.sh](/home/ubuntu/dosh/scripts/fetch_latest_sonar_artifact.sh)
 - artifact name pattern: `sonar-summary-<github-run-id>`
 - exported files inside the artifact: `sonar-summary.md`, `sonar-summary.json`, `sonar-issues-summary.json`, and `sonar-issues-full.json`
 - those files are generated after the Sonar scan and quality gate wait complete successfully
 
 Typical retrieval flow from a future session after pulling the latest repository docs:
 
+1. run [fetch_latest_sonar_artifact.sh](/home/ubuntu/dosh/scripts/fetch_latest_sonar_artifact.sh) from the repository root, optionally passing a branch name such as `./scripts/fetch_latest_sonar_artifact.sh main`
+2. read the printed artifact directory path
+3. inspect `<artifact-directory>/sonar-summary.md` for a readable summary
+4. inspect `<artifact-directory>/sonar-issues-summary.json` for grouped hotspots and high-leverage fix candidates
+5. inspect `<artifact-directory>/sonar-issues-full.json` for the complete sanitized issue list
+6. use `<artifact-directory>/sonar-summary.json` when a compact machine-readable summary is enough
+
+Manual fallback if the helper script cannot be used:
+
 1. list recent workflow runs with `gh run list --workflow sonarqube.yml --limit 5`
 2. identify the relevant run id for the target branch or push
 3. download the artifact with `gh run download <run-id> -D /tmp/dosh-sonar-artifact`
-4. inspect `/tmp/dosh-sonar-artifact/sonar-summary-<run-id>/sonar-summary.md` for a readable summary
-5. inspect `/tmp/dosh-sonar-artifact/sonar-summary-<run-id>/sonar-issues-summary.json` for grouped hotspots and high-leverage fix candidates
-6. inspect `/tmp/dosh-sonar-artifact/sonar-summary-<run-id>/sonar-issues-full.json` for the complete sanitized issue list
-7. use `/tmp/dosh-sonar-artifact/sonar-summary-<run-id>/sonar-summary.json` when a compact machine-readable summary is enough
 
 The Sonar summary artifact should be treated as an operational CI output for that workflow run, not as a permanent repository document or long-term historical source of truth.
 

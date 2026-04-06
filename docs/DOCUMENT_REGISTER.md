@@ -558,6 +558,36 @@ Maintenance notes:
 
 - should remain generic and reusable rather than project-policy-heavy
 
+## Operational Helper Scripts
+
+### fetch_latest_sonar_artifact.sh
+
+Document:
+
+- [fetch_latest_sonar_artifact.sh](/home/ubuntu/dosh/scripts/fetch_latest_sonar_artifact.sh)
+
+Document type:
+
+- operational helper script
+
+Primary purpose:
+
+- download the latest successful SonarQube workflow artifact so future sessions can inspect the exported analysis without manually re-deriving the retrieval steps
+
+Primary source-of-truth scope:
+
+- the standard repository-local retrieval path for the latest downloadable Sonar workflow artifact
+
+Key relationships:
+
+- works against [.github/workflows/sonarqube.yml](/home/ubuntu/dosh/.github/workflows/sonarqube.yml)
+- retrieves the generated CI reports documented in this register and referenced in [PROJECT_CONTEXT.md](/home/ubuntu/dosh/docs/PROJECT_CONTEXT.md)
+
+Maintenance notes:
+
+- should remain a small operational convenience script rather than growing into a general CI client
+- should print the downloaded artifact paths clearly enough that future sessions can immediately open the exported files
+
 ## Document Register Documents
 
 ### DOCUMENT_REGISTER.md
