@@ -4,6 +4,98 @@ This document records meaningful automated test results from major working sessi
 
 It exists separately from [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) so the strategy can stay stable while future sessions still have a record of what was actually run and verified.
 
+## Latest Session: Sonar Coverage Follow-Through, New Frontend Regression Suites, Full Suite Verification, And Redeployment
+
+Session outcomes verified in this run:
+
+- the latest downloaded Sonar artifact [sonar-summary-24020210275](/tmp/dosh-sonar-artifact/run-24020210275/sonar-summary-24020210275/sonar-summary.md) confirms that `new_duplicated_lines_density` is no longer a failed quality-gate condition
+- the remaining failed SonarQube gate condition is now `new_coverage`, with the largest frontend coverage hotspots reported in [PersonalisationTab.jsx](/home/ubuntu/dosh/frontend/src/pages/tabs/PersonalisationTab.jsx), [Dashboard.jsx](/home/ubuntu/dosh/frontend/src/pages/Dashboard.jsx), [AmountCell.jsx](/home/ubuntu/dosh/frontend/src/components/AmountCell.jsx), and [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx)
+- dedicated frontend regression suites now exist for [AmountCell.jsx](/home/ubuntu/dosh/frontend/src/components/AmountCell.jsx), [Dashboard.jsx](/home/ubuntu/dosh/frontend/src/pages/Dashboard.jsx), and [PersonalisationTab.jsx](/home/ubuntu/dosh/frontend/src/pages/tabs/PersonalisationTab.jsx)
+- the full frontend suite, the full backend suite, and the frontend production build all passed in the final verified state
+- the stack was rebuilt and redeployed successfully through the override-aware Docker Compose path after the test and coverage work completed
+
+### Sonar artifact verification
+
+Commands run during this session:
+
+```bash
+gh run view 24020210275 --repo mixednutts/dosh --json databaseId,workflowName,headBranch,status,conclusion,createdAt,updatedAt,url,name,displayTitle
+gh api repos/mixednutts/dosh/actions/runs/24020210275/artifacts
+gh run download 24020210275 --repo mixednutts/dosh -D /tmp/dosh-sonar-artifact/run-24020210275
+```
+
+Result:
+
+- run `24020210275` completed on `main` with conclusion `failure`
+- the downloaded artifact confirmed that the active failed gate condition is now only `new_coverage`
+- file-level duplication hotspots were no longer returned by the Sonar API for new code
+- [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx) dropped to `2.3182297154899896%` duplicated lines on new code with `22` duplicated lines, which is below the previous gate threshold
+
+### Frontend verification
+
+Commands run during this session:
+
+```bash
+cd frontend
+npm test -- --runInBand --watchAll=false src/__tests__/AmountCell.test.jsx src/__tests__/Dashboard.test.jsx src/__tests__/PersonalisationTab.test.jsx
+npm test -- --runInBand --watchAll=false src/__tests__/AmountCell.test.jsx src/__tests__/Dashboard.test.jsx src/__tests__/PersonalisationTab.test.jsx src/__tests__/PeriodDetailPage.test.jsx
+npm test -- --runInBand --watchAll=false
+npm run build
+```
+
+Result:
+
+- the new focused frontend coverage batch passed with 3 suites and 10 tests
+- the expanded focused frontend coverage batch passed with 4 suites and 30 tests
+- the full frontend Jest suite passed with 14 suites and 86 tests
+- the frontend production build passed after the new regression suites were added
+- the Vite build still reports a large post-minification main chunk warning, which remains a performance follow-up rather than a correctness failure
+
+Files with meaningful frontend updates in this session:
+
+- [AmountCell.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/AmountCell.test.jsx)
+- [Dashboard.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/Dashboard.test.jsx)
+- [PersonalisationTab.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/PersonalisationTab.test.jsx)
+
+### Backend verification
+
+Commands run during this session:
+
+```bash
+cd /home/ubuntu/dosh/backend
+./.venv/bin/python -m pytest
+```
+
+Result:
+
+- the full backend suite passed with 63 tests
+- plain `pytest` was still unavailable in the base shell, so the project venv remained the correct execution path
+- backend warnings still include FastAPI `on_event` deprecation in [main.py](/home/ubuntu/dosh/backend/app/main.py) and `datetime.utcnow()` deprecation in [transaction_ledger.py](/home/ubuntu/dosh/backend/app/transaction_ledger.py)
+
+### Deployment verification
+
+Commands run:
+
+```bash
+docker compose -f /home/ubuntu/dosh/docker-compose.yml -f /home/ubuntu/dosh/docker-compose.override.yml up -d --build frontend
+docker compose -f /home/ubuntu/dosh/docker-compose.yml -f /home/ubuntu/dosh/docker-compose.override.yml ps
+curl -sS http://127.0.0.1:3080/
+curl -sS http://127.0.0.1:3080/api/health
+```
+
+Result:
+
+- backend and frontend containers rebuilt and restarted successfully through the override-aware compose path
+- the first health check briefly raced the backend restart and returned a connection-reset response, but the follow-up check succeeded
+- the live health endpoint returned `{"status":"ok","app":"Dosh"}`
+- the served root HTML referenced the fresh built assets and still included the favicon and theme-color wiring
+
+### Test failures and resolution notes
+
+- the first version of [Dashboard.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/Dashboard.test.jsx) asserted totals before the nested period-detail query had resolved; the test was corrected to wait for the active-cycle totals to render before asserting the computed values
+- no automated test failures remained at the end of the session
+- no additional plan document was required because this session did not run in a separate plan-only mode
+
 ## Latest Session: PeriodDetail Sonar Duplication Reduction, Favicon Wiring, And Override-Aware Redeployment
 
 Session outcomes verified in this run:

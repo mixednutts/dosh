@@ -31,6 +31,65 @@ For the dedicated workflow plan that now owns budget-adjustment, revision-histor
 
 For the implemented amount-entry plan that now defines inline arithmetic scope, preview behavior, and parser boundaries for period-detail modals, read [INLINE_EXPRESSION_AMOUNT_INPUT_PLAN.md](/home/ubuntu/dosh/docs/plans/INLINE_EXPRESSION_AMOUNT_INPUT_PLAN.md).
 
+## Latest Session: Sonar Duplication Clearance, Coverage Expansion, Full Regression Verification, And Redeployment
+
+This session focused on confirming whether the recent [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx) cleanup actually cleared the SonarQube duplication gate, then shifting the work from quality-gate triage into healthier regression coverage for newly changed frontend surfaces.
+
+Important direction now in place:
+
+- the latest verified Sonar artifact [24020210275](/tmp/dosh-sonar-artifact/run-24020210275/sonar-summary-24020210275/sonar-summary.md) no longer reports `new_duplicated_lines_density` as a failed gate condition, which confirms that the shared resolver and shared action-rail refactor in [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx) reduced new-code duplication enough to clear that specific threshold
+- the remaining active SonarQube gate failure is now `new_coverage`, not duplication
+- regression coverage has been expanded with dedicated suites for [AmountCell.jsx](/home/ubuntu/dosh/frontend/src/components/AmountCell.jsx), [Dashboard.jsx](/home/ubuntu/dosh/frontend/src/pages/Dashboard.jsx), and [PersonalisationTab.jsx](/home/ubuntu/dosh/frontend/src/pages/tabs/PersonalisationTab.jsx), which moves those newer surfaces away from the earlier `0.0%` coverage state
+- the full frontend Jest suite, the full backend `pytest` suite, and the frontend production build all pass in the final verified state
+- the stack has been rebuilt and redeployed again through the override-aware compose path, and the live health endpoint still returns `{"status":"ok","app":"Dosh"}`
+
+### 1. The PeriodDetail dedup work is now CI-confirmed rather than only locally inferred
+
+The earlier session had reduced repeated UI structures inside [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx), but it was still unclear whether Sonar's clone detection would treat that work as meaningful enough to clear the actual gate condition.
+
+Current behavior:
+
+- transaction-modal summary, entry, and transaction-list behavior now runs through shared config-driven resolver logic rather than repeated near-identical modal implementations
+- repeated income, expense, and investment action buttons now use shared local button primitives instead of repeated inline class-and-branch blocks
+- the newest verified Sonar artifact shows no file-level new-code duplication hotspots
+- [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx) still carries follow-up maintainability issues such as nested ternaries, duplicated helper implementations flagged by `javascript:S4144`, and a few accessibility or conditional-cleanup findings, but duplication is no longer the gate blocker
+
+Important engineering meaning:
+
+- future Sonar cleanup in [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx) should keep favoring shared resolver or config patterns over repeated JSX branch structures when multiple workflow variants differ mostly by labels, classes, or mutation direction
+- future sessions should not reopen duplication work in this file as though it were still unverified; the active blocker has shifted to coverage
+
+### 2. Coverage work should stay aligned with regression health, not just threshold chasing
+
+Once the newer Sonar artifact was inspected, it became clear that the most useful next move was not more duplicate-code cleanup but improving real regression coverage where newer frontend behavior had little or no dedicated test ownership.
+
+Current behavior:
+
+- [AmountCell.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/AmountCell.test.jsx) now covers edit-mode entry, blur save, enter save, escape cancel, and disabled behavior for [AmountCell.jsx](/home/ubuntu/dosh/frontend/src/components/AmountCell.jsx)
+- [Dashboard.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/Dashboard.test.jsx) now covers empty-budget, no-cycle, no-active-cycle, and active-cycle summary rendering paths for [Dashboard.jsx](/home/ubuntu/dosh/frontend/src/pages/Dashboard.jsx)
+- [PersonalisationTab.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/PersonalisationTab.test.jsx) now covers budget-backed initial state, reset-to-defaults behavior, autosave submission, maximum-deficit validation, and save-error rendering for [PersonalisationTab.jsx](/home/ubuntu/dosh/frontend/src/pages/tabs/PersonalisationTab.jsx)
+- the existing [PeriodDetailPage.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/PeriodDetailPage.test.jsx) suite remains the main workflow-oriented baseline for the period-detail page
+
+Important engineering meaning:
+
+- test expansion in this area should continue targeting meaningful workflow ownership boundaries rather than only adding narrow “line-hitting” assertions
+- [PersonalisationTab.jsx](/home/ubuntu/dosh/frontend/src/pages/tabs/PersonalisationTab.jsx), [Dashboard.jsx](/home/ubuntu/dosh/frontend/src/pages/Dashboard.jsx), and [AmountCell.jsx](/home/ubuntu/dosh/frontend/src/components/AmountCell.jsx) now have dedicated regression ownership and should stay on that footing as those surfaces evolve
+
+### 3. Full regression verification remains stable after the quality and coverage work
+
+This session intentionally rechecked the broader repository baseline so the new frontend tests would not silently mask drift elsewhere.
+
+Current behavior:
+
+- the full frontend Jest suite now passes with 14 suites and 86 tests
+- the full backend test suite now passes with 63 tests through [backend/.venv](/home/ubuntu/dosh/backend/.venv)
+- backend verification still emits known deprecation warnings around FastAPI `on_event` startup wiring in [main.py](/home/ubuntu/dosh/backend/app/main.py) and `datetime.utcnow()` usage in [transaction_ledger.py](/home/ubuntu/dosh/backend/app/transaction_ledger.py), but these remain warning-level follow-up work rather than active regressions
+
+Important engineering meaning:
+
+- future sessions should continue using the repo venv for backend verification because plain `pytest` is still not available in the base shell
+- startup and UTC deprecation warnings remain a real reliability-cleanup target even though they do not currently block tests or deploys
+
 ## Latest Session: PeriodDetail Sonar Cleanup Follow-Through, Favicon Wiring, And Deployment Verification
 
 This session focused on acting on the now-identified SonarQube duplication hotspot in [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx), finishing the outstanding favicon bug, and redeploying the live frontend with both changes in place.

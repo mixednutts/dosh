@@ -544,6 +544,7 @@ Status:
 - `Active`
 
 - `Completed`: add regression coverage for budget-adjustment history, carry-forward-on-close-out timing, and direct paid-to-revised workflow behavior
+- `Completed`: add dedicated frontend regression coverage for dashboard current-cycle summaries, personalisation autosave and validation behavior, and inline amount-cell edit behavior after Sonar coverage surfaced those areas as under-tested
 - keep new feature work under a test-with-change discipline rather than treating testing as a later cleanup phase
 - extend Playwright from the current happy-path lifecycle smoke into reconciliation, correction, and broader scenario-shaped flows
 - continue expanding setup-shape consequence coverage where technically valid configuration changes can still weaken later workflows
@@ -585,7 +586,8 @@ Status:
 
 - `Completed`: simplify paid-to-revised reopening by removing the separate revision-reason modal and relying on transaction-backed history instead
 - `Completed`: reduce the dominant backend SonarQube router noise by switching FastAPI endpoints to a shared `DbSession` dependency alias and centralized documented error responses
-- continue reducing SonarQube noise by addressing the next concentrated frontend rule clusters after props validation and the completed FastAPI router cleanup, especially nested ternaries, form-label associations, and duplication in `PeriodDetailPage.jsx`; the local `PeriodDetailPage.jsx` duplication pass now consolidates repeated transaction-modal and status UI, but a fresh SonarQube run is still needed before this activity can move to `Completed`
+- `Completed`: clear the active SonarQube new-code duplication hotspot in `PeriodDetailPage.jsx`; the verified follow-up run now shows duplication below the quality-gate threshold, shifting the remaining quality work toward coverage and residual frontend maintainability findings instead
+- continue reducing SonarQube noise by addressing the next concentrated frontend rule clusters after props validation and the completed FastAPI router cleanup, especially nested ternaries, form-label associations, and residual maintainability findings in `PeriodDetailPage.jsx` and related high-traffic frontend files now that the duplication hotspot is resolved
 - standardize terminology around savings and investments
 - standardize where the UI says `Budget Cycle` while backend and API continue using `period`
 - standardize health terminology around surplus, deficit, tolerance, threshold, and escalation

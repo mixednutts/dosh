@@ -147,7 +147,9 @@ Operational note:
 - the SonarQube workflow now exports a sanitized artifact summary even when the quality gate fails, and the repo includes [fetch_latest_sonar_artifact.sh](/home/ubuntu/dosh/scripts/fetch_latest_sonar_artifact.sh) so future sessions can inspect the latest successful artifact quickly
 - failed-run Sonar artifacts now include explicit `failingQualityGateConditions` plus [sonar-component-metrics.json](/tmp/dosh-sonar-artifact/run-24018996530/sonar-summary-24018996530/sonar-component-metrics.json) for file-level new-code duplication or coverage hotspots
 - the frontend entry HTML now links the shared public [icon.svg](/home/ubuntu/dosh/frontend/public/icon.svg) as the live favicon and touch icon
-- the current known SonarQube gate failure still comes from the last verified run [24018996530](/tmp/dosh-sonar-artifact/run-24018996530/sonar-summary-24018996530/sonar-summary.md), but local cleanup has now reduced repeated transaction and status UI inside [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx) ahead of the next CI rerun
+- the latest verified Sonar artifact [24020210275](/tmp/dosh-sonar-artifact/run-24020210275/sonar-summary-24020210275/sonar-summary.md) confirms that the active quality-gate blocker is now `new_coverage`, not duplication
+- [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx) no longer appears as a file-level new-code duplication hotspot in the latest verified Sonar artifact after the shared transaction-workflow and action-rail refactor
+- dedicated frontend regression suites now exist for [AmountCell.jsx](/home/ubuntu/dosh/frontend/src/components/AmountCell.jsx), [Dashboard.jsx](/home/ubuntu/dosh/frontend/src/pages/Dashboard.jsx), and [PersonalisationTab.jsx](/home/ubuntu/dosh/frontend/src/pages/tabs/PersonalisationTab.jsx) because those newer surfaces were previously highlighted as new-code coverage hotspots
 - `PeriodTransaction` is now the sole live transaction store; older expense and investment transaction tables have been removed from the active schema
 - the deployed database has already been manually aligned to the current post-session schema expectations, including budget-adjustment and transaction line-state fields
 - the deployed database has since required another explicit live patch for setup-revision history support, including `periodtransactions.revisionnum` and the `setuprevisionevents` table, which reinforces that proper migrations remain an active engineering need
@@ -249,7 +251,7 @@ The most useful enabling work for future sessions is:
 7. harden deployment by addressing Node engine drift and startup deprecation warnings
 8. continue improving summary and calendar usability without letting the budget overview become a dashboard clone
 9. reduce the main frontend bundle by introducing route-level lazy loading for major pages in [App.jsx](/home/ubuntu/dosh/frontend/src/App.jsx)
-10. continue SonarQube-driven cleanup by tackling the next concentrated frontend clusters after the completed FastAPI router cleanup, especially nested ternaries, form-label associations, and any remaining duplication in [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx) after the current local shared-component refactor is rechecked by CI
+10. continue SonarQube-driven cleanup by tackling the remaining frontend coverage and maintainability clusters after the confirmed [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx) duplication reduction, especially nested ternaries, form-label associations, and the still-undercovered new-code paths in the latest Sonar artifact
 
 ## Testing Posture
 
@@ -257,6 +259,7 @@ Dosh now has a meaningful multi-layer regression baseline:
 
 - backend `pytest`
 - frontend Jest and React Testing Library on the Vite-based frontend, including a dedicated layout-navigation regression baseline for current sidebar behavior
+- dedicated frontend regression suites for [AmountCell.jsx](/home/ubuntu/dosh/frontend/src/components/AmountCell.jsx), [Dashboard.jsx](/home/ubuntu/dosh/frontend/src/pages/Dashboard.jsx), [PersonalisationTab.jsx](/home/ubuntu/dosh/frontend/src/pages/tabs/PersonalisationTab.jsx), [AmountExpressionInput.jsx](/home/ubuntu/dosh/frontend/src/components/AmountExpressionInput.jsx), and [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx)
 - Playwright smoke coverage for create-budget, setup gating, first-cycle generation, first expense activity, close-out snapshot visibility, and next-cycle activation
 
 Testing emphasis should remain risk-based.
@@ -325,7 +328,7 @@ These Sonar outputs are not committed files in the repository checkout. They are
 - exported files inside the artifact: `sonar-summary.md`, `sonar-summary.json`, `sonar-issues-summary.json`, `sonar-issues-full.json`, and `sonar-component-metrics.json`
 - the artifact is now uploaded even when the Sonar scan step fails because the quality gate returns `ERROR`
 - the export now includes both issue-driven hotspots and measure-driven failed-gate context such as `failingQualityGateConditions` and file-level new-code duplication or coverage hotspots
-- the latest locally verified cleanup against the failed duplication hotspot has not yet been reflected in a newer Sonar artifact, so future sessions should not assume the gate is cleared until a fresh workflow run completes
+- the latest verified Sonar artifact now reflects the cleared duplication hotspot and shows `new_coverage` as the remaining failed gate condition, so future sessions should treat coverage expansion and residual maintainability cleanup as the active Sonar follow-through work
 
 Typical retrieval flow from a future session after pulling the latest repository docs:
 
@@ -352,7 +355,7 @@ If the next development task is still open-ended, the best default candidates ar
 
 1. reporting and period-comparison summaries built from the ledger-backed model
 2. reconciliation summary and discrepancy surfaces by account
-3. rerun the SonarQube workflow and inspect the next artifact to confirm whether the local [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx) duplication reduction cleared the active quality-gate failure
+3. inspect the latest SonarQube artifact before choosing the next cleanup target so coverage hotspots and rule-cluster hotspots are not confused with the now-cleared [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx) duplication work
 4. close-out and delete continuity hardening with deeper automated coverage
 5. migration framework introduction from the new post-cutover schema baseline
 
