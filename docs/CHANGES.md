@@ -31,6 +31,83 @@ For the dedicated workflow plan that now owns budget-adjustment, revision-histor
 
 For the implemented amount-entry plan that now defines inline arithmetic scope, preview behavior, and parser boundaries for period-detail modals, read [INLINE_EXPRESSION_AMOUNT_INPUT_PLAN.md](/home/ubuntu/dosh/docs/plans/INLINE_EXPRESSION_AMOUNT_INPUT_PLAN.md).
 
+## Latest Session: FastAPI Sonar Cleanup, Quality-Gate Artifact Hardening, And Measure-Driven Hotspot Export
+
+This session focused on reducing the dominant backend SonarQube router noise, making failed SonarQube workflow runs still produce usable artifacts, and then extending the artifact export so measure-driven quality-gate failures can be diagnosed from local session context instead of only from the Sonar UI.
+
+Important direction now in place:
+
+- the backend routers now use a shared `DbSession` dependency alias plus centralized `error_responses(...)` metadata, which materially reduces the FastAPI `Annotated` and documented-response rule clusters
+- the SonarQube GitHub Actions workflow now uploads its sanitized artifact even when the scan step fails because the quality gate returns `ERROR`
+- the Sonar export now records failed quality gate conditions explicitly rather than only showing issue counts
+- the Sonar export now includes file-level component metrics in [sonar-component-metrics.json](/tmp/dosh-sonar-artifact/run-24018996530/sonar-summary-24018996530/sonar-component-metrics.json), including duplication and coverage on new code where available
+- the export logic had to be corrected twice during the session: first to query file descendants, then to read Sonar's `new_*` metric values from `periods[0].value` rather than only top-level `value`
+- the current failed quality gate example is now captured directly in the artifact and points to [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx) as the duplication hotspot driving `new_duplicated_lines_density`
+
+### 1. Backend FastAPI router cleanup now has a reusable baseline
+
+This session addressed the major backend SonarQube router clusters around FastAPI dependency annotations and undocumented `HTTPException` statuses.
+
+Current behavior:
+
+- router functions now use a shared `DbSession` alias from [api_docs.py](/home/ubuntu/dosh/backend/app/api_docs.py) instead of repeating `Session = Depends(get_db)` inline
+- reusable `error_responses(...)` metadata now documents the common `404`, `405`, `409`, `422`, and `423` statuses where those endpoints can raise `HTTPException`
+- the cleanup was applied across the main router set, including [periods.py](/home/ubuntu/dosh/backend/app/routers/periods.py), [budgets.py](/home/ubuntu/dosh/backend/app/routers/budgets.py), [investments.py](/home/ubuntu/dosh/backend/app/routers/investments.py), and the related transaction and setup routers
+
+Important engineering meaning:
+
+- future router work should continue using the shared `DbSession` and `error_responses(...)` helpers rather than reintroducing endpoint-local dependency and response boilerplate
+- FastAPI response documentation should stay aligned with actual raised status codes, especially for lock, close-out, validation, and workflow-state protections
+
+### 2. Failed Sonar quality-gate runs now preserve actionable artifacts
+
+Before this session, a failing Sonar scan step stopped the workflow before the sanitized export could run, which made the most relevant failure context unavailable in the very runs where it was needed most.
+
+Current behavior:
+
+- the Sonar scan step now uses `continue-on-error: true`
+- the sanitized export and artifact upload steps now run under `always()`
+- the workflow still ends in failure after artifact upload when the Sonar scan or quality gate fails, preserving the red CI signal while keeping diagnostics available
+
+Important engineering meaning:
+
+- future Sonar-guided cleanup work can start from the exact failed run artifact rather than inferring the problem from the GitHub Actions log alone
+- sessions should still remember that [fetch_latest_sonar_artifact.sh](/home/ubuntu/dosh/scripts/fetch_latest_sonar_artifact.sh) currently targets successful runs only; failed-gate runs still need manual `gh run download` unless that helper is expanded later
+
+### 3. Measure-driven gate failures are now exported, not just issue-driven ones
+
+The Sonar UI showed that the failed gate was being driven by duplicated lines on new code, but that information was not present in the earlier artifact because it is measure-based rather than issue-based.
+
+Current behavior:
+
+- the export now records `qualityGateConditions` and `failingQualityGateConditions`
+- the artifact now includes [sonar-component-metrics.json](/tmp/dosh-sonar-artifact/run-24018996530/sonar-summary-24018996530/sonar-component-metrics.json) with file-level metrics for `new_coverage`, `new_duplicated_lines_density`, `new_duplicated_lines`, and related supporting values
+- the current verified failed-run artifact [sonar-summary-24018996530](/tmp/dosh-sonar-artifact/run-24018996530/sonar-summary-24018996530) now reports:
+- failed condition `new_duplicated_lines_density`
+- actual value `3.3`
+- threshold `3`
+- hotspot file [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx) with `19.62264150943396%` duplicated lines on new code and `52` duplicated lines
+
+Important engineering meaning:
+
+- measure-driven quality gate failures such as new-code duplication and new-code coverage should now be diagnosable from the exported artifact without opening SonarCloud first
+- if future metric exports look unexpectedly empty, check whether Sonar is returning the values under `periods[0].value` rather than top-level `value`, because that response shape was the root cause of the missing hotspot data in this session
+
+### 4. The next quality target is now clearer
+
+With the backend FastAPI router cluster materially reduced and the artifact export improved, the next cleanup direction is more grounded in current evidence.
+
+Current behavior:
+
+- the current failed gate is duplication on new code rather than backend router documentation
+- [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx) is now explicitly identified as the duplication hotspot behind the failed gate
+- the largest remaining issue cluster is still frontend `javascript:S3358` nested ternaries, with related maintainability work still concentrated in [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx) and [SetupItemHistoryModal.jsx](/home/ubuntu/dosh/frontend/src/components/SetupItemHistoryModal.jsx)
+
+Important engineering meaning:
+
+- future frontend cleanup should start from the now-exported duplication hotspot and the remaining concentrated frontend issue clusters rather than returning to the completed FastAPI annotation work
+- the quality gate can now fail for reasons not represented in the issue list alone, so future sessions should check both `failingQualityGateConditions` and the issue clusters before choosing the next target
+
 ## Latest Session: Inline Arithmetic Amount Entry, Parser Right-Sizing, Focused Modal Coverage, And Override-Aware Redeployment
 
 This session focused on improving amount entry across period-detail modal workflows, preserving the design decisions from the planning pass, and then correcting a deployment mistake that temporarily bypassed the repo's Traefik override wiring.

@@ -575,6 +575,7 @@ Status:
 - make schema evolution safer and more observable than ad hoc one-time scripts
 - separate one-time migration work from normal app startup permanently
 - capture the unified-ledger baseline, close-out schema, and setup-assessment schema in the real migration path
+- `Completed`: harden the SonarQube workflow so failed quality-gate runs still upload sanitized artifacts with explicit failed-condition context and file-level measure hotspots
 
 #### Activity Group: Consistency
 
@@ -583,7 +584,8 @@ Status:
 - `Next`
 
 - `Completed`: simplify paid-to-revised reopening by removing the separate revision-reason modal and relying on transaction-backed history instead
-- continue reducing SonarQube noise by addressing the next concentrated rule clusters after props validation, especially nested ternaries, form-label associations, and FastAPI annotation or response-documentation warnings
+- `Completed`: reduce the dominant backend SonarQube router noise by switching FastAPI endpoints to a shared `DbSession` dependency alias and centralized documented error responses
+- continue reducing SonarQube noise by addressing the next concentrated frontend rule clusters after props validation and the completed FastAPI router cleanup, especially nested ternaries, form-label associations, and duplication in `PeriodDetailPage.jsx`
 - standardize terminology around savings and investments
 - standardize where the UI says `Budget Cycle` while backend and API continue using `period`
 - standardize health terminology around surplus, deficit, tolerance, threshold, and escalation

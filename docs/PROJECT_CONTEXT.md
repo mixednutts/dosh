@@ -143,7 +143,9 @@ Operational note:
 - this repo also includes [docker-compose.override.yml](/home/ubuntu/dosh/docker-compose.override.yml) for Traefik-facing frontend deployment wiring, so deploys that need the public host path should include both compose files rather than the base file alone
 - the frontend Docker build now uses Node 20 rather than the old Node 16 baseline
 - Docker Compose `DEV_MODE` is now the shared control point for dev-only demo-budget behavior across frontend build visibility and backend runtime enforcement
-- the SonarQube workflow now exports a sanitized artifact summary, and the repo includes [fetch_latest_sonar_artifact.sh](/home/ubuntu/dosh/scripts/fetch_latest_sonar_artifact.sh) so future sessions can inspect the latest issue clusters locally before starting cleanup work
+- the backend router baseline now uses a shared [api_docs.py](/home/ubuntu/dosh/backend/app/api_docs.py) helper with `DbSession` and centralized `error_responses(...)` metadata for FastAPI endpoints
+- the SonarQube workflow now exports a sanitized artifact summary even when the quality gate fails, and the repo includes [fetch_latest_sonar_artifact.sh](/home/ubuntu/dosh/scripts/fetch_latest_sonar_artifact.sh) so future sessions can inspect the latest successful artifact quickly
+- failed-run Sonar artifacts now include explicit `failingQualityGateConditions` plus [sonar-component-metrics.json](/tmp/dosh-sonar-artifact/run-24018996530/sonar-summary-24018996530/sonar-component-metrics.json) for file-level new-code duplication or coverage hotspots
 - `PeriodTransaction` is now the sole live transaction store; older expense and investment transaction tables have been removed from the active schema
 - the deployed database has already been manually aligned to the current post-session schema expectations, including budget-adjustment and transaction line-state fields
 - the deployed database has since required another explicit live patch for setup-revision history support, including `periodtransactions.revisionnum` and the `setuprevisionevents` table, which reinforces that proper migrations remain an active engineering need
@@ -244,7 +246,7 @@ The most useful enabling work for future sessions is:
 7. harden deployment by addressing Node engine drift and startup deprecation warnings
 8. continue improving summary and calendar usability without letting the budget overview become a dashboard clone
 9. reduce the main frontend bundle by introducing route-level lazy loading for major pages in [App.jsx](/home/ubuntu/dosh/frontend/src/App.jsx)
-10. continue SonarQube-driven cleanup by tackling the next concentrated clusters after props validation, especially nested ternaries, form-label associations, and FastAPI annotation or response-documentation warnings
+10. continue SonarQube-driven cleanup by tackling the next concentrated frontend clusters after the completed FastAPI router cleanup, especially nested ternaries, form-label associations, and the duplication hotspot in [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx)
 
 ## Testing Posture
 
@@ -317,17 +319,20 @@ These Sonar outputs are not committed files in the repository checkout. They are
 - workflow file: [.github/workflows/sonarqube.yml](/home/ubuntu/dosh/.github/workflows/sonarqube.yml)
 - helper script: [fetch_latest_sonar_artifact.sh](/home/ubuntu/dosh/scripts/fetch_latest_sonar_artifact.sh)
 - artifact name pattern: `sonar-summary-<github-run-id>`
-- exported files inside the artifact: `sonar-summary.md`, `sonar-summary.json`, `sonar-issues-summary.json`, and `sonar-issues-full.json`
-- those files are generated after the Sonar scan and quality gate wait complete successfully
+- exported files inside the artifact: `sonar-summary.md`, `sonar-summary.json`, `sonar-issues-summary.json`, `sonar-issues-full.json`, and `sonar-component-metrics.json`
+- the artifact is now uploaded even when the Sonar scan step fails because the quality gate returns `ERROR`
+- the export now includes both issue-driven hotspots and measure-driven failed-gate context such as `failingQualityGateConditions` and file-level new-code duplication or coverage hotspots
 
 Typical retrieval flow from a future session after pulling the latest repository docs:
 
-1. run [fetch_latest_sonar_artifact.sh](/home/ubuntu/dosh/scripts/fetch_latest_sonar_artifact.sh) from the repository root, optionally passing a branch name such as `./scripts/fetch_latest_sonar_artifact.sh main`
-2. read the printed artifact directory path
-3. inspect `<artifact-directory>/sonar-summary.md` for a readable summary
-4. inspect `<artifact-directory>/sonar-issues-summary.json` for grouped hotspots and high-leverage fix candidates
-5. inspect `<artifact-directory>/sonar-issues-full.json` for the complete sanitized issue list
-6. use `<artifact-directory>/sonar-summary.json` when a compact machine-readable summary is enough
+1. if the target workflow run completed successfully, run [fetch_latest_sonar_artifact.sh](/home/ubuntu/dosh/scripts/fetch_latest_sonar_artifact.sh) from the repository root, optionally passing a branch name such as `./scripts/fetch_latest_sonar_artifact.sh main`
+2. if the target workflow run failed its quality gate, use `gh run list --workflow sonarqube.yml --limit 10` to identify the run and then `gh run download <run-id> -D /tmp/dosh-sonar-artifact/run-<run-id>`
+3. read the printed or downloaded artifact directory path
+4. inspect `<artifact-directory>/sonar-summary.md` for a readable summary, including failed quality gate conditions
+5. inspect `<artifact-directory>/sonar-issues-summary.json` for grouped issue hotspots and high-leverage fix candidates
+6. inspect `<artifact-directory>/sonar-component-metrics.json` for file-level duplication or coverage hotspots behind measure-driven gate failures
+7. inspect `<artifact-directory>/sonar-issues-full.json` for the complete sanitized issue list
+8. use `<artifact-directory>/sonar-summary.json` when a compact machine-readable summary is enough
 
 Manual fallback if the helper script cannot be used:
 

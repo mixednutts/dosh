@@ -4,6 +4,75 @@ This document records meaningful automated test results from major working sessi
 
 It exists separately from [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) so the strategy can stay stable while future sessions still have a record of what was actually run and verified.
 
+## Latest Session: FastAPI Router Sonar Cleanup And Failed-Gate Artifact Verification
+
+Session outcomes verified in this run:
+
+- backend FastAPI routers now use a shared `DbSession` dependency alias and centralized documented error responses
+- the backend router cleanup compiled cleanly and passed the full backend test suite
+- the SonarQube workflow now exports a usable artifact even when the quality gate fails
+- the exported artifact now includes failed gate conditions and file-level metric hotspots for measure-driven failures
+- the current failed quality gate is now verifiably tied to duplicated lines on new code in [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx)
+
+### Backend verification
+
+Commands run during this session:
+
+```bash
+python3 -m compileall /home/ubuntu/dosh/backend/app
+cd /home/ubuntu/dosh/backend
+./.venv/bin/python -m pytest
+```
+
+Result:
+
+- backend modules compiled successfully after the router dependency and response-doc cleanup
+- the full backend test suite passed in the final verified state
+- 63 backend tests passed
+
+Files with meaningful backend updates in this session:
+
+- [api_docs.py](/home/ubuntu/dosh/backend/app/api_docs.py)
+- [budgets.py](/home/ubuntu/dosh/backend/app/routers/budgets.py)
+- [investments.py](/home/ubuntu/dosh/backend/app/routers/investments.py)
+- [balance_types.py](/home/ubuntu/dosh/backend/app/routers/balance_types.py)
+- [expense_items.py](/home/ubuntu/dosh/backend/app/routers/expense_items.py)
+- [expense_entries.py](/home/ubuntu/dosh/backend/app/routers/expense_entries.py)
+- [income_types.py](/home/ubuntu/dosh/backend/app/routers/income_types.py)
+- [income_transactions.py](/home/ubuntu/dosh/backend/app/routers/income_transactions.py)
+- [investment_transactions.py](/home/ubuntu/dosh/backend/app/routers/investment_transactions.py)
+- [period_transactions.py](/home/ubuntu/dosh/backend/app/routers/period_transactions.py)
+- [periods.py](/home/ubuntu/dosh/backend/app/routers/periods.py)
+
+### Workflow and artifact verification
+
+Commands run during this session:
+
+```bash
+./scripts/fetch_latest_sonar_artifact.sh main
+gh run list --workflow sonarqube.yml --limit 10
+gh run download 24018002554 -D /tmp/dosh-sonar-artifact/run-24018002554
+gh run download 24018405094 -D /tmp/dosh-sonar-artifact/run-24018405094
+gh run download 24018565817 -D /tmp/dosh-sonar-artifact/run-24018565817
+gh run download 24018996530 -D /tmp/dosh-sonar-artifact/run-24018996530
+```
+
+Result:
+
+- the first failed-run artifact after the workflow hardening change confirmed that artifacts were uploaded even when the quality gate failed
+- the next failed-run artifacts exposed a gap where measure-based gate failures were recorded but file-level hotspots were empty
+- direct inspection of Sonar API output showed that `new_*` file metrics are returned under `periods[0].value`, not only under top-level `value`
+- after correcting the export parser, artifact [sonar-summary-24018996530](/tmp/dosh-sonar-artifact/run-24018996530/sonar-summary-24018996530) successfully reported the failed gate condition and the duplication hotspot file
+- the verified hotspot is [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx) with `19.62264150943396%` duplicated lines on new code and `52` duplicated lines
+
+### Test failures and resolution notes
+
+- plain `pytest` was not available in the base shell, but the project venv under [backend/.venv](/home/ubuntu/dosh/backend/.venv) worked and was used for the final backend verification
+- the first workflow revision exported failed quality gate conditions but still missed the file-level duplication contributor because the file metrics parser only read top-level `value`
+- a second workflow revision changed the file traversal, but the hotspot export still remained empty until the parser was updated to read `periods[0].value`
+- no unresolved backend test failures remained at the end of the session
+- no unresolved artifact-export failures remained at the end of the session for the verified failed-run case
+
 ## Latest Session: Inline Arithmetic Amount Entry, Parser Right-Sizing, Focused Modal Coverage, And Override-Aware Redeployment
 
 Session outcomes verified in this run:
