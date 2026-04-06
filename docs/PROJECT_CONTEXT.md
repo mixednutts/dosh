@@ -296,6 +296,28 @@ Before starting a new feature or refactor:
 4. check [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) and [TEST_EXPANSION_PLAN.md](/home/ubuntu/dosh/docs/tests/TEST_EXPANSION_PLAN.md) for the expected coverage boundary
 5. confirm whether the work touches lifecycle, close-out, carry-forward, ledger, or health rules before changing behavior
 
+## CI Operational Notes
+
+The repository now exports sanitized SonarQube workflow artifacts so future sessions can inspect analysis output without needing direct access to the Sonar token.
+
+- workflow name: `SonarQube`
+- workflow file: [.github/workflows/sonarqube.yml](/home/ubuntu/dosh/.github/workflows/sonarqube.yml)
+- artifact name pattern: `sonar-summary-<github-run-id>`
+- exported files inside the artifact: `sonar-summary.md`, `sonar-summary.json`, `sonar-issues-summary.json`, and `sonar-issues-full.json`
+- those files are generated after the Sonar scan and quality gate wait complete successfully
+
+Typical retrieval flow from a future session:
+
+1. list recent workflow runs with `gh run list --workflow sonarqube.yml --limit 5`
+2. identify the relevant run id for the target branch or push
+3. download the artifact with `gh run download <run-id> -D /tmp/dosh-sonar-artifact`
+4. inspect `/tmp/dosh-sonar-artifact/sonar-summary-<run-id>/sonar-summary.md` for a readable summary
+5. inspect `/tmp/dosh-sonar-artifact/sonar-summary-<run-id>/sonar-issues-summary.json` for grouped hotspots and high-leverage fix candidates
+6. inspect `/tmp/dosh-sonar-artifact/sonar-summary-<run-id>/sonar-issues-full.json` for the complete sanitized issue list
+7. use `/tmp/dosh-sonar-artifact/sonar-summary-<run-id>/sonar-summary.json` when a compact machine-readable summary is enough
+
+The Sonar summary artifact should be treated as an operational CI output for that workflow run, not as a permanent repository document or long-term historical source of truth.
+
 ## Recommended First Targets
 
 If the next development task is still open-ended, the best default candidates are:

@@ -79,6 +79,7 @@ jobs:
           GITHUB_HEAD_REF: ${{ github.head_ref }}
         run: |
           python - <<'PY'
+          from collections import Counter, defaultdict
           import json
           import os
           import sys
@@ -107,6 +108,34 @@ jobs:
                   print(f"Sonar API request failed: {url}", file=sys.stderr)
                   print(body, file=sys.stderr)
                   raise
+
+          def sanitize_issue(issue):
+              return {
+                  "key": issue.get("key"),
+                  "type": issue.get("type"),
+                  "severity": issue.get("severity"),
+                  "rule": issue.get("rule"),
+                  "message": issue.get("message"),
+                  "component": issue.get("component"),
+                  "line": issue.get("line"),
+                  "status": issue.get("status"),
+                  "effort": issue.get("effort"),
+                  "debt": issue.get("debt"),
+                  "tags": issue.get("tags", []),
+                  "cleanCodeAttribute": issue.get("cleanCodeAttribute"),
+                  "impacts": issue.get("impacts", []),
+              }
+
+          def component_path(component):
+              if not component:
+                  return "unknown"
+              return component.split(":", 1)[1] if ":" in component else component
+
+          def top_counts(counter, limit=20):
+              return [
+                  {"name": name, "count": count}
+                  for name, count in counter.most_common(limit)
+              ]
 
           branch_params = {"branch": branch} if branch else {}
 
@@ -140,53 +169,146 @@ jobs:
               },
           )
 
-          issues = api_get(
-              "/api/issues/search",
-              {
-                  "componentKeys": project_key,
-                  "resolved": "false",
-                  "ps": "100",
-                  "additionalFields": "_all",
-                  **branch_params,
-              },
-          )
+          issue_page_size = 500
+          issue_page = 1
+          all_issues = []
+          issue_total = None
+
+          while True:
+              issues_page = api_get(
+                  "/api/issues/search",
+                  {
+                      "componentKeys": project_key,
+                      "resolved": "false",
+                      "ps": str(issue_page_size),
+                      "p": str(issue_page),
+                      "additionalFields": "_all",
+                      **branch_params,
+                  },
+              )
+
+              page_issues = issues_page.get("issues", [])
+              if issue_total is None:
+                  issue_total = issues_page.get("total", 0)
+              all_issues.extend(page_issues)
+
+              paging = issues_page.get("paging", {})
+              page_index = paging.get("pageIndex", issue_page)
+              page_size = paging.get("pageSize", issue_page_size)
+              total = paging.get("total", issue_total or 0)
+
+              if page_index * page_size >= total or not page_issues:
+                  break
+
+              issue_page += 1
 
           measure_map = {
               item["metric"]: item.get("value")
               for item in measures.get("component", {}).get("measures", [])
           }
 
-          sanitized_issues = []
-          for issue in issues.get("issues", []):
-              sanitized_issues.append(
+          sanitized_issues = [sanitize_issue(issue) for issue in all_issues]
+
+          by_severity = Counter(issue.get("severity", "UNKNOWN") for issue in sanitized_issues)
+          by_type = Counter(issue.get("type", "UNKNOWN") for issue in sanitized_issues)
+          by_rule = Counter(issue.get("rule", "unknown") for issue in sanitized_issues)
+          by_file = Counter(component_path(issue.get("component")) for issue in sanitized_issues)
+          by_directory = Counter()
+          issues_by_rule = defaultdict(list)
+          issues_by_file = defaultdict(list)
+
+          for issue in sanitized_issues:
+              file_path = component_path(issue.get("component"))
+              directory = file_path.rsplit("/", 1)[0] if "/" in file_path else "."
+              by_directory[directory] += 1
+              issues_by_rule[issue.get("rule", "unknown")].append(issue)
+              issues_by_file[file_path].append(issue)
+
+          highest_priority_severities = {"BLOCKER": 0, "CRITICAL": 1, "MAJOR": 2, "MINOR": 3, "INFO": 4}
+
+          high_leverage_rules = []
+          for rule_name, issues_for_rule in by_rule.most_common(15):
+              sample_issue = issues_by_rule[rule_name][0]
+              high_leverage_rules.append(
                   {
-                      "key": issue.get("key"),
-                      "type": issue.get("type"),
-                      "severity": issue.get("severity"),
-                      "rule": issue.get("rule"),
-                      "message": issue.get("message"),
-                      "component": issue.get("component"),
-                      "line": issue.get("line"),
-                      "status": issue.get("status"),
-                      "effort": issue.get("effort"),
-                      "debt": issue.get("debt"),
-                      "tags": issue.get("tags", []),
-                      "cleanCodeAttribute": issue.get("cleanCodeAttribute"),
-                      "impacts": issue.get("impacts", []),
+                      "rule": rule_name,
+                      "count": issues_for_rule,
+                      "type": sample_issue.get("type"),
+                      "severity": sample_issue.get("severity"),
+                      "sampleComponent": component_path(sample_issue.get("component")),
+                      "sampleLine": sample_issue.get("line"),
+                      "sampleMessage": sample_issue.get("message"),
                   }
               )
+
+          high_leverage_files = []
+          for file_name, file_count in by_file.most_common(15):
+              file_issues = issues_by_file[file_name]
+              severity_counts = Counter(issue.get("severity", "UNKNOWN") for issue in file_issues)
+              type_counts = Counter(issue.get("type", "UNKNOWN") for issue in file_issues)
+              top_rules = Counter(issue.get("rule", "unknown") for issue in file_issues).most_common(5)
+              highest_severity = min(
+                  (highest_priority_severities.get(severity, 99) for severity in severity_counts),
+                  default=99,
+              )
+              highest_severity_name = next(
+                  (
+                      severity
+                      for severity, rank in highest_priority_severities.items()
+                      if rank == highest_severity
+                  ),
+                  "UNKNOWN",
+              )
+              high_leverage_files.append(
+                  {
+                      "file": file_name,
+                      "count": file_count,
+                      "highestSeverity": highest_severity_name,
+                      "severityCounts": dict(severity_counts),
+                      "typeCounts": dict(type_counts),
+                      "topRules": [
+                          {"rule": rule_name, "count": rule_count}
+                          for rule_name, rule_count in top_rules
+                      ],
+                  }
+              )
+
+          summary = {
+              "projectKey": project_key,
+              "branch": branch,
+              "qualityGateStatus": quality_gate.get("projectStatus", {}).get("status"),
+              "measures": measure_map,
+              "issueTotal": len(sanitized_issues),
+              "issueCounts": {
+                  "bySeverity": dict(by_severity),
+                  "byType": dict(by_type),
+                  "topRules": top_counts(by_rule, limit=25),
+                  "topFiles": top_counts(by_file, limit=25),
+                  "topDirectories": top_counts(by_directory, limit=25),
+              },
+              "highLeverageCandidates": {
+                  "rules": high_leverage_rules,
+                  "files": high_leverage_files,
+              },
+          }
 
           report = {
               "projectKey": project_key,
               "branch": branch,
               "qualityGateStatus": quality_gate.get("projectStatus", {}).get("status"),
               "measures": measure_map,
-              "issueTotal": issues.get("total", len(sanitized_issues)),
+              "issueTotal": len(sanitized_issues),
               "issues": sanitized_issues,
           }
 
           with open("sonar-summary.json", "w", encoding="utf-8") as fh:
               json.dump(report, fh, indent=2)
+
+          with open("sonar-issues-full.json", "w", encoding="utf-8") as fh:
+              json.dump(report, fh, indent=2)
+
+          with open("sonar-issues-summary.json", "w", encoding="utf-8") as fh:
+              json.dump(summary, fh, indent=2)
 
           lines = [
               f"# SonarQube Summary for {project_key}",
@@ -199,14 +321,63 @@ jobs:
               f"- Coverage: `{measure_map.get('coverage', 'n/a')}`",
               f"- Duplicated Lines %: `{measure_map.get('duplicated_lines_density', 'n/a')}`",
               f"- LOC: `{measure_map.get('ncloc', 'n/a')}`",
-              f"- Open Issues Exported: `{len(sanitized_issues)}` of `{report['issueTotal']}`",
+              f"- Open Issues Exported: `{len(sanitized_issues)}`",
               "",
-              "## Issues",
+              "## Issue Counts",
               "",
           ]
 
+          severity_order = ["BLOCKER", "CRITICAL", "MAJOR", "MINOR", "INFO", "UNKNOWN"]
+          for severity in severity_order:
+              if severity in by_severity:
+                  lines.append(f"- {severity}: `{by_severity[severity]}`")
+
+          lines.extend(
+              [
+                  "",
+                  "## Top Rule Clusters",
+                  "",
+              ]
+          )
+
+          for entry in high_leverage_rules[:10]:
+              sample_location = entry["sampleComponent"]
+              if entry.get("sampleLine"):
+                  sample_location = f"{sample_location}:{entry['sampleLine']}"
+              lines.append(
+                  f"- `{entry['rule']}`: `{entry['count']}` issues "
+                  f"({entry.get('severity', 'UNKNOWN')} {entry.get('type', 'ISSUE')}); "
+                  f"sample at `{sample_location}`: {entry.get('sampleMessage', '').strip()}"
+              )
+
+          lines.extend(
+              [
+                  "",
+                  "## Top File Clusters",
+                  "",
+              ]
+          )
+
+          for entry in high_leverage_files[:10]:
+              top_rules_text = ", ".join(
+                  f"{rule_entry['rule']} ({rule_entry['count']})"
+                  for rule_entry in entry.get("topRules", [])[:3]
+              )
+              lines.append(
+                  f"- `{entry['file']}`: `{entry['count']}` issues; highest severity "
+                  f"`{entry['highestSeverity']}`; top rules: {top_rules_text or 'n/a'}"
+              )
+
+          lines.extend(
+              [
+                  "",
+                  "## Issue Sample",
+                  "",
+              ]
+          )
+
           if sanitized_issues:
-              for issue in sanitized_issues:
+              for issue in sanitized_issues[:25]:
                   component = issue.get("component") or "unknown"
                   line = issue.get("line")
                   location = f"{component}:{line}" if line else component
@@ -229,5 +400,7 @@ jobs:
           name: sonar-summary-${{ github.run_id }}
           path: |
             sonar-summary.json
+            sonar-issues-full.json
+            sonar-issues-summary.json
             sonar-summary.md
           if-no-files-found: error
