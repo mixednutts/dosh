@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException
 from sqlalchemy.orm import Session
-from ..database import get_db
+from ..api_docs import DbSession, error_responses
 from ..models import Budget, BalanceType, PeriodBalance, FinancialPeriod
 from ..schemas import (
     BalanceTypeCreate, BalanceTypeOut, BalanceTypeUpdate,
@@ -21,8 +21,8 @@ def _get_budget_or_404(budgetid: int, db: Session) -> Budget:
 
 # ── Balance Types CRUD ────────────────────────────────────────────────────────
 
-@router.get("/", response_model=list[BalanceTypeOut])
-def list_balance_types(budgetid: int, db: Session = Depends(get_db)):
+@router.get("/", response_model=list[BalanceTypeOut], responses=error_responses(404))
+def list_balance_types(budgetid: int, db: DbSession):
     _get_budget_or_404(budgetid, db)
     return db.query(BalanceType).filter(BalanceType.budgetid == budgetid).all()
 
@@ -52,8 +52,8 @@ def _assert_balance_edit_allowed(budgetid: int, balancedesc: str, db: Session) -
         raise HTTPException(422, f'Account "{balancedesc}" is in use and its structure cannot be edited. {"; ".join(assessment["reasons"])}.')
 
 
-@router.post("/", response_model=BalanceTypeOut, status_code=201)
-def create_balance_type(budgetid: int, payload: BalanceTypeCreate, db: Session = Depends(get_db)):
+@router.post("/", response_model=BalanceTypeOut, status_code=201, responses=error_responses(404, 409))
+def create_balance_type(budgetid: int, payload: BalanceTypeCreate, db: DbSession):
     _get_budget_or_404(budgetid, db)
     existing = db.get(BalanceType, (budgetid, payload.balancedesc))
     if existing:
@@ -67,9 +67,9 @@ def create_balance_type(budgetid: int, payload: BalanceTypeCreate, db: Session =
     return bt
 
 
-@router.patch("/{balancedesc}", response_model=BalanceTypeOut)
+@router.patch("/{balancedesc}", response_model=BalanceTypeOut, responses=error_responses(404, 422))
 def update_balance_type(
-    budgetid: int, balancedesc: str, payload: BalanceTypeUpdate, db: Session = Depends(get_db)
+    budgetid: int, balancedesc: str, payload: BalanceTypeUpdate, db: DbSession
 ):
     bt = db.get(BalanceType, (budgetid, balancedesc))
     if not bt:
@@ -88,8 +88,8 @@ def update_balance_type(
     return bt
 
 
-@router.delete("/{balancedesc}", status_code=204)
-def delete_balance_type(budgetid: int, balancedesc: str, db: Session = Depends(get_db)):
+@router.delete("/{balancedesc}", status_code=204, responses=error_responses(404, 422))
+def delete_balance_type(budgetid: int, balancedesc: str, db: DbSession):
     bt = db.get(BalanceType, (budgetid, balancedesc))
     if not bt:
         raise HTTPException(404, "Balance type not found")
@@ -100,8 +100,8 @@ def delete_balance_type(budgetid: int, balancedesc: str, db: Session = Depends(g
 
 # ── Period Balance endpoints ──────────────────────────────────────────────────
 
-@period_router.get("/{finperiodid}/balances", response_model=list[PeriodBalanceOut])
-def list_period_balances(finperiodid: int, db: Session = Depends(get_db)):
+@period_router.get("/{finperiodid}/balances", response_model=list[PeriodBalanceOut], responses=error_responses(404))
+def list_period_balances(finperiodid: int, db: DbSession):
     period = db.get(FinancialPeriod, finperiodid)
     if not period:
         raise HTTPException(404, "Period not found")
@@ -116,11 +116,11 @@ def list_period_balances(finperiodid: int, db: Session = Depends(get_db)):
     return out
 
 
-@period_router.patch("/{finperiodid}/balances/{balancedesc}", response_model=PeriodBalanceOut)
+@period_router.patch("/{finperiodid}/balances/{balancedesc}", response_model=PeriodBalanceOut, responses=error_responses(405))
 def update_period_balance(
     finperiodid: int,
     balancedesc: str,
     payload: PeriodBalanceUpdate,
-    db: Session = Depends(get_db),
+    db: DbSession,
 ):
     raise HTTPException(405, "Period balance movement is calculated from transactions and cannot be edited directly")

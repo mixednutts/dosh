@@ -1,7 +1,7 @@
 from decimal import Decimal
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException
 from sqlalchemy.orm import Session
-from ..database import get_db
+from ..api_docs import DbSession, error_responses
 from ..models import Budget, ExpenseItem, FinancialPeriod, PeriodExpense
 from ..schemas import ExpenseItemCreate, ExpenseItemOut, ExpenseItemUpdate, ExpenseItemReorderRequest, SetupHistoryOut
 from ..period_logic import expense_occurs_in_period
@@ -43,8 +43,8 @@ def _assert_expense_deactivate_allowed(budgetid: int, expensedesc: str, db: Sess
         raise HTTPException(422, f'Expense item "{expensedesc}" is in use and cannot be deactivated. {"; ".join(assessment["reasons"])}.')
 
 
-@router.get("/", response_model=list[ExpenseItemOut])
-def list_expense_items(budgetid: int, active_only: bool = False, db: Session = Depends(get_db)):
+@router.get("/", response_model=list[ExpenseItemOut], responses=error_responses(404))
+def list_expense_items(budgetid: int, db: DbSession, active_only: bool = False):
     _get_budget_or_404(budgetid, db)
     q = db.query(ExpenseItem).filter(ExpenseItem.budgetid == budgetid)
     if active_only:
@@ -56,8 +56,8 @@ def list_expense_items(budgetid: int, active_only: bool = False, db: Session = D
     return items
 
 
-@router.patch("/reorder", status_code=204)
-def reorder_expense_items(budgetid: int, payload: ExpenseItemReorderRequest, db: Session = Depends(get_db)):
+@router.patch("/reorder", status_code=204, responses=error_responses(404))
+def reorder_expense_items(budgetid: int, payload: ExpenseItemReorderRequest, db: DbSession):
     _get_budget_or_404(budgetid, db)
     for item in payload.items:
         ei = db.get(ExpenseItem, (budgetid, item.expensedesc))
@@ -66,8 +66,8 @@ def reorder_expense_items(budgetid: int, payload: ExpenseItemReorderRequest, db:
     db.commit()
 
 
-@router.post("/", response_model=ExpenseItemOut, status_code=201)
-def create_expense_item(budgetid: int, payload: ExpenseItemCreate, db: Session = Depends(get_db)):
+@router.post("/", response_model=ExpenseItemOut, status_code=201, responses=error_responses(404, 409))
+def create_expense_item(budgetid: int, payload: ExpenseItemCreate, db: DbSession):
     _get_budget_or_404(budgetid, db)
     existing = db.get(ExpenseItem, (budgetid, payload.expensedesc))
     if existing:
@@ -79,17 +79,17 @@ def create_expense_item(budgetid: int, payload: ExpenseItemCreate, db: Session =
     return ei
 
 
-@router.get("/{expensedesc}", response_model=ExpenseItemOut)
-def get_expense_item(budgetid: int, expensedesc: str, db: Session = Depends(get_db)):
+@router.get("/{expensedesc}", response_model=ExpenseItemOut, responses=error_responses(404))
+def get_expense_item(budgetid: int, expensedesc: str, db: DbSession):
     item = _get_expense_or_404(budgetid, expensedesc, db)
     rebase_item_revisionnum(item, budgetid=budgetid, category="expense", item_desc=expensedesc, db=db)
     db.commit()
     return item
 
 
-@router.patch("/{expensedesc}", response_model=ExpenseItemOut)
+@router.patch("/{expensedesc}", response_model=ExpenseItemOut, responses=error_responses(404, 422))
 def update_expense_item(
-    budgetid: int, expensedesc: str, payload: ExpenseItemUpdate, db: Session = Depends(get_db)
+    budgetid: int, expensedesc: str, payload: ExpenseItemUpdate, db: DbSession
 ):
     ei = _get_expense_or_404(budgetid, expensedesc, db)
     data = payload.model_dump(exclude_none=True)
@@ -161,8 +161,8 @@ def update_expense_item(
     return ei
 
 
-@router.get("/{expensedesc}/history", response_model=SetupHistoryOut)
-def get_expense_item_history(budgetid: int, expensedesc: str, db: Session = Depends(get_db)):
+@router.get("/{expensedesc}/history", response_model=SetupHistoryOut, responses=error_responses(404))
+def get_expense_item_history(budgetid: int, expensedesc: str, db: DbSession):
     item = _get_expense_or_404(budgetid, expensedesc, db)
     current_revisionnum = rebase_item_revisionnum(item, budgetid=budgetid, category="expense", item_desc=expensedesc, db=db)
     db.commit()
@@ -174,8 +174,8 @@ def get_expense_item_history(budgetid: int, expensedesc: str, db: Session = Depe
     )
 
 
-@router.delete("/{expensedesc}", status_code=204)
-def delete_expense_item(budgetid: int, expensedesc: str, db: Session = Depends(get_db)):
+@router.delete("/{expensedesc}", status_code=204, responses=error_responses(404, 422))
+def delete_expense_item(budgetid: int, expensedesc: str, db: DbSession):
     ei = _get_expense_or_404(budgetid, expensedesc, db)
     _assert_expense_delete_allowed(budgetid, expensedesc, db)
     db.delete(ei)

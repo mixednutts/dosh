@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException
 from sqlalchemy.orm import Session
-from ..database import get_db
+from ..api_docs import DbSession, error_responses
 from ..models import Budget, IncomeType
 from ..schemas import IncomeTypeCreate, IncomeTypeOut, IncomeTypeUpdate, SetupHistoryOut
 from ..setup_assessment import income_assessment
@@ -41,8 +41,8 @@ def _assert_income_delete_allowed(budgetid: int, incomedesc: str, db: Session) -
         raise HTTPException(422, f'Income type "{incomedesc}" is in use and cannot be deleted. {"; ".join(assessment["reasons"])}.')
 
 
-@router.get("/", response_model=list[IncomeTypeOut])
-def list_income_types(budgetid: int, db: Session = Depends(get_db)):
+@router.get("/", response_model=list[IncomeTypeOut], responses=error_responses(404))
+def list_income_types(budgetid: int, db: DbSession):
     _get_budget_or_404(budgetid, db)
     items = db.query(IncomeType).filter(IncomeType.budgetid == budgetid).all()
     for item in items:
@@ -51,8 +51,8 @@ def list_income_types(budgetid: int, db: Session = Depends(get_db)):
     return items
 
 
-@router.post("/", response_model=IncomeTypeOut, status_code=201)
-def create_income_type(budgetid: int, payload: IncomeTypeCreate, db: Session = Depends(get_db)):
+@router.post("/", response_model=IncomeTypeOut, status_code=201, responses=error_responses(404, 409))
+def create_income_type(budgetid: int, payload: IncomeTypeCreate, db: DbSession):
     _get_budget_or_404(budgetid, db)
     existing = db.get(IncomeType, (budgetid, payload.incomedesc))
     if existing:
@@ -68,9 +68,9 @@ def create_income_type(budgetid: int, payload: IncomeTypeCreate, db: Session = D
     return it
 
 
-@router.patch("/{incomedesc}", response_model=IncomeTypeOut)
+@router.patch("/{incomedesc}", response_model=IncomeTypeOut, responses=error_responses(404, 422))
 def update_income_type(
-    budgetid: int, incomedesc: str, payload: IncomeTypeUpdate, db: Session = Depends(get_db)
+    budgetid: int, incomedesc: str, payload: IncomeTypeUpdate, db: DbSession
 ):
     it = _get_income_type_or_404(budgetid, incomedesc, db)
     _assert_income_edit_allowed(budgetid, incomedesc, db)
@@ -103,8 +103,8 @@ def update_income_type(
     return it
 
 
-@router.get("/{incomedesc}/history", response_model=SetupHistoryOut)
-def get_income_type_history(budgetid: int, incomedesc: str, db: Session = Depends(get_db)):
+@router.get("/{incomedesc}/history", response_model=SetupHistoryOut, responses=error_responses(404))
+def get_income_type_history(budgetid: int, incomedesc: str, db: DbSession):
     item = _get_income_type_or_404(budgetid, incomedesc, db)
     current_revisionnum = rebase_item_revisionnum(item, budgetid=budgetid, category="income", item_desc=incomedesc, db=db)
     db.commit()
@@ -116,8 +116,8 @@ def get_income_type_history(budgetid: int, incomedesc: str, db: Session = Depend
     )
 
 
-@router.delete("/{incomedesc}", status_code=204)
-def delete_income_type(budgetid: int, incomedesc: str, db: Session = Depends(get_db)):
+@router.delete("/{incomedesc}", status_code=204, responses=error_responses(404, 422))
+def delete_income_type(budgetid: int, incomedesc: str, db: DbSession):
     it = _get_income_type_or_404(budgetid, incomedesc, db)
     _assert_income_delete_allowed(budgetid, incomedesc, db)
     db.delete(it)

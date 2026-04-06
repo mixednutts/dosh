@@ -1,10 +1,10 @@
 """
 Expense entry transactions — the child records that drive actualamount on periodexpenses.
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException
 from sqlalchemy.orm import Session
+from ..api_docs import DbSession, error_responses
 from ..cycle_constants import CLOSED, PAID
-from ..database import get_db
 from ..models import FinancialPeriod, PeriodExpense, PeriodTransaction
 from ..schemas import ExpenseEntryCreate, ExpenseEntryOut
 from ..transaction_ledger import build_expense_tx, get_primary_account_desc, sync_period_state
@@ -50,8 +50,8 @@ def _assert_expense_not_paid(pe: PeriodExpense) -> None:
         raise HTTPException(423, "Expense is marked Paid — revise it before making changes")
 
 
-@router.get("/", response_model=list[ExpenseEntryOut])
-def list_entries(finperiodid: int, expensedesc: str, db: Session = Depends(get_db)):
+@router.get("/", response_model=list[ExpenseEntryOut], responses=error_responses(404))
+def list_entries(finperiodid: int, expensedesc: str, db: DbSession):
     _get_period_expense(finperiodid, expensedesc, db)
     rows = (
         db.query(PeriodTransaction)
@@ -66,12 +66,12 @@ def list_entries(finperiodid: int, expensedesc: str, db: Session = Depends(get_d
     return [_to_expense_entry_out(row) for row in rows]
 
 
-@router.post("/", response_model=ExpenseEntryOut, status_code=201)
+@router.post("/", response_model=ExpenseEntryOut, status_code=201, responses=error_responses(404, 422, 423))
 def add_entry(
     finperiodid: int,
     expensedesc: str,
     payload: ExpenseEntryCreate,
-    db: Session = Depends(get_db),
+    db: DbSession,
 ):
     period = db.get(FinancialPeriod, finperiodid)
     if not period:
@@ -98,12 +98,12 @@ def add_entry(
     return _to_expense_entry_out(entry)
 
 
-@router.delete("/{entry_id}", status_code=204)
+@router.delete("/{entry_id}", status_code=204, responses=error_responses(404, 423))
 def delete_entry(
     finperiodid: int,
     expensedesc: str,
     entry_id: int,
-    db: Session = Depends(get_db),
+    db: DbSession,
 ):
     period = db.get(FinancialPeriod, finperiodid)
     if not period:

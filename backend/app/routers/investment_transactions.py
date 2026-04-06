@@ -2,10 +2,10 @@
 Investment transactions — drive actualamount on periodinvestments and
 optionally update the linked account balance.
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException
 from sqlalchemy.orm import Session
+from ..api_docs import DbSession, error_responses
 from ..cycle_constants import CLOSED, PAID
-from ..database import get_db
 from ..models import (
     FinancialPeriod, PeriodInvestment,
     PeriodTransaction,
@@ -50,8 +50,8 @@ def _assert_investment_not_paid(pi: PeriodInvestment) -> None:
     if (getattr(pi, "status", "Current") or "Current") == PAID:
         raise HTTPException(423, "Investment is marked Paid — revise it before making changes")
 
-@router.get("/", response_model=list[InvestmentTxOut])
-def list_transactions(finperiodid: int, investmentdesc: str, db: Session = Depends(get_db)):
+@router.get("/", response_model=list[InvestmentTxOut], responses=error_responses(404))
+def list_transactions(finperiodid: int, investmentdesc: str, db: DbSession):
     _get_period_investment(finperiodid, investmentdesc, db)
     rows = (
         db.query(PeriodTransaction)
@@ -66,12 +66,12 @@ def list_transactions(finperiodid: int, investmentdesc: str, db: Session = Depen
     return [_to_investment_tx_out(row) for row in rows]
 
 
-@router.post("/", response_model=InvestmentTxOut, status_code=201)
+@router.post("/", response_model=InvestmentTxOut, status_code=201, responses=error_responses(404, 423))
 def add_transaction(
     finperiodid: int,
     investmentdesc: str,
     payload: InvestmentTxCreate,
-    db: Session = Depends(get_db),
+    db: DbSession,
 ):
     period = db.get(FinancialPeriod, finperiodid)
     if not period:
@@ -97,12 +97,12 @@ def add_transaction(
     return _to_investment_tx_out(tx)
 
 
-@router.delete("/{tx_id}", status_code=204)
+@router.delete("/{tx_id}", status_code=204, responses=error_responses(404, 423))
 def delete_transaction(
     finperiodid: int,
     investmentdesc: str,
     tx_id: int,
-    db: Session = Depends(get_db),
+    db: DbSession,
 ):
     period = db.get(FinancialPeriod, finperiodid)
     if not period:

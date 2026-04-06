@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException
 from sqlalchemy.orm import Session
-from ..database import get_db
+from ..api_docs import DbSession, error_responses
 from ..models import Budget, InvestmentItem
 from ..schemas import InvestmentItemCreate, InvestmentItemOut, InvestmentItemUpdate, SetupHistoryOut
 from ..setup_assessment import investment_assessment
@@ -46,8 +46,8 @@ def _assert_investment_delete_allowed(budgetid: int, investmentdesc: str, db: Se
         raise HTTPException(422, f'Investment line "{investmentdesc}" is in use and cannot be deleted. {"; ".join(assessment["reasons"])}.')
 
 
-@router.get("/", response_model=list[InvestmentItemOut])
-def list_investment_items(budgetid: int, db: Session = Depends(get_db)):
+@router.get("/", response_model=list[InvestmentItemOut], responses=error_responses(404))
+def list_investment_items(budgetid: int, db: DbSession):
     _get_budget_or_404(budgetid, db)
     items = db.query(InvestmentItem).filter(InvestmentItem.budgetid == budgetid).all()
     for item in items:
@@ -56,8 +56,8 @@ def list_investment_items(budgetid: int, db: Session = Depends(get_db)):
     return items
 
 
-@router.post("/", response_model=InvestmentItemOut, status_code=201)
-def create_investment_item(budgetid: int, payload: InvestmentItemCreate, db: Session = Depends(get_db)):
+@router.post("/", response_model=InvestmentItemOut, status_code=201, responses=error_responses(404, 409, 422))
+def create_investment_item(budgetid: int, payload: InvestmentItemCreate, db: DbSession):
     _get_budget_or_404(budgetid, db)
     existing = db.get(InvestmentItem, (budgetid, payload.investmentdesc))
     if existing:
@@ -73,9 +73,9 @@ def create_investment_item(budgetid: int, payload: InvestmentItemCreate, db: Ses
     return item
 
 
-@router.patch("/{investmentdesc}", response_model=InvestmentItemOut)
+@router.patch("/{investmentdesc}", response_model=InvestmentItemOut, responses=error_responses(404, 422))
 def update_investment_item(
-    budgetid: int, investmentdesc: str, payload: InvestmentItemUpdate, db: Session = Depends(get_db)
+    budgetid: int, investmentdesc: str, payload: InvestmentItemUpdate, db: DbSession
 ):
     item = db.get(InvestmentItem, (budgetid, investmentdesc))
     if not item:
@@ -117,8 +117,8 @@ def update_investment_item(
     return item
 
 
-@router.get("/{investmentdesc}/history", response_model=SetupHistoryOut)
-def get_investment_item_history(budgetid: int, investmentdesc: str, db: Session = Depends(get_db)):
+@router.get("/{investmentdesc}/history", response_model=SetupHistoryOut, responses=error_responses(404))
+def get_investment_item_history(budgetid: int, investmentdesc: str, db: DbSession):
     item = db.get(InvestmentItem, (budgetid, investmentdesc))
     if not item:
         raise HTTPException(404, "Investment item not found")
@@ -132,8 +132,8 @@ def get_investment_item_history(budgetid: int, investmentdesc: str, db: Session 
     )
 
 
-@router.delete("/{investmentdesc}", status_code=204)
-def delete_investment_item(budgetid: int, investmentdesc: str, db: Session = Depends(get_db)):
+@router.delete("/{investmentdesc}", status_code=204, responses=error_responses(404, 422))
+def delete_investment_item(budgetid: int, investmentdesc: str, db: DbSession):
     item = db.get(InvestmentItem, (budgetid, investmentdesc))
     if not item:
         raise HTTPException(404, "Investment item not found")

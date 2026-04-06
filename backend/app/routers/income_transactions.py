@@ -1,11 +1,11 @@
 """
 Income transactions — drive actualamount on periodincome rows using the unified ledger.
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException
 from sqlalchemy.orm import Session
+from ..api_docs import DbSession, error_responses
 
 from ..cycle_constants import CLOSED
-from ..database import get_db
 from ..models import FinancialPeriod, PeriodIncome, PeriodTransaction
 from ..schemas import IncomeTxCreate, IncomeTxOut
 from ..transaction_ledger import TRANSFER_PREFIX, build_income_tx, sync_period_state
@@ -49,8 +49,8 @@ def _get_period_income(finperiodid: int, incomedesc: str, db: Session) -> Period
     return pi
 
 
-@router.get("/", response_model=list[IncomeTxOut])
-def list_transactions(finperiodid: int, incomedesc: str, db: Session = Depends(get_db)):
+@router.get("/", response_model=list[IncomeTxOut], responses=error_responses(404))
+def list_transactions(finperiodid: int, incomedesc: str, db: DbSession):
     _get_period_income(finperiodid, incomedesc, db)
     rows = (
         db.query(PeriodTransaction)
@@ -65,12 +65,12 @@ def list_transactions(finperiodid: int, incomedesc: str, db: Session = Depends(g
     return [_to_income_tx_out(row) for row in rows]
 
 
-@router.post("/", response_model=IncomeTxOut, status_code=201)
+@router.post("/", response_model=IncomeTxOut, status_code=201, responses=error_responses(404, 423))
 def add_transaction(
     finperiodid: int,
     incomedesc: str,
     payload: IncomeTxCreate,
-    db: Session = Depends(get_db),
+    db: DbSession,
 ):
     period = db.get(FinancialPeriod, finperiodid)
     if not period:
@@ -93,12 +93,12 @@ def add_transaction(
     return _to_income_tx_out(tx)
 
 
-@router.delete("/{tx_id}", status_code=204)
+@router.delete("/{tx_id}", status_code=204, responses=error_responses(404, 423))
 def delete_transaction(
     finperiodid: int,
     incomedesc: str,
     tx_id: int,
-    db: Session = Depends(get_db),
+    db: DbSession,
 ):
     period = db.get(FinancialPeriod, finperiodid)
     if not period:

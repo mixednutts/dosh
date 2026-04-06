@@ -4,8 +4,9 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy.orm import Session
+from ..api_docs import DbSession, error_responses
 from ..budget_health import _build_current_period_check, _current_period_totals
 from ..cycle_constants import (
     ACTIVE,
@@ -28,7 +29,6 @@ from ..cycle_management import (
     ordered_budget_periods,
     recalculate_budget_chain,
 )
-from ..database import get_db
 from ..models import (
     Budget, FinancialPeriod, IncomeType,
     ExpenseItem, PeriodIncome, PeriodExpense, BalanceType, PeriodBalance,
@@ -238,8 +238,8 @@ def _normalize_period_datetime(value: datetime) -> datetime:
 
 # ── Generate ──────────────────────────────────────────────────────────────────
 
-@router.post("/generate", response_model=PeriodOut, status_code=201)
-def generate_period(payload: PeriodGenerateRequest, db: Session = Depends(get_db)):
+@router.post("/generate", response_model=PeriodOut, status_code=201, responses=error_responses(404, 409, 422))
+def generate_period(payload: PeriodGenerateRequest, db: DbSession):
     budget: Budget | None = db.get(Budget, payload.budgetid)
     if not budget:
         raise HTTPException(404, "Budget not found")
@@ -419,8 +419,8 @@ def generate_period(payload: PeriodGenerateRequest, db: Session = Depends(get_db
 
 # ── List / Get ────────────────────────────────────────────────────────────────
 
-@router.get("/budget/{budgetid}", response_model=list[PeriodOut])
-def list_periods_for_budget(budgetid: int, db: Session = Depends(get_db)):
+@router.get("/budget/{budgetid}", response_model=list[PeriodOut], responses=error_responses(404))
+def list_periods_for_budget(budgetid: int, db: DbSession):
     if not db.get(Budget, budgetid):
         raise HTTPException(404, "Budget not found")
     return (
@@ -431,8 +431,8 @@ def list_periods_for_budget(budgetid: int, db: Session = Depends(get_db)):
     )
 
 
-@router.get("/budget/{budgetid}/summary", response_model=list[PeriodSummaryOut])
-def list_period_summaries_for_budget(budgetid: int, db: Session = Depends(get_db)):
+@router.get("/budget/{budgetid}/summary", response_model=list[PeriodSummaryOut], responses=error_responses(404))
+def list_period_summaries_for_budget(budgetid: int, db: DbSession):
     if not db.get(Budget, budgetid):
         raise HTTPException(404, "Budget not found")
 
@@ -543,8 +543,8 @@ def list_period_summaries_for_budget(budgetid: int, db: Session = Depends(get_db
     return summaries
 
 
-@router.get("/{finperiodid}", response_model=PeriodDetailOut)
-def get_period_detail(finperiodid: int, db: Session = Depends(get_db)):
+@router.get("/{finperiodid}", response_model=PeriodDetailOut, responses=error_responses(404))
+def get_period_detail(finperiodid: int, db: DbSession):
     period = _get_period_or_404(finperiodid, db)
     incomes = db.query(PeriodIncome).filter(PeriodIncome.finperiodid == finperiodid).all()
     expenses = (
@@ -594,8 +594,8 @@ def get_period_detail(finperiodid: int, db: Session = Depends(get_db)):
 
 # ── Lock / Unlock ─────────────────────────────────────────────────────────────
 
-@router.patch("/{finperiodid}/lock", response_model=PeriodOut)
-def set_period_lock(finperiodid: int, payload: PeriodLockRequest, db: Session = Depends(get_db)):
+@router.patch("/{finperiodid}/lock", response_model=PeriodOut, responses=error_responses(404, 409, 423))
+def set_period_lock(finperiodid: int, payload: PeriodLockRequest, db: DbSession):
     period = _get_period_or_404(finperiodid, db)
     budget = db.get(Budget, period.budgetid)
     if cycle_status(period) == CLOSED:
@@ -610,12 +610,12 @@ def set_period_lock(finperiodid: int, payload: PeriodLockRequest, db: Session = 
 
 # ── Update actual income (set) ────────────────────────────────────────────────
 
-@router.patch("/{finperiodid}/income/{incomedesc}", response_model=PeriodIncomeOut)
+@router.patch("/{finperiodid}/income/{incomedesc}", response_model=PeriodIncomeOut, responses=error_responses(404, 423))
 def update_income_actual(
     finperiodid: int,
     incomedesc: str,
     payload: PeriodIncomeActualUpdate,
-    db: Session = Depends(get_db),
+    db: DbSession,
 ):
     period = _get_period_or_404(finperiodid, db)
     _assert_not_closed(period)
@@ -642,12 +642,12 @@ def update_income_actual(
 
 # ── Add to actual income (additive) ──────────────────────────────────────────
 
-@router.post("/{finperiodid}/income/{incomedesc}/add", response_model=PeriodIncomeOut)
+@router.post("/{finperiodid}/income/{incomedesc}/add", response_model=PeriodIncomeOut, responses=error_responses(404, 423))
 def add_income_actual(
     finperiodid: int,
     incomedesc: str,
     payload: PeriodIncomeAddActual,
-    db: Session = Depends(get_db),
+    db: DbSession,
 ):
     period = _get_period_or_404(finperiodid, db)
     _assert_not_closed(period)
@@ -672,12 +672,12 @@ def add_income_actual(
 
 # ── Update actual expense (set) ───────────────────────────────────────────────
 
-@router.patch("/{finperiodid}/expense/{expensedesc}", response_model=PeriodExpenseOut)
+@router.patch("/{finperiodid}/expense/{expensedesc}", response_model=PeriodExpenseOut, responses=error_responses(404, 422, 423))
 def update_expense_actual(
     finperiodid: int,
     expensedesc: str,
     payload: PeriodExpenseActualUpdate,
-    db: Session = Depends(get_db),
+    db: DbSession,
 ):
     period = _get_period_or_404(finperiodid, db)
     _assert_not_closed(period)
@@ -713,12 +713,12 @@ def update_expense_actual(
 
 # ── Add to actual expense (additive) ─────────────────────────────────────────
 
-@router.post("/{finperiodid}/expense/{expensedesc}/add", response_model=PeriodExpenseOut)
+@router.post("/{finperiodid}/expense/{expensedesc}/add", response_model=PeriodExpenseOut, responses=error_responses(404, 422, 423))
 def add_expense_actual(
     finperiodid: int,
     expensedesc: str,
     payload: PeriodExpenseAddActual,
-    db: Session = Depends(get_db),
+    db: DbSession,
 ):
     period = _get_period_or_404(finperiodid, db)
     _assert_not_closed(period)
@@ -752,11 +752,11 @@ def add_expense_actual(
 
 # ── Add expense to period ─────────────────────────────────────────────────────
 
-@router.post("/{finperiodid}/add-expense", response_model=PeriodExpenseOut, status_code=201)
+@router.post("/{finperiodid}/add-expense", response_model=PeriodExpenseOut, status_code=201, responses=error_responses(404, 409, 423))
 def add_expense_to_period(
     finperiodid: int,
     payload: AddExpenseToPeriodRequest,
-    db: Session = Depends(get_db),
+    db: DbSession,
 ):
     period = _get_period_or_404(finperiodid, db)
     budget = db.get(Budget, period.budgetid)
@@ -860,11 +860,11 @@ def add_expense_to_period(
 
 # ── Add income to period ──────────────────────────────────────────────────────
 
-@router.post("/{finperiodid}/add-income", response_model=PeriodIncomeOut, status_code=201)
+@router.post("/{finperiodid}/add-income", response_model=PeriodIncomeOut, status_code=201, responses=error_responses(404, 409, 423))
 def add_income_to_period(
     finperiodid: int,
     payload: AddIncomeToPeriodRequest,
-    db: Session = Depends(get_db),
+    db: DbSession,
 ):
     period = _get_period_or_404(finperiodid, db)
     budget = db.get(Budget, period.budgetid)
@@ -938,11 +938,11 @@ def add_income_to_period(
 
 # ── Savings transfer ──────────────────────────────────────────────────────────
 
-@router.post("/{finperiodid}/savings-transfer", response_model=PeriodIncomeOut, status_code=201)
+@router.post("/{finperiodid}/savings-transfer", response_model=PeriodIncomeOut, status_code=201, responses=error_responses(404, 409, 422, 423))
 def savings_transfer(
     finperiodid: int,
     payload: SavingsTransferRequest,
-    db: Session = Depends(get_db),
+    db: DbSession,
 ):
     period = _get_period_or_404(finperiodid, db)
     _assert_not_closed(period)
@@ -980,8 +980,8 @@ def savings_transfer(
 
 # ── Delete period ─────────────────────────────────────────────────────────────
 
-@router.get("/{finperiodid}/delete-options", response_model=PeriodDeleteOptionsOut)
-def get_period_delete_options(finperiodid: int, db: Session = Depends(get_db)):
+@router.get("/{finperiodid}/delete-options", response_model=PeriodDeleteOptionsOut, responses=error_responses(404))
+def get_period_delete_options(finperiodid: int, db: DbSession):
     period = _get_period_or_404(finperiodid, db)
     periods = ordered_budget_periods(period.budgetid, db)
     later_periods = [candidate for candidate in periods if candidate.startdate > period.startdate]
@@ -1014,11 +1014,11 @@ def get_period_delete_options(finperiodid: int, db: Session = Depends(get_db)):
     )
 
 
-@router.delete("/{finperiodid}", status_code=204)
+@router.delete("/{finperiodid}", status_code=204, responses=error_responses(404, 409, 422, 423))
 def delete_period(
     finperiodid: int,
+    db: DbSession,
     delete_mode: str = Query("single"),
-    db: Session = Depends(get_db),
 ):
     period = _get_period_or_404(finperiodid, db)
     _assert_not_closed(period)
@@ -1043,12 +1043,12 @@ def delete_period(
 
 # ── Update expense status (Current | Paid | Revised) ─────────────────────────
 
-@router.patch("/{finperiodid}/expense/{expensedesc}/status", response_model=PeriodExpenseOut)
+@router.patch("/{finperiodid}/expense/{expensedesc}/status", response_model=PeriodExpenseOut, responses=error_responses(404, 409, 422, 423))
 def set_expense_status(
     finperiodid: int,
     expensedesc: str,
     payload: PeriodExpenseStatusUpdate,
-    db: Session = Depends(get_db),
+    db: DbSession,
 ):
     period = _get_period_or_404(finperiodid, db)
     _assert_not_closed(period)
@@ -1083,12 +1083,12 @@ def set_expense_status(
 
 # ── Edit budget amount for period lines ──────────────────────────────────────
 
-@router.patch("/{finperiodid}/income/{incomedesc}/budget", response_model=PeriodIncomeOut)
+@router.patch("/{finperiodid}/income/{incomedesc}/budget", response_model=PeriodIncomeOut, responses=error_responses(404, 409, 423))
 def update_income_budget(
     finperiodid: int,
     incomedesc: str,
     payload: PeriodLineBudgetAdjustRequest,
-    db: Session = Depends(get_db),
+    db: DbSession,
 ):
     period = _get_period_or_404(finperiodid, db)
     budget = db.get(Budget, period.budgetid)
@@ -1150,12 +1150,12 @@ def update_income_budget(
     return pi
 
 
-@router.patch("/{finperiodid}/expense/{expensedesc}/budget", response_model=PeriodExpenseOut)
+@router.patch("/{finperiodid}/expense/{expensedesc}/budget", response_model=PeriodExpenseOut, responses=error_responses(404, 409, 423))
 def update_expense_budget(
     finperiodid: int,
     expensedesc: str,
     payload: PeriodLineBudgetAdjustRequest,
-    db: Session = Depends(get_db),
+    db: DbSession,
 ):
     period = _get_period_or_404(finperiodid, db)
     budget = db.get(Budget, period.budgetid)
@@ -1236,11 +1236,11 @@ def update_expense_budget(
 
 # ── Remove income from period ─────────────────────────────────────────────────
 
-@router.delete("/{finperiodid}/income/{incomedesc}", status_code=204)
+@router.delete("/{finperiodid}/income/{incomedesc}", status_code=204, responses=error_responses(404, 409, 423))
 def remove_income_from_period(
     finperiodid: int,
     incomedesc: str,
-    db: Session = Depends(get_db),
+    db: DbSession,
 ):
     period = _get_period_or_404(finperiodid, db)
     budget = db.get(Budget, period.budgetid)
@@ -1278,11 +1278,11 @@ def remove_income_from_period(
 
 # ── Remove expense from period (only if no actuals recorded) ──────────────────
 
-@router.delete("/{finperiodid}/expense/{expensedesc}", status_code=204)
+@router.delete("/{finperiodid}/expense/{expensedesc}", status_code=204, responses=error_responses(404, 409, 423))
 def remove_expense_from_period(
     finperiodid: int,
     expensedesc: str,
-    db: Session = Depends(get_db),
+    db: DbSession,
 ):
     period = _get_period_or_404(finperiodid, db)
     budget = db.get(Budget, period.budgetid)
@@ -1313,12 +1313,12 @@ def remove_expense_from_period(
 
 # ── Update investment budget amount ───────────────────────────────────────────
 
-@router.patch("/{finperiodid}/investment/{investmentdesc}/budget", response_model=PeriodInvestmentOut)
+@router.patch("/{finperiodid}/investment/{investmentdesc}/budget", response_model=PeriodInvestmentOut, responses=error_responses(404, 409, 423))
 def update_investment_budget(
     finperiodid: int,
     investmentdesc: str,
     payload: PeriodLineBudgetAdjustRequest,
-    db: Session = Depends(get_db),
+    db: DbSession,
 ):
     period = _get_period_or_404(finperiodid, db)
     budget = db.get(Budget, period.budgetid)
@@ -1380,12 +1380,12 @@ def update_investment_budget(
     return _enrich_investments([refreshed], db)[0]
 
 
-@router.patch("/{finperiodid}/investment/{investmentdesc}/status", response_model=PeriodInvestmentOut)
+@router.patch("/{finperiodid}/investment/{investmentdesc}/status", response_model=PeriodInvestmentOut, responses=error_responses(404, 409, 422, 423))
 def set_investment_status(
     finperiodid: int,
     investmentdesc: str,
     payload: PeriodInvestmentStatusUpdate,
-    db: Session = Depends(get_db),
+    db: DbSession,
 ):
     period = _get_period_or_404(finperiodid, db)
     _assert_not_closed(period)
@@ -1416,8 +1416,8 @@ def set_investment_status(
     return _enrich_investments([pi], db)[0]
 
 
-@router.get("/{finperiodid}/closeout-preview", response_model=PeriodCloseoutPreviewOut)
-def get_closeout_preview(finperiodid: int, db: Session = Depends(get_db)):
+@router.get("/{finperiodid}/closeout-preview", response_model=PeriodCloseoutPreviewOut, responses=error_responses(404, 409))
+def get_closeout_preview(finperiodid: int, db: DbSession):
     period = _get_period_or_404(finperiodid, db)
     budget = db.get(Budget, period.budgetid)
     if cycle_status(period) != ACTIVE:
@@ -1426,11 +1426,11 @@ def get_closeout_preview(finperiodid: int, db: Session = Depends(get_db)):
     return PeriodCloseoutPreviewOut(**preview)
 
 
-@router.post("/{finperiodid}/closeout", response_model=PeriodDetailOut)
+@router.post("/{finperiodid}/closeout", response_model=PeriodDetailOut, responses=error_responses(404, 409))
 def close_out_period(
     finperiodid: int,
     payload: PeriodCloseoutRequest,
-    db: Session = Depends(get_db),
+    db: DbSession,
 ):
     period = _get_period_or_404(finperiodid, db)
     budget = db.get(Budget, period.budgetid)
@@ -1447,11 +1447,11 @@ def close_out_period(
 
 # ── Reorder expenses in a period ──────────────────────────────────────────────
 
-@router.patch("/{finperiodid}/expenses/reorder", status_code=204)
+@router.patch("/{finperiodid}/expenses/reorder", status_code=204, responses=error_responses(404, 423))
 def reorder_period_expenses(
     finperiodid: int,
     payload: PeriodExpenseReorderRequest,
-    db: Session = Depends(get_db),
+    db: DbSession,
 ):
     period = _get_period_or_404(finperiodid, db)
     budget = db.get(Budget, period.budgetid)

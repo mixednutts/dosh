@@ -140,6 +140,12 @@ jobs:
                   for name, count in counter.most_common(limit)
               ]
 
+          def as_float(value):
+              try:
+                  return float(value)
+              except (TypeError, ValueError):
+                  return 0.0
+
           branch_params = {"branch": branch} if branch else {}
 
           measures = api_get(
@@ -171,6 +177,134 @@ jobs:
                   **branch_params,
               },
           )
+
+          component_metric_keys = [
+              "new_coverage",
+              "coverage",
+              "new_duplicated_lines_density",
+              "new_duplicated_lines",
+              "duplicated_lines_density",
+              "duplicated_lines",
+              "new_lines",
+              "ncloc",
+          ]
+          component_page_size = 500
+          component_page = 1
+          file_metric_hotspots = []
+
+          while True:
+              component_page_data = api_get(
+                  "/api/measures/component_tree",
+                  {
+                      "component": project_key,
+                      "metricKeys": ",".join(component_metric_keys),
+                      "qualifiers": "FIL",
+                      "strategy": "children",
+                      "ps": str(component_page_size),
+                      "p": str(component_page),
+                      **branch_params,
+                  },
+              )
+
+              components = component_page_data.get("components", [])
+              for component in components:
+                  file_path = component.get("path") or component.get("name") or component.get("key")
+                  component_measures = {
+                      item["metric"]: item.get("value")
+                      for item in component.get("measures", [])
+                  }
+                  new_dup_density = component_measures.get("new_duplicated_lines_density")
+                  new_dup_lines = component_measures.get("new_duplicated_lines")
+                  new_coverage = component_measures.get("new_coverage")
+                  if (
+                      new_dup_density in (None, "0", "0.0")
+                      and new_dup_lines in (None, "0", "0.0")
+                      and new_coverage in (None, "100", "100.0")
+                  ):
+                      continue
+                  file_metric_hotspots.append(
+                      {
+                          "file": file_path,
+                          "newCoverage": new_coverage,
+                          "coverage": component_measures.get("coverage"),
+                          "newDuplicatedLinesDensity": new_dup_density,
+                          "newDuplicatedLines": new_dup_lines,
+                          "duplicatedLinesDensity": component_measures.get("duplicated_lines_density"),
+                          "duplicatedLines": component_measures.get("duplicated_lines"),
+                          "newLines": component_measures.get("new_lines"),
+                          "ncloc": component_measures.get("ncloc"),
+                      }
+                  )
+
+              paging = component_page_data.get("paging", {})
+              page_index = paging.get("pageIndex", component_page)
+              page_size = paging.get("pageSize", component_page_size)
+              total = paging.get("total", 0)
+
+              if page_index * page_size >= total or not components:
+                  break
+
+              component_page += 1
+
+          file_metric_hotspots.sort(
+              key=lambda item: (
+                  -as_float(item.get("newDuplicatedLinesDensity")),
+                  -as_float(item.get("newDuplicatedLines")),
+                  as_float(item.get("newCoverage")),
+                  item.get("file") or "",
+              )
+          )
+
+          quality_gate_conditions = quality_gate.get("projectStatus", {}).get("conditions", [])
+          failing_quality_gate_conditions = [
+              {
+                  "metricKey": condition.get("metricKey"),
+                  "comparator": condition.get("comparator"),
+                  "errorThreshold": condition.get("errorThreshold"),
+                  "actualValue": condition.get("actualValue"),
+                  "status": condition.get("status"),
+              }
+              for condition in quality_gate_conditions
+              if condition.get("status") == "ERROR"
+          ]
+
+          failed_measure_keys = {
+              condition["metricKey"]
+              for condition in failing_quality_gate_conditions
+              if condition.get("metricKey")
+          }
+
+          file_metric_hotspots_by_metric = {}
+          if "new_duplicated_lines_density" in failed_measure_keys or "new_duplicated_lines" in failed_measure_keys:
+              duplication_hotspots = [
+                  item
+                  for item in file_metric_hotspots
+                  if as_float(item.get("newDuplicatedLinesDensity")) > 0 or as_float(item.get("newDuplicatedLines")) > 0
+              ]
+              duplication_hotspots.sort(
+                  key=lambda item: (
+                      -as_float(item.get("newDuplicatedLinesDensity")),
+                      -as_float(item.get("newDuplicatedLines")),
+                      item.get("file") or "",
+                  )
+              )
+              file_metric_hotspots_by_metric["new_duplicated_lines_density"] = duplication_hotspots[:25]
+              file_metric_hotspots_by_metric["new_duplicated_lines"] = duplication_hotspots[:25]
+
+          if "new_coverage" in failed_measure_keys:
+              coverage_hotspots = [
+                  item
+                  for item in file_metric_hotspots
+                  if item.get("newCoverage") not in (None, "")
+              ]
+              coverage_hotspots.sort(
+                  key=lambda item: (
+                      as_float(item.get("newCoverage")),
+                      -as_float(item.get("newLines")),
+                      item.get("file") or "",
+                  )
+              )
+              file_metric_hotspots_by_metric["new_coverage"] = coverage_hotspots[:25]
 
           issue_page_size = 500
           issue_page = 1
@@ -280,6 +414,8 @@ jobs:
               "projectKey": project_key,
               "branch": branch,
               "qualityGateStatus": quality_gate.get("projectStatus", {}).get("status"),
+              "qualityGateConditions": quality_gate_conditions,
+              "failingQualityGateConditions": failing_quality_gate_conditions,
               "measures": measure_map,
               "issueTotal": len(sanitized_issues),
               "issueCounts": {
@@ -293,12 +429,15 @@ jobs:
                   "rules": high_leverage_rules,
                   "files": high_leverage_files,
               },
+              "fileMetricHotspotsByMetric": file_metric_hotspots_by_metric,
           }
 
           report = {
               "projectKey": project_key,
               "branch": branch,
               "qualityGateStatus": quality_gate.get("projectStatus", {}).get("status"),
+              "qualityGateConditions": quality_gate_conditions,
+              "failingQualityGateConditions": failing_quality_gate_conditions,
               "measures": measure_map,
               "issueTotal": len(sanitized_issues),
               "issues": sanitized_issues,
@@ -313,6 +452,20 @@ jobs:
           with open("sonar-issues-summary.json", "w", encoding="utf-8") as fh:
               json.dump(summary, fh, indent=2)
 
+          with open("sonar-component-metrics.json", "w", encoding="utf-8") as fh:
+              json.dump(
+                  {
+                      "projectKey": project_key,
+                      "branch": branch,
+                      "metricKeys": component_metric_keys,
+                      "failingQualityGateConditions": failing_quality_gate_conditions,
+                      "fileMetricHotspots": file_metric_hotspots,
+                      "fileMetricHotspotsByMetric": file_metric_hotspots_by_metric,
+                  },
+                  fh,
+                  indent=2,
+              )
+
           lines = [
               f"# SonarQube Summary for {project_key}",
               "",
@@ -326,9 +479,26 @@ jobs:
               f"- LOC: `{measure_map.get('ncloc', 'n/a')}`",
               f"- Open Issues Exported: `{len(sanitized_issues)}`",
               "",
-              "## Issue Counts",
+              "## Failed Quality Gate Conditions",
               "",
           ]
+
+          if failing_quality_gate_conditions:
+              for condition in failing_quality_gate_conditions:
+                  lines.append(
+                      f"- `{condition.get('metricKey', 'unknown')}`: status `{condition.get('status', 'UNKNOWN')}`, "
+                      f"actual `{condition.get('actualValue', 'n/a')}`, threshold `{condition.get('errorThreshold', 'n/a')}`"
+                  )
+          else:
+              lines.append("- No failing quality gate conditions were returned by the Sonar API.")
+
+          lines.extend(
+              [
+                  "",
+              "## Issue Counts",
+              "",
+              ]
+          )
 
           severity_order = ["BLOCKER", "CRITICAL", "MAJOR", "MINOR", "INFO", "UNKNOWN"]
           for severity in severity_order:
@@ -374,6 +544,44 @@ jobs:
           lines.extend(
               [
                   "",
+                  "## New Code Duplication Hotspots",
+                  "",
+              ]
+          )
+
+          duplication_hotspots = file_metric_hotspots_by_metric.get("new_duplicated_lines_density", [])
+          if duplication_hotspots:
+              for component in duplication_hotspots[:10]:
+                  lines.append(
+                      f"- `{component['file']}`: "
+                      f"`{component.get('newDuplicatedLinesDensity', 'n/a')}%` duplicated lines on new code "
+                      f"(`{component.get('newDuplicatedLines', 'n/a')}` lines)"
+                  )
+          else:
+              lines.append("- No file-level new code duplication hotspots were returned by the Sonar API.")
+
+          lines.extend(
+              [
+                  "",
+                  "## New Code Coverage Hotspots",
+                  "",
+              ]
+          )
+
+          coverage_hotspots = file_metric_hotspots_by_metric.get("new_coverage", [])
+          if coverage_hotspots:
+              for component in coverage_hotspots[:10]:
+                  lines.append(
+                      f"- `{component['file']}`: "
+                      f"`{component.get('newCoverage', 'n/a')}%` coverage on new code "
+                      f"across `{component.get('newLines', 'n/a')}` new lines"
+                  )
+          else:
+              lines.append("- No file-level new code coverage hotspots were returned by the Sonar API.")
+
+          lines.extend(
+              [
+                  "",
                   "## Issue Sample",
                   "",
               ]
@@ -403,6 +611,7 @@ jobs:
         with:
           name: sonar-summary-${{ github.run_id }}
           path: |
+            sonar-component-metrics.json
             sonar-summary.json
             sonar-issues-full.json
             sonar-issues-summary.json

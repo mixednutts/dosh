@@ -1,9 +1,9 @@
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from ..database import get_db
+from ..api_docs import DbSession, error_responses
 from ..models import FinancialPeriod, PeriodTransaction
 from ..schemas import PeriodTransactionOut
 
@@ -17,13 +17,13 @@ def _get_period_or_404(finperiodid: int, db: Session) -> FinancialPeriod:
     return period
 
 
-@router.get("/{finperiodid}/transactions", response_model=list[PeriodTransactionOut])
+@router.get("/{finperiodid}/transactions", response_model=list[PeriodTransactionOut], responses=error_responses(404))
 def list_period_transactions(
     finperiodid: int,
+    db: DbSession,
     source: Optional[str] = Query(None),
     source_key: Optional[str] = Query(None),
     balancedesc: Optional[str] = Query(None),
-    db: Session = Depends(get_db),
 ):
     _get_period_or_404(finperiodid, db)
     q = db.query(PeriodTransaction).filter(PeriodTransaction.finperiodid == finperiodid)
@@ -39,11 +39,11 @@ def list_period_transactions(
     return q.order_by(PeriodTransaction.entrydate, PeriodTransaction.id).all()
 
 
-@router.get("/{finperiodid}/balances/{balancedesc}/transactions", response_model=list[PeriodTransactionOut])
+@router.get("/{finperiodid}/balances/{balancedesc}/transactions", response_model=list[PeriodTransactionOut], responses=error_responses(404))
 def list_balance_transactions(
     finperiodid: int,
     balancedesc: str,
-    db: Session = Depends(get_db),
+    db: DbSession,
 ):
     _get_period_or_404(finperiodid, db)
     return (
