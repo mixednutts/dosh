@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import PropTypes from 'prop-types'
 import { Link } from 'react-router-dom'
 import { getBudgets, getPeriodsForBudget, getPeriodDetail } from '../api/client'
 import { format, parseISO } from 'date-fns'
@@ -104,6 +105,30 @@ function BudgetTableRows({ budget }) {
   }
 
   return <PeriodRow budget={budget} period={current} />
+}
+
+PeriodRow.propTypes = {
+  budget: PropTypes.shape({
+    budgetid: PropTypes.number.isRequired,
+    description: PropTypes.string,
+    budgetowner: PropTypes.string,
+    budget_frequency: PropTypes.string,
+  }).isRequired,
+  period: PropTypes.shape({
+    finperiodid: PropTypes.number.isRequired,
+    startdate: PropTypes.string.isRequired,
+    enddate: PropTypes.string.isRequired,
+    islocked: PropTypes.bool,
+  }).isRequired,
+}
+
+BudgetTableRows.propTypes = {
+  budget: PropTypes.shape({
+    budgetid: PropTypes.number.isRequired,
+    description: PropTypes.string,
+    budgetowner: PropTypes.string,
+    budget_frequency: PropTypes.string,
+  }).isRequired,
 }
 
 export default function Dashboard() {

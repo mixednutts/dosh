@@ -1,3 +1,5 @@
+import PropTypes from 'prop-types'
+
 export default function Spinner({ className = 'w-6 h-6' }) {
   return (
     <svg className={`animate-spin text-dosh-600 ${className}`} fill="none" viewBox="0 0 24 24">
@@ -6,4 +8,8 @@ export default function Spinner({ className = 'w-6 h-6' }) {
         d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
     </svg>
   )
+}
+
+Spinner.propTypes = {
+  className: PropTypes.string,
 }

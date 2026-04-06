@@ -1,4 +1,5 @@
 import { format, parseISO } from 'date-fns'
+import PropTypes from 'prop-types'
 import Modal from './Modal'
 import Spinner from './Spinner'
 
@@ -163,4 +164,16 @@ export default function SetupItemHistoryModal({ historyQuery, itemDesc, category
       </div>
     </Modal>
   )
+}
+
+SetupItemHistoryModal.propTypes = {
+  historyQuery: PropTypes.shape({
+    data: PropTypes.any,
+    isLoading: PropTypes.bool,
+    error: PropTypes.any,
+  }).isRequired,
+  itemDesc: PropTypes.string.isRequired,
+  category: PropTypes.oneOf(['income', 'expense', 'investment']).isRequired,
+  currentItem: PropTypes.object,
+  onClose: PropTypes.func.isRequired,
 }

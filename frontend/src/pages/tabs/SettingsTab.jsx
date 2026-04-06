@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import PropTypes from 'prop-types'
 import { QuestionMarkCircleIcon } from '@heroicons/react/24/outline'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { updateBudget } from '../../api/client'
@@ -121,4 +122,13 @@ export default function SettingsTab({ budgetId, budget }) {
       </div>
     </div>
   )
+}
+
+SettingsTab.propTypes = {
+  budgetId: PropTypes.number.isRequired,
+  budget: PropTypes.shape({
+    auto_add_surplus_to_investment: PropTypes.bool,
+    allow_cycle_lock: PropTypes.bool,
+    account_naming_preference: PropTypes.string,
+  }),
 }

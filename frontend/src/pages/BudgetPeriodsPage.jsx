@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import PropTypes from 'prop-types'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronDownIcon, ChevronRightIcon, PlusIcon, Cog6ToothIcon, TrashIcon } from '@heroicons/react/24/outline'
@@ -528,4 +529,47 @@ function DeleteCycleModal({ deleteTarget, deleteMode, setDeleteMode, removePerio
       </div>
     </Modal>
   )
+}
+
+PeriodGenerateForm.propTypes = {
+  initialStartDate: PropTypes.string.isRequired,
+  onSubmit: PropTypes.func.isRequired,
+  onClose: PropTypes.func.isRequired,
+  loading: PropTypes.bool.isRequired,
+  error: PropTypes.string,
+}
+
+PeriodSummaryRow.propTypes = {
+  summary: PropTypes.object.isRequired,
+  onDelete: PropTypes.func.isRequired,
+}
+
+PeriodSummaryGroup.propTypes = {
+  title: PropTypes.string.isRequired,
+  summaries: PropTypes.arrayOf(PropTypes.object).isRequired,
+  collapsed: PropTypes.bool,
+  collapsible: PropTypes.bool,
+  onDelete: PropTypes.func.isRequired,
+  sessionStorageKey: PropTypes.string,
+  groupId: PropTypes.string.isRequired,
+  forceOpen: PropTypes.bool,
+}
+
+DeleteCycleModal.propTypes = {
+  deleteTarget: PropTypes.shape({
+    period: PropTypes.shape({
+      finperiodid: PropTypes.number.isRequired,
+      startdate: PropTypes.string.isRequired,
+      enddate: PropTypes.string.isRequired,
+    }).isRequired,
+  }).isRequired,
+  deleteMode: PropTypes.string.isRequired,
+  setDeleteMode: PropTypes.func.isRequired,
+  removePeriod: PropTypes.shape({
+    mutate: PropTypes.func.isRequired,
+    isPending: PropTypes.bool.isRequired,
+    isError: PropTypes.bool.isRequired,
+    error: PropTypes.any,
+  }).isRequired,
+  onClose: PropTypes.func.isRequired,
 }

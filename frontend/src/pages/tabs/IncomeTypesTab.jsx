@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import PropTypes from 'prop-types'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { PlusIcon, PencilIcon, TrashIcon, ClockIcon } from '@heroicons/react/24/outline'
 import { getIncomeTypes, createIncomeType, updateIncomeType, deleteIncomeType, getBalanceTypes, getBudgetSetupAssessment, getIncomeTypeHistory } from '../../api/client'
@@ -239,4 +240,29 @@ export default function IncomeTypesTab({ budgetId, budget }) {
       )}
     </div>
   )
+}
+
+IncomeTypeForm.propTypes = {
+  initial: PropTypes.shape({
+    incomedesc: PropTypes.string,
+    issavings: PropTypes.bool,
+    isfixed: PropTypes.bool,
+    autoinclude: PropTypes.bool,
+    amount: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+    linked_account: PropTypes.string,
+  }),
+  onSubmit: PropTypes.func.isRequired,
+  onClose: PropTypes.func.isRequired,
+  loading: PropTypes.bool.isRequired,
+  budgetId: PropTypes.number.isRequired,
+  structureLocked: PropTypes.bool,
+  lockReasons: PropTypes.arrayOf(PropTypes.string),
+  accountNamingPreference: PropTypes.string,
+}
+
+IncomeTypesTab.propTypes = {
+  budgetId: PropTypes.number.isRequired,
+  budget: PropTypes.shape({
+    account_naming_preference: PropTypes.string,
+  }),
 }

@@ -1,4 +1,5 @@
 import { Outlet, NavLink, Link, useMatch } from 'react-router-dom'
+import PropTypes from 'prop-types'
 import {
   WalletIcon, Bars3Icon, XMarkIcon, MoonIcon, SunIcon,
   ChevronRightIcon, ChevronDownIcon, ChevronLeftIcon,
@@ -506,4 +507,44 @@ export default function Layout() {
       </div>
     </div>
   )
+}
+
+PeriodShortcutGroup.propTypes = {
+  title: PropTypes.string.isRequired,
+  periods: PropTypes.arrayOf(PropTypes.object).isRequired,
+  activePeriodId: PropTypes.number,
+  onNav: PropTypes.func.isRequired,
+  emptyMessage: PropTypes.node,
+  moreText: PropTypes.string,
+  moreTo: PropTypes.string,
+  moreSubtle: PropTypes.bool,
+}
+
+BudgetList.propTypes = {
+  budgets: PropTypes.arrayOf(PropTypes.object).isRequired,
+  currentBudgetId: PropTypes.number,
+  onNav: PropTypes.func.isRequired,
+}
+
+CompactCurrentBudgetContext.propTypes = {
+  budget: PropTypes.object.isRequired,
+  activePeriodId: PropTypes.number,
+  onNav: PropTypes.func.isRequired,
+}
+
+CurrentBudgetPanel.propTypes = {
+  budget: PropTypes.object.isRequired,
+  activePeriodId: PropTypes.number,
+  onNav: PropTypes.func.isRequired,
+  shortcutsExpanded: PropTypes.bool,
+}
+
+LayoutNav.propTypes = {
+  budgets: PropTypes.arrayOf(PropTypes.object).isRequired,
+  currentBudgetId: PropTypes.number,
+  activePeriodId: PropTypes.number,
+  budgetsExpanded: PropTypes.bool.isRequired,
+  setBudgetsExpanded: PropTypes.func.isRequired,
+  onBudgetOrPeriod: PropTypes.bool.isRequired,
+  onNav: PropTypes.func.isRequired,
 }

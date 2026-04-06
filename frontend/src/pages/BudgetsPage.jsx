@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import PropTypes from 'prop-types'
 import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArrowLeftIcon, ArrowRightIcon, ArrowTrendingDownIcon, ArrowTrendingUpIcon, CalendarDaysIcon, MinusIcon, PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline'
@@ -1103,4 +1104,89 @@ export default function BudgetsPage() {
       )}
     </div>
   )
+}
+
+MomentumIcon.propTypes = {
+  status: PropTypes.string,
+}
+
+CalendarDayEventsModal.propTypes = {
+  date: PropTypes.instanceOf(Date).isRequired,
+  events: PropTypes.arrayOf(PropTypes.object).isRequired,
+  onClose: PropTypes.func.isRequired,
+}
+
+CalendarMonthGrid.propTypes = {
+  periods: PropTypes.arrayOf(PropTypes.object).isRequired,
+  visibleMonth: PropTypes.instanceOf(Date).isRequired,
+  onChangeMonth: PropTypes.func.isRequired,
+  today: PropTypes.instanceOf(Date).isRequired,
+  events: PropTypes.arrayOf(PropTypes.object).isRequired,
+  compact: PropTypes.bool,
+  onSelectDay: PropTypes.func,
+}
+
+FullCalendarModal.propTypes = {
+  budgetName: PropTypes.string.isRequired,
+  periods: PropTypes.arrayOf(PropTypes.object).isRequired,
+  events: PropTypes.arrayOf(PropTypes.object).isRequired,
+  today: PropTypes.instanceOf(Date).isRequired,
+  onClose: PropTypes.func.isRequired,
+}
+
+TrafficLight.propTypes = {
+  status: PropTypes.string,
+}
+
+BalanceSummaryCard.propTypes = {
+  currentPeriod: PropTypes.object,
+  currentPeriodDetail: PropTypes.object,
+  isLoading: PropTypes.bool.isRequired,
+}
+
+CalendarSummaryCard.propTypes = {
+  currentPeriod: PropTypes.object,
+  calendarPeriods: PropTypes.arrayOf(PropTypes.object).isRequired,
+  calendarPeriodDetails: PropTypes.arrayOf(PropTypes.object).isRequired,
+  isLoading: PropTypes.bool.isRequired,
+  budgetName: PropTypes.string.isRequired,
+}
+
+BudgetStats.propTypes = {
+  budgetName: PropTypes.string.isRequired,
+  periods: PropTypes.arrayOf(PropTypes.object),
+  currentPeriodDetail: PropTypes.object,
+  calendarPeriods: PropTypes.arrayOf(PropTypes.object),
+  calendarPeriodDetails: PropTypes.arrayOf(PropTypes.object),
+  currentPeriodDetailLoading: PropTypes.bool.isRequired,
+  health: PropTypes.object,
+  onOpenHealth: PropTypes.func.isRequired,
+  onOpenCurrentPeriodCheck: PropTypes.func.isRequired,
+}
+
+CurrentPeriodCheckModal.propTypes = {
+  budget: PropTypes.object.isRequired,
+  assessment: PropTypes.object,
+  evaluatedAt: PropTypes.string,
+  onClose: PropTypes.func.isRequired,
+}
+
+BudgetHealthModal.propTypes = {
+  budget: PropTypes.object.isRequired,
+  health: PropTypes.object.isRequired,
+  onClose: PropTypes.func.isRequired,
+}
+
+BudgetForm.propTypes = {
+  initial: PropTypes.shape({
+    description: PropTypes.string,
+    budgetowner: PropTypes.string,
+    budget_frequency: PropTypes.string,
+  }),
+  onSubmit: PropTypes.func.isRequired,
+  onCreateDemo: PropTypes.func.isRequired,
+  onClose: PropTypes.func.isRequired,
+  loading: PropTypes.bool.isRequired,
+  demoLoading: PropTypes.bool.isRequired,
+  showDemoOption: PropTypes.bool.isRequired,
 }

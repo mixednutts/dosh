@@ -12,6 +12,7 @@ It is a synthesis of the current Markdown sources in this repository:
 - [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/docs/plans/BUDGET_HEALTH_ADDENDUM.md)
 - [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md)
 - [TEST_EXPANSION_PLAN.md](/home/ubuntu/dosh/docs/tests/TEST_EXPANSION_PLAN.md)
+- [TEST_RESULTS_SUMMARY.md](/home/ubuntu/dosh/docs/tests/TEST_RESULTS_SUMMARY.md)
 - [INCOME_TRANSACTIONS_UNIFICATION_AND_LEGACY_LEDGER_CLEANUP_PLAN.md](/home/ubuntu/dosh/docs/plans/INCOME_TRANSACTIONS_UNIFICATION_AND_LEGACY_LEDGER_CLEANUP_PLAN.md)
 
 Use this as the quick-start development handoff. Use the source documents above when deeper detail is needed.
@@ -126,6 +127,7 @@ Frontend:
 - React Router
 - React Query
 - Tailwind CSS
+- `prop-types` is now part of the frontend baseline so shared and page-level React components can carry explicit prop contracts for SonarQube-backed maintainability
 - current route flow defined in [App.jsx](/home/ubuntu/dosh/frontend/src/App.jsx)
 
 Operational note:
@@ -137,6 +139,7 @@ Operational note:
 - Docker Compose remains the active deployment path, with the frontend exposed on port `3080`
 - the frontend Docker build now uses Node 20 rather than the old Node 16 baseline
 - Docker Compose `DEV_MODE` is now the shared control point for dev-only demo-budget behavior across frontend build visibility and backend runtime enforcement
+- the SonarQube workflow now exports a sanitized artifact summary, and the repo includes [fetch_latest_sonar_artifact.sh](/home/ubuntu/dosh/scripts/fetch_latest_sonar_artifact.sh) so future sessions can inspect the latest issue clusters locally before starting cleanup work
 - `PeriodTransaction` is now the sole live transaction store; older expense and investment transaction tables have been removed from the active schema
 - the deployed database has already been manually aligned to the current post-session schema expectations, including budget-adjustment and transaction line-state fields
 - the deployed database has since required another explicit live patch for setup-revision history support, including `periodtransactions.revisionnum` and the `setuprevisionevents` table, which reinforces that proper migrations remain an active engineering need
@@ -196,6 +199,7 @@ The repository already supports:
 - a sidebar current-budget workspace that stays separate from the expanded budget list, uses explicit `View all ...` cycle links when more cycles exist, and avoids duplicating setup entry on the budget cycles page
 - the `No budget cycles yet` state on the budget cycles page now offers direct budget deletion for abandoned or exploratory budgets
 - add-income-from-period flow that can either reuse an existing setup item or create a brand-new income item inline
+- shared components, setup tabs, and high-traffic budget pages now have explicit React props validation as part of the frontend quality baseline
 
 Current frontend wording trends toward `Budget Cycle` for user clarity while backend naming still uses `period` for stability.
 
@@ -234,6 +238,7 @@ The most useful enabling work for future sessions is:
 6. keep closed-cycle correction design aligned with reconciliation rather than reopening normal edit paths
 7. harden deployment by addressing Node engine drift and startup deprecation warnings
 8. continue improving summary and calendar usability without letting the budget overview become a dashboard clone
+9. continue SonarQube-driven cleanup by tackling the next concentrated clusters after props validation, especially nested ternaries, form-label associations, and FastAPI annotation or response-documentation warnings
 
 ## Testing Posture
 

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import PropTypes from 'prop-types'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { updateBudget } from '../../api/client'
 
@@ -336,4 +337,37 @@ export default function PersonalisationTab({ budgetId, budget }) {
       </div>
     </div>
   )
+}
+
+CurrencyField.propTypes = {
+  value: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  onChange: PropTypes.func.isRequired,
+}
+
+SliderField.propTypes = {
+  config: PropTypes.shape({
+    key: PropTypes.string.isRequired,
+    title: PropTypes.string.isRequired,
+    helper: PropTypes.string.isRequired,
+    inputSuffix: PropTypes.string.isRequired,
+    unitHint: PropTypes.string.isRequired,
+    leftLabel: PropTypes.string.isRequired,
+    rightLabel: PropTypes.string.isRequired,
+    scale: PropTypes.oneOf(['percent', 'ten']).isRequired,
+  }).isRequired,
+  value: PropTypes.number.isRequired,
+  onChange: PropTypes.func.isRequired,
+  extraContent: PropTypes.node,
+}
+
+PersonalisationTab.propTypes = {
+  budgetId: PropTypes.number.isRequired,
+  budget: PropTypes.shape({
+    acceptable_expense_overrun_pct: PropTypes.number,
+    comfortable_surplus_buffer_pct: PropTypes.number,
+    maximum_deficit_amount: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+    revision_sensitivity: PropTypes.number,
+    savings_priority: PropTypes.number,
+    period_criticality_bias: PropTypes.number,
+  }),
 }

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import PropTypes from 'prop-types'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { PlusIcon, PencilIcon, TrashIcon, ClockIcon } from '@heroicons/react/24/outline'
 import { format, parseISO } from 'date-fns'
@@ -249,4 +250,31 @@ export default function InvestmentItemsTab({ budgetId, budget }) {
       )}
     </div>
   )
+}
+
+InvestmentForm.propTypes = {
+  initial: PropTypes.shape({
+    investmentdesc: PropTypes.string,
+    active: PropTypes.bool,
+    effectivedate: PropTypes.string,
+    initial_value: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+    planned_amount: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+    linked_account_desc: PropTypes.string,
+    is_primary: PropTypes.bool,
+  }),
+  isEdit: PropTypes.bool,
+  onSubmit: PropTypes.func.isRequired,
+  onClose: PropTypes.func.isRequired,
+  loading: PropTypes.bool.isRequired,
+  balanceTypes: PropTypes.arrayOf(PropTypes.object),
+  structureLocked: PropTypes.bool,
+  lockReasons: PropTypes.arrayOf(PropTypes.string),
+  accountNamingPreference: PropTypes.string,
+}
+
+InvestmentItemsTab.propTypes = {
+  budgetId: PropTypes.number.isRequired,
+  budget: PropTypes.shape({
+    account_naming_preference: PropTypes.string,
+  }),
 }

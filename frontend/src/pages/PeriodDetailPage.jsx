@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import PropTypes from 'prop-types'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format, parseISO, addDays } from 'date-fns'
@@ -1887,4 +1888,99 @@ export default function PeriodDetailPage() {
       )}
     </div>
   )
+}
+
+BudgetAmountCell.propTypes = {
+  amount: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  canEdit: PropTypes.bool.isRequired,
+  onEdit: PropTypes.func,
+  label: PropTypes.string.isRequired,
+}
+
+IncomeTransactionsModal.propTypes = {
+  periodId: PropTypes.number.isRequired,
+  incomedesc: PropTypes.string.isRequired,
+  budgetamount: PropTypes.oneOfType([PropTypes.number, PropTypes.string]).isRequired,
+  actualamount: PropTypes.oneOfType([PropTypes.number, PropTypes.string]).isRequired,
+  locked: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
+  defaultType: PropTypes.oneOf(['credit', 'debit']),
+}
+
+BalanceTransactionsModal.propTypes = {
+  periodId: PropTypes.number.isRequired,
+  balancedesc: PropTypes.string.isRequired,
+  movementAmount: PropTypes.oneOfType([PropTypes.number, PropTypes.string]).isRequired,
+}
+
+ExpenseEntriesModal.propTypes = {
+  periodId: PropTypes.number.isRequired,
+  budgetId: PropTypes.number.isRequired,
+  expensedesc: PropTypes.string.isRequired,
+  budgetamount: PropTypes.oneOfType([PropTypes.number, PropTypes.string]).isRequired,
+  actualamount: PropTypes.oneOfType([PropTypes.number, PropTypes.string]).isRequired,
+  locked: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
+  defaultType: PropTypes.oneOf(['debit', 'credit']),
+}
+
+InvestmentTxModal.propTypes = {
+  periodId: PropTypes.number.isRequired,
+  investmentdesc: PropTypes.string.isRequired,
+  openingValue: PropTypes.oneOfType([PropTypes.number, PropTypes.string]).isRequired,
+  closingValue: PropTypes.oneOfType([PropTypes.number, PropTypes.string]).isRequired,
+  budgetedAmount: PropTypes.oneOfType([PropTypes.number, PropTypes.string]).isRequired,
+  locked: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
+  defaultType: PropTypes.oneOf(['increase', 'decrease']),
+}
+
+BudgetAdjustmentModal.propTypes = {
+  title: PropTypes.string.isRequired,
+  currentAmount: PropTypes.oneOfType([PropTypes.number, PropTypes.string]).isRequired,
+  onSubmit: PropTypes.func.isRequired,
+  onClose: PropTypes.func.isRequired,
+}
+
+ExpenseStatusPill.propTypes = {
+  expense: PropTypes.object.isRequired,
+  onMarkPaid: PropTypes.func.isRequired,
+  onRevise: PropTypes.func.isRequired,
+}
+
+ConfirmPaidExpenseModal.propTypes = {
+  expense: PropTypes.object.isRequired,
+  onConfirm: PropTypes.func.isRequired,
+  onClose: PropTypes.func.isRequired,
+}
+
+InvestmentStatusPill.propTypes = {
+  investment: PropTypes.object.isRequired,
+  onMarkPaid: PropTypes.func.isRequired,
+  onRevise: PropTypes.func.isRequired,
+}
+
+ConfirmPaidInvestmentModal.propTypes = {
+  investment: PropTypes.object.isRequired,
+  onConfirm: PropTypes.func.isRequired,
+  onClose: PropTypes.func.isRequired,
+}
+
+CloseoutModal.propTypes = {
+  periodId: PropTypes.number.isRequired,
+  onClose: PropTypes.func.isRequired,
+}
+
+AddIncomeModal.propTypes = {
+  periodId: PropTypes.number.isRequired,
+  budgetId: PropTypes.number.isRequired,
+  existingDescs: PropTypes.arrayOf(PropTypes.string).isRequired,
+  onClose: PropTypes.func.isRequired,
+}
+
+AddExpenseModal.propTypes = {
+  periodId: PropTypes.number.isRequired,
+  budgetId: PropTypes.number.isRequired,
+  existingDescs: PropTypes.arrayOf(PropTypes.string).isRequired,
+  onClose: PropTypes.func.isRequired,
 }

@@ -3,6 +3,7 @@
  * Calls onSave(newValue) when blurred or Enter pressed.
  */
 import { useState } from 'react'
+import PropTypes from 'prop-types'
 
 export default function AmountCell({ value, onSave, disabled = false }) {
   const [editing, setEditing] = useState(false)
@@ -36,4 +37,10 @@ export default function AmountCell({ value, onSave, disabled = false }) {
       className="w-28 rounded border border-dosh-400 px-1 py-0.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-dosh-500"
     />
   )
+}
+
+AmountCell.propTypes = {
+  value: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  onSave: PropTypes.func.isRequired,
+  disabled: PropTypes.bool,
 }

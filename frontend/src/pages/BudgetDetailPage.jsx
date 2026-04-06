@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import PropTypes from 'prop-types'
 import { useParams, Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronDownIcon, ChevronRightIcon, ArrowUpIcon } from '@heroicons/react/24/outline'
@@ -233,6 +234,31 @@ function BudgetInfoForm({ budgetId, budget }) {
       ) : null}
     </div>
   )
+}
+
+SectionShell.propTypes = {
+  id: PropTypes.string.isRequired,
+  title: PropTypes.string.isRequired,
+  summary: PropTypes.node.isRequired,
+  helper: PropTypes.node,
+  children: PropTypes.node,
+  badge: PropTypes.node,
+  statusBadge: PropTypes.shape({
+    className: PropTypes.string.isRequired,
+    label: PropTypes.string.isRequired,
+  }),
+  collapsible: PropTypes.bool,
+  collapsed: PropTypes.bool,
+  onToggle: PropTypes.func,
+}
+
+BudgetInfoForm.propTypes = {
+  budgetId: PropTypes.number.isRequired,
+  budget: PropTypes.shape({
+    description: PropTypes.string,
+    budgetowner: PropTypes.string,
+    budget_frequency: PropTypes.string,
+  }).isRequired,
 }
 
 export default function BudgetDetailPage() {

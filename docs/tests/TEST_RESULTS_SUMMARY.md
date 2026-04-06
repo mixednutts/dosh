@@ -4,6 +4,64 @@ This document records meaningful automated test results from major working sessi
 
 It exists separately from [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) so the strategy can stay stable while future sessions still have a record of what was actually run and verified.
 
+## Latest Session: SonarQube Root-Cluster Cleanup, Frontend Props Validation Baseline, And Deployment Verification
+
+Session outcomes verified in this run:
+
+- the latest successful SonarQube artifact was fetched locally and used to identify the dominant root cluster before code changes were made
+- the dominant frontend SonarQube cluster, `javascript:S6774` missing props validation, was addressed across shared components, setup tabs, and high-traffic page components
+- the frontend now includes the `prop-types` dependency and explicit prop contracts for the affected React components
+- the full frontend Jest suite passed after the cleanup
+- the stack rebuilt and restarted successfully through Docker Compose, and the live health endpoint remained healthy after deployment
+
+### Frontend verification
+
+Commands run during this session:
+
+```bash
+cd frontend
+npm test -- --runInBand --watchAll=false
+```
+
+Result:
+
+- the full frontend Jest suite passed after the props-validation cleanup
+- 10 frontend suites passed
+- 63 frontend tests passed in the latest verified state
+
+Files with meaningful frontend updates in this session:
+
+- [package.json](/home/ubuntu/dosh/frontend/package.json)
+- [Layout.jsx](/home/ubuntu/dosh/frontend/src/components/Layout.jsx)
+- [Modal.jsx](/home/ubuntu/dosh/frontend/src/components/Modal.jsx)
+- [SetupItemHistoryModal.jsx](/home/ubuntu/dosh/frontend/src/components/SetupItemHistoryModal.jsx)
+- [BudgetsPage.jsx](/home/ubuntu/dosh/frontend/src/pages/BudgetsPage.jsx)
+- [BudgetPeriodsPage.jsx](/home/ubuntu/dosh/frontend/src/pages/BudgetPeriodsPage.jsx)
+- [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx)
+
+### Deployment verification
+
+Commands run:
+
+```bash
+docker compose -f docker-compose.yml up -d --build
+docker compose -f docker-compose.yml ps
+curl -sS http://127.0.0.1:3080/api/health
+```
+
+Result:
+
+- backend and frontend containers rebuilt and restarted successfully
+- frontend remained available on port `3080`
+- the live health endpoint returned `{"status":"ok","app":"Dosh"}`
+- the frontend production build completed successfully during deployment, but Vite reported a large post-minification main chunk warning
+
+### Test failures and resolution notes
+
+- no automated test failures remained at the end of the session
+- no additional frontend test files were required because the props-validation cleanup did not change user-facing workflow behavior
+- the main follow-up note from deployment is bundle-size review, not a correctness regression
+
 ## Latest Session: Setup-Revision History Expansion, Revision-Number Alignment, Live Schema Recovery, And Follow-Up UI Regression Fixes
 
 Session outcomes verified in this run:

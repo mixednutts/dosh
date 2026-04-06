@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import PropTypes from 'prop-types'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline'
 import { getBalanceTypes, createBalanceType, updateBalanceType, deleteBalanceType, getBudgetSetupAssessment } from '../../api/client'
@@ -191,4 +192,27 @@ export default function BalanceTypesTab({ budgetId, budget }) {
       )}
     </div>
   )
+}
+
+BalanceTypeForm.propTypes = {
+  initial: PropTypes.shape({
+    balancedesc: PropTypes.string,
+    balance_type: PropTypes.string,
+    opening_balance: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+    active: PropTypes.bool,
+    is_primary: PropTypes.bool,
+  }),
+  onSubmit: PropTypes.func.isRequired,
+  onClose: PropTypes.func.isRequired,
+  loading: PropTypes.bool.isRequired,
+  structureLocked: PropTypes.bool,
+  lockReasons: PropTypes.arrayOf(PropTypes.string),
+  accountNamingPreference: PropTypes.string,
+}
+
+BalanceTypesTab.propTypes = {
+  budgetId: PropTypes.number.isRequired,
+  budget: PropTypes.shape({
+    account_naming_preference: PropTypes.string,
+  }),
 }

@@ -1,4 +1,5 @@
 import { XMarkIcon } from '@heroicons/react/24/outline'
+import PropTypes from 'prop-types'
 
 export default function Modal({ title, onClose, children, size = 'md' }) {
   const widths = { sm: 'max-w-sm', md: 'max-w-md', lg: 'max-w-lg', xl: 'max-w-xl' }
@@ -15,4 +16,11 @@ export default function Modal({ title, onClose, children, size = 'md' }) {
       </div>
     </div>
   )
+}
+
+Modal.propTypes = {
+  title: PropTypes.node.isRequired,
+  onClose: PropTypes.func.isRequired,
+  children: PropTypes.node,
+  size: PropTypes.oneOf(['sm', 'md', 'lg', 'xl']),
 }

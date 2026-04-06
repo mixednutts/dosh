@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import PropTypes from 'prop-types'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { PlusIcon, PencilIcon, TrashIcon, ChevronUpIcon, ChevronDownIcon, ClockIcon } from '@heroicons/react/24/outline'
 import { format, parseISO, addDays } from 'date-fns'
@@ -361,4 +362,31 @@ export default function ExpenseItemsTab({ budgetId }) {
       )}
     </div>
   )
+}
+
+ExpenseItemForm.propTypes = {
+  initial: PropTypes.shape({
+    expensedesc: PropTypes.string,
+    active: PropTypes.bool,
+    freqtype: PropTypes.string,
+    frequency_value: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+    paytype: PropTypes.string,
+    effectivedate: PropTypes.string,
+    expenseamount: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  }),
+  isEdit: PropTypes.bool,
+  onSubmit: PropTypes.func.isRequired,
+  onClose: PropTypes.func.isRequired,
+  loading: PropTypes.bool.isRequired,
+  activeLocked: PropTypes.bool,
+  lockReasons: PropTypes.arrayOf(PropTypes.string),
+}
+
+FreqBadge.propTypes = {
+  freqtype: PropTypes.string,
+  frequencyValue: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+}
+
+ExpenseItemsTab.propTypes = {
+  budgetId: PropTypes.number.isRequired,
 }
