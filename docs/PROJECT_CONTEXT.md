@@ -146,6 +146,8 @@ Operational note:
 - the backend router baseline now uses a shared [api_docs.py](/home/ubuntu/dosh/backend/app/api_docs.py) helper with `DbSession` and centralized `error_responses(...)` metadata for FastAPI endpoints
 - the SonarQube workflow now exports a sanitized artifact summary even when the quality gate fails, and the repo includes [fetch_latest_sonar_artifact.sh](/home/ubuntu/dosh/scripts/fetch_latest_sonar_artifact.sh) so future sessions can inspect the latest successful artifact quickly
 - failed-run Sonar artifacts now include explicit `failingQualityGateConditions` plus [sonar-component-metrics.json](/tmp/dosh-sonar-artifact/run-24018996530/sonar-summary-24018996530/sonar-component-metrics.json) for file-level new-code duplication or coverage hotspots
+- the frontend entry HTML now links the shared public [icon.svg](/home/ubuntu/dosh/frontend/public/icon.svg) as the live favicon and touch icon
+- the current known SonarQube gate failure still comes from the last verified run [24018996530](/tmp/dosh-sonar-artifact/run-24018996530/sonar-summary-24018996530/sonar-summary.md), but local cleanup has now reduced repeated transaction and status UI inside [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx) ahead of the next CI rerun
 - `PeriodTransaction` is now the sole live transaction store; older expense and investment transaction tables have been removed from the active schema
 - the deployed database has already been manually aligned to the current post-session schema expectations, including budget-adjustment and transaction line-state fields
 - the deployed database has since required another explicit live patch for setup-revision history support, including `periodtransactions.revisionnum` and the `setuprevisionevents` table, which reinforces that proper migrations remain an active engineering need
@@ -207,6 +209,7 @@ The repository already supports:
 - the `No budget cycles yet` state on the budget cycles page now offers direct budget deletion for abandoned or exploratory budgets
 - add-income-from-period flow that can either reuse an existing setup item or create a brand-new income item inline
 - shared components, setup tabs, and high-traffic budget pages now have explicit React props validation as part of the frontend quality baseline
+- the browser entry HTML now includes a live Dosh favicon and touch icon sourced from the shared public brand asset
 
 Current frontend wording trends toward `Budget Cycle` for user clarity while backend naming still uses `period` for stability.
 
@@ -246,7 +249,7 @@ The most useful enabling work for future sessions is:
 7. harden deployment by addressing Node engine drift and startup deprecation warnings
 8. continue improving summary and calendar usability without letting the budget overview become a dashboard clone
 9. reduce the main frontend bundle by introducing route-level lazy loading for major pages in [App.jsx](/home/ubuntu/dosh/frontend/src/App.jsx)
-10. continue SonarQube-driven cleanup by tackling the next concentrated frontend clusters after the completed FastAPI router cleanup, especially nested ternaries, form-label associations, and the duplication hotspot in [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx)
+10. continue SonarQube-driven cleanup by tackling the next concentrated frontend clusters after the completed FastAPI router cleanup, especially nested ternaries, form-label associations, and any remaining duplication in [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx) after the current local shared-component refactor is rechecked by CI
 
 ## Testing Posture
 
@@ -322,6 +325,7 @@ These Sonar outputs are not committed files in the repository checkout. They are
 - exported files inside the artifact: `sonar-summary.md`, `sonar-summary.json`, `sonar-issues-summary.json`, `sonar-issues-full.json`, and `sonar-component-metrics.json`
 - the artifact is now uploaded even when the Sonar scan step fails because the quality gate returns `ERROR`
 - the export now includes both issue-driven hotspots and measure-driven failed-gate context such as `failingQualityGateConditions` and file-level new-code duplication or coverage hotspots
+- the latest locally verified cleanup against the failed duplication hotspot has not yet been reflected in a newer Sonar artifact, so future sessions should not assume the gate is cleared until a fresh workflow run completes
 
 Typical retrieval flow from a future session after pulling the latest repository docs:
 
@@ -348,9 +352,9 @@ If the next development task is still open-ended, the best default candidates ar
 
 1. reporting and period-comparison summaries built from the ledger-backed model
 2. reconciliation summary and discrepancy surfaces by account
-3. close-out and delete continuity hardening with deeper automated coverage
-4. migration framework introduction from the new post-cutover schema baseline
-5. reporting and reconciliation surfaces that take advantage of the now-clean unified ledger model
+3. rerun the SonarQube workflow and inspect the next artifact to confirm whether the local [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx) duplication reduction cleared the active quality-gate failure
+4. close-out and delete continuity hardening with deeper automated coverage
+5. migration framework introduction from the new post-cutover schema baseline
 
 ## Source Of Truth
 

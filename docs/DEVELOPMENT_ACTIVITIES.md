@@ -518,7 +518,7 @@ Status:
 - `Completed`: fix the `Add New Income Item` modal so it supports creating a brand-new income line inline, matching the supported `Add New Expense Item` modal workflow
 - `Completed`: resolve the dominant SonarQube frontend issue cluster by adding explicit React props validation across shared components, setup tabs, and high-traffic budget pages
 - fix the inability to edit an income line from budget setup
-- add the missing webpage favicon so browser tabs and installed shortcuts show the app identity correctly
+- `Completed`: add the missing webpage favicon so browser tabs and installed shortcuts show the app identity correctly
 - `Completed`: recover the budget setup sections after the live setup-history schema mismatch temporarily made income, expense, and investment lines appear missing
 
 #### Activity Group: Enhancements
@@ -585,7 +585,7 @@ Status:
 
 - `Completed`: simplify paid-to-revised reopening by removing the separate revision-reason modal and relying on transaction-backed history instead
 - `Completed`: reduce the dominant backend SonarQube router noise by switching FastAPI endpoints to a shared `DbSession` dependency alias and centralized documented error responses
-- continue reducing SonarQube noise by addressing the next concentrated frontend rule clusters after props validation and the completed FastAPI router cleanup, especially nested ternaries, form-label associations, and duplication in `PeriodDetailPage.jsx`
+- continue reducing SonarQube noise by addressing the next concentrated frontend rule clusters after props validation and the completed FastAPI router cleanup, especially nested ternaries, form-label associations, and duplication in `PeriodDetailPage.jsx`; the local `PeriodDetailPage.jsx` duplication pass now consolidates repeated transaction-modal and status UI, but a fresh SonarQube run is still needed before this activity can move to `Completed`
 - standardize terminology around savings and investments
 - standardize where the UI says `Budget Cycle` while backend and API continue using `period`
 - standardize health terminology around surplus, deficit, tolerance, threshold, and escalation

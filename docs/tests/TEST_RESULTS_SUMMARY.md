@@ -4,6 +4,63 @@ This document records meaningful automated test results from major working sessi
 
 It exists separately from [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) so the strategy can stay stable while future sessions still have a record of what was actually run and verified.
 
+## Latest Session: PeriodDetail Sonar Duplication Reduction, Favicon Wiring, And Override-Aware Redeployment
+
+Session outcomes verified in this run:
+
+- [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx) now consolidates the repeated transaction-modal summary, transaction-list, transaction-entry, status-pill, and paid-confirmation UI into shared local components to reduce the duplication hotspot behind the failed SonarQube gate
+- the period-detail regression baseline still passes after that refactor
+- the frontend entry HTML now declares the existing branded [icon.svg](/home/ubuntu/dosh/frontend/public/icon.svg) as the webpage favicon and touch icon so browser tabs and installed shortcuts show app identity correctly
+- the stack was rebuilt and redeployed successfully through the override-aware Docker Compose path, and the live served HTML now includes the favicon links
+- the SonarQube quality gate itself was not rerun during this session, so the duplication cleanup is locally verified but not yet CI-confirmed
+
+### Frontend verification
+
+Commands run during this session:
+
+```bash
+cd frontend
+npm test -- --runInBand --watchAll=false src/__tests__/PeriodDetailPage.test.jsx
+npm run build
+```
+
+Result:
+
+- focused period-detail coverage passed after the duplication-reduction refactor
+- 1 frontend suite passed
+- 20 focused frontend tests passed in the verified local state
+- the frontend production build passed after both the Sonar cleanup and favicon wiring changes
+- the Vite build still reports a large post-minification main chunk warning, which remains follow-up performance work rather than a correctness failure
+
+Files with meaningful frontend updates in this session:
+
+- [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx)
+- [index.html](/home/ubuntu/dosh/frontend/index.html)
+
+### Deployment verification
+
+Commands run:
+
+```bash
+docker compose -f /home/ubuntu/dosh/docker-compose.yml -f /home/ubuntu/dosh/docker-compose.override.yml up -d --build frontend
+docker compose -f /home/ubuntu/dosh/docker-compose.yml -f /home/ubuntu/dosh/docker-compose.override.yml ps
+curl -sS http://127.0.0.1:3080/
+curl -sS http://127.0.0.1:3080/api/health
+```
+
+Result:
+
+- backend and frontend containers rebuilt and restarted successfully through the override-aware compose path
+- the live health endpoint returned `{"status":"ok","app":"Dosh"}`
+- the served root HTML now includes favicon and touch-icon links for `/icon.svg`
+- the frontend remained reachable on port `3080` after deployment
+
+### Test failures and resolution notes
+
+- no automated test failures remained at the end of the session
+- no dedicated favicon test file was added because the change is static entry HTML wiring rather than runtime workflow logic
+- no fresh SonarQube workflow run was executed in this session, so the remaining quality-gate risk is verification debt rather than a known local regression
+
 ## Latest Session: FastAPI Router Sonar Cleanup And Failed-Gate Artifact Verification
 
 Session outcomes verified in this run:

@@ -108,6 +108,263 @@ function BudgetAmountCell({ amount, canEdit, onEdit, label }) {
   )
 }
 
+function AmountSummaryGrid({ items, columns = 3 }) {
+  return (
+    <div className={`grid gap-2 text-center text-xs ${columns === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
+      {items.map(({ label, value, cls }) => (
+        <div key={label} className="card p-2">
+          <p className="text-gray-400">{label}</p>
+          <p className={`font-semibold ${cls}`}>{fmt(value)}</p>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function TransactionListPanel({
+  items,
+  isLoading,
+  locked,
+  headerLabel,
+  emptyLabel,
+  maxHeightClass = 'max-h-52',
+  totalValue = null,
+  totalClassName = null,
+  getItemAmount,
+  getAmountClassName,
+  getBadgeClassName,
+  getBadgeLabel,
+  getPrimaryText,
+  onDelete,
+}) {
+  return (
+    <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+      <div className="flex justify-between bg-gray-50 px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+        <span>{headerLabel}</span>
+        <span>{items.length} entries</span>
+      </div>
+      {isLoading ? (
+        <div className="flex justify-center py-4"><Spinner className="h-4 w-4" /></div>
+      ) : items.length === 0 ? (
+        <p className="py-4 text-center text-sm italic text-gray-400">{emptyLabel}</p>
+      ) : (
+        <div className={`divide-y divide-gray-100 overflow-y-auto dark:divide-gray-800 ${maxHeightClass}`}>
+          {items.map(item => {
+            const amount = Number(getItemAmount(item))
+            return (
+              <div key={item.id} className="flex items-center gap-2 px-3 py-2">
+                <span className={`flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${getBadgeClassName(item)}`}>
+                  {getBadgeLabel(item, amount)}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className={`text-sm font-medium ${getAmountClassName(item, amount)}`}>
+                    {getPrimaryText(item, amount)}
+                  </p>
+                  {item.note && <p className="truncate text-xs text-gray-500 dark:text-gray-400">{item.note}</p>}
+                  <p className="text-xs text-gray-400">{format(parseISO(item.entrydate), 'dd MMM yyyy HH:mm')}</p>
+                </div>
+                {!locked && item.entry_kind !== 'budget_adjustment' && (
+                  <button
+                    type="button"
+                    onClick={() => onDelete(item.id)}
+                    className="rounded p-1 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
+                  >
+                    <TrashIcon className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+      {items.length > 0 && totalValue != null && (
+        <div className="flex justify-between border-t border-gray-200 bg-gray-50 px-3 py-2 text-sm font-semibold dark:border-gray-700 dark:bg-gray-800">
+          <span className="text-gray-600 dark:text-gray-400">Total</span>
+          <span className={totalClassName}>{fmt(totalValue)}</span>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function TransactionEntryForm({
+  locked,
+  amount,
+  setAmount,
+  note,
+  setNote,
+  error,
+  setError,
+  setResolvedAmount,
+  budgetAmount,
+  type,
+  setType,
+  typeOptions,
+  onSubmit,
+  submitLabel,
+  isPending,
+  onClose,
+}) {
+  if (locked) {
+    return (
+      <div className="flex justify-end">
+        <button type="button" className="btn-secondary" onClick={onClose}>Close</button>
+      </div>
+    )
+  }
+
+  const selectedOption = typeOptions.find(option => option.value === type) ?? typeOptions[0]
+
+  return (
+    <form onSubmit={onSubmit} className="space-y-3 border-t border-gray-200 pt-1 dark:border-gray-700">
+      <p className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Add Transaction</p>
+      <div className="flex overflow-hidden rounded-md border border-gray-200 text-sm dark:border-gray-700">
+        {typeOptions.map(option => (
+          <button
+            key={option.value}
+            type="button"
+            onClick={() => setType(option.value)}
+            className={`flex-1 py-1.5 font-medium transition-colors ${
+              type === option.value
+                ? `${option.activeClassName} text-white`
+                : 'bg-white text-gray-600 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700'
+            }`}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+      <div className="flex items-center gap-2">
+        <div className="flex-1">
+          <AmountExpressionInput
+            value={amount}
+            onChange={nextValue => {
+              setAmount(nextValue)
+              setError('')
+            }}
+            onResolvedChange={(value, state) => setResolvedAmount({ value, state })}
+            min={0.01}
+            placeholder="Amount"
+            className="input w-full"
+            required
+          />
+        </div>
+        {Number(budgetAmount) > 0 && (
+          <button
+            type="button"
+            onClick={() => {
+              setAmount(String(Number(budgetAmount)))
+              setError('')
+            }}
+            className="btn-secondary whitespace-nowrap text-xs"
+            title="Allocate full budget amount"
+          >
+            Full ({fmt(budgetAmount)})
+          </button>
+        )}
+        <input
+          type="text"
+          value={note}
+          onChange={e => setNote(e.target.value)}
+          placeholder="Note (optional)"
+          className="input flex-[2]"
+        />
+      </div>
+      <div className="flex justify-end gap-2">
+        <button type="button" className="btn-secondary" onClick={onClose}>Close</button>
+        <button type="submit" disabled={isPending} className={selectedOption.submitClassName}>
+          {isPending ? 'Saving…' : submitLabel(type)}
+        </button>
+      </div>
+      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+    </form>
+  )
+}
+
+function ProgressStatusPill({ item, budgetAmount, actualAmount, remainingAmount, status, onMarkPaid, onRevise }) {
+  const budget = Number(budgetAmount ?? 0)
+  const actual = Number(actualAmount ?? 0)
+  const remaining = Number(remainingAmount ?? 0)
+  const rawPercent = budget > 0 ? (actual / budget) * 100 : 0
+  const clampedPercent = Math.max(0, Math.min(rawPercent, 100))
+  const isOver = rawPercent > 100
+  const isNearLimit = rawPercent >= 90 && rawPercent <= 100
+  const revisionComment = item.revision_comment?.trim()
+  const title = budget > 0
+    ? `${Math.round(rawPercent)}% spent • ${fmt(actual)} of ${fmt(budget)} • Remaining ${fmt(remaining)}`
+    : `No budget set • Actual ${fmt(actual)}`
+
+  if (status === 'Paid') {
+    const paidCls = isOver
+      ? 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/40 dark:text-red-300 dark:hover:bg-red-900/60'
+      : 'bg-dosh-100 text-dosh-700 hover:bg-dosh-200 dark:bg-dosh-900/40 dark:text-dosh-300 dark:hover:bg-dosh-900/60'
+    return (
+      <button
+        type="button"
+        onClick={onRevise}
+        title={`${title} • Click to reopen as Revised`}
+        className={`inline-flex min-w-[108px] items-center justify-center rounded-full px-2.5 py-1 text-xs font-semibold transition-colors ${paidCls}`}
+      >
+        Paid
+      </button>
+    )
+  }
+
+  const trackCls = isOver
+    ? 'bg-red-100 dark:bg-red-900/30'
+    : isNearLimit
+      ? 'bg-amber-100 dark:bg-amber-900/30'
+      : 'bg-gray-200 dark:bg-gray-700'
+  const fillCls = isOver
+    ? 'bg-red-500'
+    : isNearLimit
+      ? 'bg-amber-500'
+      : 'bg-dosh-500'
+  const labelCls = isOver
+    ? 'text-red-700 dark:text-red-300'
+    : status === 'Revised'
+      ? 'text-amber-700 dark:text-amber-300'
+      : 'text-gray-700 dark:text-gray-200'
+
+  return (
+    <button
+      type="button"
+      onClick={onMarkPaid}
+      title={`${title}${revisionComment ? ` • Revision: ${revisionComment}` : ''} • Click to mark Paid`}
+      className="inline-flex min-w-[108px] items-center gap-2 rounded-full border border-gray-200 bg-white px-2 py-1 text-left text-xs transition-colors hover:border-dosh-300 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:border-dosh-700 dark:hover:bg-gray-700"
+    >
+      <span className={`w-10 flex-shrink-0 font-semibold ${labelCls}`}>
+        {status === 'Revised' ? 'Rev' : 'Spent'}
+      </span>
+      <span className={`relative h-2 flex-1 overflow-hidden rounded-full ${trackCls}`}>
+        <span className={`absolute inset-y-0 left-0 rounded-full ${fillCls}`} style={{ width: `${clampedPercent}%` }} />
+        {isOver && <span className="absolute inset-y-0 right-0 w-1 bg-red-700 dark:bg-red-400" />}
+      </span>
+    </button>
+  )
+}
+
+function ConfirmPaidModal({ noun, item, remainingAmount, onConfirm, onClose }) {
+  const remaining = Number(remainingAmount ?? 0)
+  const isOver = remaining < 0
+  const delta = fmt(Math.abs(remaining))
+
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-gray-700 dark:text-gray-200">
+        {isOver
+          ? `This ${noun} is ${delta} over budget. Mark it as paid anyway?`
+          : `This ${noun} still has ${delta} remaining against budget. Mark it as paid anyway?`}
+      </p>
+      <p className="text-xs text-gray-400 dark:text-gray-500">Paid {noun}s are locked until revised.</p>
+      <div className="flex justify-end gap-2">
+        <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
+        <button type="button" className="btn-primary" onClick={() => onConfirm(item)}>Mark Paid</button>
+      </div>
+    </div>
+  )
+}
+
 function IncomeTransactionsModal({ periodId, incomedesc, budgetamount, actualamount, locked, onClose, defaultType = 'credit' }) {
   const qc = useQueryClient()
   const [amount, setAmount] = useState('')
@@ -160,126 +417,65 @@ function IncomeTransactionsModal({ periodId, incomedesc, budgetamount, actualamo
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-3 gap-2 text-xs text-center">
-        {[
+      <AmountSummaryGrid
+        items={[
           { label: 'Budget', value: budgetamount, cls: 'text-gray-600 dark:text-gray-400' },
           { label: 'Actual', value: actualamount, cls: 'text-success-700 dark:text-success-400 font-bold' },
           { label: 'Variance', value: variance, cls: variance >= 0 ? 'text-success-600' : 'text-red-600' },
-        ].map(({ label, value, cls }) => (
-          <div key={label} className="card p-2">
-            <p className="text-gray-400">{label}</p>
-            <p className={`font-semibold ${cls}`}>{fmt(value)}</p>
-          </div>
-        ))}
-      </div>
-
-      <div className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <div className="px-3 py-2 bg-gray-50 dark:bg-gray-800 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide flex justify-between">
-          <span>Transactions</span>
-          <span>{transactions.length} entries</span>
-        </div>
-        {isLoading ? (
-          <div className="flex justify-center py-4"><Spinner className="w-4 h-4" /></div>
-        ) : transactions.length === 0 ? (
-          <p className="text-center text-sm text-gray-400 py-4 italic">No transactions yet</p>
-        ) : (
-          <div className="divide-y divide-gray-100 dark:divide-gray-800 max-h-52 overflow-y-auto">
-            {transactions.map(tx => (
-              <div key={tx.id} className="flex items-center gap-2 px-3 py-2">
-                <span className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold
-                  ${tx.entry_kind === 'budget_adjustment'
-                    ? 'bg-dosh-100 text-dosh-700 dark:bg-dosh-900/40 dark:text-dosh-300'
-                    : Number(tx.amount) >= 0
-                      ? 'bg-success-100 text-success-700 dark:bg-success-900/40 dark:text-success-400'
-                      : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400'}`}>
-                  {tx.entry_kind === 'budget_adjustment' ? 'Adj' : Number(tx.amount) >= 0 ? '+' : '−'}
-                </span>
-                <div className="flex-1 min-w-0">
-                  {tx.entry_kind === 'budget_adjustment' ? (
-                    <p className="text-sm font-medium text-dosh-700 dark:text-dosh-300">
-                      Budget {fmt(tx.budget_before_amount)} {'->'} {fmt(tx.budget_after_amount)}
-                    </p>
-                  ) : (
-                    <p className={`text-sm font-medium ${Number(tx.amount) >= 0 ? 'text-success-700 dark:text-success-400' : 'text-red-700 dark:text-red-400'}`}>
-                      {fmt(Math.abs(tx.amount))}
-                    </p>
-                  )}
-                  {tx.note && <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{tx.note}</p>}
-                  <p className="text-xs text-gray-400">{format(parseISO(tx.entrydate), 'dd MMM yyyy HH:mm')}</p>
-                </div>
-                {!locked && tx.entry_kind !== 'budget_adjustment' && (
-                  <button onClick={() => remove.mutate(tx.id)}
-                    className="p-1 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
-                    <TrashIcon className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
+        ]}
+      />
+      <TransactionListPanel
+        items={transactions}
+        isLoading={isLoading}
+        locked={locked}
+        headerLabel="Transactions"
+        emptyLabel="No transactions yet"
+        totalValue={runningTotal}
+        totalClassName={runningTotal >= 0 ? 'text-success-700 dark:text-success-400' : 'text-red-700 dark:text-red-400'}
+        getItemAmount={item => item.amount}
+        getAmountClassName={(item, itemAmount) => (
+          item.entry_kind === 'budget_adjustment'
+            ? 'text-dosh-700 dark:text-dosh-300'
+            : itemAmount >= 0
+              ? 'text-success-700 dark:text-success-400'
+              : 'text-red-700 dark:text-red-400'
         )}
-        {transactions.length > 0 && (
-          <div className="px-3 py-2 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 flex justify-between text-sm font-semibold">
-            <span className="text-gray-600 dark:text-gray-400">Total</span>
-            <span className={runningTotal >= 0 ? 'text-success-700 dark:text-success-400' : 'text-red-700 dark:text-red-400'}>{fmt(runningTotal)}</span>
-          </div>
+        getBadgeClassName={item => (
+          item.entry_kind === 'budget_adjustment'
+            ? 'bg-dosh-100 text-dosh-700 dark:bg-dosh-900/40 dark:text-dosh-300'
+            : Number(item.amount) >= 0
+              ? 'bg-success-100 text-success-700 dark:bg-success-900/40 dark:text-success-400'
+              : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400'
         )}
-      </div>
-
-      {!locked && (
-        <form onSubmit={handleAdd} className="space-y-3 pt-1 border-t border-gray-200 dark:border-gray-700">
-          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Add Transaction</p>
-          <div className="flex rounded-md border border-gray-200 dark:border-gray-700 overflow-hidden text-sm">
-            {[['credit', 'Income (+)'], ['debit', 'Correction (−)']].map(([val, label]) => (
-              <button key={val} type="button" onClick={() => setType(val)}
-                className={`flex-1 py-1.5 font-medium transition-colors ${type === val ? (val === 'credit' ? 'bg-success-600 text-white' : 'bg-red-600 text-white') : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
-                {label}
-              </button>
-            ))}
-          </div>
-          <div className="flex gap-2 items-center">
-            <div className="flex-1">
-              <AmountExpressionInput
-                value={amount}
-                onChange={nextValue => {
-                  setAmount(nextValue)
-                  setError('')
-                }}
-                onResolvedChange={(value, state) => setResolvedAmount({ value, state })}
-                min={0.01}
-                placeholder="Amount"
-                className="input w-full"
-                required
-              />
-            </div>
-            {Number(budgetamount) > 0 && (
-              <button type="button"
-                onClick={() => {
-                  setAmount(String(Number(budgetamount)))
-                  setError('')
-                }}
-                className="text-xs btn-secondary whitespace-nowrap"
-                title="Allocate full budget amount">
-                Full ({fmt(budgetamount)})
-              </button>
-            )}
-            <input type="text" value={note} onChange={e => setNote(e.target.value)}
-              placeholder="Note (optional)" className="input flex-[2]" />
-          </div>
-          <div className="flex justify-end gap-2">
-            <button type="button" className="btn-secondary" onClick={onClose}>Close</button>
-            <button type="submit" disabled={add.isPending}
-              className={type === 'credit' ? 'btn-primary' : 'btn-danger'}>
-              {add.isPending ? 'Saving…' : (type === 'credit' ? 'Add Income' : 'Add Correction')}
-            </button>
-          </div>
-          {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
-        </form>
-      )}
-      {locked && (
-        <div className="flex justify-end">
-          <button className="btn-secondary" onClick={onClose}>Close</button>
-        </div>
-      )}
+        getBadgeLabel={(item, itemAmount) => (item.entry_kind === 'budget_adjustment' ? 'Adj' : itemAmount >= 0 ? '+' : '−')}
+        getPrimaryText={item => (
+          item.entry_kind === 'budget_adjustment'
+            ? `Budget ${fmt(item.budget_before_amount)} -> ${fmt(item.budget_after_amount)}`
+            : fmt(Math.abs(item.amount))
+        )}
+        onDelete={txId => remove.mutate(txId)}
+      />
+      <TransactionEntryForm
+        locked={locked}
+        amount={amount}
+        setAmount={setAmount}
+        note={note}
+        setNote={setNote}
+        error={error}
+        setError={setError}
+        setResolvedAmount={setResolvedAmount}
+        budgetAmount={budgetamount}
+        type={type}
+        setType={setType}
+        typeOptions={[
+          { value: 'credit', label: 'Income (+)', activeClassName: 'bg-success-600', submitClassName: 'btn-primary' },
+          { value: 'debit', label: 'Correction (−)', activeClassName: 'bg-red-600', submitClassName: 'btn-danger' },
+        ]}
+        onSubmit={handleAdd}
+        submitLabel={currentType => (currentType === 'credit' ? 'Add Income' : 'Add Correction')}
+        isPending={add.isPending}
+        onClose={onClose}
+      />
     </div>
   )
 }
@@ -402,128 +598,65 @@ function ExpenseEntriesModal({ periodId, budgetId, expensedesc, budgetamount, ac
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-3 gap-2 text-xs text-center">
-        {[
+      <AmountSummaryGrid
+        items={[
           { label: 'Budget', value: budgetamount, cls: 'text-gray-600 dark:text-gray-400' },
           { label: 'Actual', value: actualamount, cls: 'text-dosh-700 dark:text-dosh-400 font-bold' },
           { label: 'Variance', value: Number(budgetamount) - Number(actualamount), cls: Number(budgetamount) - Number(actualamount) >= 0 ? 'text-dosh-600' : 'text-red-600' },
-        ].map(({ label, value, cls }) => (
-          <div key={label} className="card p-2">
-            <p className="text-gray-400">{label}</p>
-            <p className={`font-semibold ${cls}`}>{fmt(value)}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Entry list */}
-      <div className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <div className="px-3 py-2 bg-gray-50 dark:bg-gray-800 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide flex justify-between">
-          <span>Transactions</span>
-          <span>{entries.length} entries</span>
-        </div>
-        {isLoading ? (
-          <div className="flex justify-center py-4"><Spinner className="w-4 h-4" /></div>
-        ) : entries.length === 0 ? (
-          <p className="text-center text-sm text-gray-400 py-4 italic">No transactions yet</p>
-        ) : (
-          <div className="divide-y divide-gray-100 dark:divide-gray-800 max-h-52 overflow-y-auto">
-            {entries.map(entry => (
-              <div key={entry.id} className="flex items-center gap-2 px-3 py-2">
-                <span className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold
-                  ${entry.entry_kind === 'budget_adjustment'
-                    ? 'bg-dosh-100 text-dosh-700 dark:bg-dosh-900/40 dark:text-dosh-300'
-                    : Number(entry.amount) >= 0
-                      ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400'
-                      : 'bg-dosh-100 text-dosh-700 dark:bg-dosh-900/40 dark:text-dosh-400'}`}>
-                  {entry.entry_kind === 'budget_adjustment' ? 'Adj' : Number(entry.amount) >= 0 ? '+' : '−'}
-                </span>
-                <div className="flex-1 min-w-0">
-                  {entry.entry_kind === 'budget_adjustment' ? (
-                    <p className="text-sm font-medium text-dosh-700 dark:text-dosh-300">
-                      Budget {fmt(entry.budget_before_amount)} {'->'} {fmt(entry.budget_after_amount)}
-                    </p>
-                  ) : (
-                    <p className={`text-sm font-medium ${Number(entry.amount) >= 0 ? 'text-red-700 dark:text-red-400' : 'text-dosh-700 dark:text-dosh-400'}`}>
-                      {fmt(Math.abs(entry.amount))}
-                    </p>
-                  )}
-                  {entry.note && <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{entry.note}</p>}
-                  <p className="text-xs text-gray-400">{format(parseISO(entry.entrydate), 'dd MMM yyyy HH:mm')}</p>
-                </div>
-                {!locked && entry.entry_kind !== 'budget_adjustment' && (
-                  <button onClick={() => remove.mutate(entry.id)}
-                    className="p-1 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
-                    <TrashIcon className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
+        ]}
+      />
+      <TransactionListPanel
+        items={entries}
+        isLoading={isLoading}
+        locked={locked}
+        headerLabel="Transactions"
+        emptyLabel="No transactions yet"
+        totalValue={runningTotal}
+        totalClassName={runningTotal >= 0 ? 'text-red-700 dark:text-red-400' : 'text-dosh-600 dark:text-dosh-400'}
+        getItemAmount={item => item.amount}
+        getAmountClassName={(item, itemAmount) => (
+          item.entry_kind === 'budget_adjustment'
+            ? 'text-dosh-700 dark:text-dosh-300'
+            : itemAmount >= 0
+              ? 'text-red-700 dark:text-red-400'
+              : 'text-dosh-700 dark:text-dosh-400'
         )}
-        {entries.length > 0 && (
-          <div className="px-3 py-2 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 flex justify-between text-sm font-semibold">
-            <span className="text-gray-600 dark:text-gray-400">Total</span>
-            <span className={runningTotal >= 0 ? 'text-red-700 dark:text-red-400' : 'text-dosh-600 dark:text-dosh-400'}>{fmt(runningTotal)}</span>
-          </div>
+        getBadgeClassName={item => (
+          item.entry_kind === 'budget_adjustment'
+            ? 'bg-dosh-100 text-dosh-700 dark:bg-dosh-900/40 dark:text-dosh-300'
+            : Number(item.amount) >= 0
+              ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400'
+              : 'bg-dosh-100 text-dosh-700 dark:bg-dosh-900/40 dark:text-dosh-400'
         )}
-      </div>
-
-      {/* Add entry form */}
-      {!locked && (
-        <form onSubmit={handleAdd} className="space-y-3 pt-1 border-t border-gray-200 dark:border-gray-700">
-          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Add Transaction</p>
-          <div className="flex rounded-md border border-gray-200 dark:border-gray-700 overflow-hidden text-sm">
-            {[['debit', 'Expense (+)', 'text-red-600'], ['credit', 'Refund (−)', 'text-dosh-600']].map(([val, label, cls]) => (
-              <button key={val} type="button" onClick={() => setType(val)}
-                className={`flex-1 py-1.5 font-medium transition-colors ${type === val ? (val === 'debit' ? 'bg-red-600 text-white' : 'bg-dosh-600 text-white') : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
-                {label}
-              </button>
-            ))}
-          </div>
-          <div className="flex gap-2 items-center">
-            <div className="flex-1">
-              <AmountExpressionInput
-                value={amount}
-                onChange={nextValue => {
-                  setAmount(nextValue)
-                  setError('')
-                }}
-                onResolvedChange={(value, state) => setResolvedAmount({ value, state })}
-                min={0.01}
-                placeholder="Amount"
-                className="input w-full"
-                required
-              />
-            </div>
-            {Number(budgetamount) > 0 && (
-              <button type="button"
-                onClick={() => {
-                  setAmount(String(Number(budgetamount)))
-                  setError('')
-                }}
-                className="text-xs btn-secondary whitespace-nowrap"
-                title="Allocate full budget amount">
-                Full ({fmt(budgetamount)})
-              </button>
-            )}
-            <input type="text" value={note} onChange={e => setNote(e.target.value)}
-              placeholder="Note (optional)" className="input flex-[2]" />
-          </div>
-          <div className="flex justify-end gap-2">
-            <button type="button" className="btn-secondary" onClick={onClose}>Close</button>
-            <button type="submit" disabled={add.isPending}
-              className={type === 'debit' ? 'btn-danger' : 'btn-primary'}>
-              {add.isPending ? 'Saving…' : `Add ${type === 'debit' ? 'Expense' : 'Refund'}`}
-            </button>
-          </div>
-          {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
-        </form>
-      )}
-      {locked && (
-        <div className="flex justify-end">
-          <button className="btn-secondary" onClick={onClose}>Close</button>
-        </div>
-      )}
+        getBadgeLabel={(item, itemAmount) => (item.entry_kind === 'budget_adjustment' ? 'Adj' : itemAmount >= 0 ? '+' : '−')}
+        getPrimaryText={item => (
+          item.entry_kind === 'budget_adjustment'
+            ? `Budget ${fmt(item.budget_before_amount)} -> ${fmt(item.budget_after_amount)}`
+            : fmt(Math.abs(item.amount))
+        )}
+        onDelete={entryId => remove.mutate(entryId)}
+      />
+      <TransactionEntryForm
+        locked={locked}
+        amount={amount}
+        setAmount={setAmount}
+        note={note}
+        setNote={setNote}
+        error={error}
+        setError={setError}
+        setResolvedAmount={setResolvedAmount}
+        budgetAmount={budgetamount}
+        type={type}
+        setType={setType}
+        typeOptions={[
+          { value: 'debit', label: 'Expense (+)', activeClassName: 'bg-red-600', submitClassName: 'btn-danger' },
+          { value: 'credit', label: 'Refund (−)', activeClassName: 'bg-dosh-600', submitClassName: 'btn-primary' },
+        ]}
+        onSubmit={handleAdd}
+        submitLabel={currentType => `Add ${currentType === 'debit' ? 'Expense' : 'Refund'}`}
+        isPending={add.isPending}
+        onClose={onClose}
+      />
     </div>
   )
 }
@@ -580,120 +713,63 @@ function InvestmentTxModal({ periodId, investmentdesc, openingValue, closingValu
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-3 gap-2 text-xs text-center">
-        {[
+      <AmountSummaryGrid
+        items={[
           { label: 'Budget', value: budgetedAmount ?? 0, cls: 'text-gray-600 dark:text-gray-400' },
           { label: 'Actual', value: txTotal, cls: 'text-dosh-700 dark:text-dosh-400 font-bold' },
           { label: 'Remaining', value: liveRemaining, cls: liveRemaining >= 0 ? 'text-dosh-600' : 'text-red-600' },
-        ].map(({ label, value, cls }) => (
-          <div key={label} className="card p-2">
-            <p className="text-gray-400">{label}</p>
-            <p className={`font-semibold ${cls}`}>{fmt(value)}</p>
-          </div>
-        ))}
-      </div>
-
-      <div className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <div className="px-3 py-2 bg-gray-50 dark:bg-gray-800 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide flex justify-between">
-          <span>Transactions</span>
-          <span>{transactions.length} entries</span>
-        </div>
-        {isLoading ? (
-          <div className="flex justify-center py-4"><Spinner className="w-4 h-4" /></div>
-        ) : transactions.length === 0 ? (
-          <p className="text-center text-sm text-gray-400 py-4 italic">No transactions yet</p>
-        ) : (
-          <div className="divide-y divide-gray-100 dark:divide-gray-800 max-h-52 overflow-y-auto">
-            {transactions.map(tx => (
-              <div key={tx.id} className="flex items-center gap-2 px-3 py-2">
-                <span className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold
-                  ${tx.entry_kind === 'budget_adjustment'
-                    ? 'bg-dosh-100 text-dosh-700 dark:bg-dosh-900/40 dark:text-dosh-300'
-                    : Number(tx.amount) >= 0
-                      ? 'bg-dosh-100 text-dosh-700 dark:bg-dosh-900/40 dark:text-dosh-400'
-                      : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400'}`}>
-                  {tx.entry_kind === 'budget_adjustment' ? 'Adj' : Number(tx.amount) >= 0 ? '+' : '−'}
-                </span>
-                <div className="flex-1 min-w-0">
-                  {tx.entry_kind === 'budget_adjustment' ? (
-                    <p className="text-sm font-medium text-dosh-700 dark:text-dosh-300">
-                      Budget {fmt(tx.budget_before_amount)} {'->'} {fmt(tx.budget_after_amount)}
-                    </p>
-                  ) : (
-                    <p className={`text-sm font-medium ${Number(tx.amount) >= 0 ? 'text-dosh-700 dark:text-dosh-400' : 'text-red-700 dark:text-red-400'}`}>
-                      {fmt(Math.abs(tx.amount))}
-                    </p>
-                  )}
-                  {tx.note && <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{tx.note}</p>}
-                  <p className="text-xs text-gray-400">{format(parseISO(tx.entrydate), 'dd MMM yyyy HH:mm')}</p>
-                </div>
-                {!locked && tx.entry_kind !== 'budget_adjustment' && (
-                  <button onClick={() => remove.mutate(tx.id)}
-                    className="p-1 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
-                    <TrashIcon className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
+        ]}
+      />
+      <TransactionListPanel
+        items={transactions}
+        isLoading={isLoading}
+        locked={locked}
+        headerLabel="Transactions"
+        emptyLabel="No transactions yet"
+        getItemAmount={item => item.amount}
+        getAmountClassName={(item, itemAmount) => (
+          item.entry_kind === 'budget_adjustment'
+            ? 'text-dosh-700 dark:text-dosh-300'
+            : itemAmount >= 0
+              ? 'text-dosh-700 dark:text-dosh-400'
+              : 'text-red-700 dark:text-red-400'
         )}
-      </div>
-
-      {!locked && (
-        <form onSubmit={handleAdd} className="space-y-3 pt-1 border-t border-gray-200 dark:border-gray-700">
-          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Add Transaction</p>
-          <div className="flex rounded-md border border-gray-200 dark:border-gray-700 overflow-hidden text-sm">
-            {[['increase', 'Add (+)'], ['decrease', 'Subtract (−)']].map(([val, label]) => (
-              <button key={val} type="button" onClick={() => setType(val)}
-                className={`flex-1 py-1.5 font-medium transition-colors ${type === val ? (val === 'increase' ? 'bg-dosh-600 text-white' : 'bg-red-600 text-white') : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
-                {label}
-              </button>
-            ))}
-          </div>
-          <div className="flex gap-2 items-center">
-            <div className="flex-1">
-              <AmountExpressionInput
-                value={amount}
-                onChange={nextValue => {
-                  setAmount(nextValue)
-                  setError('')
-                }}
-                onResolvedChange={(value, state) => setResolvedAmount({ value, state })}
-                min={0.01}
-                placeholder="Amount"
-                className="input w-full"
-                required
-              />
-            </div>
-            {Number(budgetedAmount ?? 0) > 0 && (
-              <button type="button"
-                onClick={() => {
-                  setAmount(String(Number(budgetedAmount ?? 0)))
-                  setError('')
-                }}
-                className="text-xs btn-secondary whitespace-nowrap"
-                title="Allocate full budget amount">
-                Full ({fmt(budgetedAmount ?? 0)})
-              </button>
-            )}
-            <input type="text" value={note} onChange={e => setNote(e.target.value)}
-              placeholder="Note (optional)" className="input flex-[2]" />
-          </div>
-          <div className="flex justify-end gap-2">
-            <button type="button" className="btn-secondary" onClick={onClose}>Close</button>
-            <button type="submit" disabled={add.isPending}
-              className={type === 'increase' ? 'btn-primary' : 'btn-danger'}>
-              {add.isPending ? 'Saving…' : (type === 'increase' ? 'Add' : 'Subtract')}
-            </button>
-          </div>
-          {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
-        </form>
-      )}
-      {locked && (
-        <div className="flex justify-end">
-          <button className="btn-secondary" onClick={onClose}>Close</button>
-        </div>
-      )}
+        getBadgeClassName={item => (
+          item.entry_kind === 'budget_adjustment'
+            ? 'bg-dosh-100 text-dosh-700 dark:bg-dosh-900/40 dark:text-dosh-300'
+            : Number(item.amount) >= 0
+              ? 'bg-dosh-100 text-dosh-700 dark:bg-dosh-900/40 dark:text-dosh-400'
+              : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400'
+        )}
+        getBadgeLabel={(item, itemAmount) => (item.entry_kind === 'budget_adjustment' ? 'Adj' : itemAmount >= 0 ? '+' : '−')}
+        getPrimaryText={item => (
+          item.entry_kind === 'budget_adjustment'
+            ? `Budget ${fmt(item.budget_before_amount)} -> ${fmt(item.budget_after_amount)}`
+            : fmt(Math.abs(item.amount))
+        )}
+        onDelete={txId => remove.mutate(txId)}
+      />
+      <TransactionEntryForm
+        locked={locked}
+        amount={amount}
+        setAmount={setAmount}
+        note={note}
+        setNote={setNote}
+        error={error}
+        setError={setError}
+        setResolvedAmount={setResolvedAmount}
+        budgetAmount={budgetedAmount ?? 0}
+        type={type}
+        setType={setType}
+        typeOptions={[
+          { value: 'increase', label: 'Add (+)', activeClassName: 'bg-dosh-600', submitClassName: 'btn-primary' },
+          { value: 'decrease', label: 'Subtract (−)', activeClassName: 'bg-red-600', submitClassName: 'btn-danger' },
+        ]}
+        onSubmit={handleAdd}
+        submitLabel={currentType => (currentType === 'increase' ? 'Add' : 'Subtract')}
+        isPending={add.isPending}
+        onClose={onClose}
+      />
     </div>
   )
 }
@@ -774,166 +850,54 @@ function BudgetAdjustmentModal({ title, currentAmount, onSubmit, onClose }) {
 }
 
 function ExpenseStatusPill({ expense, onMarkPaid, onRevise }) {
-  const budget = Number(expense.budgetamount ?? 0)
-  const actual = Number(expense.actualamount ?? 0)
-  const remaining = Number(expense.remaining_amount ?? 0)
-  const rawPercent = budget > 0 ? (actual / budget) * 100 : 0
-  const clampedPercent = Math.max(0, Math.min(rawPercent, 100))
-  const isOver = rawPercent > 100
-  const isNearLimit = rawPercent >= 90 && rawPercent <= 100
-  const revisionComment = expense.revision_comment?.trim()
-  const title = budget > 0
-    ? `${Math.round(rawPercent)}% spent • ${fmt(actual)} of ${fmt(budget)} • Remaining ${fmt(remaining)}`
-    : `No budget set • Actual ${fmt(actual)}`
-
-  if (expense.status === 'Paid') {
-    const paidCls = isOver
-      ? 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/40 dark:text-red-300 dark:hover:bg-red-900/60'
-      : 'bg-dosh-100 text-dosh-700 hover:bg-dosh-200 dark:bg-dosh-900/40 dark:text-dosh-300 dark:hover:bg-dosh-900/60'
-    return (
-      <button
-        onClick={onRevise}
-        title={`${title} • Click to reopen as Revised`}
-        className={`inline-flex min-w-[108px] items-center justify-center rounded-full px-2.5 py-1 text-xs font-semibold transition-colors ${paidCls}`}>
-        Paid
-      </button>
-    )
-  }
-
-  const trackCls = isOver
-    ? 'bg-red-100 dark:bg-red-900/30'
-    : isNearLimit
-      ? 'bg-amber-100 dark:bg-amber-900/30'
-      : 'bg-gray-200 dark:bg-gray-700'
-  const fillCls = isOver
-    ? 'bg-red-500'
-    : isNearLimit
-      ? 'bg-amber-500'
-      : 'bg-dosh-500'
-  const labelCls = isOver
-    ? 'text-red-700 dark:text-red-300'
-    : expense.status === 'Revised'
-      ? 'text-amber-700 dark:text-amber-300'
-      : 'text-gray-700 dark:text-gray-200'
-
   return (
-    <button
-      onClick={onMarkPaid}
-      title={`${title}${revisionComment ? ` • Revision: ${revisionComment}` : ''} • Click to mark Paid`}
-      className="inline-flex min-w-[108px] items-center gap-2 rounded-full border border-gray-200 bg-white px-2 py-1 text-left text-xs transition-colors hover:border-dosh-300 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:border-dosh-700 dark:hover:bg-gray-700">
-      <span className={`w-10 flex-shrink-0 font-semibold ${labelCls}`}>
-        {expense.status === 'Revised' ? 'Rev' : 'Spent'}
-      </span>
-      <span className={`relative h-2 flex-1 overflow-hidden rounded-full ${trackCls}`}>
-        <span className={`absolute inset-y-0 left-0 rounded-full ${fillCls}`} style={{ width: `${clampedPercent}%` }} />
-        {isOver && <span className="absolute inset-y-0 right-0 w-1 bg-red-700 dark:bg-red-400" />}
-      </span>
-    </button>
+    <ProgressStatusPill
+      item={expense}
+      budgetAmount={expense.budgetamount}
+      actualAmount={expense.actualamount}
+      remainingAmount={expense.remaining_amount}
+      status={expense.status}
+      onMarkPaid={onMarkPaid}
+      onRevise={onRevise}
+    />
   )
 }
 
 function ConfirmPaidExpenseModal({ expense, onConfirm, onClose }) {
-  const remaining = Number(expense.remaining_amount ?? 0)
-  const isOver = remaining < 0
-  const delta = fmt(Math.abs(remaining))
-
   return (
-    <div className="space-y-3">
-      <p className="text-sm text-gray-700 dark:text-gray-200">
-        {isOver
-          ? `This expense is ${delta} over budget. Mark it as paid anyway?`
-          : `This expense still has ${delta} remaining against budget. Mark it as paid anyway?`}
-      </p>
-      <p className="text-xs text-gray-400 dark:text-gray-500">
-        Paid expenses are locked until revised.
-      </p>
-      <div className="flex justify-end gap-2">
-        <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
-        <button type="button" className="btn-primary" onClick={onConfirm}>Mark Paid</button>
-      </div>
-    </div>
+    <ConfirmPaidModal
+      noun="expense"
+      item={expense}
+      remainingAmount={expense.remaining_amount}
+      onConfirm={onConfirm}
+      onClose={onClose}
+    />
   )
 }
 
 function InvestmentStatusPill({ investment, onMarkPaid, onRevise }) {
-  const budget = Number(investment.budgeted_amount ?? 0)
-  const actual = Number(investment.actualamount ?? 0)
-  const remaining = Number(investment.remaining_amount ?? 0)
-  const rawPercent = budget > 0 ? (actual / budget) * 100 : 0
-  const clampedPercent = Math.max(0, Math.min(rawPercent, 100))
-  const isOver = rawPercent > 100
-  const isNearLimit = rawPercent >= 90 && rawPercent <= 100
-  const revisionComment = investment.revision_comment?.trim()
-  const title = budget > 0
-    ? `${Math.round(rawPercent)}% spent • ${fmt(actual)} of ${fmt(budget)} • Remaining ${fmt(remaining)}`
-    : `No budget set • Actual ${fmt(actual)}`
-
-  if (investment.status === 'Paid') {
-    const paidCls = isOver
-      ? 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/40 dark:text-red-300 dark:hover:bg-red-900/60'
-      : 'bg-dosh-100 text-dosh-700 hover:bg-dosh-200 dark:bg-dosh-900/40 dark:text-dosh-300 dark:hover:bg-dosh-900/60'
-    return (
-      <button
-        onClick={onRevise}
-        title={`${title} • Click to reopen as Revised`}
-        className={`inline-flex min-w-[108px] items-center justify-center rounded-full px-2.5 py-1 text-xs font-semibold transition-colors ${paidCls}`}
-      >
-        Paid
-      </button>
-    )
-  }
-
-  const trackCls = isOver
-    ? 'bg-red-100 dark:bg-red-900/30'
-    : isNearLimit
-      ? 'bg-amber-100 dark:bg-amber-900/30'
-      : 'bg-gray-200 dark:bg-gray-700'
-  const fillCls = isOver
-    ? 'bg-red-500'
-    : isNearLimit
-      ? 'bg-amber-500'
-      : 'bg-dosh-500'
-  const labelCls = isOver
-    ? 'text-red-700 dark:text-red-300'
-    : investment.status === 'Revised'
-      ? 'text-amber-700 dark:text-amber-300'
-      : 'text-gray-700 dark:text-gray-200'
-
   return (
-    <button
-      onClick={onMarkPaid}
-      title={`${title}${revisionComment ? ` • Revision: ${revisionComment}` : ''} • Click to mark Paid`}
-      className="inline-flex min-w-[108px] items-center gap-2 rounded-full border border-gray-200 bg-white px-2 py-1 text-left text-xs transition-colors hover:border-dosh-300 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:border-dosh-700 dark:hover:bg-gray-700"
-    >
-      <span className={`w-10 flex-shrink-0 font-semibold ${labelCls}`}>
-        {investment.status === 'Revised' ? 'Rev' : 'Spent'}
-      </span>
-      <span className={`relative h-2 flex-1 overflow-hidden rounded-full ${trackCls}`}>
-        <span className={`absolute inset-y-0 left-0 rounded-full ${fillCls}`} style={{ width: `${clampedPercent}%` }} />
-        {isOver && <span className="absolute inset-y-0 right-0 w-1 bg-red-700 dark:bg-red-400" />}
-      </span>
-    </button>
+    <ProgressStatusPill
+      item={investment}
+      budgetAmount={investment.budgeted_amount}
+      actualAmount={investment.actualamount}
+      remainingAmount={investment.remaining_amount}
+      status={investment.status}
+      onMarkPaid={onMarkPaid}
+      onRevise={onRevise}
+    />
   )
 }
 
 function ConfirmPaidInvestmentModal({ investment, onConfirm, onClose }) {
-  const remaining = Number(investment.remaining_amount ?? 0)
-  const isOver = remaining < 0
-  const delta = fmt(Math.abs(remaining))
-
   return (
-    <div className="space-y-3">
-      <p className="text-sm text-gray-700 dark:text-gray-200">
-        {isOver
-          ? `This investment is ${delta} over budget. Mark it as paid anyway?`
-          : `This investment still has ${delta} remaining against budget. Mark it as paid anyway?`}
-      </p>
-      <p className="text-xs text-gray-400 dark:text-gray-500">Paid investments are locked until revised.</p>
-      <div className="flex justify-end gap-2">
-        <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
-        <button type="button" className="btn-primary" onClick={onConfirm}>Mark Paid</button>
-      </div>
-    </div>
+    <ConfirmPaidModal
+      noun="investment"
+      item={investment}
+      remainingAmount={investment.remaining_amount}
+      onConfirm={onConfirm}
+      onClose={onClose}
+    />
   )
 }
 
@@ -2012,6 +1976,82 @@ BudgetAmountCell.propTypes = {
   canEdit: PropTypes.bool.isRequired,
   onEdit: PropTypes.func,
   label: PropTypes.string.isRequired,
+}
+
+AmountSummaryGrid.propTypes = {
+  items: PropTypes.arrayOf(PropTypes.shape({
+    label: PropTypes.string.isRequired,
+    value: PropTypes.oneOfType([PropTypes.number, PropTypes.string]).isRequired,
+    cls: PropTypes.string,
+  })).isRequired,
+  columns: PropTypes.oneOf([2, 3]),
+}
+
+TransactionListPanel.propTypes = {
+  items: PropTypes.arrayOf(PropTypes.shape({
+    id: PropTypes.oneOfType([PropTypes.number, PropTypes.string]).isRequired,
+    entry_kind: PropTypes.string,
+    amount: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+    note: PropTypes.string,
+    entrydate: PropTypes.string.isRequired,
+  })).isRequired,
+  isLoading: PropTypes.bool.isRequired,
+  locked: PropTypes.bool.isRequired,
+  headerLabel: PropTypes.string.isRequired,
+  emptyLabel: PropTypes.string.isRequired,
+  maxHeightClass: PropTypes.string,
+  totalValue: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  totalClassName: PropTypes.string,
+  getItemAmount: PropTypes.func.isRequired,
+  getAmountClassName: PropTypes.func.isRequired,
+  getBadgeClassName: PropTypes.func.isRequired,
+  getBadgeLabel: PropTypes.func.isRequired,
+  getPrimaryText: PropTypes.func.isRequired,
+  onDelete: PropTypes.func.isRequired,
+}
+
+TransactionEntryForm.propTypes = {
+  locked: PropTypes.bool.isRequired,
+  amount: PropTypes.string.isRequired,
+  setAmount: PropTypes.func.isRequired,
+  note: PropTypes.string.isRequired,
+  setNote: PropTypes.func.isRequired,
+  error: PropTypes.string.isRequired,
+  setError: PropTypes.func.isRequired,
+  setResolvedAmount: PropTypes.func.isRequired,
+  budgetAmount: PropTypes.oneOfType([PropTypes.number, PropTypes.string]).isRequired,
+  type: PropTypes.string.isRequired,
+  setType: PropTypes.func.isRequired,
+  typeOptions: PropTypes.arrayOf(PropTypes.shape({
+    value: PropTypes.string.isRequired,
+    label: PropTypes.string.isRequired,
+    activeClassName: PropTypes.string.isRequired,
+    submitClassName: PropTypes.string.isRequired,
+  })).isRequired,
+  onSubmit: PropTypes.func.isRequired,
+  submitLabel: PropTypes.func.isRequired,
+  isPending: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
+}
+
+ProgressStatusPill.propTypes = {
+  item: PropTypes.shape({
+    revision_comment: PropTypes.string,
+  }).isRequired,
+  budgetAmount: PropTypes.oneOfType([PropTypes.number, PropTypes.string]).isRequired,
+  actualAmount: PropTypes.oneOfType([PropTypes.number, PropTypes.string]).isRequired,
+  remainingAmount: PropTypes.oneOfType([PropTypes.number, PropTypes.string]).isRequired,
+  status: PropTypes.string.isRequired,
+  onMarkPaid: PropTypes.func.isRequired,
+  onRevise: PropTypes.func.isRequired,
+}
+
+ConfirmPaidModal.propTypes = {
+  noun: PropTypes.string.isRequired,
+  item: PropTypes.object.isRequired,
+  remainingAmount: PropTypes.oneOfType([PropTypes.number, PropTypes.string]).isRequired,
+  onConfirm: PropTypes.func.isRequired,
+  onClose: PropTypes.func.isRequired,
 }
 
 IncomeTransactionsModal.propTypes = {

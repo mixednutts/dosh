@@ -31,6 +31,63 @@ For the dedicated workflow plan that now owns budget-adjustment, revision-histor
 
 For the implemented amount-entry plan that now defines inline arithmetic scope, preview behavior, and parser boundaries for period-detail modals, read [INLINE_EXPRESSION_AMOUNT_INPUT_PLAN.md](/home/ubuntu/dosh/docs/plans/INLINE_EXPRESSION_AMOUNT_INPUT_PLAN.md).
 
+## Latest Session: PeriodDetail Sonar Cleanup Follow-Through, Favicon Wiring, And Deployment Verification
+
+This session focused on acting on the now-identified SonarQube duplication hotspot in [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx), finishing the outstanding favicon bug, and redeploying the live frontend with both changes in place.
+
+Important direction now in place:
+
+- the duplicated transaction-modal and status UI inside [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx) has now been consolidated into shared local helper components rather than remaining triplicated across income, expense, and investment flows
+- the local regression baseline for the period-detail page still passes after that refactor, and the frontend production build still succeeds
+- the browser entry HTML now links the existing branded [icon.svg](/home/ubuntu/dosh/frontend/public/icon.svg) as the favicon and touch icon, closing the previously tracked missing-favicon bug
+- the stack was rebuilt and redeployed through the override-aware compose path, and the served HTML now includes the favicon links
+- the SonarQube gate itself has not yet been rerun since this refactor, so the duplication activity remains active until CI confirms the impact
+
+### 1. The PeriodDetail duplication hotspot now has a concrete local reduction pass
+
+The previous session established that the failed quality gate was being driven by new-code duplication in [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx). This session followed through on that diagnosis by targeting the most obviously repeated UI structures instead of scattering cleanup across unrelated findings.
+
+Current behavior:
+
+- shared local components now own the repeated summary-card grids, transaction-history panels, add-transaction forms, spent-progress pills, and paid-confirmation dialogs used across the period-detail workflows
+- income, expense, and investment transaction modals still preserve their workflow-specific semantics, color treatment, and mutation behavior while sharing the repeated presentation structure
+- the period-detail page test suite still passes after the refactor, which reduces the risk that the duplication cleanup changed normal workflow behavior
+
+Important engineering meaning:
+
+- future cleanup in this file should continue favoring shared local building blocks for structurally repeated UI rather than adding new near-duplicate modal sections
+- a fresh SonarQube run is still required before treating this hotspot as resolved, because the current evidence is local verification rather than updated CI output
+
+### 2. The missing favicon bug is now closed with the existing brand asset
+
+The frontend already had a branded [icon.svg](/home/ubuntu/dosh/frontend/public/icon.svg) in use inside the layout, but the app entry HTML did not declare any favicon.
+
+Current behavior:
+
+- [index.html](/home/ubuntu/dosh/frontend/index.html) now links `/icon.svg` as the standard favicon, shortcut icon, and touch icon
+- the HTML now also declares a matching theme color so browser surfaces use the same green brand direction
+- live served HTML confirms those favicon links are present after deployment
+
+Important product meaning:
+
+- browser tabs and installed shortcuts now carry Dosh branding instead of a generic missing-icon state
+- future brand-asset changes should update the shared public icon intentionally rather than letting the entry HTML and in-app imagery drift apart
+
+### 3. Override-aware deployment remains the correct live rollout path
+
+This session again validated the deployment assumption already captured elsewhere in the docs.
+
+Current behavior:
+
+- the frontend was rebuilt and redeployed with both [docker-compose.yml](/home/ubuntu/dosh/docker-compose.yml) and [docker-compose.override.yml](/home/ubuntu/dosh/docker-compose.override.yml)
+- the live health endpoint continued returning `{"status":"ok","app":"Dosh"}`
+- the served root HTML now includes the new favicon links in the deployed state rather than only in the local working tree
+
+Important engineering meaning:
+
+- future frontend-only deploys in this repo should keep using the override-aware compose invocation as the default operational path
+- local verification for the Sonar cleanup now exists, but CI rerun remains the next required confirmation step before closing the related activity
+
 ## Latest Session: FastAPI Sonar Cleanup, Quality-Gate Artifact Hardening, And Measure-Driven Hotspot Export
 
 This session focused on reducing the dominant backend SonarQube router noise, making failed SonarQube workflow runs still produce usable artifacts, and then extending the artifact export so measure-driven quality-gate failures can be diagnosed from local session context instead of only from the Sonar UI.
