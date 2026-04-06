@@ -24,6 +24,21 @@ import Spinner from '../components/Spinner'
 import AmountExpressionInput from '../components/AmountExpressionInput'
 
 const fmt = v => Number(v ?? 0).toLocaleString('en-AU', { style: 'currency', currency: 'AUD' })
+const SECONDARY_BUTTON_CLASSES = 'flex items-center justify-center w-7 h-7 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors'
+const DELETE_BUTTON_CLASSES = 'flex items-center justify-center w-7 h-7 rounded-full text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors'
+const DISABLED_ICON_BUTTON_CLASSES = 'opacity-30 cursor-not-allowed bg-gray-100 text-gray-400'
+const ICON_BUTTON_TONES = {
+  success: 'bg-success-100 text-success-700 hover:bg-success-200 dark:bg-success-900/40 dark:text-success-400 dark:hover:bg-success-900/60',
+  danger: 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/40 dark:text-red-400 dark:hover:bg-red-900/60',
+  dosh: 'bg-dosh-100 text-dosh-700 hover:bg-dosh-200 dark:bg-dosh-900/40 dark:text-dosh-400 dark:hover:bg-dosh-900/60',
+}
+
+function iconButtonClassName(disabled, tone) {
+  const toneClasses = ICON_BUTTON_TONES[tone] ?? SECONDARY_BUTTON_CLASSES
+  return `flex items-center justify-center w-7 h-7 rounded-full font-bold text-sm transition-colors ${
+    disabled ? DISABLED_ICON_BUTTON_CLASSES : toneClasses
+  }`
+}
 
 function getResolvedAmountValue(amountState, min = 0) {
   if (amountState.state !== 'valid' || amountState.value == null || amountState.value < min) {
@@ -60,17 +75,121 @@ function balanceTransactionLabel(tx, balancedesc) {
   return tx.source_label || tx.source_key || tx.source
 }
 
+function getBudgetAdjustmentText(item) {
+  return `Budget ${fmt(item.budget_before_amount)} -> ${fmt(item.budget_after_amount)}`
+}
+
+function buildTransactionDisplayResolver(config) {
+  return (item, itemAmount) => {
+    if (item.entry_kind === 'budget_adjustment') {
+      return {
+        amountClassName: 'text-dosh-700 dark:text-dosh-300',
+        badgeClassName: 'bg-dosh-100 text-dosh-700 dark:bg-dosh-900/40 dark:text-dosh-300',
+        badgeLabel: 'Adj',
+        primaryText: getBudgetAdjustmentText(item),
+      }
+    }
+
+    const isPositive = itemAmount >= 0
+    const tone = isPositive ? config.positiveTone : config.negativeTone
+    return {
+      amountClassName: config.amountClassNames[tone],
+      badgeClassName: config.badgeClassNames[tone],
+      badgeLabel: isPositive ? '+' : '−',
+      primaryText: fmt(Math.abs(item.amount)),
+    }
+  }
+}
+
+function getTransactionModalConfig(kind) {
+  const shared = {
+    positiveTone: 'dosh',
+    negativeTone: 'danger',
+    amountClassNames: {
+      success: 'text-success-700 dark:text-success-400',
+      danger: 'text-red-700 dark:text-red-400',
+      dosh: 'text-dosh-700 dark:text-dosh-400',
+    },
+    badgeClassNames: {
+      success: 'bg-success-100 text-success-700 dark:bg-success-900/40 dark:text-success-400',
+      danger: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400',
+      dosh: 'bg-dosh-100 text-dosh-700 dark:bg-dosh-900/40 dark:text-dosh-400',
+    },
+  }
+
+  const configs = {
+    income: {
+      ...shared,
+      positiveTone: 'success',
+      summaryItems: ({ budgetAmount, actualAmount }) => {
+        const variance = Number(actualAmount) - Number(budgetAmount)
+        return [
+          { label: 'Budget', value: budgetAmount, cls: 'text-gray-600 dark:text-gray-400' },
+          { label: 'Actual', value: actualAmount, cls: 'text-success-700 dark:text-success-400 font-bold' },
+          { label: 'Variance', value: variance, cls: variance >= 0 ? 'text-success-600' : 'text-red-600' },
+        ]
+      },
+      totalClassName: totalValue => (totalValue >= 0 ? 'text-success-700 dark:text-success-400' : 'text-red-700 dark:text-red-400'),
+      typeOptions: [
+        { value: 'credit', label: 'Income (+)', activeClassName: 'bg-success-600', submitClassName: 'btn-primary' },
+        { value: 'debit', label: 'Correction (−)', activeClassName: 'bg-red-600', submitClassName: 'btn-danger' },
+      ],
+      submitLabel: currentType => (currentType === 'credit' ? 'Add Income' : 'Add Correction'),
+      toMutationAmount: (entryType, value) => (entryType === 'credit' ? value : -value),
+    },
+    expense: {
+      ...shared,
+      positiveTone: 'danger',
+      negativeTone: 'dosh',
+      summaryItems: ({ budgetAmount, actualAmount }) => {
+        const variance = Number(budgetAmount) - Number(actualAmount)
+        return [
+          { label: 'Budget', value: budgetAmount, cls: 'text-gray-600 dark:text-gray-400' },
+          { label: 'Actual', value: actualAmount, cls: 'text-dosh-700 dark:text-dosh-400 font-bold' },
+          { label: 'Variance', value: variance, cls: variance >= 0 ? 'text-dosh-600' : 'text-red-600' },
+        ]
+      },
+      totalClassName: totalValue => (totalValue >= 0 ? 'text-red-700 dark:text-red-400' : 'text-dosh-600 dark:text-dosh-400'),
+      typeOptions: [
+        { value: 'debit', label: 'Expense (+)', activeClassName: 'bg-red-600', submitClassName: 'btn-danger' },
+        { value: 'credit', label: 'Refund (−)', activeClassName: 'bg-dosh-600', submitClassName: 'btn-primary' },
+      ],
+      submitLabel: currentType => `Add ${currentType === 'debit' ? 'Expense' : 'Refund'}`,
+      toMutationAmount: (entryType, value) => (entryType === 'debit' ? value : -value),
+    },
+    investment: {
+      ...shared,
+      summaryItems: ({ budgetAmount, actualAmount }) => {
+        const remaining = Number(budgetAmount ?? 0) - Number(actualAmount)
+        return [
+          { label: 'Budget', value: budgetAmount ?? 0, cls: 'text-gray-600 dark:text-gray-400' },
+          { label: 'Actual', value: actualAmount, cls: 'text-dosh-700 dark:text-dosh-400 font-bold' },
+          { label: 'Remaining', value: remaining, cls: remaining >= 0 ? 'text-dosh-600' : 'text-red-600' },
+        ]
+      },
+      typeOptions: [
+        { value: 'increase', label: 'Add (+)', activeClassName: 'bg-dosh-600', submitClassName: 'btn-primary' },
+        { value: 'decrease', label: 'Subtract (−)', activeClassName: 'bg-red-600', submitClassName: 'btn-danger' },
+      ],
+      submitLabel: currentType => (currentType === 'increase' ? 'Add' : 'Subtract'),
+      toMutationAmount: (entryType, value) => (entryType === 'increase' ? value : -value),
+    },
+  }
+
+  return configs[kind]
+}
+
 function calcNextDue(freqtype, frequencyValue, effectivedate) {
   const today = new Date(); today.setHours(0, 0, 0, 0)
   if (!freqtype || freqtype === 'Always') return null
   if (freqtype === 'Fixed Day of Month') {
-    const day = parseInt(frequencyValue); if (!day) return null
+    const day = Number.parseInt(frequencyValue, 10); if (!day) return null
     let c = new Date(today.getFullYear(), today.getMonth(), day)
     if (c < today) c = new Date(today.getFullYear(), today.getMonth() + 1, day)
     return c
   }
   if (freqtype === 'Every N Days') {
-    const n = parseInt(frequencyValue); if (!n || !effectivedate) return null
+    const n = Number.parseInt(frequencyValue, 10); if (!n || !effectivedate) return null
     let cursor = parseISO(effectivedate); cursor.setHours(0, 0, 0, 0)
     if (cursor < today) {
       const delta = Math.ceil((today - cursor) / (n * 86400000))
@@ -87,6 +206,41 @@ function freqLabel(freqtype, frequencyValue) {
   if (freqtype === 'Fixed Day of Month') return `Recurring: Day ${frequencyValue}`
   if (freqtype === 'Every N Days') return `Recurring: Every ${frequencyValue}d`
   return freqtype
+}
+
+function ActionIconButton({ disabled = false, title, onClick, tone = 'neutral', icon: Icon }) {
+  const className = tone === 'neutral'
+    ? SECONDARY_BUTTON_CLASSES
+    : iconButtonClassName(disabled, tone)
+
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      title={title}
+      className={className}
+    >
+      <Icon className="w-4 h-4" />
+    </button>
+  )
+}
+
+function EmptyActionSlot() {
+  return <span className="block w-7 h-7" />
+}
+
+function DeleteActionButton({ onClick, title }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      className={DELETE_BUTTON_CLASSES}
+    >
+      <TrashIcon className="w-4 h-4" />
+    </button>
+  )
 }
 
 function BudgetAmountCell({ amount, canEdit, onEdit, label }) {
@@ -281,6 +435,71 @@ function TransactionEntryForm({
   )
 }
 
+function TransactionWorkflowModal({
+  kind,
+  items,
+  isLoading,
+  locked,
+  amount,
+  setAmount,
+  note,
+  setNote,
+  error,
+  setError,
+  setResolvedAmount,
+  budgetAmount,
+  actualAmount,
+  type,
+  setType,
+  onSubmit,
+  isPending,
+  onDelete,
+  onClose,
+  totalValue = null,
+}) {
+  const config = getTransactionModalConfig(kind)
+  const resolveDisplay = buildTransactionDisplayResolver(config)
+
+  return (
+    <div className="space-y-4">
+      <AmountSummaryGrid items={config.summaryItems({ budgetAmount, actualAmount })} />
+      <TransactionListPanel
+        items={items}
+        isLoading={isLoading}
+        locked={locked}
+        headerLabel="Transactions"
+        emptyLabel="No transactions yet"
+        totalValue={totalValue}
+        totalClassName={typeof config.totalClassName === 'function' ? config.totalClassName(totalValue) : null}
+        getItemAmount={item => item.amount}
+        getAmountClassName={(item, itemAmount) => resolveDisplay(item, itemAmount).amountClassName}
+        getBadgeClassName={(item, itemAmount) => resolveDisplay(item, itemAmount).badgeClassName}
+        getBadgeLabel={(item, itemAmount) => resolveDisplay(item, itemAmount).badgeLabel}
+        getPrimaryText={(item, itemAmount) => resolveDisplay(item, itemAmount).primaryText}
+        onDelete={onDelete}
+      />
+      <TransactionEntryForm
+        locked={locked}
+        amount={amount}
+        setAmount={setAmount}
+        note={note}
+        setNote={setNote}
+        error={error}
+        setError={setError}
+        setResolvedAmount={setResolvedAmount}
+        budgetAmount={budgetAmount}
+        type={type}
+        setType={setType}
+        typeOptions={config.typeOptions}
+        onSubmit={onSubmit}
+        submitLabel={config.submitLabel}
+        isPending={isPending}
+        onClose={onClose}
+      />
+    </div>
+  )
+}
+
 function ProgressStatusPill({ item, budgetAmount, actualAmount, remainingAmount, status, onMarkPaid, onRevise }) {
   const budget = Number(budgetAmount ?? 0)
   const actual = Number(actualAmount ?? 0)
@@ -366,6 +585,7 @@ function ConfirmPaidModal({ noun, item, remainingAmount, onConfirm, onClose }) {
 }
 
 function IncomeTransactionsModal({ periodId, incomedesc, budgetamount, actualamount, locked, onClose, defaultType = 'credit' }) {
+  const config = getTransactionModalConfig('income')
   const qc = useQueryClient()
   const [amount, setAmount] = useState('')
   const [resolvedAmount, setResolvedAmount] = useState({ value: null, state: 'empty' })
@@ -407,76 +627,35 @@ function IncomeTransactionsModal({ periodId, incomedesc, budgetamount, actualamo
       return
     }
     setError('')
-    add.mutate({ amount: type === 'credit' ? n : -n, note: note || null })
+    add.mutate({ amount: config.toMutationAmount(type, n), note: note || null })
   }
 
   const runningTotal = transactions
     .filter(tx => tx.entry_kind !== 'budget_adjustment')
     .reduce((s, tx) => s + Number(tx.amount), 0)
-  const variance = Number(actualamount) - Number(budgetamount)
-
   return (
-    <div className="space-y-4">
-      <AmountSummaryGrid
-        items={[
-          { label: 'Budget', value: budgetamount, cls: 'text-gray-600 dark:text-gray-400' },
-          { label: 'Actual', value: actualamount, cls: 'text-success-700 dark:text-success-400 font-bold' },
-          { label: 'Variance', value: variance, cls: variance >= 0 ? 'text-success-600' : 'text-red-600' },
-        ]}
-      />
-      <TransactionListPanel
-        items={transactions}
-        isLoading={isLoading}
-        locked={locked}
-        headerLabel="Transactions"
-        emptyLabel="No transactions yet"
-        totalValue={runningTotal}
-        totalClassName={runningTotal >= 0 ? 'text-success-700 dark:text-success-400' : 'text-red-700 dark:text-red-400'}
-        getItemAmount={item => item.amount}
-        getAmountClassName={(item, itemAmount) => (
-          item.entry_kind === 'budget_adjustment'
-            ? 'text-dosh-700 dark:text-dosh-300'
-            : itemAmount >= 0
-              ? 'text-success-700 dark:text-success-400'
-              : 'text-red-700 dark:text-red-400'
-        )}
-        getBadgeClassName={item => (
-          item.entry_kind === 'budget_adjustment'
-            ? 'bg-dosh-100 text-dosh-700 dark:bg-dosh-900/40 dark:text-dosh-300'
-            : Number(item.amount) >= 0
-              ? 'bg-success-100 text-success-700 dark:bg-success-900/40 dark:text-success-400'
-              : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400'
-        )}
-        getBadgeLabel={(item, itemAmount) => (item.entry_kind === 'budget_adjustment' ? 'Adj' : itemAmount >= 0 ? '+' : '−')}
-        getPrimaryText={item => (
-          item.entry_kind === 'budget_adjustment'
-            ? `Budget ${fmt(item.budget_before_amount)} -> ${fmt(item.budget_after_amount)}`
-            : fmt(Math.abs(item.amount))
-        )}
-        onDelete={txId => remove.mutate(txId)}
-      />
-      <TransactionEntryForm
-        locked={locked}
-        amount={amount}
-        setAmount={setAmount}
-        note={note}
-        setNote={setNote}
-        error={error}
-        setError={setError}
-        setResolvedAmount={setResolvedAmount}
-        budgetAmount={budgetamount}
-        type={type}
-        setType={setType}
-        typeOptions={[
-          { value: 'credit', label: 'Income (+)', activeClassName: 'bg-success-600', submitClassName: 'btn-primary' },
-          { value: 'debit', label: 'Correction (−)', activeClassName: 'bg-red-600', submitClassName: 'btn-danger' },
-        ]}
-        onSubmit={handleAdd}
-        submitLabel={currentType => (currentType === 'credit' ? 'Add Income' : 'Add Correction')}
-        isPending={add.isPending}
-        onClose={onClose}
-      />
-    </div>
+    <TransactionWorkflowModal
+      kind="income"
+      items={transactions}
+      isLoading={isLoading}
+      locked={locked}
+      amount={amount}
+      setAmount={setAmount}
+      note={note}
+      setNote={setNote}
+      error={error}
+      setError={setError}
+      setResolvedAmount={setResolvedAmount}
+      budgetAmount={budgetamount}
+      actualAmount={actualamount}
+      type={type}
+      setType={setType}
+      onSubmit={handleAdd}
+      isPending={add.isPending}
+      onDelete={txId => remove.mutate(txId)}
+      onClose={onClose}
+      totalValue={runningTotal}
+    />
   )
 }
 
@@ -550,6 +729,7 @@ function BalanceTransactionsModal({ periodId, balancedesc, movementAmount }) {
 
 // ── Expense Entry Modal (view + add + delete entries) ─────────────────────────
 function ExpenseEntriesModal({ periodId, budgetId, expensedesc, budgetamount, actualamount, locked, onClose, defaultType = 'debit' }) {
+  const config = getTransactionModalConfig('expense')
   const qc = useQueryClient()
   const [amount, setAmount] = useState('')
   const [resolvedAmount, setResolvedAmount] = useState({ value: null, state: 'empty' })
@@ -591,78 +771,40 @@ function ExpenseEntriesModal({ periodId, budgetId, expensedesc, budgetamount, ac
       return
     }
     setError('')
-    add.mutate({ amount: type === 'debit' ? n : -n, note: note || null })
+    add.mutate({ amount: config.toMutationAmount(type, n), note: note || null })
   }
 
   const runningTotal = entries.filter(entry => entry.entry_kind !== 'budget_adjustment').reduce((s, e) => s + Number(e.amount), 0)
 
   return (
-    <div className="space-y-4">
-      <AmountSummaryGrid
-        items={[
-          { label: 'Budget', value: budgetamount, cls: 'text-gray-600 dark:text-gray-400' },
-          { label: 'Actual', value: actualamount, cls: 'text-dosh-700 dark:text-dosh-400 font-bold' },
-          { label: 'Variance', value: Number(budgetamount) - Number(actualamount), cls: Number(budgetamount) - Number(actualamount) >= 0 ? 'text-dosh-600' : 'text-red-600' },
-        ]}
-      />
-      <TransactionListPanel
-        items={entries}
-        isLoading={isLoading}
-        locked={locked}
-        headerLabel="Transactions"
-        emptyLabel="No transactions yet"
-        totalValue={runningTotal}
-        totalClassName={runningTotal >= 0 ? 'text-red-700 dark:text-red-400' : 'text-dosh-600 dark:text-dosh-400'}
-        getItemAmount={item => item.amount}
-        getAmountClassName={(item, itemAmount) => (
-          item.entry_kind === 'budget_adjustment'
-            ? 'text-dosh-700 dark:text-dosh-300'
-            : itemAmount >= 0
-              ? 'text-red-700 dark:text-red-400'
-              : 'text-dosh-700 dark:text-dosh-400'
-        )}
-        getBadgeClassName={item => (
-          item.entry_kind === 'budget_adjustment'
-            ? 'bg-dosh-100 text-dosh-700 dark:bg-dosh-900/40 dark:text-dosh-300'
-            : Number(item.amount) >= 0
-              ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400'
-              : 'bg-dosh-100 text-dosh-700 dark:bg-dosh-900/40 dark:text-dosh-400'
-        )}
-        getBadgeLabel={(item, itemAmount) => (item.entry_kind === 'budget_adjustment' ? 'Adj' : itemAmount >= 0 ? '+' : '−')}
-        getPrimaryText={item => (
-          item.entry_kind === 'budget_adjustment'
-            ? `Budget ${fmt(item.budget_before_amount)} -> ${fmt(item.budget_after_amount)}`
-            : fmt(Math.abs(item.amount))
-        )}
-        onDelete={entryId => remove.mutate(entryId)}
-      />
-      <TransactionEntryForm
-        locked={locked}
-        amount={amount}
-        setAmount={setAmount}
-        note={note}
-        setNote={setNote}
-        error={error}
-        setError={setError}
-        setResolvedAmount={setResolvedAmount}
-        budgetAmount={budgetamount}
-        type={type}
-        setType={setType}
-        typeOptions={[
-          { value: 'debit', label: 'Expense (+)', activeClassName: 'bg-red-600', submitClassName: 'btn-danger' },
-          { value: 'credit', label: 'Refund (−)', activeClassName: 'bg-dosh-600', submitClassName: 'btn-primary' },
-        ]}
-        onSubmit={handleAdd}
-        submitLabel={currentType => `Add ${currentType === 'debit' ? 'Expense' : 'Refund'}`}
-        isPending={add.isPending}
-        onClose={onClose}
-      />
-    </div>
+    <TransactionWorkflowModal
+      kind="expense"
+      items={entries}
+      isLoading={isLoading}
+      locked={locked}
+      amount={amount}
+      setAmount={setAmount}
+      note={note}
+      setNote={setNote}
+      error={error}
+      setError={setError}
+      setResolvedAmount={setResolvedAmount}
+      budgetAmount={budgetamount}
+      actualAmount={actualamount}
+      type={type}
+      setType={setType}
+      onSubmit={handleAdd}
+      isPending={add.isPending}
+      onDelete={entryId => remove.mutate(entryId)}
+      onClose={onClose}
+      totalValue={runningTotal}
+    />
   )
 }
 
 // ── Investment Transaction Modal ──────────────────────────────────────────────
 function InvestmentTxModal({ periodId, investmentdesc, openingValue, closingValue, budgetedAmount, locked, onClose, defaultType = 'increase' }) {
+  const config = getTransactionModalConfig('investment')
   const qc = useQueryClient()
   const [amount, setAmount] = useState('')
   const [resolvedAmount, setResolvedAmount] = useState({ value: null, state: 'empty' })
@@ -704,73 +846,34 @@ function InvestmentTxModal({ periodId, investmentdesc, openingValue, closingValu
       return
     }
     setError('')
-    add.mutate({ amount: type === 'increase' ? n : -n, note: note || null })
+    add.mutate({ amount: config.toMutationAmount(type, n), note: note || null })
   }
 
   // Derive actual from transactions total for live display
   const txTotal = transactions.filter(tx => tx.entry_kind !== 'budget_adjustment').reduce((s, t) => s + Number(t.amount), 0)
-  const liveRemaining = Number(budgetedAmount ?? 0) - txTotal
-
   return (
-    <div className="space-y-4">
-      <AmountSummaryGrid
-        items={[
-          { label: 'Budget', value: budgetedAmount ?? 0, cls: 'text-gray-600 dark:text-gray-400' },
-          { label: 'Actual', value: txTotal, cls: 'text-dosh-700 dark:text-dosh-400 font-bold' },
-          { label: 'Remaining', value: liveRemaining, cls: liveRemaining >= 0 ? 'text-dosh-600' : 'text-red-600' },
-        ]}
-      />
-      <TransactionListPanel
-        items={transactions}
-        isLoading={isLoading}
-        locked={locked}
-        headerLabel="Transactions"
-        emptyLabel="No transactions yet"
-        getItemAmount={item => item.amount}
-        getAmountClassName={(item, itemAmount) => (
-          item.entry_kind === 'budget_adjustment'
-            ? 'text-dosh-700 dark:text-dosh-300'
-            : itemAmount >= 0
-              ? 'text-dosh-700 dark:text-dosh-400'
-              : 'text-red-700 dark:text-red-400'
-        )}
-        getBadgeClassName={item => (
-          item.entry_kind === 'budget_adjustment'
-            ? 'bg-dosh-100 text-dosh-700 dark:bg-dosh-900/40 dark:text-dosh-300'
-            : Number(item.amount) >= 0
-              ? 'bg-dosh-100 text-dosh-700 dark:bg-dosh-900/40 dark:text-dosh-400'
-              : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400'
-        )}
-        getBadgeLabel={(item, itemAmount) => (item.entry_kind === 'budget_adjustment' ? 'Adj' : itemAmount >= 0 ? '+' : '−')}
-        getPrimaryText={item => (
-          item.entry_kind === 'budget_adjustment'
-            ? `Budget ${fmt(item.budget_before_amount)} -> ${fmt(item.budget_after_amount)}`
-            : fmt(Math.abs(item.amount))
-        )}
-        onDelete={txId => remove.mutate(txId)}
-      />
-      <TransactionEntryForm
-        locked={locked}
-        amount={amount}
-        setAmount={setAmount}
-        note={note}
-        setNote={setNote}
-        error={error}
-        setError={setError}
-        setResolvedAmount={setResolvedAmount}
-        budgetAmount={budgetedAmount ?? 0}
-        type={type}
-        setType={setType}
-        typeOptions={[
-          { value: 'increase', label: 'Add (+)', activeClassName: 'bg-dosh-600', submitClassName: 'btn-primary' },
-          { value: 'decrease', label: 'Subtract (−)', activeClassName: 'bg-red-600', submitClassName: 'btn-danger' },
-        ]}
-        onSubmit={handleAdd}
-        submitLabel={currentType => (currentType === 'increase' ? 'Add' : 'Subtract')}
-        isPending={add.isPending}
-        onClose={onClose}
-      />
-    </div>
+    <TransactionWorkflowModal
+      kind="investment"
+      items={transactions}
+      isLoading={isLoading}
+      locked={locked}
+      amount={amount}
+      setAmount={setAmount}
+      note={note}
+      setNote={setNote}
+      error={error}
+      setError={setError}
+      setResolvedAmount={setResolvedAmount}
+      budgetAmount={budgetedAmount ?? 0}
+      actualAmount={txTotal}
+      type={type}
+      setType={setType}
+      onSubmit={handleAdd}
+      isPending={add.isPending}
+      onDelete={txId => remove.mutate(txId)}
+      onClose={onClose}
+      totalValue={null}
+    />
   )
 }
 
@@ -1205,7 +1308,7 @@ function AddExpenseModal({ periodId, budgetId, existingDescs, onClose }) {
       if (resolvedValue == null) { setError('Enter a valid budget amount'); return }
       if (mode === 'new') {
         if (!newDesc.trim()) { setError('Enter a description'); return }
-        await createItem.mutateAsync({ expensedesc: newDesc.trim(), active: true, freqtype: newFreqtype || null, frequency_value: newFreqVal ? parseInt(newFreqVal) : null, paytype: newPaytype || null, effectivedate: newEffDate || null, expenseamount: resolvedValue })
+        await createItem.mutateAsync({ expensedesc: newDesc.trim(), active: true, freqtype: newFreqtype || null, frequency_value: newFreqVal ? Number.parseInt(newFreqVal, 10) : null, paytype: newPaytype || null, effectivedate: newEffDate || null, expenseamount: resolvedValue })
         addToperiod.mutate({ budgetid: budgetId, expensedesc: newDesc.trim(), budgetamount: resolvedValue, scope, note: note || null })
       } else {
         if (!selected) { setError('Select an expense item'); return }
@@ -1288,7 +1391,7 @@ function AddExpenseModal({ periodId, budgetId, existingDescs, onClose }) {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function PeriodDetailPage() {
   const { periodId } = useParams()
-  const id = parseInt(periodId)
+  const id = Number.parseInt(periodId, 10)
   const qc = useQueryClient()
   const [showAddExpense, setShowAddExpense] = useState(false)
   const [showAddIncome, setShowAddIncome] = useState(false)
@@ -1521,36 +1624,33 @@ export default function PeriodDetailPage() {
                   </td>
                   <td className="px-3 py-2 w-[152px]">
                     <div className="ml-auto grid w-[116px] grid-cols-4 justify-items-center gap-1">
-                      <button
+                      <ActionIconButton
                         disabled={closed}
                         onClick={() => setIncomeModal({ incomedesc: i.incomedesc, budgetamount: i.budgetamount, actualamount: i.actualamount, defaultType: 'credit' })}
                         title="Add income transaction"
-                        className={`flex items-center justify-center w-7 h-7 rounded-full font-bold text-sm transition-colors ${closed ? 'opacity-30 cursor-not-allowed bg-gray-100 text-gray-400' : 'bg-success-100 text-success-700 hover:bg-success-200 dark:bg-success-900/40 dark:text-success-400 dark:hover:bg-success-900/60'}`}>
-                        <PlusIcon className="w-4 h-4" />
-                      </button>
-                      <button
+                        tone="success"
+                        icon={PlusIcon}
+                      />
+                      <ActionIconButton
                         disabled={closed}
                         onClick={() => setIncomeModal({ incomedesc: i.incomedesc, budgetamount: i.budgetamount, actualamount: i.actualamount, defaultType: 'debit' })}
                         title="Add income correction"
-                        className={`flex items-center justify-center w-7 h-7 rounded-full font-bold text-sm transition-colors ${closed ? 'opacity-30 cursor-not-allowed bg-gray-100 text-gray-400' : 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/40 dark:text-red-400 dark:hover:bg-red-900/60'}`}>
-                        <MinusIcon className="w-4 h-4" />
-                      </button>
-                      <button
+                        tone="danger"
+                        icon={MinusIcon}
+                      />
+                      <ActionIconButton
                         onClick={() => setIncomeModal({ incomedesc: i.incomedesc, budgetamount: i.budgetamount, actualamount: i.actualamount, defaultType: 'credit', readOnly: closed })}
                         title="View transactions"
-                        className="flex items-center justify-center w-7 h-7 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                        <ListBulletIcon className="w-4 h-4" />
-                      </button>
+                        icon={ListBulletIcon}
+                      />
                       {!locked && !closed && i.system_key !== 'carry_forward' && (
-                        <button
+                        <DeleteActionButton
                           onClick={() => { if (window.confirm(`Remove "${i.incomedesc}" from this budget cycle?`)) deleteIncomeLine.mutate(i.incomedesc) }}
                           title="Remove from budget cycle"
-                          className="flex items-center justify-center w-7 h-7 rounded-full text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
-                          <TrashIcon className="w-4 h-4" />
-                        </button>
+                        />
                       )}
                       {(locked || closed || i.system_key === 'carry_forward') && (
-                        <span aria-hidden="true" className="block w-7 h-7" />
+                        <EmptyActionSlot />
                       )}
                     </div>
                   </td>
@@ -1658,33 +1758,30 @@ export default function PeriodDetailPage() {
                             onMarkPaid={() => handleMarkPaid(e)}
                             onRevise={() => setExpenseStatus.mutate({ desc: e.expensedesc, status: 'Revised' })}
                           />
-                        <button
+                        <ActionIconButton
                           disabled={closed || isPaid}
                           onClick={() => setEntriesModal({ expensedesc: e.expensedesc, budgetamount: e.budgetamount, actualamount: e.actualamount, defaultType: 'debit' })}
                           title="Add expense transaction"
-                          className={`flex items-center justify-center w-7 h-7 rounded-full font-bold text-sm transition-colors ${closed || isPaid ? 'opacity-30 cursor-not-allowed bg-gray-100 text-gray-400' : 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/40 dark:text-red-400 dark:hover:bg-red-900/60'}`}>
-                          <PlusIcon className="w-4 h-4" />
-                        </button>
-                        <button
+                          tone="danger"
+                          icon={PlusIcon}
+                        />
+                        <ActionIconButton
                           disabled={closed || isPaid}
                           onClick={() => setEntriesModal({ expensedesc: e.expensedesc, budgetamount: e.budgetamount, actualamount: e.actualamount, defaultType: 'credit' })}
                           title="Add refund/credit"
-                          className={`flex items-center justify-center w-7 h-7 rounded-full font-bold text-sm transition-colors ${closed || isPaid ? 'opacity-30 cursor-not-allowed bg-gray-100 text-gray-400' : 'bg-dosh-100 text-dosh-700 hover:bg-dosh-200 dark:bg-dosh-900/40 dark:text-dosh-400 dark:hover:bg-dosh-900/60'}`}>
-                          <MinusIcon className="w-4 h-4" />
-                        </button>
-                        <button
+                          tone="dosh"
+                          icon={MinusIcon}
+                        />
+                        <ActionIconButton
                           onClick={() => setEntriesModal({ expensedesc: e.expensedesc, budgetamount: e.budgetamount, actualamount: e.actualamount, defaultType: 'debit', readOnly: closed || isPaid })}
                           title="View transactions"
-                          className="flex items-center justify-center w-7 h-7 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                          <ListBulletIcon className="w-4 h-4" />
-                        </button>
+                          icon={ListBulletIcon}
+                        />
                         {canDelete && !isPaid && (
-                          <button
+                          <DeleteActionButton
                             onClick={() => { if (window.confirm(`Remove "${e.expensedesc}" from this budget cycle?`)) deleteExpenseLine.mutate(e.expensedesc) }}
                             title="Remove from budget cycle (no actuals, zero budget)"
-                            className="flex items-center justify-center w-7 h-7 rounded-full text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
-                            <TrashIcon className="w-4 h-4" />
-                          </button>
+                          />
                         )}
                       </div>
                     </td>
@@ -1752,26 +1849,25 @@ export default function PeriodDetailPage() {
                             onMarkPaid={() => handleMarkInvestmentPaid(inv)}
                             onRevise={() => setInvestmentStatus.mutate({ desc: inv.investmentdesc, status: 'Revised' })}
                           />
-                          <button
+                          <ActionIconButton
                             disabled={closed || inv.status === 'Paid'}
                             onClick={() => setInvestmentModal({ investmentdesc: inv.investmentdesc, openingValue: inv.opening_value, closingValue: inv.closing_value, budgetedAmount: inv.budgeted_amount, defaultType: 'increase' })}
                             title="Add investment transaction"
-                            className={`flex items-center justify-center w-7 h-7 rounded-full font-bold text-sm transition-colors ${closed || inv.status === 'Paid' ? 'opacity-30 cursor-not-allowed bg-gray-100 text-gray-400' : 'bg-dosh-100 text-dosh-700 hover:bg-dosh-200 dark:bg-dosh-900/40 dark:text-dosh-400 dark:hover:bg-dosh-900/60'}`}>
-                            <PlusIcon className="w-4 h-4" />
-                          </button>
-                          <button
+                            tone="dosh"
+                            icon={PlusIcon}
+                          />
+                          <ActionIconButton
                             disabled={closed || inv.status === 'Paid'}
                             onClick={() => setInvestmentModal({ investmentdesc: inv.investmentdesc, openingValue: inv.opening_value, closingValue: inv.closing_value, budgetedAmount: inv.budgeted_amount, defaultType: 'decrease' })}
                             title="Add subtraction/withdrawal"
-                            className={`flex items-center justify-center w-7 h-7 rounded-full font-bold text-sm transition-colors ${closed || inv.status === 'Paid' ? 'opacity-30 cursor-not-allowed bg-gray-100 text-gray-400' : 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/40 dark:text-red-400 dark:hover:bg-red-900/60'}`}>
-                            <MinusIcon className="w-4 h-4" />
-                          </button>
-                          <button
+                            tone="danger"
+                            icon={MinusIcon}
+                          />
+                          <ActionIconButton
                             onClick={() => setInvestmentModal({ investmentdesc: inv.investmentdesc, openingValue: inv.opening_value, closingValue: inv.closing_value, budgetedAmount: inv.budgeted_amount, defaultType: 'increase', readOnly: closed || inv.status === 'Paid' })}
                             title="View transactions"
-                            className="flex items-center justify-center w-7 h-7 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                            <ListBulletIcon className="w-4 h-4" />
-                          </button>
+                            icon={ListBulletIcon}
+                          />
                         </div>
                       </td>
                     </tr>
@@ -1978,6 +2074,19 @@ BudgetAmountCell.propTypes = {
   label: PropTypes.string.isRequired,
 }
 
+ActionIconButton.propTypes = {
+  disabled: PropTypes.bool,
+  title: PropTypes.string.isRequired,
+  onClick: PropTypes.func.isRequired,
+  tone: PropTypes.oneOf(['neutral', 'success', 'danger', 'dosh']),
+  icon: PropTypes.elementType.isRequired,
+}
+
+DeleteActionButton.propTypes = {
+  onClick: PropTypes.func.isRequired,
+  title: PropTypes.string.isRequired,
+}
+
 AmountSummaryGrid.propTypes = {
   items: PropTypes.arrayOf(PropTypes.shape({
     label: PropTypes.string.isRequired,
@@ -2032,6 +2141,37 @@ TransactionEntryForm.propTypes = {
   submitLabel: PropTypes.func.isRequired,
   isPending: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
+}
+
+TransactionWorkflowModal.propTypes = {
+  kind: PropTypes.oneOf(['income', 'expense', 'investment']).isRequired,
+  items: PropTypes.arrayOf(PropTypes.shape({
+    id: PropTypes.oneOfType([PropTypes.number, PropTypes.string]).isRequired,
+    entry_kind: PropTypes.string,
+    amount: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+    note: PropTypes.string,
+    entrydate: PropTypes.string.isRequired,
+    budget_before_amount: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+    budget_after_amount: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  })).isRequired,
+  isLoading: PropTypes.bool.isRequired,
+  locked: PropTypes.bool.isRequired,
+  amount: PropTypes.string.isRequired,
+  setAmount: PropTypes.func.isRequired,
+  note: PropTypes.string.isRequired,
+  setNote: PropTypes.func.isRequired,
+  error: PropTypes.string.isRequired,
+  setError: PropTypes.func.isRequired,
+  setResolvedAmount: PropTypes.func.isRequired,
+  budgetAmount: PropTypes.oneOfType([PropTypes.number, PropTypes.string]).isRequired,
+  actualAmount: PropTypes.oneOfType([PropTypes.number, PropTypes.string]).isRequired,
+  type: PropTypes.string.isRequired,
+  setType: PropTypes.func.isRequired,
+  onSubmit: PropTypes.func.isRequired,
+  isPending: PropTypes.bool.isRequired,
+  onDelete: PropTypes.func.isRequired,
+  onClose: PropTypes.func.isRequired,
+  totalValue: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
 }
 
 ProgressStatusPill.propTypes = {
