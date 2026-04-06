@@ -66,3 +66,168 @@ jobs:
           args: >
             --define sonar.projectKey=${{ vars.SONAR_PROJECT_KEY }}
             --define sonar.organization=mixednutts
+            --define sonar.qualitygate.wait=true
+            --define sonar.qualitygate.timeout=300
+
+      - name: Export sanitized SonarQube report
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
+          SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          GITHUB_HEAD_REF: ${{ github.head_ref }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import sys
+          import urllib.error
+          import urllib.parse
+          import urllib.request
+
+          sonar_host = os.environ["SONAR_HOST_URL"].rstrip("/")
+          token = os.environ["SONAR_TOKEN"]
+          project_key = os.environ["SONAR_PROJECT_KEY"]
+          event_name = os.environ.get("GITHUB_EVENT_NAME", "")
+          ref_name = os.environ.get("GITHUB_REF_NAME", "")
+          head_ref = os.environ.get("GITHUB_HEAD_REF", "")
+          branch = head_ref if event_name == "pull_request" and head_ref else ref_name
+
+          def api_get(path, params):
+              query = urllib.parse.urlencode(params)
+              url = f"{sonar_host}{path}?{query}"
+              req = urllib.request.Request(url)
+              req.add_header("Authorization", f"Bearer {token}")
+              try:
+                  with urllib.request.urlopen(req) as response:
+                      return json.loads(response.read().decode("utf-8"))
+              except urllib.error.HTTPError as exc:
+                  body = exc.read().decode("utf-8", errors="replace")
+                  print(f"Sonar API request failed: {url}", file=sys.stderr)
+                  print(body, file=sys.stderr)
+                  raise
+
+          branch_params = {"branch": branch} if branch else {}
+
+          measures = api_get(
+              "/api/measures/component",
+              {
+                  "component": project_key,
+                  "metricKeys": ",".join(
+                      [
+                          "alert_status",
+                          "bugs",
+                          "vulnerabilities",
+                          "code_smells",
+                          "coverage",
+                          "duplicated_lines_density",
+                          "ncloc",
+                          "reliability_rating",
+                          "security_rating",
+                          "sqale_rating",
+                      ]
+                  ),
+                  **branch_params,
+              },
+          )
+
+          quality_gate = api_get(
+              "/api/qualitygates/project_status",
+              {
+                  "projectKey": project_key,
+                  **branch_params,
+              },
+          )
+
+          issues = api_get(
+              "/api/issues/search",
+              {
+                  "componentKeys": project_key,
+                  "resolved": "false",
+                  "ps": "100",
+                  "additionalFields": "_all",
+                  **branch_params,
+              },
+          )
+
+          measure_map = {
+              item["metric"]: item.get("value")
+              for item in measures.get("component", {}).get("measures", [])
+          }
+
+          sanitized_issues = []
+          for issue in issues.get("issues", []):
+              sanitized_issues.append(
+                  {
+                      "key": issue.get("key"),
+                      "type": issue.get("type"),
+                      "severity": issue.get("severity"),
+                      "rule": issue.get("rule"),
+                      "message": issue.get("message"),
+                      "component": issue.get("component"),
+                      "line": issue.get("line"),
+                      "status": issue.get("status"),
+                      "effort": issue.get("effort"),
+                      "debt": issue.get("debt"),
+                      "tags": issue.get("tags", []),
+                      "cleanCodeAttribute": issue.get("cleanCodeAttribute"),
+                      "impacts": issue.get("impacts", []),
+                  }
+              )
+
+          report = {
+              "projectKey": project_key,
+              "branch": branch,
+              "qualityGateStatus": quality_gate.get("projectStatus", {}).get("status"),
+              "measures": measure_map,
+              "issueTotal": issues.get("total", len(sanitized_issues)),
+              "issues": sanitized_issues,
+          }
+
+          with open("sonar-summary.json", "w", encoding="utf-8") as fh:
+              json.dump(report, fh, indent=2)
+
+          lines = [
+              f"# SonarQube Summary for {project_key}",
+              "",
+              f"- Branch: `{branch}`" if branch else "- Branch: `(default)`",
+              f"- Quality Gate: `{report['qualityGateStatus']}`",
+              f"- Bugs: `{measure_map.get('bugs', 'n/a')}`",
+              f"- Vulnerabilities: `{measure_map.get('vulnerabilities', 'n/a')}`",
+              f"- Code Smells: `{measure_map.get('code_smells', 'n/a')}`",
+              f"- Coverage: `{measure_map.get('coverage', 'n/a')}`",
+              f"- Duplicated Lines %: `{measure_map.get('duplicated_lines_density', 'n/a')}`",
+              f"- LOC: `{measure_map.get('ncloc', 'n/a')}`",
+              f"- Open Issues Exported: `{len(sanitized_issues)}` of `{report['issueTotal']}`",
+              "",
+              "## Issues",
+              "",
+          ]
+
+          if sanitized_issues:
+              for issue in sanitized_issues:
+                  component = issue.get("component") or "unknown"
+                  line = issue.get("line")
+                  location = f"{component}:{line}" if line else component
+                  lines.append(
+                      f"- [{issue.get('severity', 'UNKNOWN')}] "
+                      f"{issue.get('type', 'ISSUE')} "
+                      f"`{issue.get('rule', 'unknown')}` at `{location}`: "
+                      f"{issue.get('message', '').strip()}"
+                  )
+          else:
+              lines.append("- No open issues returned by the Sonar API.")
+
+          with open("sonar-summary.md", "w", encoding="utf-8") as fh:
+              fh.write("\n".join(lines) + "\n")
+          PY
+
+      - name: Upload sanitized SonarQube report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sonar-summary-${{ github.run_id }}
+          path: |
+            sonar-summary.json
+            sonar-summary.md
+          if-no-files-found: error

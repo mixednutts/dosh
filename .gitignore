@@ -4,3 +4,5 @@ backend/db_backups/
 *.db
 *.db-shm
 *.db-wal
+backend/coverage.xml
+frontend/coverage/
