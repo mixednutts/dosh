@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.models import FinancialPeriod, PeriodBalance
+from app.models import FinancialPeriod, PeriodBalance, PeriodTransaction
 from app.time_utils import app_now_naive
 
 from .factories import create_balance_type, create_budget, create_expense_item, create_income_type, create_investment_item, generate_periods
@@ -62,6 +62,44 @@ def test_setup_assessment_marks_generated_primary_account_as_in_use(client, db_s
     assert any("generated budget cycles" in reason.lower() for reason in main_account["reasons"])
 
 
+def test_setup_assessment_marks_account_with_recorded_movement_as_in_use(client, db_session):
+    budget = create_budget(db_session)
+    create_income_type(db_session, budgetid=budget.budgetid)
+    create_expense_item(db_session, budgetid=budget.budgetid)
+    create_balance_type(db_session, budgetid=budget.budgetid, balancedesc="Main Account", is_primary=True)
+    startdate = app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0)
+    period = FinancialPeriod(
+        budgetid=budget.budgetid,
+        startdate=startdate,
+        enddate=startdate,
+        budgetowner=budget.budgetowner,
+        cycle_status="ACTIVE",
+    )
+    db_session.add(period)
+    db_session.flush()
+    db_session.add(
+        PeriodTransaction(
+            finperiodid=period.finperiodid,
+            budgetid=budget.budgetid,
+            source="expense",
+            type="expense_payment",
+            source_key="Rent",
+            amount="45.00",
+            affected_account_desc="Main Account",
+        )
+    )
+    db_session.commit()
+
+    response = client.get(f"/api/budgets/{budget.budgetid}/setup-assessment")
+
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    main_account = next(account for account in payload["accounts"] if account["balancedesc"] == "Main Account")
+    assert main_account["in_use"] is True
+    assert main_account["can_edit_structure"] is False
+    assert any("recorded account movement" in reason.lower() for reason in main_account["reasons"])
+
+
 def test_setup_assessment_marks_generated_income_type_as_in_use(client, db_session):
     budget = create_budget(db_session)
     create_income_type(db_session, budgetid=budget.budgetid, incomedesc="Salary")
@@ -82,6 +120,24 @@ def test_setup_assessment_marks_generated_income_type_as_in_use(client, db_sessi
     salary = next(item for item in payload["income_types"] if item["incomedesc"] == "Salary")
     assert salary["in_use"] is True
     assert salary["can_delete"] is False
+
+
+def test_setup_assessment_warns_when_auto_surplus_has_no_primary_investment(client, db_session):
+    budget = create_budget(db_session)
+    budget.auto_add_surplus_to_investment = True
+    db_session.add(budget)
+    db_session.commit()
+    create_income_type(db_session, budgetid=budget.budgetid, incomedesc="Salary")
+    create_expense_item(db_session, budgetid=budget.budgetid, expensedesc="Rent")
+    create_balance_type(db_session, budgetid=budget.budgetid, balancedesc="Main Account", is_primary=True)
+    create_investment_item(db_session, budgetid=budget.budgetid, investmentdesc="Emergency Fund", is_primary=False)
+
+    response = client.get(f"/api/budgets/{budget.budgetid}/setup-assessment")
+
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["can_generate"] is True
+    assert any("automatic surplus allocation" in warning.lower() for warning in payload["warnings"])
 
 
 def test_delete_rejects_account_that_is_already_in_use(client, db_session):

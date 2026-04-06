@@ -139,6 +139,60 @@ describe('BudgetsPage', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/budgets/21/setup')
   })
 
+  it('keeps custom cycles invalid until a valid day length is provided and allows switching back to a standard cycle', async () => {
+    renderWithProviders(<BudgetsPage />, {
+      route: '/budgets',
+      path: '/budgets',
+    })
+
+    fireEvent.click(await screen.findByText('Create Budget'))
+
+    fireEvent.change(screen.getByPlaceholderText('e.g. Household Budget 2025'), {
+      target: { value: 'Monthly Budget' },
+    })
+    fireEvent.change(screen.getByPlaceholderText('Your name'), {
+      target: { value: 'Alex' },
+    })
+    fireEvent.change(screen.getByRole('combobox'), {
+      target: { value: '__custom_day_cycle__' },
+    })
+
+    const saveButton = screen.getByRole('button', { name: 'Save' })
+    expect(saveButton.disabled).toBe(true)
+    expect(screen.getByText('Every ___ Days')).toBeTruthy()
+
+    const customCycleInput = screen.getByRole('spinbutton', { name: 'Cycle length in days' })
+    fireEvent.change(customCycleInput, {
+      target: { value: '999' },
+    })
+    fireEvent.blur(customCycleInput)
+    expect(customCycleInput.value).toBe('365')
+    expect(screen.getByText('Every 365 Days')).toBeTruthy()
+    expect(saveButton.disabled).toBe(false)
+
+    fireEvent.change(customCycleInput, {
+      target: { value: '' },
+    })
+    expect(screen.getByText(/Enter a whole number of days between 2 and 365\./)).toBeTruthy()
+    expect(saveButton.disabled).toBe(true)
+
+    fireEvent.change(screen.getByRole('combobox'), {
+      target: { value: 'Monthly' },
+    })
+    expect(screen.queryByRole('spinbutton', { name: 'Cycle length in days' })).toBeNull()
+    expect(saveButton.disabled).toBe(false)
+
+    fireEvent.click(saveButton)
+
+    await waitFor(() => {
+      expect(client.createBudget.mock.calls[0][0]).toEqual({
+        description: 'Monthly Budget',
+        budgetowner: 'Alex',
+        budget_frequency: 'Monthly',
+      })
+    })
+  })
+
   it('replaces the historical stat with a calendar-style current cycle summary', async () => {
     client.getBudgets.mockResolvedValue([
       {
