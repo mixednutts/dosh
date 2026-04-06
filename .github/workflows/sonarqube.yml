@@ -146,6 +146,14 @@ jobs:
               except (TypeError, ValueError):
                   return 0.0
 
+          def measure_value(measure):
+              if "value" in measure:
+                  return measure.get("value")
+              periods = measure.get("periods") or []
+              if periods:
+                  return periods[0].get("value")
+              return None
+
           branch_params = {"branch": branch} if branch else {}
 
           measures = api_get(
@@ -211,7 +219,7 @@ jobs:
               for component in components:
                   file_path = component.get("path") or component.get("name") or component.get("key")
                   component_measures = {
-                      item["metric"]: item.get("value")
+                      item["metric"]: measure_value(item)
                       for item in component.get("measures", [])
                   }
                   new_dup_density = component_measures.get("new_duplicated_lines_density")
