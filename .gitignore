@@ -6,3 +6,4 @@ backend/db_backups/
 *.db-wal
 backend/coverage.xml
 frontend/coverage/
+docker-compose.override.yml
