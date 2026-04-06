@@ -198,8 +198,9 @@ jobs:
                   {
                       "component": project_key,
                       "metricKeys": ",".join(component_metric_keys),
+                      "additionalFields": "metrics",
                       "qualifiers": "FIL",
-                      "strategy": "children",
+                      "strategy": "leaves",
                       "ps": str(component_page_size),
                       "p": str(component_page),
                       **branch_params,
