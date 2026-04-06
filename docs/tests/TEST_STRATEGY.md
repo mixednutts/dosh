@@ -224,6 +224,9 @@ Notes:
 - Use API integration tests for workflows that cross multiple tables and helper functions.
 - Add frontend tests mainly around user-critical flows and conditional states, not cosmetic markup.
 - Keep end-to-end tests small and high-value once the lower layers are in place.
+- Use coverage and SonarQube hotspots as signals for thin risk areas, not as the definition of quality.
+- When adding coverage to satisfy a quality gate, prefer tests that protect meaningful workflow behavior, financial integrity, historical correctness, or user-critical guidance rather than tests that only execute lines once.
+- Avoid coverage theater: do not add brittle or low-value tests whose main purpose is to increase a metric without improving trust in the product.
 - Whenever a product rule is documented in an MD file, it should usually have a corresponding test case or explicit testing note.
 - Prefer documenting new test scope and remaining gaps back into this file so future sessions do not have to rediscover the current boundary.
 

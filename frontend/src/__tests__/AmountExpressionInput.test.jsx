@@ -4,6 +4,15 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import AmountExpressionInput, { evaluateAmountExpression } from '../components/AmountExpressionInput'
 
 describe('AmountExpressionInput', () => {
+  it('returns an empty state for blank input', () => {
+    expect(evaluateAmountExpression('')).toMatchObject({
+      state: 'empty',
+      resolvedValue: null,
+      shouldShowPreview: false,
+      previewText: '',
+    })
+  })
+
   it('evaluates valid arithmetic expressions and rounds to 2 decimals', () => {
     expect(evaluateAmountExpression('1000/4+25')).toMatchObject({
       state: 'valid',
@@ -25,6 +34,11 @@ describe('AmountExpressionInput', () => {
       resolvedValue: 3.33,
       shouldShowPreview: true,
     })
+    expect(evaluateAmountExpression('-25+5')).toMatchObject({
+      state: 'valid',
+      resolvedValue: -20,
+      shouldShowPreview: true,
+    })
   })
 
   it('rejects invalid expressions', () => {
@@ -33,6 +47,10 @@ describe('AmountExpressionInput', () => {
       resolvedValue: null,
     })
     expect(evaluateAmountExpression('abc')).toMatchObject({
+      state: 'invalid',
+      resolvedValue: null,
+    })
+    expect(evaluateAmountExpression('10/0')).toMatchObject({
       state: 'invalid',
       resolvedValue: null,
     })
@@ -110,6 +128,32 @@ describe('AmountExpressionInput', () => {
     expect(screen.getByText('= 100+')).toBeTruthy()
     expect(screen.queryByText('Enter a valid calculation')).toBeNull()
     expect(onResolvedChange).toHaveBeenCalledWith(null, 'incomplete')
+  })
+
+  it('does not notify resolved state repeatedly when the evaluation result is unchanged', () => {
+    const onResolvedChange = jest.fn()
+    const { rerender } = render(
+      <AmountExpressionInput
+        value="125"
+        onChange={() => {}}
+        onResolvedChange={onResolvedChange}
+        className="input"
+      />
+    )
+
+    expect(onResolvedChange).toHaveBeenCalledTimes(1)
+    expect(onResolvedChange).toHaveBeenLastCalledWith(125, 'valid')
+
+    rerender(
+      <AmountExpressionInput
+        value="125"
+        onChange={() => {}}
+        onResolvedChange={onResolvedChange}
+        className="input"
+      />
+    )
+
+    expect(onResolvedChange).toHaveBeenCalledTimes(1)
   })
 
   it('keeps the raw expression visible while editing', () => {

@@ -96,6 +96,52 @@ Result:
 - no automated test failures remained at the end of the session
 - no additional plan document was required because this session did not run in a separate plan-only mode
 
+## Latest Session: Sonar Coverage Hotspot Follow-Through And Behavior-First Regression Expansion
+
+Session outcomes verified in this run:
+
+- focused coverage expansion was added for the three SonarQube hotspot files shown in the current follow-up prompt: [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx), [AmountExpressionInput.jsx](/home/ubuntu/dosh/frontend/src/components/AmountExpressionInput.jsx), and [periods.py](/home/ubuntu/dosh/backend/app/routers/periods.py)
+- frontend regression coverage was extended in [AmountExpressionInput.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/AmountExpressionInput.test.jsx) and [PeriodDetailPage.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/PeriodDetailPage.test.jsx)
+- a new backend router-guard suite now exists at [test_period_router_guards.py](/home/ubuntu/dosh/backend/tests/test_period_router_guards.py) for carried-forward removal blocking, delete blockers after recorded activity, and invalid expense or investment status transitions
+- the session explicitly reaffirmed the testing rule that SonarQube hotspots should be treated as signals for thin risk areas, not as the definition of quality, and that coverage work should still protect meaningful workflow behavior rather than only executing lines once
+- no SonarQube workflow run was executed in this session, so the new tests are locally verified but not yet represented in a fresh CI-generated coverage artifact
+
+### Frontend verification
+
+Commands run during this session:
+
+```bash
+cd frontend
+npm test -- --runInBand src/__tests__/AmountExpressionInput.test.jsx src/__tests__/PeriodDetailPage.test.jsx
+```
+
+Result:
+
+- the focused frontend verification passed with 2 suites and 30 tests
+- new frontend coverage in this session includes blank-input, unary-negative, divide-by-zero, and duplicate-notification behavior for [AmountExpressionInput.jsx](/home/ubuntu/dosh/frontend/src/components/AmountExpressionInput.jsx)
+- period-detail regression coverage now also includes the balance movement details modal for transfer, expense, and system-supported transaction rendering
+
+### Backend verification
+
+Commands run during this session:
+
+```bash
+cd /home/ubuntu/dosh
+./backend/.venv/bin/pytest -q backend/tests/test_period_router_guards.py
+```
+
+Result:
+
+- the new backend router-guard suite passed with 4 tests
+- plain `pytest` was still unavailable in the base shell, so the project virtualenv remained the correct execution path for backend verification
+- backend warnings still include the existing FastAPI `on_event` deprecation in [main.py](/home/ubuntu/dosh/backend/app/main.py) and `datetime.utcnow()` deprecation in [transaction_ledger.py](/home/ubuntu/dosh/backend/app/transaction_ledger.py)
+
+### Test failures and resolution notes
+
+- the first version of the new balance-movement frontend test asserted transfer labels too directly against the rendered DOM and failed even though the modal behavior itself was working; the test was tightened to assert stable rendered notes, totals, and system markers instead
+- no automated test failures remained at the end of the session
+- no additional plan document was required because this session did not run in a separate plan-only mode
+
 ## Latest Session: PeriodDetail Sonar Duplication Reduction, Favicon Wiring, And Override-Aware Redeployment
 
 Session outcomes verified in this run:

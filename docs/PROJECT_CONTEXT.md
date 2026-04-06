@@ -83,6 +83,8 @@ These guidelines apply across the project as a whole and should continue guiding
 - maintain a test-with-change discipline for meaningful workflow changes
 - keep backend test isolation in place for mixed-area work
 - treat high-risk workflow changes with extra care, especially around lifecycle, close-out, ledger behavior, and historical integrity
+- treat SonarQube hotspots and coverage gaps as signals for thin risk areas, not as the definition of quality
+- when expanding coverage for quality-gate follow-through, prefer tests that protect meaningful workflow behavior, financial integrity, historical correctness, or user-critical guidance rather than metric-only line execution
 
 ### Operational Rules
 
@@ -260,6 +262,7 @@ Dosh now has a meaningful multi-layer regression baseline:
 - backend `pytest`
 - frontend Jest and React Testing Library on the Vite-based frontend, including a dedicated layout-navigation regression baseline for current sidebar behavior
 - dedicated frontend regression suites for [AmountCell.jsx](/home/ubuntu/dosh/frontend/src/components/AmountCell.jsx), [Dashboard.jsx](/home/ubuntu/dosh/frontend/src/pages/Dashboard.jsx), [PersonalisationTab.jsx](/home/ubuntu/dosh/frontend/src/pages/tabs/PersonalisationTab.jsx), [AmountExpressionInput.jsx](/home/ubuntu/dosh/frontend/src/components/AmountExpressionInput.jsx), and [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx)
+- direct backend router-guard regression coverage for [periods.py](/home/ubuntu/dosh/backend/app/routers/periods.py) now also exists in [test_period_router_guards.py](/home/ubuntu/dosh/backend/tests/test_period_router_guards.py) for carried-forward removal blocking, recorded-activity delete guards, and invalid paid or revised status transitions
 - Playwright smoke coverage for create-budget, setup gating, first-cycle generation, first expense activity, close-out snapshot visibility, and next-cycle activation
 
 Testing emphasis should remain risk-based.

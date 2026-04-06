@@ -1270,6 +1270,102 @@ describe('PeriodDetailPage', () => {
 
   })
 
+  it('shows balance movement details with transfer direction and source-specific labels', async () => {
+    client.getBalanceTransactions.mockResolvedValue([
+      {
+        id: 1,
+        source: 'transfer',
+        type: 'TRANSFER',
+        amount: '75.00',
+        affected_account_desc: 'Main Account',
+        related_account_desc: 'Savings',
+        note: 'Moved money in',
+        entrydate: '2026-05-12T09:30:00',
+        is_system: false,
+      },
+      {
+        id: 2,
+        source: 'transfer',
+        type: 'TRANSFER',
+        amount: '20.00',
+        affected_account_desc: 'Brokerage',
+        related_account_desc: 'Main Account',
+        note: 'Moved money out',
+        entrydate: '2026-05-13T09:30:00',
+        is_system: false,
+      },
+      {
+        id: 3,
+        source: 'expense',
+        type: 'EXPENSE',
+        amount: '15.00',
+        affected_account_desc: 'Main Account',
+        source_label: 'Groceries',
+        note: 'Weekly shop',
+        entrydate: '2026-05-14T09:30:00',
+        is_system: false,
+      },
+      {
+        id: 4,
+        source: 'balance',
+        type: 'SYSTEM',
+        amount: '5.00',
+        affected_account_desc: 'Main Account',
+        source_label: 'Opening correction',
+        system_reason: 'Aligned to imported opening balance.',
+        note: null,
+        entrydate: '2026-05-15T09:30:00',
+        is_system: true,
+      },
+    ])
+    client.getBudget.mockResolvedValue({
+      budgetid: 1,
+      budgetowner: 'Alex',
+      description: 'Home Budget',
+      budget_frequency: 'Monthly',
+      allow_cycle_lock: true,
+    })
+    client.getPeriodDetail.mockResolvedValue({
+      period: {
+        finperiodid: 71,
+        budgetid: 1,
+        startdate: '2026-05-01T00:00:00',
+        enddate: '2026-05-31T00:00:00',
+        islocked: false,
+        cycle_status: 'ACTIVE',
+      },
+      incomes: [],
+      expenses: [],
+      investments: [],
+      balances: [
+        {
+          balancedesc: 'Main Account',
+          balance_type: 'Transaction',
+          opening_amount: '1000.00',
+          movement_amount: '45.00',
+        },
+      ],
+      closeout_snapshot: null,
+    })
+
+    renderWithProviders(<PeriodDetailPage />, {
+      route: '/periods/71',
+      path: '/periods/:periodId',
+    })
+
+    fireEvent.click(await screen.findByTitle('View supporting transactions'))
+
+    expect(await screen.findByText('Movement Details — Main Account')).toBeTruthy()
+    expect(await screen.findByText('Moved money in')).toBeTruthy()
+    expect(screen.getByText('Moved money out')).toBeTruthy()
+    expect(screen.getByText('Weekly shop')).toBeTruthy()
+    expect(screen.getByText('Aligned to imported opening balance.')).toBeTruthy()
+    expect(screen.getByText('Transactions Total')).toBeTruthy()
+    expect(screen.getAllByText('TRANSFER').length).toBe(2)
+    expect(screen.getAllByText('$45.00').length).toBeGreaterThan(0)
+    expect(screen.getByText('System')).toBeTruthy()
+  })
+
   it('reopens a paid expense as revised immediately', async () => {
     client.getBudget.mockResolvedValue({
       budgetid: 1,
