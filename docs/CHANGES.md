@@ -29,6 +29,64 @@ For the dedicated implementation plan that drove the income transaction unificat
 
 For the dedicated workflow plan that now owns budget-adjustment, revision-history, and setup-history rules in this area, read [BUDGET_ADJUSTMENT_REVISION_HISTORY_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_ADJUSTMENT_REVISION_HISTORY_PLAN.md).
 
+## Latest Session: SonarQube Root-Cluster Cleanup, Frontend Props Validation Baseline, Documentation Alignment, And Deployment Verification
+
+This session focused on understanding the latest SonarQube analysis state, fixing the dominant root cluster rather than isolated findings, and then aligning the project handoff, history, activity, and testing documents to that new baseline.
+
+Important direction now in place:
+
+- the latest successful SonarQube artifact is now a practical session-starting input for quality cleanup work rather than a hidden CI-only detail
+- the dominant frontend SonarQube cluster was `javascript:S6774` missing props validation, and that cluster has now been addressed across shared components, setup tabs, and the highest-traffic budget pages
+- the frontend now carries an explicit `prop-types` dependency and component-level prop contracts instead of relying on implicit props shape assumptions
+- the full frontend Jest suite passed after the props-validation cleanup, and the stack was rebuilt and redeployed successfully through Docker Compose
+- the frontend production build still completes successfully, but Vite now reports a large main production chunk, which should be treated as follow-up quality work rather than a deployment blocker
+
+### 1. SonarQube triage now has a clearer practical entry point
+
+This session began by tracing the current handoff path from README through the project context, roadmap, history, and testing docs, then grounding the quality work in the latest exported SonarQube artifact rather than working from stale assumptions.
+
+Current behavior:
+
+- the repo includes a SonarQube workflow, scanner configuration, and a fetch script for the latest sanitized artifact
+- the latest successful artifact was pulled locally and used to identify the highest-leverage rule and file clusters before making changes
+- future sessions can continue using the exported summary and issue JSON as the first pass for Sonar-guided cleanup
+
+Important engineering meaning:
+
+- future quality cleanup should continue to target concentrated rule clusters rather than scattering effort across unrelated low-volume findings
+- the latest SonarQube artifact is now part of the practical operational toolset for Dosh quality work
+
+### 2. The frontend now has an explicit props-validation baseline
+
+The largest open SonarQube cluster was missing props validation across React components.
+
+Current behavior:
+
+- `prop-types` is now installed in the frontend dependency tree
+- shared components, setup tabs, and high-traffic page components now define explicit `propTypes`
+- the props-validation pass covered the main files where the cluster was concentrated, including layout, budget overview, budget cycles, period detail, setup history, dashboard, and setup tabs
+
+Important product meaning:
+
+- future sessions should preserve explicit prop contracts when new presentational or page-level components are added
+- SonarQube-driven frontend cleanup should now move on to the next concentrated rules rather than revisiting missing props validation as a recurring baseline issue
+
+### 3. Verification and deployment both passed after the cleanup
+
+This session did not stop at static code cleanup; it also verified and deployed the result.
+
+Current behavior:
+
+- the full frontend Jest suite passed after adding the prop contracts
+- backend and frontend images rebuilt successfully through Docker Compose
+- the live health endpoint continued returning `{"status":"ok","app":"Dosh"}`
+- the frontend production build completed successfully, though Vite reported a large production chunk warning
+
+Important engineering meaning:
+
+- the props-validation cleanup is now reflected in the deployed stack rather than existing only as an unverified local change
+- bundle-size follow-up is useful future quality work, but it is not currently blocking deployment or basic runtime health
+
 ## Latest Session: Setup-Revision History Expansion, Revision-Number Alignment, Live Schema Recovery, And Income-Table Alignment Repair
 
 This session focused on making setup-item history trustworthy, aligning revision numbering to real stored history records, recovering the live setup pages after a schema mismatch, and correcting follow-on UI regressions introduced during that work.
