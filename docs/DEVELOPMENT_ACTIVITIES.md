@@ -508,7 +508,7 @@ Status:
 
 Status:
 
-- `Completed`
+- `Active`
 
 - `Completed`: fix the empty visual artifact at the end of the total income line on the period detail page
 - `Completed`: align the investment spent pill wording and behavior with the expense spent pill so both outflow workflows feel consistent
@@ -518,6 +518,7 @@ Status:
 - `Completed`: fix the `Add New Income Item` modal so it supports creating a brand-new income line inline, matching the supported `Add New Expense Item` modal workflow
 - `Completed`: resolve the dominant SonarQube frontend issue cluster by adding explicit React props validation across shared components, setup tabs, and high-traffic budget pages
 - fix the inability to edit an income line from budget setup
+- `Completed`: fix budget deletion so attempting to remove a budget does not fail with a SQLite `FOREIGN KEY constraint failed` error in the backend ASGI path once setup revision history exists
 - `Completed`: add the missing webpage favicon so browser tabs and installed shortcuts show the app identity correctly
 - `Completed`: recover the budget setup sections after the live setup-history schema mismatch temporarily made income, expense, and investment lines appear missing
 

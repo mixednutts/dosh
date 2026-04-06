@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from app.time_utils import app_now_naive
-from app.models import FinancialPeriod, InvestmentItem, PeriodCloseoutSnapshot
+from app.models import Budget, FinancialPeriod, InvestmentItem, PeriodCloseoutSnapshot, SetupRevisionEvent
 
 from .factories import create_minimum_budget_setup, iso_date
 
@@ -83,6 +83,35 @@ def test_budget_account_naming_preference_can_be_saved(client):
 
     assert response.status_code == 200, response.text
     assert response.json()["account_naming_preference"] == "Checking"
+
+
+def test_budget_can_be_deleted_after_setup_revision_history_exists(client, db_session):
+    setup = create_minimum_budget_setup(db_session)
+    budget = setup["budget"]
+    budgetid = budget.budgetid
+
+    revision_response = client.patch(
+        f"/api/budgets/{budgetid}/income-types/Salary",
+        json={"amount": "2600.00"},
+    )
+    assert revision_response.status_code == 200, revision_response.text
+
+    assert (
+        db_session.query(SetupRevisionEvent)
+        .filter(SetupRevisionEvent.budgetid == budgetid)
+        .count()
+    ) == 1
+
+    delete_response = client.delete(f"/api/budgets/{budgetid}")
+
+    assert delete_response.status_code == 204, delete_response.text
+    db_session.expire_all()
+    assert db_session.get(Budget, budgetid) is None
+    assert (
+        db_session.query(SetupRevisionEvent)
+        .filter(SetupRevisionEvent.budgetid == budgetid)
+        .count()
+    ) == 0
 
 
 def test_demo_budget_endpoint_returns_not_found_when_dev_mode_is_disabled(client):

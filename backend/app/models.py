@@ -39,6 +39,7 @@ class Budget(Base):
     expense_items = relationship("ExpenseItem", back_populates="budget", cascade="all, delete-orphan")
     investment_items = relationship("InvestmentItem", back_populates="budget", cascade="all, delete-orphan")
     balance_types = relationship("BalanceType", back_populates="budget", cascade="all, delete-orphan")
+    setup_revision_events = relationship("SetupRevisionEvent", back_populates="budget", cascade="all, delete-orphan")
 
 
 class PayType(Base):
@@ -309,3 +310,5 @@ class SetupRevisionEvent(Base):
     revisionnum = Column(Integer, nullable=False)
     changed_fields_json = Column(Text, nullable=False, default="[]")
     created_at = Column(DateTime, default=dt.utcnow, nullable=False)
+
+    budget = relationship("Budget", back_populates="setup_revision_events")

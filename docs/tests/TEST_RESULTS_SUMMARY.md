@@ -4,6 +4,54 @@ This document records meaningful automated test results from major working sessi
 
 It exists separately from [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) so the strategy can stay stable while future sessions still have a record of what was actually run and verified.
 
+## Latest Session: Budget Deletion Foreign-Key Fix And Deployment Verification
+
+Session outcomes verified in this run:
+
+- deleting a budget no longer fails when setup revision history exists for that budget
+- [Budget](/home/ubuntu/dosh/backend/app/models.py) now owns [SetupRevisionEvent](/home/ubuntu/dosh/backend/app/models.py) rows through an explicit cascading relationship so budget deletion removes setup-history children safely
+- backend regression coverage now includes deleting a budget after a direct setup revision has been recorded
+- the stack was rebuilt and redeployed successfully after the fix, and the live health endpoint remained healthy
+
+### Backend verification
+
+Commands run during this session:
+
+```bash
+cd /home/ubuntu/dosh
+./backend/.venv/bin/pytest -q backend/tests/test_app_smoke.py -k 'budget_can_be_deleted_after_setup_revision_history_exists or budget_account_naming_preference_can_be_saved'
+./backend/.venv/bin/pytest -q backend/tests/test_budget_adjustments.py -k 'setup_amount_change_creates_setup_revision_history_event or history_merges_setup_revision_events_with_budget_adjustments'
+```
+
+Result:
+
+- the focused budget-delete regression check passed with 2 selected tests
+- the focused setup-history regression check passed with 3 selected tests
+- the targeted verification confirmed both the delete-path fix and that setup-history behavior still works after the model relationship change
+- plain `pytest` remained unavailable in the base shell, so the project virtualenv under [backend/.venv](/home/ubuntu/dosh/backend/.venv) remained the correct execution path
+
+### Deployment verification
+
+Commands run during this session:
+
+```bash
+docker compose -f /home/ubuntu/dosh/docker-compose.yml -f /home/ubuntu/dosh/docker-compose.override.yml up -d --build
+docker compose -f /home/ubuntu/dosh/docker-compose.yml -f /home/ubuntu/dosh/docker-compose.override.yml ps
+curl -sS http://127.0.0.1:3080/api/health
+```
+
+Result:
+
+- backend and frontend images rebuilt successfully
+- both containers restarted successfully through the override-aware compose path
+- the live health endpoint returned `{"status":"ok","app":"Dosh"}`
+
+### Test failures and resolution notes
+
+- the first version of the new delete-budget regression test failed after the API delete succeeded because the test tried to read the deleted ORM instance after session expiration; the test was corrected to capture the integer `budgetid` before deletion and then assert against fresh session lookups instead
+- no automated test failures remained at the end of the session
+- no additional plan document was required because this session did not run in a separate plan-only mode
+
 ## Latest Session: Sonar Coverage Follow-Through, New Frontend Regression Suites, Full Suite Verification, And Redeployment
 
 Session outcomes verified in this run:

@@ -31,6 +31,47 @@ For the dedicated workflow plan that now owns budget-adjustment, revision-histor
 
 For the implemented amount-entry plan that now defines inline arithmetic scope, preview behavior, and parser boundaries for period-detail modals, read [INLINE_EXPRESSION_AMOUNT_INPUT_PLAN.md](/home/ubuntu/dosh/docs/plans/INLINE_EXPRESSION_AMOUNT_INPUT_PLAN.md).
 
+## Latest Session: Budget Deletion Foreign-Key Remediation And Redeployment
+
+This session focused on a backend delete-path failure where removing a budget could raise a SQLite `FOREIGN KEY constraint failed` error once setup revision history existed for that budget.
+
+Important direction now in place:
+
+- deleting a budget no longer fails when setup revision history rows exist for that budget
+- the missing cascade path was traced to [SetupRevisionEvent](/home/ubuntu/dosh/backend/app/models.py), which referenced `budgets.budgetid` but previously was not owned through a matching relationship on [Budget](/home/ubuntu/dosh/backend/app/models.py)
+- [models.py](/home/ubuntu/dosh/backend/app/models.py) now gives [Budget](/home/ubuntu/dosh/backend/app/models.py) an explicit `setup_revision_events` relationship with `all, delete-orphan` cascade, and [SetupRevisionEvent](/home/ubuntu/dosh/backend/app/models.py) now links back to its parent budget
+- a regression test now proves that a budget can still be deleted after direct setup-history revisions have been recorded
+- the stack was rebuilt and redeployed successfully after the fix, and the live health endpoint still returned `{"status":"ok","app":"Dosh"}`
+
+### 1. The failure was caused by setup-history rows outliving the budget delete path
+
+The original delete route in [budgets.py](/home/ubuntu/dosh/backend/app/routers/budgets.py) relied on ORM cascade behavior for dependent records but did not own setup revision events explicitly.
+
+Current behavior:
+
+- periods, setup items, and balances were already attached to [Budget](/home/ubuntu/dosh/backend/app/models.py) through cascading relationships
+- [SetupRevisionEvent](/home/ubuntu/dosh/backend/app/models.py) still had a foreign key to `budgets.budgetid`, but no owning relationship from [Budget](/home/ubuntu/dosh/backend/app/models.py)
+- once setup-history revisions existed, deleting the budget could violate SQLite foreign-key enforcement during commit
+
+Important engineering meaning:
+
+- future model additions that reference `budgets.budgetid` should be reviewed for delete ownership as part of the same change
+- budget-level delete behavior should keep using modeled ownership rather than ad hoc cleanup queries when the child rows are true dependents
+
+### 2. Regression coverage now protects the setup-history variant of budget deletion
+
+This session added backend regression coverage for the exact historical variant that triggered the live bug.
+
+Current behavior:
+
+- [test_app_smoke.py](/home/ubuntu/dosh/backend/tests/test_app_smoke.py) now creates a minimal valid budget, records a setup revision through the income-type update path, confirms a [SetupRevisionEvent](/home/ubuntu/dosh/backend/app/models.py) exists, deletes the budget through the API, and verifies that both the budget row and its setup-history rows are removed
+- focused setup-history tests still pass after the relationship change, which confirms the fix did not weaken the history feature itself
+
+Important engineering meaning:
+
+- future delete regressions in this area should continue covering historically meaningful child rows, not only currently visible UI entities
+- setup-history support is now part of the expected budget-delete safety surface, not an incidental side table
+
 ## Latest Session: Sonar Duplication Clearance, Coverage Expansion, Full Regression Verification, And Redeployment
 
 This session focused on confirming whether the recent [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx) cleanup actually cleared the SonarQube duplication gate, then shifting the work from quality-gate triage into healthier regression coverage for newly changed frontend surfaces.
