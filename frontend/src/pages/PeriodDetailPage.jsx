@@ -386,6 +386,31 @@ function AmountSummaryGrid({ items, columns = 3 }) {
   )
 }
 
+function hasLineActualActivity(actualAmount) {
+  return Number(actualAmount ?? 0) > 0
+}
+
+function getPositiveRemainingValue(remainingAmount) {
+  return Math.max(Number(remainingAmount ?? 0), 0)
+}
+
+function getIncomeSurplusContribution({
+  budgetAmount,
+  actualAmount,
+}) {
+  if (hasLineActualActivity(actualAmount)) {
+    return Number(actualAmount ?? 0)
+  }
+  return Number(budgetAmount ?? 0)
+}
+
+function getOutflowSurplusContribution({
+  actualAmount,
+  remainingAmount,
+}) {
+  return Number(actualAmount ?? 0) + getPositiveRemainingValue(remainingAmount)
+}
+
 function TransactionListPanel({
   items,
   isLoading,
@@ -1584,12 +1609,30 @@ export default function PeriodDetailPage() {
   const totalExpenseActual   = expenses.reduce((s, e) => s + Number(e.actualamount), 0)
   const effectiveInvestmentBudget = investments.reduce((s, inv) => s + Number(inv.status === 'Paid' ? inv.actualamount : inv.budgeted_amount ?? 0), 0)
   const totalInvestmentActual = investments.reduce((s, inv) => s + Number(inv.actualamount ?? 0), 0)
-  const totalInvestmentRemaining = investments.reduce((s, inv) => s + Math.max(Number(inv.remaining_amount ?? 0), 0), 0)
-  const totalExpenseRemaining = expenses.reduce((s, e) => s + Math.max(Number(e.remaining_amount ?? 0), 0), 0)
+  const totalInvestmentRemaining = investments.reduce((s, inv) => s + getPositiveRemainingValue(inv.remaining_amount), 0)
+  const totalExpenseRemaining = expenses.reduce((s, e) => s + getPositiveRemainingValue(e.remaining_amount), 0)
   const totalBalanceOpening = balances.reduce((s, b) => s + Number(b.opening_amount ?? 0), 0)
   const totalBalanceClosing = balances.reduce((s, b) => s + Number(b.opening_amount ?? 0) + Number(b.movement_amount ?? 0), 0)
   const surplusActual = totalIncomeActual - totalExpenseActual - totalInvestmentActual
-  const surplusBudget = surplusActual - totalExpenseRemaining - totalInvestmentRemaining
+  const budgetIncomeContribution = incomes.reduce((s, income) => (
+    s + getIncomeSurplusContribution({
+      budgetAmount: income.budgetamount,
+      actualAmount: income.actualamount,
+    })
+  ), 0)
+  const budgetExpenseContribution = expenses.reduce((s, expense) => (
+    s + getOutflowSurplusContribution({
+      actualAmount: expense.actualamount,
+      remainingAmount: expense.remaining_amount,
+    })
+  ), 0)
+  const budgetInvestmentContribution = investments.reduce((s, investment) => (
+    s + getOutflowSurplusContribution({
+      actualAmount: investment.actualamount,
+      remainingAmount: investment.remaining_amount,
+    })
+  ), 0)
+  const surplusBudget = budgetIncomeContribution - budgetExpenseContribution - budgetInvestmentContribution
   const projectedSavings = Number(data.projected_savings ?? 0)
   const filteredExpenses = expenses.filter(expense => expenseStatusFilter === 'all' || expense.status === expenseStatusFilter)
 

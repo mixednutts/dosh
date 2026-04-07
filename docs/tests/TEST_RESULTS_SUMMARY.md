@@ -12,7 +12,8 @@ Session outcomes verified in this run:
 - account opening balances now become read-only once downstream budget-cycle usage exists, with regression coverage for the protected edit behavior
 - setup wording now uses `Income Source` across the touched setup surfaces
 - the legacy income `isfixed` behavior was removed from frontend, backend, factories, smoke coverage, and focused regressions; generated cycles now use the current stored income-source amount directly whenever the source is auto-included
-- period-detail remaining-expense, remaining-investment, and budget-surplus totals now roll up from the same lowest-level positive-remaining logic
+- period-detail remaining-expense and remaining-investment totals now roll up from the same lowest-level positive-remaining logic
+- `Surplus (Budget)` now uses a line-level mixed model that preserves the `-30` current-period case while also returning the correct planned result for untouched future periods
 - expense and investment `View transactions` actions now open read-only details modals, and transaction quick-fill wording now uses `Add Remaining` only when a real positive remaining amount exists
 - all accepted changes were deployed through the shared Docker Compose path, and the live health endpoint returned `{\"status\":\"ok\",\"app\":\"Dosh\"}` after each final rollout
 
@@ -56,6 +57,7 @@ npm test -- --runInBand src/__tests__/BudgetDetailPage.test.jsx
 npm test -- --runInBand src/__tests__/IncomeTypesTab.test.jsx src/__tests__/PeriodDetailPage.test.jsx src/__tests__/BudgetDetailPage.test.jsx src/__tests__/BudgetPeriodsPage.test.jsx src/__tests__/BudgetsPage.test.jsx src/__tests__/Layout.test.jsx
 npm test -- --runInBand src/__tests__/PeriodDetailPage.test.jsx
 npm test -- --runInBand src/__tests__/BalanceTypesTab.test.jsx
+npm test -- --runInBand src/__tests__/PeriodDetailPage.test.jsx
 ```
 
 Result:
@@ -64,6 +66,7 @@ Result:
 - the setup-page heading change from `Income Types` to `Income Sources` passed in its focused regression rerun
 - the income-source cleanup batch passed after removing `Fixed amount` from the product-facing setup and period-detail flows
 - the later focused reruns for period-detail summary logic, read-only details modals, inline status-filter placement, and `Add Remaining` transaction-entry behavior all passed
+- the final focused rerun passed after tightening `Surplus (Budget)` so it handles both mixed-actual current periods and untouched future periods correctly
 
 Files with meaningful frontend updates in this session:
 
@@ -101,7 +104,8 @@ Result:
 ### Test failures and resolution notes
 
 - no unresolved automated test failures remained at the end of the session
-- the main follow-through in this session was regression rewriting rather than chasing a flaky suite; once the focused expectations were updated to the new income-source and period-detail rules, the documented runs finished green
+- the first attempt at the future-period `Surplus (Budget)` fix applied the same contribution rule to both income and outflow lines, which broke the existing mixed-actual `-30` case; the final fix split income and outflow contribution rules and the focused rerun passed
+- the future-period surplus assertion also needed a card-scoped matcher because `$0.00` appears in several places on the page; the final regression now asserts against the `Surplus (Budget)` card specifically
 - no additional plan document was required because this session did not run in a separate plan-only mode
 
 ## Latest Session: Sonar Coverage Recovery, Medium-Issue Cleanup Verification, And CI Compatibility Resolution

@@ -46,6 +46,7 @@ Important direction now in place:
 - expense and investment `View transactions` now behave as true read-only details modals, matching the existing movement-details pattern instead of exposing add-transaction controls through the details action
 - transaction quick-fill wording now uses `Add Remaining` only when a real positive remaining amount exists, and credit or refund flows intentionally do not show that shortcut
 - the legacy `incometypes.isfixed` database column is now removed through a lightweight startup cleanup if it still exists, which restores correctness for the current baseline but also reinforces that proper versioned migrations remain the long-term follow-up
+- `Surplus (Budget)` has now also been corrected for untouched future periods by using line-level fallback behavior instead of treating all periods as if actual-driven rollups should apply in the same way
 
 ### 1. Budget setup now enforces primary-account integrity more clearly
 
@@ -91,7 +92,11 @@ Current behavior:
 
 - [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx) now totals remaining expenses and remaining investments from positive remaining values only
 - deficit lines still display their own negative remaining values at the row level
-- `Surplus (Budget)` now rolls up from `Surplus (Actual) - Remaining Expenses - Remaining Investments`
+- `Surplus (Budget)` now uses a mixed line-level model:
+  untouched income lines contribute their budget amount
+  income lines with activity contribute actual amount
+  expense and investment lines contribute actual plus positive remaining obligation
+- untouched future periods therefore fall back to planned budget values, while current periods with partial activity still preserve the expected mixed-actual result
 - the expense status filter now sits inline with the `Status / Txns` column header rather than floating as a separate control
 - expense and investment details modals now open in read-only mode from `View transactions`, reserving add-transaction behavior for the explicit add actions
 - modal quick-fill language now says `Add Remaining` only when there is a real positive remaining obligation to record, and not in credit-style flows

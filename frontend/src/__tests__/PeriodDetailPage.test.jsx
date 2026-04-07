@@ -47,6 +47,13 @@ jest.mock('../components/Modal', () => ({ title, children }) => (
 
 const client = require('../api/client')
 
+function expectSummaryCardValue(label, value) {
+  const cardLabel = screen.getByText(label)
+  const card = cardLabel.closest('div')
+  expect(card).toBeTruthy()
+  expect(card.textContent).toContain(value)
+}
+
 describe('PeriodDetailPage', () => {
   beforeEach(() => {
     jest.clearAllMocks()
@@ -1832,7 +1839,7 @@ describe('PeriodDetailPage', () => {
     })
 
     expect(await screen.findByText('Surplus (Budget)')).toBeTruthy()
-    expect(screen.getByText('-$30.00')).toBeTruthy()
+    expectSummaryCardValue('Surplus (Budget)', '-$30.00')
 
     const totalExpensesRow = screen.getByText('Total Expenses').closest('tr')
     expect(totalExpensesRow).toBeTruthy()
@@ -1892,6 +1899,79 @@ describe('PeriodDetailPage', () => {
     await waitFor(() => {
       expect(client.setPeriodExpenseStatus).toHaveBeenCalledWith(59, 'Utilities', 'Revised', null)
     })
+  })
+
+  it('uses planned budget amounts for surplus budget in untouched future periods', async () => {
+    client.getBudget.mockResolvedValue({
+      budgetid: 1,
+      budgetowner: 'Alex',
+      description: 'Home Budget',
+      budget_frequency: 'Monthly',
+      allow_cycle_lock: true,
+    })
+    client.getPeriodDetail.mockResolvedValue({
+      period: {
+        finperiodid: 175,
+        budgetid: 1,
+        startdate: '2026-08-01T00:00:00',
+        enddate: '2026-08-31T00:00:00',
+        islocked: false,
+        cycle_status: 'PLANNED',
+      },
+      incomes: [
+        {
+          finperiodid: 175,
+          budgetid: 1,
+          incomedesc: 'Salary',
+          budgetamount: '890.00',
+          actualamount: '0.00',
+          varianceamount: '890.00',
+          is_system: false,
+          system_key: null,
+        },
+      ],
+      expenses: [
+        {
+          finperiodid: 175,
+          budgetid: 1,
+          expensedesc: 'Rent',
+          budgetamount: '785.00',
+          actualamount: '0.00',
+          remaining_amount: '785.00',
+          freqtype: 'Always',
+          is_oneoff: true,
+          note: null,
+          status: 'Current',
+          revision_comment: null,
+        },
+      ],
+      investments: [
+        {
+          finperiodid: 175,
+          budgetid: 1,
+          investmentdesc: 'Emergency Fund',
+          budgeted_amount: '105.00',
+          actualamount: '0.00',
+          remaining_amount: '105.00',
+          linked_account_desc: 'Savings',
+          opening_value: '1000.00',
+          closing_value: '1000.00',
+          status: 'Current',
+          revision_comment: null,
+        },
+      ],
+      balances: [],
+      closeout_snapshot: null,
+      projected_savings: '105.00',
+    })
+
+    renderWithProviders(<PeriodDetailPage />, {
+      route: '/periods/175',
+      path: '/periods/:periodId',
+    })
+
+    expect(await screen.findByText('Surplus (Budget)')).toBeTruthy()
+    expectSummaryCardValue('Surplus (Budget)', '$0.00')
   })
 
   it('reopens a paid investment as revised immediately', async () => {

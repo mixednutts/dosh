@@ -226,7 +226,7 @@ The repository already supports:
 - budget setup now supports renaming an income type through the setup edit flow when that item is not already protected by downstream use
 - budget setup now uses `Income Source` wording in the touched setup flows, and new income sources default `Auto-include` to on
 - period-detail expense and investment `View transactions` actions now open read-only details modals, while add-transaction actions remain explicit
-- period-detail remaining and budget-surplus summaries now roll up from the same positive-remaining line logic used by the row-level expense and investment calculations
+- period-detail remaining and budget-surplus summaries now roll up from line-level budget, actual, and positive-remaining logic so current mixed-actual periods and untouched future periods both behave consistently
 
 Current frontend wording trends toward `Budget Cycle` for user clarity while backend naming still uses `period` for stability.
 

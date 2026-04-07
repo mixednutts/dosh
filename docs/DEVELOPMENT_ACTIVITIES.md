@@ -105,6 +105,7 @@ Status:
 - add a period comparison summary endpoint
 - add reporting cards on the budget summary page
 - build account movement summaries grouped by source
+- move period-detail summary-card rollups onto canonical backend-calculated summary values so the API, not the frontend page, owns the mixed budget, actual, and remaining calculations
 
 #### Activity Group: Trend and Variance Visibility
 
@@ -115,6 +116,7 @@ Status:
 - add surplus trend and planned-vs-actual trend views
 - improve explanations of surplus changes over time
 - improve savings and investment trend visibility
+- add a `Forecast Remaining Position` summary card to period details so users can compare the live mixed remaining position with the existing budget and actual summary values
 
 #### Activity Group: Historical Reporting Usability
 
@@ -491,6 +493,7 @@ Status:
 
 - `Next`
 
+- provide clear definitions and calculation explanations for the period-detail summary cards, likely through hover helper text or another suitable method, with implementation approach to be confirmed before work starts
 - `Completed`: align the budget-setup account table headings and values, separate add-account helper copy more clearly, and tighten primary-account affordances so the setup flow explains what is active, what is primary, and why
 - `Completed`: rename budget-setup income wording from `Income Type` to `Income Source` across the relevant setup surfaces
 - `Completed`: make expense and investment `View transactions` behave as read-only details modals so they match the movement-details pattern instead of showing add-transaction controls
@@ -516,6 +519,7 @@ Status:
 
 - `Active`
 
+- `Completed`: fix `Surplus (Budget)` so current mixed-actual periods and untouched future periods both roll up correctly from line-level budget, actual, and remaining values rather than relying on one top-level actual-based shortcut
 - `Completed`: prevent account-setup edits or deletes from leaving the budget with no active primary transaction account, while defaulting the first transaction account to primary and warning before switching primary status
 - `Completed`: protect account opening balances from edits once downstream budget-cycle use exists and explain the lock reason in the setup UI
 - `Completed`: remove the retired income `isfixed` behavior so generated cycles now use the income source amount directly and new income sources default to auto-include unless the user unchecks it
