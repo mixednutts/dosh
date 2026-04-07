@@ -100,6 +100,79 @@ Files with meaningful backend updates in this session:
 - no automated test failures remained at the end of the session after the compatibility fix
 - no additional plan document was required because this session did not run in a separate plan-only mode
 
+## Latest Session: Final Sonar Medium-Issue Cleanup Verification
+
+Session outcomes verified in this run:
+
+- the latest successful SonarQube artifact was re-pulled and the exact remaining `MAJOR` issue list was confirmed directly from the artifact rather than inferred from earlier summaries
+- the actual remaining medium issues were limited to 8 findings across [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx), [BalanceTypesTab.jsx](/home/ubuntu/dosh/frontend/src/pages/tabs/BalanceTypesTab.jsx), [ExpenseItemsTab.jsx](/home/ubuntu/dosh/frontend/src/pages/tabs/ExpenseItemsTab.jsx), and [budget_health.py](/home/ubuntu/dosh/backend/app/budget_health.py)
+- the frontend cleanup batch passed after the helper extraction and render-structure changes
+- the backend cleanup batch also passed after the budget-health timing-factor logic was preserved through a helper-based refactor
+- a fresh Sonar workflow is still required to confirm the remote issue count falls as expected after these local changes
+
+### Sonar artifact verification
+
+Commands run during this session:
+
+```bash
+cd /home/ubuntu/dosh
+gh run list --workflow SonarQube --limit 5 --json databaseId,headSha,headBranch,status,conclusion,createdAt,updatedAt,displayTitle
+gh run download 24059573777 -n sonar-summary-24059573777 -D /tmp/dosh-sonar-artifact/run-24059573777
+jq '[.issues[] | select(.severity=="MAJOR")] | length' /tmp/dosh-sonar-artifact/run-24059573777/sonar-issues-full.json
+```
+
+Result:
+
+- the latest successful Sonar run inspected in this session was `24059573777`
+- the downloaded artifact confirmed that `8` medium (`MAJOR`) issues remained at the start of this cleanup pass
+- those issues were concentrated enough to address in one local pass without a broader refactor campaign
+
+### Frontend verification
+
+Commands run during this session:
+
+```bash
+cd /home/ubuntu/dosh/frontend
+npm test -- --runInBand src/__tests__/PeriodDetailPage.test.jsx src/__tests__/BalanceTypesTab.test.jsx src/__tests__/ExpenseItemsTab.test.jsx
+```
+
+Result:
+
+- the focused frontend cleanup batch passed with 3 suites and 33 tests
+- the passing frontend run gives direct regression coverage for the files where the remaining Sonar issues were cleared
+
+Files with meaningful frontend updates in this session:
+
+- [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx)
+- [BalanceTypesTab.jsx](/home/ubuntu/dosh/frontend/src/pages/tabs/BalanceTypesTab.jsx)
+- [ExpenseItemsTab.jsx](/home/ubuntu/dosh/frontend/src/pages/tabs/ExpenseItemsTab.jsx)
+
+### Backend verification
+
+Commands run during this session:
+
+```bash
+cd /home/ubuntu/dosh/backend
+../backend/.venv/bin/python -m pytest tests/test_app_smoke.py tests/test_delete_continuity.py tests/test_period_logic.py
+```
+
+Result:
+
+- the focused backend cleanup batch passed with 14 tests
+- the first rerun in this session exposed a `NameError` after an over-aggressive local cleanup removed the live `timing_factor` input from [budget_health.py](/home/ubuntu/dosh/backend/app/budget_health.py)
+- that regression was resolved by extracting the timing-factor calculation into a helper while preserving the original scoring path, and the rerun then passed
+
+Files with meaningful backend updates in this session:
+
+- [budget_health.py](/home/ubuntu/dosh/backend/app/budget_health.py)
+
+### Test failures and resolution notes
+
+- the first backend attempt to satisfy the Sonar unused-assignment rule removed the `timing_factor` value entirely, which caused a local `NameError` during the smoke-path budget-health calculation
+- the final fix restored the live scoring input through a dedicated helper instead of deleting the value
+- no automated test failures remained at the end of the session
+- no additional plan document was required because this session did not run in a separate plan-only mode
+
 ## Latest Session: Create-Budget Walkthrough Hardening, Setup-Copy Localisation, And Repeated Deployment Verification
 
 Session outcomes verified in this run:

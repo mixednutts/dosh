@@ -110,6 +110,64 @@ Important engineering meaning:
 - backend refactors should stay conservative about newer stdlib conveniences unless the CI Python baseline is verified first
 - compatibility-only follow-up fixes should be treated as part of the same workstream rather than as separate product changes
 
+## Latest Session: Final Sonar Medium-Issue Cleanup Pass And Artifact-Guided Verification
+
+This session picked up from the previous SonarQube wrap-up, pulled the latest successful artifact again, confirmed the exact remaining `MAJOR` issue list, and cleared the final concentrated cleanup items in one pass.
+
+Important direction now in place:
+
+- the latest successful artifact showed that the remaining medium-severity Sonar work was smaller and more concentrated than expected, but the exact count still needed to be confirmed from the downloaded artifact rather than inferred from memory
+- the remaining issues were limited to two duplicate-function findings and two nested-ternary findings in [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx), one backend unused-assignment finding in [budget_health.py](/home/ubuntu/dosh/backend/app/budget_health.py), one checkbox-label spacing finding in [BalanceTypesTab.jsx](/home/ubuntu/dosh/frontend/src/pages/tabs/BalanceTypesTab.jsx), and one spacing plus one nested-ternary finding in [ExpenseItemsTab.jsx](/home/ubuntu/dosh/frontend/src/pages/tabs/ExpenseItemsTab.jsx)
+- those issues were resolved through local helper extraction and small render-structure cleanup rather than broader workflow changes
+- the first local attempt to satisfy the backend unused-assignment rule accidentally removed a live scoring input, so the timing-factor logic was preserved by extracting it into a helper instead of deleting it
+- focused frontend and backend regression checks passed after the cleanup, but a fresh workflow run is still required before these Sonar resolutions should be treated as CI-confirmed complete
+
+### 1. Latest Sonar work should continue starting from the downloaded artifact, not from remembered issue counts
+
+This session started by re-pulling the latest successful Sonar artifact and verifying the actual remaining issue list before editing any files.
+
+Current behavior:
+
+- the latest successful artifact was downloaded again and inspected through [sonar-summary.json](/tmp/dosh-sonar-artifact/run-24059573777/sonar-summary.json) and [sonar-issues-full.json](/tmp/dosh-sonar-artifact/run-24059573777/sonar-issues-full.json)
+- the remaining `MAJOR` issue list was confirmed directly from the artifact rather than relying on an approximate remembered count
+- the residual cleanup surface was small enough to handle in one pass across four files
+
+Important engineering meaning:
+
+- future Sonar follow-through should continue using the artifact as the source of truth for what actually remains
+- grouped cleanup passes are still appropriate when the remaining issues are concentrated and low risk, but the exact issue list should be confirmed first
+
+### 2. The remaining frontend issues were cleared through helper extraction and simpler render structure
+
+The remaining frontend issues were narrow and did not require workflow redesign.
+
+Current behavior:
+
+- [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx) now uses a shared transaction-submit handler helper instead of repeating nearly identical submit functions across transaction modals
+- [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx) now uses a transaction-list-content helper instead of keeping the remaining nested ternary render chain inline
+- [ExpenseItemsTab.jsx](/home/ubuntu/dosh/frontend/src/pages/tabs/ExpenseItemsTab.jsx) now uses an explicit pay-type badge helper instead of rendering the badge through a nested ternary
+- [BalanceTypesTab.jsx](/home/ubuntu/dosh/frontend/src/pages/tabs/BalanceTypesTab.jsx) and [ExpenseItemsTab.jsx](/home/ubuntu/dosh/frontend/src/pages/tabs/ExpenseItemsTab.jsx) now wrap checkbox-label text explicitly so the remaining spacing findings are removed without changing user-visible meaning
+
+Important engineering meaning:
+
+- these fixes preserve behavior while reducing inline branching density in high-traffic UI code
+- future Sonar cleanup in these areas should continue preferring small named helpers over growing conditional render chains
+
+### 3. The backend health cleanup had to preserve live scoring behavior while satisfying the rule
+
+The one backend Sonar issue looked trivial at first, but the first edit showed it was attached to live scoring behavior.
+
+Current behavior:
+
+- [budget_health.py](/home/ubuntu/dosh/backend/app/budget_health.py) now keeps the timing-factor calculation through a dedicated helper rather than leaving the expression inline in the scoring block
+- the helper preserves the original health-score behavior while resolving the Sonar unused-assignment finding
+- this area currently has indirect regression protection through smoke and continuity paths rather than a dedicated budget-health unit test for the timing-factor branch
+
+Important engineering meaning:
+
+- backend cleanup for scoring or budgeting heuristics should not treat “unused assignment” findings as safe deletion work until the later score construction is checked carefully
+- if budget-health work expands again, a direct regression test around the timing-factor scoring path would be a worthwhile follow-up
+
 ## Latest Session: Create-Budget Guidance Refresh, Custom Day-Cycle Support, Setup-Copy Localisation, And Repeated Deployment Verification
 
 This session focused on the walkthrough surfaces around budget creation and budget setup, including the create-budget modal, custom day-cycle support, setup-guidance wording, and small-but-user-visible alignment or interaction bugs discovered during live review.
