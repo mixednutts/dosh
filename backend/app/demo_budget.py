@@ -12,6 +12,7 @@ from .routers.periods import generate_period
 from .schemas import PeriodGenerateRequest
 from .time_utils import app_now_naive
 from .transaction_ledger import (
+    PeriodTransactionContext,
     build_budget_adjustment_tx,
     build_expense_tx,
     build_income_tx,
@@ -224,13 +225,16 @@ def _add_demo_budget_adjustments(period, db: Session) -> None:
         after_amount = Decimal("4350.00")
         salary.budgetamount = after_amount
         build_budget_adjustment_tx(
-            period.finperiodid,
-            period.budgetid,
-            "income",
-            "Salary",
             db,
+            PeriodTransactionContext(
+                finperiodid=period.finperiodid,
+                budgetid=period.budgetid,
+                source="income",
+                tx_type="BUDGETADJ",
+                source_key="Salary",
+                budget_scope="current",
+            ),
             note="Adjusted after an in-cycle pay review.",
-            budget_scope="current",
             budget_before_amount=before_amount,
             budget_after_amount=after_amount,
         )
@@ -241,13 +245,16 @@ def _add_demo_budget_adjustments(period, db: Session) -> None:
         after_amount = Decimal("110.00")
         subscriptions.budgetamount = after_amount
         build_budget_adjustment_tx(
-            period.finperiodid,
-            period.budgetid,
-            "expense",
-            "Subscriptions",
             db,
+            PeriodTransactionContext(
+                finperiodid=period.finperiodid,
+                budgetid=period.budgetid,
+                source="expense",
+                tx_type="BUDGETADJ",
+                source_key="Subscriptions",
+                budget_scope="current",
+            ),
             note="Streaming services increased during the current cycle.",
-            budget_scope="current",
             budget_before_amount=before_amount,
             budget_after_amount=after_amount,
         )
@@ -258,13 +265,16 @@ def _add_demo_budget_adjustments(period, db: Session) -> None:
         after_amount = Decimal("900.00")
         emergency_fund.budgeted_amount = after_amount
         build_budget_adjustment_tx(
-            period.finperiodid,
-            period.budgetid,
-            "investment",
-            "Emergency Fund",
             db,
+            PeriodTransactionContext(
+                finperiodid=period.finperiodid,
+                budgetid=period.budgetid,
+                source="investment",
+                tx_type="BUDGETADJ",
+                source_key="Emergency Fund",
+                budget_scope="current",
+            ),
             note="Savings target was lifted for the rest of the cycle.",
-            budget_scope="current",
             budget_before_amount=before_amount,
             budget_after_amount=after_amount,
         )

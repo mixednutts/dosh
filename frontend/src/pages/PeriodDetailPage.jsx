@@ -179,6 +179,62 @@ function getTransactionModalConfig(kind) {
   return configs[kind]
 }
 
+function buildAddTransactionHandler({ event, resolvedAmount, setError, mutate, type, note, toMutationAmount }) {
+  event.preventDefault()
+  const amountValue = getResolvedAmountValue(resolvedAmount, 0.01)
+  if (amountValue == null) {
+    setError('Enter a valid amount')
+    return
+  }
+  setError('')
+  mutate({ amount: toMutationAmount(type, amountValue), note: note || null })
+}
+
+function getProgressToneClasses({ isOver, isNearLimit, status }) {
+  let trackClass = 'bg-gray-200 dark:bg-gray-700'
+  let fillClass = 'bg-dosh-500'
+  let labelClass = 'text-gray-700 dark:text-gray-200'
+
+  if (isOver) {
+    trackClass = 'bg-red-100 dark:bg-red-900/30'
+    fillClass = 'bg-red-500'
+    labelClass = 'text-red-700 dark:text-red-300'
+  } else if (isNearLimit) {
+    trackClass = 'bg-amber-100 dark:bg-amber-900/30'
+    fillClass = 'bg-amber-500'
+  }
+
+  if (!isOver && status === 'Revised') {
+    labelClass = 'text-amber-700 dark:text-amber-300'
+  }
+
+  return { trackClass, fillClass, labelClass }
+}
+
+function getPeriodBudgetMutation(category, mutations) {
+  if (category === 'income') return mutations.editIncomeBudget
+  if (category === 'expense') return mutations.editExpenseBudget
+  return mutations.editInvBudget
+}
+
+function getExpenseScheduleBadge(expense) {
+  if (expense.is_oneoff) {
+    return <span className="badge-amber">One-off</span>
+  }
+
+  const label = freqLabel(expense.freqtype, expense.frequency_value)
+  if (!label) {
+    return <span className="badge-gray">—</span>
+  }
+
+  const nextDue = calcNextDue(expense.freqtype, expense.frequency_value, expense.effectivedate)
+  return (
+    <span className="badge-blue" title={nextDue ? `Next: ${format(nextDue, 'dd MMM yyyy')}` : undefined}>
+      {label}
+    </span>
+  )
+}
+
 function calcNextDue(freqtype, frequencyValue, effectivedate) {
   const today = new Date(); today.setHours(0, 0, 0, 0)
   if (!freqtype || freqtype === 'Always') return null
@@ -368,6 +424,7 @@ function TransactionEntryForm({
   }
 
   const selectedOption = typeOptions.find(option => option.value === type) ?? typeOptions[0]
+  const noteInputId = `transaction-note-${selectedOption.value}`
 
   return (
     <form onSubmit={onSubmit} className="space-y-3 border-t border-gray-200 pt-1 dark:border-gray-700">
@@ -416,7 +473,9 @@ function TransactionEntryForm({
             Full ({fmt(budgetAmount)})
           </button>
         )}
+        <label htmlFor={noteInputId} className="sr-only">Transaction note</label>
         <input
+          id={noteInputId}
           type="text"
           value={note}
           onChange={e => setNote(e.target.value)}
@@ -529,34 +588,22 @@ function ProgressStatusPill({ item, budgetAmount, actualAmount, remainingAmount,
     )
   }
 
-  const trackCls = isOver
-    ? 'bg-red-100 dark:bg-red-900/30'
-    : isNearLimit
-      ? 'bg-amber-100 dark:bg-amber-900/30'
-      : 'bg-gray-200 dark:bg-gray-700'
-  const fillCls = isOver
-    ? 'bg-red-500'
-    : isNearLimit
-      ? 'bg-amber-500'
-      : 'bg-dosh-500'
-  const labelCls = isOver
-    ? 'text-red-700 dark:text-red-300'
-    : status === 'Revised'
-      ? 'text-amber-700 dark:text-amber-300'
-      : 'text-gray-700 dark:text-gray-200'
+  const { trackClass, fillClass, labelClass } = getProgressToneClasses({ isOver, isNearLimit, status })
+  const revisionSuffix = revisionComment ? ` • Revision: ${revisionComment}` : ''
+  const progressTitle = `${title}${revisionSuffix} • Click to mark Paid`
 
   return (
     <button
       type="button"
       onClick={onMarkPaid}
-      title={`${title}${revisionComment ? ` • Revision: ${revisionComment}` : ''} • Click to mark Paid`}
+      title={progressTitle}
       className="inline-flex min-w-[108px] items-center gap-2 rounded-full border border-gray-200 bg-white px-2 py-1 text-left text-xs transition-colors hover:border-dosh-300 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:border-dosh-700 dark:hover:bg-gray-700"
     >
-      <span className={`w-10 flex-shrink-0 font-semibold ${labelCls}`}>
+      <span className={`w-10 flex-shrink-0 font-semibold ${labelClass}`}>
         {status === 'Revised' ? 'Rev' : 'Spent'}
       </span>
-      <span className={`relative h-2 flex-1 overflow-hidden rounded-full ${trackCls}`}>
-        <span className={`absolute inset-y-0 left-0 rounded-full ${fillCls}`} style={{ width: `${clampedPercent}%` }} />
+      <span className={`relative h-2 flex-1 overflow-hidden rounded-full ${trackClass}`}>
+        <span className={`absolute inset-y-0 left-0 rounded-full ${fillClass}`} style={{ width: `${clampedPercent}%` }} />
         {isOver && <span className="absolute inset-y-0 right-0 w-1 bg-red-700 dark:bg-red-400" />}
       </span>
     </button>
@@ -620,14 +667,15 @@ function IncomeTransactionsModal({ periodId, incomedesc, budgetamount, actualamo
   })
 
   const handleAdd = e => {
-    e.preventDefault()
-    const n = getResolvedAmountValue(resolvedAmount, 0.01)
-    if (n == null) {
-      setError('Enter a valid amount')
-      return
-    }
-    setError('')
-    add.mutate({ amount: config.toMutationAmount(type, n), note: note || null })
+    buildAddTransactionHandler({
+      event: e,
+      resolvedAmount,
+      setError,
+      mutate: add.mutate,
+      type,
+      note,
+      toMutationAmount: config.toMutationAmount,
+    })
   }
 
   const runningTotal = transactions
@@ -764,14 +812,15 @@ function ExpenseEntriesModal({ periodId, budgetId, expensedesc, budgetamount, ac
   })
 
   const handleAdd = e => {
-    e.preventDefault()
-    const n = getResolvedAmountValue(resolvedAmount, 0.01)
-    if (n == null) {
-      setError('Enter a valid amount')
-      return
-    }
-    setError('')
-    add.mutate({ amount: config.toMutationAmount(type, n), note: note || null })
+    buildAddTransactionHandler({
+      event: e,
+      resolvedAmount,
+      setError,
+      mutate: add.mutate,
+      type,
+      note,
+      toMutationAmount: config.toMutationAmount,
+    })
   }
 
   const runningTotal = entries.filter(entry => entry.entry_kind !== 'budget_adjustment').reduce((s, e) => s + Number(e.amount), 0)
@@ -839,14 +888,15 @@ function InvestmentTxModal({ periodId, investmentdesc, openingValue, closingValu
   })
 
   const handleAdd = e => {
-    e.preventDefault()
-    const n = getResolvedAmountValue(resolvedAmount, 0.01)
-    if (n == null) {
-      setError('Enter a valid amount')
-      return
-    }
-    setError('')
-    add.mutate({ amount: config.toMutationAmount(type, n), note: note || null })
+    buildAddTransactionHandler({
+      event: e,
+      resolvedAmount,
+      setError,
+      mutate: add.mutate,
+      type,
+      note,
+      toMutationAmount: config.toMutationAmount,
+    })
   }
 
   // Derive actual from transactions total for live display
@@ -922,12 +972,12 @@ function BudgetAdjustmentModal({ title, currentAmount, onSubmit, onClose }) {
         />
       </div>
       <div>
-        <label className="label">Apply to</label>
+        <p className="label">Apply to</p>
         <div className="space-y-1.5 mt-1">
           {[['current', 'Current period only'], ['future', 'Current + future unlocked periods']].map(([value, label]) => (
-            <label key={value} className="flex items-center gap-2 text-sm cursor-pointer">
-              <input type="radio" name="budget-adjust-scope" value={value} checked={scope === value} onChange={() => setScope(value)} />
-              {label}
+            <label key={value} htmlFor={`budget-adjust-scope-${value}`} className="flex items-center gap-2 text-sm cursor-pointer">
+              <input id={`budget-adjust-scope-${value}`} type="radio" name="budget-adjust-scope" value={value} checked={scope === value} onChange={() => setScope(value)} />
+              <span>{label}</span>
             </label>
           ))}
         </div>
@@ -1048,18 +1098,18 @@ function CloseoutModal({ periodId, onClose }) {
         <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Score {preview.health.score} • {preview.health.status}</p>
       </div>
       {!preview.next_cycle_exists && (
-        <label className="flex items-center gap-2 text-sm cursor-pointer">
-          <input type="checkbox" checked={createNextCycle} onChange={e => setCreateNextCycle(e.target.checked)} />
-          Create the next budget cycle automatically during close-out
+        <label htmlFor="create-next-cycle" className="flex items-center gap-2 text-sm cursor-pointer">
+          <input id="create-next-cycle" type="checkbox" checked={createNextCycle} onChange={e => setCreateNextCycle(e.target.checked)} />
+          <span>Create the next budget cycle automatically during close-out</span>
         </label>
       )}
       <div>
-        <label className="label">Comments / Observations</label>
-        <textarea className="input w-full resize-none" rows={4} value={comments} onChange={e => setComments(e.target.value)} />
+        <label htmlFor="closeout-comments" className="label">Comments / Observations</label>
+        <textarea id="closeout-comments" className="input w-full resize-none" rows={4} value={comments} onChange={e => setComments(e.target.value)} />
       </div>
       <div>
-        <label className="label">Goals Going Forward</label>
-        <textarea className="input w-full resize-none" rows={4} value={goals} onChange={e => setGoals(e.target.value)} />
+        <label htmlFor="closeout-goals" className="label">Goals Going Forward</label>
+        <textarea id="closeout-goals" className="input w-full resize-none" rows={4} value={goals} onChange={e => setGoals(e.target.value)} />
       </div>
       <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-300">
         Closing this cycle makes it read-only. Any later corrections should be handled through reconciliation.
@@ -1194,16 +1244,16 @@ function AddIncomeModal({ periodId, budgetId, existingDescs, onClose }) {
             </select>
           </div>
           <div className="space-y-2">
-            <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <label htmlFor="new-income-fixed" className="flex items-center gap-2 text-sm cursor-pointer">
               <input type="checkbox" checked={newIsFixed} onChange={e => {
                 setNewIsFixed(e.target.checked)
                 if (e.target.checked) setNewAutoInclude(true)
-              }} className="rounded border-gray-300 text-dosh-600 focus:ring-dosh-500" />
-              Fixed amount (same every budget cycle)
+              }} className="rounded border-gray-300 text-dosh-600 focus:ring-dosh-500" id="new-income-fixed" />
+              <span>Fixed amount (same every budget cycle)</span>
             </label>
-            <label className="flex items-center gap-2 text-sm cursor-pointer">
-              <input type="checkbox" checked={newAutoInclude} disabled={newIsFixed} onChange={e => setNewAutoInclude(e.target.checked)} className="rounded border-gray-300 text-dosh-600 focus:ring-dosh-500" />
-              Auto-include in new budget cycles
+            <label htmlFor="new-income-auto-include" className="flex items-center gap-2 text-sm cursor-pointer">
+              <input id="new-income-auto-include" type="checkbox" checked={newAutoInclude} disabled={newIsFixed} onChange={e => setNewAutoInclude(e.target.checked)} className="rounded border-gray-300 text-dosh-600 focus:ring-dosh-500" />
+              <span>Auto-include in new budget cycles</span>
               {newIsFixed && <span className="text-xs text-gray-400">(auto-set when fixed)</span>}
             </label>
           </div>
@@ -1230,7 +1280,7 @@ function AddIncomeModal({ periodId, budgetId, existingDescs, onClose }) {
         </div>
       )}
       <div>
-        <label className="label" htmlFor="add-income-amount">{mode === 'savings' ? 'Budget Amount ($)' : 'Budget Amount ($)'}</label>
+        <label className="label" htmlFor="add-income-amount">Budget Amount ($)</label>
         <AmountExpressionInput
           id="add-income-amount"
           value={amount}
@@ -1251,12 +1301,12 @@ function AddIncomeModal({ periodId, budgetId, existingDescs, onClose }) {
       )}
       {mode !== 'savings' && (
         <div>
-          <label className="label">Include in</label>
+          <p className="label">Include in</p>
           <div className="space-y-1.5 mt-1">
             {[['oneoff', 'This budget cycle only'], ['future', 'This + future unlocked budget cycles']].map(([val, label]) => (
-              <label key={val} className="flex items-center gap-2 text-sm cursor-pointer">
-                <input type="radio" name="income-scope" value={val} checked={scope === val} onChange={() => setScope(val)} className="text-dosh-600" />
-                {label}
+              <label key={val} htmlFor={`income-scope-${val}`} className="flex items-center gap-2 text-sm cursor-pointer">
+                <input id={`income-scope-${val}`} type="radio" name="income-scope" value={val} checked={scope === val} onChange={() => setScope(val)} className="text-dosh-600" />
+                <span>{label}</span>
               </label>
             ))}
           </div>
@@ -1369,12 +1419,12 @@ function AddExpenseModal({ periodId, budgetId, existingDescs, onClose }) {
         <textarea id="add-expense-note" className="input w-full resize-none" rows={3} value={note} onChange={e => setNote(e.target.value)} placeholder="Why are you adding this line?" />
       </div>
       <div>
-        <label className="label">Include in</label>
+        <p className="label">Include in</p>
         <div className="space-y-1.5 mt-1">
           {[['oneoff', 'This budget cycle only (one-off)'], ['future', 'This + future unlocked budget cycles']].map(([val, label]) => (
-            <label key={val} className="flex items-center gap-2 text-sm cursor-pointer">
-              <input type="radio" name="exp-scope" value={val} checked={scope === val} onChange={() => setScope(val)} className="text-dosh-600" />
-              {label}
+            <label key={val} htmlFor={`expense-scope-${val}`} className="flex items-center gap-2 text-sm cursor-pointer">
+              <input id={`expense-scope-${val}`} type="radio" name="exp-scope" value={val} checked={scope === val} onChange={() => setScope(val)} className="text-dosh-600" />
+              <span>{label}</span>
             </label>
           ))}
         </div>
@@ -1395,12 +1445,12 @@ export default function PeriodDetailPage() {
   const qc = useQueryClient()
   const [showAddExpense, setShowAddExpense] = useState(false)
   const [showAddIncome, setShowAddIncome] = useState(false)
-  const [incomeModal, setIncomeModal] = useState(null) // { incomedesc, budgetamount, actualamount, readOnly, defaultType }
-  const [entriesModal, setEntriesModal] = useState(null) // { expensedesc, budgetamount, actualamount }
-  const [budgetAdjustModal, setBudgetAdjustModal] = useState(null) // { category, desc, budgetamount, title }
-  const [confirmPaidModal, setConfirmPaidModal] = useState(null) // { expense }
+  const [incomeModal, setIncomeModal] = useState(null)
+  const [entriesModal, setEntriesModal] = useState(null)
+  const [budgetAdjustModal, setBudgetAdjustModal] = useState(null)
+  const [confirmPaidModal, setConfirmPaidModal] = useState(null)
   const [confirmPaidInvestmentModal, setConfirmPaidInvestmentModal] = useState(null)
-  const [balanceModal, setBalanceModal] = useState(null) // { balancedesc, movementAmount }
+  const [balanceModal, setBalanceModal] = useState(null)
   const [showCloseout, setShowCloseout] = useState(false)
 
   const [investmentModal, setInvestmentModal] = useState(null)
@@ -1645,7 +1695,7 @@ export default function PeriodDetailPage() {
                       />
                       {!locked && !closed && i.system_key !== 'carry_forward' && (
                         <DeleteActionButton
-                          onClick={() => { if (window.confirm(`Remove "${i.incomedesc}" from this budget cycle?`)) deleteIncomeLine.mutate(i.incomedesc) }}
+                          onClick={() => { if (globalThis.confirm(`Remove "${i.incomedesc}" from this budget cycle?`)) deleteIncomeLine.mutate(i.incomedesc) }}
                           title="Remove from budget cycle"
                         />
                       )}
@@ -1665,7 +1715,7 @@ export default function PeriodDetailPage() {
                 <td className="px-4 py-2 text-right text-sm">
                   <span className={totalIncomeActual >= totalIncomeBudget ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'}>{fmt(totalIncomeActual - totalIncomeBudget)}</span>
                 </td>
-                <td className="px-3 py-2 w-[152px]" aria-hidden="true"></td>
+                <td className="px-3 py-2 w-[152px]"></td>
               </tr>
             </tfoot>
           </table>
@@ -1701,8 +1751,6 @@ export default function PeriodDetailPage() {
               {expenses.length === 0 && <tr><td colSpan={7} className="px-4 py-4 text-center text-gray-400 italic text-sm">No expense line items</td></tr>}
               {expenses.map(e => {
                 const remaining = Number(e.remaining_amount ?? 0)
-                const label = e.is_oneoff ? null : freqLabel(e.freqtype, e.frequency_value)
-                const nextDue = e.is_oneoff ? null : calcNextDue(e.freqtype, e.frequency_value, e.effectivedate)
                 const isOver = dragOver === e.expensedesc
                 const isPaid = e.status === 'Paid'
                 const canDelete = !locked && !closed && Number(e.actualamount) === 0 && Number(e.budgetamount) === 0
@@ -1747,7 +1795,7 @@ export default function PeriodDetailPage() {
                     </td>
                     <td className="table-cell">
                       <div className="flex flex-wrap gap-1">
-                        {e.is_oneoff ? <span className="badge-amber">One-off</span> : label ? <span className="badge-blue" title={nextDue ? `Next: ${format(nextDue, 'dd MMM yyyy')}` : undefined}>{label}</span> : <span className="badge-gray">—</span>}
+                        {getExpenseScheduleBadge(e)}
                         {e.paytype && <span className={e.paytype === 'AUTO' ? 'badge-green' : 'badge-gray'}>{e.paytype}</span>}
                       </div>
                     </td>
@@ -1779,7 +1827,7 @@ export default function PeriodDetailPage() {
                         />
                         {canDelete && !isPaid && (
                           <DeleteActionButton
-                            onClick={() => { if (window.confirm(`Remove "${e.expensedesc}" from this budget cycle?`)) deleteExpenseLine.mutate(e.expensedesc) }}
+                            onClick={() => { if (globalThis.confirm(`Remove "${e.expensedesc}" from this budget cycle?`)) deleteExpenseLine.mutate(e.expensedesc) }}
                             title="Remove from budget cycle (no actuals, zero budget)"
                           />
                         )}
@@ -2001,11 +2049,11 @@ export default function PeriodDetailPage() {
             currentAmount={budgetAdjustModal.budgetamount}
             onClose={() => setBudgetAdjustModal(null)}
             onSubmit={data => {
-              const mutation = budgetAdjustModal.category === 'income'
-                ? editIncomeBudget
-                : budgetAdjustModal.category === 'expense'
-                  ? editExpenseBudget
-                  : editInvBudget
+              const mutation = getPeriodBudgetMutation(budgetAdjustModal.category, {
+                editIncomeBudget,
+                editExpenseBudget,
+                editInvBudget,
+              })
               mutation.mutate({ desc: budgetAdjustModal.desc, data }, { onSuccess: () => setBudgetAdjustModal(null) })
             }}
           />

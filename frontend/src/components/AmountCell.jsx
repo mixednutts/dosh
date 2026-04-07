@@ -13,12 +13,14 @@ export default function AmountCell({ value, onSave, disabled = false }) {
 
   if (!editing || disabled) {
     return (
-      <span
+      <button
+        type="button"
         onClick={() => { if (!disabled) { setDraft(String(value ?? 0)); setEditing(true) } }}
-        className={`cursor-pointer rounded px-1 hover:bg-gray-100 ${disabled ? 'cursor-default' : ''}`}
+        className={`rounded px-1 text-left hover:bg-gray-100 ${disabled ? 'cursor-default' : 'cursor-pointer'}`}
+        disabled={disabled}
       >
         {fmt(value ?? 0)}
-      </span>
+      </button>
     )
   }
 

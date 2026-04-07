@@ -185,7 +185,7 @@ function buildCalendarEvents(currentPeriod, currentPeriodDetail) {
     return [cycleStartEvent, ...incomeEvents, ...expenseEvents]
   })
 
-  const sortedEvents = allEvents.sort((a, b) => {
+  const sortedEvents = allEvents.toSorted((a, b) => {
     if (a.date.getTime() !== b.date.getTime()) return a.date - b.date
     const rank = { 'cycle-start': 0, income: 1, expense: 2 }
     if (a.kind !== b.kind) return rank[a.kind] - rank[b.kind]
@@ -271,6 +271,52 @@ function buildDayEventsTitle(dayEvents) {
     .join('\n')
 }
 
+function getEventContainerClass(kind) {
+  if (kind === 'cycle-start') {
+    return 'border-sky-200 bg-sky-50 dark:border-sky-800 dark:bg-sky-950/20'
+  }
+  if (kind === 'income') {
+    return 'border-dosh-200 bg-dosh-50 dark:border-dosh-800 dark:bg-dosh-950/20'
+  }
+  return 'border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20'
+}
+
+function getEventKindLabel(kind) {
+  if (kind === 'cycle-start') return 'Cycle start'
+  if (kind === 'income') return 'Income'
+  return 'Expense'
+}
+
+function getCalendarDaySurfaceClass({ isToday, hasCycleStart, isCycleDay }) {
+  if (isToday) {
+    return 'border-dosh-400 bg-dosh-50 shadow-sm dark:border-dosh-500 dark:bg-dosh-950/30'
+  }
+  if (hasCycleStart) {
+    return 'border-sky-300 bg-sky-50 shadow-sm dark:border-sky-600 dark:bg-sky-950/30'
+  }
+  if (isCycleDay) {
+    return 'border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800/70'
+  }
+  return 'border-transparent bg-transparent'
+}
+
+function getCalendarEventPillClass(kind) {
+  if (kind === 'cycle-start') {
+    return 'bg-sky-100 text-sky-900 dark:bg-sky-900/30 dark:text-sky-100'
+  }
+  if (kind === 'income') {
+    return 'bg-dosh-100 text-dosh-900 dark:bg-dosh-900/40 dark:text-dosh-100'
+  }
+  return 'bg-amber-100 text-amber-900 dark:bg-amber-900/30 dark:text-amber-100'
+}
+
+function getCurrentPeriodDetailText(daysRemaining) {
+  if (daysRemaining == null) {
+    return 'Generate a budget cycle to begin tracking'
+  }
+  return `${daysRemaining} day${daysRemaining === 1 ? '' : 's'} remaining`
+}
+
 function CalendarDayEventsModal({ date, events, onClose }) {
   const orderedEvents = [...events].sort((a, b) => {
     const rank = { 'cycle-start': 0, income: 1, expense: 2 }
@@ -284,19 +330,13 @@ function CalendarDayEventsModal({ date, events, onClose }) {
         {orderedEvents.map(event => (
           <div
             key={`day-event-${event.key}`}
-            className={`rounded-md border px-3 py-2 ${
-              event.kind === 'cycle-start'
-                ? 'border-sky-200 bg-sky-50 dark:border-sky-800 dark:bg-sky-950/20'
-                : event.kind === 'income'
-                ? 'border-dosh-200 bg-dosh-50 dark:border-dosh-800 dark:bg-dosh-950/20'
-                : 'border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20'
-            }`}
+            className={`rounded-md border px-3 py-2 ${getEventContainerClass(event.kind)}`}
           >
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-gray-900 dark:text-gray-100">{event.title}</p>
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                  {event.kind === 'cycle-start' ? 'Cycle start' : event.kind === 'income' ? 'Income' : 'Expense'}
+                  {getEventKindLabel(event.kind)}
                 </p>
               </div>
               {event.amount !== null ? (
@@ -366,7 +406,7 @@ function CalendarMonthGrid({ periods, visibleMonth, onChangeMonth, today, events
           <div key={day} className={compact ? 'py-0.5' : 'py-1'}>{day}</div>
         ))}
       </div>
-      <div className={compact ? 'mt-1 space-y-1' : 'mt-1 space-y-1'}>
+      <div className="mt-1 space-y-1">
         {monthWeeks.map((week, weekIndex) => (
           <div key={`${format(visibleMonth, 'yyyy-MM')}-week-${weekIndex}`} className="grid grid-cols-7 gap-1">
             {week.map(day => {
@@ -385,15 +425,9 @@ function CalendarMonthGrid({ periods, visibleMonth, onChangeMonth, today, events
                   key={dateKey}
                   className={`rounded-md border px-1 py-1 ${
                     compact ? 'min-h-[36px]' : 'min-h-[72px]'
-                  } ${
-                    isToday
-                      ? 'border-dosh-400 bg-dosh-50 shadow-sm dark:border-dosh-500 dark:bg-dosh-950/30'
-                      : hasCycleStart
-                        ? 'border-sky-300 bg-sky-50 shadow-sm dark:border-sky-600 dark:bg-sky-950/30'
-                      : isCycleDay
-                        ? 'border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800/70'
-                        : 'border-transparent bg-transparent'
-                  } ${canOpenDay ? 'cursor-pointer hover:border-dosh-300 dark:hover:border-dosh-700' : 'cursor-default'}`}
+                  } ${getCalendarDaySurfaceClass({ isToday, hasCycleStart, isCycleDay })} ${
+                    canOpenDay ? 'cursor-pointer hover:border-dosh-300 dark:hover:border-dosh-700' : 'cursor-default'
+                  }`}
                   onClick={() => {
                     if (canOpenDay) onSelectDay(day, dayEvents)
                   }}
@@ -423,13 +457,7 @@ function CalendarMonthGrid({ periods, visibleMonth, onChangeMonth, today, events
                       {dayEvents.slice(0, 2).map(event => (
                         <div
                           key={event.key}
-                          className={`rounded px-1.5 py-1 text-[10px] leading-tight ${
-                            event.kind === 'cycle-start'
-                              ? 'bg-sky-100 text-sky-900 dark:bg-sky-900/30 dark:text-sky-100'
-                              : event.kind === 'income'
-                              ? 'bg-dosh-100 text-dosh-900 dark:bg-dosh-900/40 dark:text-dosh-100'
-                              : 'bg-amber-100 text-amber-900 dark:bg-amber-900/30 dark:text-amber-100'
-                          }`}
+                          className={`rounded px-1.5 py-1 text-[10px] leading-tight ${getCalendarEventPillClass(event.kind)}`}
                           title={event.kind === 'cycle-start' ? event.title : `${event.title} · ${fmtCurrency(event.amount)}`}
                         >
                           <div className="truncate font-semibold">{event.title}</div>
@@ -679,9 +707,7 @@ function BudgetStats({ budgetName, periods = [], currentPeriodDetail, calendarPe
     ? Math.max(0, differenceInCalendarDays(parseISO(currentPeriod.enddate), new Date()) + 1)
     : null
   const currentPeriodValue = currentPeriod ? formatPeriodRange(currentPeriod) : 'No active budget cycle'
-  const currentPeriodDetailText = currentPeriod
-    ? `${daysRemaining} day${daysRemaining === 1 ? '' : 's'} remaining`
-    : 'Generate a budget cycle to begin tracking'
+  const currentPeriodDetailText = getCurrentPeriodDetailText(daysRemaining)
 
   return (
     <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -1171,8 +1197,8 @@ export default function BudgetsPage() {
               </div>
               {periodQueries[index]?.isLoading ? (
                 <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                  {Array.from({ length: 4 }).map((_, i) => (
-                    <div key={i} className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 dark:border-gray-700 dark:bg-gray-800/50">
+                  {['current', 'balance', 'calendar', 'health'].map(section => (
+                    <div key={`budget-${b.budgetid}-loading-${section}`} className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 dark:border-gray-700 dark:bg-gray-800/50">
                       <div className="h-3 w-20 rounded bg-gray-200 dark:bg-gray-700" />
                       <div className="mt-2 h-4 w-32 rounded bg-gray-200 dark:bg-gray-700" />
                       <div className="mt-2 h-3 w-24 rounded bg-gray-200 dark:bg-gray-700" />

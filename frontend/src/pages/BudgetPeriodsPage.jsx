@@ -86,7 +86,7 @@ function PeriodGenerateForm({ initialStartDate, onSubmit, onClose, loading, erro
 }
 
 function getGroupedPeriodSummaries(periodSummaries) {
-  const ordered = [...periodSummaries].sort((a, b) => parseISO(a.period.startdate) - parseISO(b.period.startdate))
+  const ordered = periodSummaries.toSorted((a, b) => parseISO(a.period.startdate) - parseISO(b.period.startdate))
 
   return {
     current: ordered.filter(({ period }) => period.cycle_status === 'ACTIVE'),
@@ -102,6 +102,12 @@ function PeriodSummaryRow({ summary, onDelete }) {
   const projectedSavingsTone = Number(summary.projected_savings) >= 0 ? 'text-success-700 dark:text-success-400' : 'text-red-600 dark:text-red-400'
   const startLabel = format(parseISO(period.startdate), 'dd MMM yy')
   const endLabel = format(parseISO(period.enddate), 'dd MMM yy')
+  let cycleBadgeClass = 'badge-green'
+  if (period.cycle_status === 'ACTIVE') {
+    cycleBadgeClass = 'badge-blue'
+  } else if (period.cycle_status === 'CLOSED') {
+    cycleBadgeClass = 'badge-gray'
+  }
 
   return (
     <tr className="table-row align-top">
@@ -115,14 +121,7 @@ function PeriodSummaryRow({ summary, onDelete }) {
           <span className="block whitespace-nowrap">{endLabel}</span>
         </Link>
         <div className="mt-1">
-          <span className={clsx(
-            'mr-1.5',
-            period.cycle_status === 'ACTIVE'
-              ? 'badge-blue'
-              : period.cycle_status === 'CLOSED'
-                ? 'badge-gray'
-                : 'badge-green'
-          )}>
+          <span className={clsx('mr-1.5', cycleBadgeClass)}>
             {period.cycle_status}
           </span>
           {period.islocked && <span className="badge-amber">Locked</span>}
@@ -199,6 +198,20 @@ function PeriodSummaryGroup({ title, summaries, collapsed = false, collapsible =
     })
   }
 
+  let toggleTitle
+  if (collapsible) {
+    toggleTitle = open
+      ? `Collapse ${title.toLowerCase()} budget cycles`
+      : `Expand ${title.toLowerCase()} budget cycles`
+  }
+
+  let toggleIcon = <ChevronDownIcon className="h-4 w-4 shrink-0 opacity-60" />
+  if (collapsible) {
+    toggleIcon = open
+      ? <ChevronDownIcon className="h-4 w-4 shrink-0" />
+      : <ChevronRightIcon className="h-4 w-4 shrink-0" />
+  }
+
   return (
     <section id={groupId} className="card overflow-hidden scroll-mt-6">
       <div className="border-b border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-800 dark:bg-gray-900/70">
@@ -206,13 +219,9 @@ function PeriodSummaryGroup({ title, summaries, collapsed = false, collapsible =
           type="button"
           className="flex items-center gap-2 text-left text-sm font-semibold uppercase tracking-wide text-gray-700 transition-colors hover:text-gray-900 dark:text-gray-200 dark:hover:text-white"
           onClick={handleToggle}
-          title={collapsible ? (open ? `Collapse ${title.toLowerCase()} budget cycles` : `Expand ${title.toLowerCase()} budget cycles`) : undefined}
+          title={toggleTitle}
         >
-          {collapsible ? (
-            open ? <ChevronDownIcon className="h-4 w-4 shrink-0" /> : <ChevronRightIcon className="h-4 w-4 shrink-0" />
-          ) : (
-            <ChevronDownIcon className="h-4 w-4 shrink-0 opacity-60" />
-          )}
+          {toggleIcon}
           <span>{title}</span>
         </button>
       </div>
@@ -299,7 +308,7 @@ export default function BudgetPeriodsPage() {
 
   const suggestedStartDate = useMemo(() => {
     if (periods.length === 0) return toDateInputValue(new Date())
-    const latest = [...periods].sort((a, b) => parseISO(b.enddate) - parseISO(a.enddate))[0]
+    const latest = periods.toSorted((a, b) => parseISO(b.enddate) - parseISO(a.enddate))[0]
     return toDateInputValue(addDays(parseISO(latest.enddate), 1))
   }, [periods])
 
@@ -310,6 +319,9 @@ export default function BudgetPeriodsPage() {
   const generateButtonTitle = canGenerate
     ? 'Generate a new budget cycle'
     : (setupAssessment?.blocking_issues?.[0] || 'Finish the setup first')
+  const emptyStateMessage = canGenerate
+    ? 'This budget is ready to start using once you generate the first budget cycle.'
+    : 'Complete the setup steps first, then come back here to generate the first budget cycle.'
 
   const createPeriod = useMutation({
     mutationFn: ({ startDate, count }) => generatePeriod({
@@ -392,11 +404,7 @@ export default function BudgetPeriodsPage() {
       {periods.length === 0 ? (
         <div className="card p-8 text-center">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">No budget cycles yet</h2>
-          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            {canGenerate
-              ? 'This budget is ready to start using once you generate the first budget cycle.'
-              : 'Complete the setup steps first, then come back here to generate the first budget cycle.'}
-          </p>
+          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">{emptyStateMessage}</p>
           <div className="mt-4 flex justify-center gap-2">
             <Link to={`/budgets/${id}/setup`} className="btn-secondary">
               <Cog6ToothIcon className="w-4 h-4" /> Open Setup
@@ -505,12 +513,12 @@ function DeleteCycleModal({ deleteTarget, deleteMode, setDeleteMode, removePerio
             {canDeleteSingle && (
               <label htmlFor="delete-cycle-single" className="flex items-center gap-2 text-sm cursor-pointer">
                 <input id="delete-cycle-single" type="radio" checked={deleteMode === 'single'} onChange={() => setDeleteMode('single')} />
-                Delete only this budget cycle
+                <span>Delete only this budget cycle</span>
               </label>
             )}
             <label htmlFor="delete-cycle-future-chain" className="flex items-center gap-2 text-sm cursor-pointer">
               <input id="delete-cycle-future-chain" type="radio" checked={deleteMode === 'future_chain'} onChange={() => setDeleteMode('future_chain')} />
-              Delete this cycle and all upcoming cycles ({deleteOptions.future_chain_count})
+              <span>Delete this cycle and all upcoming cycles ({deleteOptions.future_chain_count})</span>
             </label>
           </div>
         )}

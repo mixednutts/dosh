@@ -326,11 +326,12 @@ export default function Layout() {
   const budgetSetupMatch = useMatch('/budgets/:budgetId/setup')
   const periodMatch = useMatch('/periods/:periodId')
 
-  const activeBudgetId = budgetMatch
-    ? Number.parseInt(budgetMatch.params.budgetId, 10)
-    : budgetSetupMatch
-      ? Number.parseInt(budgetSetupMatch.params.budgetId, 10)
-      : null
+  let activeBudgetId = null
+  if (budgetMatch) {
+    activeBudgetId = Number.parseInt(budgetMatch.params.budgetId, 10)
+  } else if (budgetSetupMatch) {
+    activeBudgetId = Number.parseInt(budgetSetupMatch.params.budgetId, 10)
+  }
   const activePeriodId = periodMatch ? Number.parseInt(periodMatch.params.periodId, 10) : null
 
   const { data: periodData } = useQuery({
@@ -486,7 +487,12 @@ export default function Layout() {
       </aside>
 
       {open && (
-        <div className="fixed inset-0 z-30 bg-black/50 lg:hidden" onClick={() => setOpen(false)} />
+        <button
+          type="button"
+          className="fixed inset-0 z-30 bg-black/50 lg:hidden"
+          onClick={() => setOpen(false)}
+          aria-label="Close navigation"
+        />
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">

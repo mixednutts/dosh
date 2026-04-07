@@ -61,12 +61,12 @@ function InvestmentForm({ initial = emptyForm, isEdit = false, onSubmit, onClose
       <label htmlFor={`${formIdPrefix}-active`} className="flex items-center gap-2 text-sm cursor-pointer">
         <input id={`${formIdPrefix}-active`} disabled={structureLocked} type="checkbox" checked={form.active} onChange={e => set('active', e.target.checked)}
           className="rounded border-gray-300 dark:border-gray-600 text-dosh-600 focus:ring-dosh-500" />
-        Active
+        <span>Active</span>
       </label>
       <label htmlFor={`${formIdPrefix}-primary`} className="flex items-center gap-2 text-sm cursor-pointer">
         <input id={`${formIdPrefix}-primary`} disabled={structureLocked} type="checkbox" checked={!!form.is_primary} onChange={e => set('is_primary', e.target.checked)}
           className="rounded border-gray-300 dark:border-gray-600 text-dosh-600 focus:ring-dosh-500" />
-        Primary investment line
+        <span>Primary investment line</span>
       </label>
       <p className="text-xs text-gray-400 -mt-2">
         Auto-allocated savings budget will go to the active primary investment line.

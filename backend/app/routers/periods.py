@@ -52,6 +52,7 @@ from ..setup_assessment import budget_setup_assessment
 from ..setup_history import next_supported_revisionnum
 from ..time_utils import app_now_naive
 from ..transaction_ledger import (
+    PeriodTransactionContext,
     build_budget_adjustment_tx,
     build_expense_tx,
     build_income_tx,
@@ -133,17 +134,20 @@ def _record_budget_adjustment(
     if before_amount == after_amount:
         return None
     return build_budget_adjustment_tx(
-        finperiodid,
-        budgetid,
-        source,
-        source_key,
         db,
+        PeriodTransactionContext(
+            finperiodid=finperiodid,
+            budgetid=budgetid,
+            source=source,
+            tx_type="BUDGETADJ",
+            source_key=source_key,
+            budget_scope=scope,
+            line_status=line_status,
+            revisionnum=revisionnum,
+        ),
         note=note,
-        budget_scope=scope,
         budget_before_amount=before_amount,
         budget_after_amount=after_amount,
-        line_status=line_status,
-        revisionnum=revisionnum,
     )
 
 
@@ -203,7 +207,7 @@ def _enrich_investments(investments: list, db) -> list[PeriodInvestmentOut]:
     return out
 
 
-def _period_status(period: FinancialPeriod, now: datetime) -> str:
+def _period_status(period: FinancialPeriod) -> str:
     status = cycle_status(period)
     if status == ACTIVE:
         return "Current"
@@ -499,7 +503,7 @@ def list_period_summaries_for_budget(budgetid: int, db: DbSession):
         savings_budget = investment_budget
         savings_actual = investment_actual
 
-        period_status = _period_status(period, now)
+        period_status = _period_status(period)
         later_periods = [candidate for candidate in periods if candidate.startdate > period.startdate]
         single_delete_allowed = (
             cycle_status(period) != CLOSED
@@ -515,7 +519,12 @@ def list_period_summaries_for_budget(budgetid: int, db: DbSession):
             )
         )
         can_delete = single_delete_allowed or future_chain_allowed
-        delete_mode = "single" if single_delete_allowed else ("future_chain" if future_chain_allowed else None)
+        if single_delete_allowed:
+            delete_mode = "single"
+        elif future_chain_allowed:
+            delete_mode = "future_chain"
+        else:
+            delete_mode = None
         delete_reason = None
         if not can_delete:
             delete_reason = "Cycles with actuals, transactions, or closed history cannot be deleted."
@@ -579,7 +588,7 @@ def get_period_detail(finperiodid: int, db: DbSession):
         for row in investments
     ), Decimal("0.00"))
     investment_actual = sum((Decimal(str(row.actualamount or 0)) for row in investments), Decimal("0.00"))
-    period_status = _period_status(period, app_now_naive())
+    period_status = _period_status(period)
     projected_savings = _projected_savings(period_status, investment_budget, investment_actual)
 
     return PeriodDetailOut(
@@ -1029,7 +1038,10 @@ def delete_period(
     _assert_not_closed(period)
     options = get_period_delete_options(finperiodid, db)
     periods = ordered_budget_periods(period.budgetid, db)
-    targets = [candidate for candidate in periods if candidate.startdate >= period.startdate] if delete_mode == "future_chain" else [period]
+    if delete_mode == "future_chain":
+        targets = [candidate for candidate in periods if candidate.startdate >= period.startdate]
+    else:
+        targets = [period]
 
     if delete_mode == "single" and not options.can_delete_single:
         raise HTTPException(409, options.delete_reason or "This cycle cannot be deleted on its own.")
@@ -1077,8 +1089,6 @@ def set_expense_status(
     pe.status = payload.status
     if payload.status == REVISED:
         pe.revision_comment = (payload.revision_comment or "").strip() or None
-    elif payload.status == PAID:
-        pe.revision_comment = pe.revision_comment
     else:
         pe.revision_comment = None
     db.commit()

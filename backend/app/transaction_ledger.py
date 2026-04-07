@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime as dt
 from decimal import Decimal
 
@@ -27,6 +28,22 @@ ENTRY_KIND_MOVEMENT = "movement"
 ENTRY_KIND_BUDGET_ADJUSTMENT = "budget_adjustment"
 
 
+@dataclass(slots=True)
+class PeriodTransactionContext:
+    finperiodid: int
+    budgetid: int
+    source: str
+    tx_type: str
+    source_key: str | None = None
+    source_label: str | None = None
+    affected_account_desc: str | None = None
+    related_account_desc: str | None = None
+    linked_incomedesc: str | None = None
+    line_status: str | None = None
+    budget_scope: str | None = None
+    revisionnum: int | None = None
+
+
 def _as_decimal(value) -> Decimal:
     return Decimal(str(value or 0))
 
@@ -46,30 +63,19 @@ def get_primary_account_desc(budgetid: int, db: Session) -> str | None:
 
 def add_period_transaction(
     db: Session,
+    context: PeriodTransactionContext,
     *,
-    finperiodid: int,
-    budgetid: int,
-    source: str,
-    tx_type: str,
     amount,
     note: str | None = None,
     entrydate: dt | None = None,
     is_system: bool = False,
     system_reason: str | None = None,
-    source_key: str | None = None,
-    source_label: str | None = None,
-    affected_account_desc: str | None = None,
-    related_account_desc: str | None = None,
-    linked_incomedesc: str | None = None,
     legacy_table: str | None = None,
     legacy_id: int | None = None,
     dedupe_key: str | None = None,
     entry_kind: str = ENTRY_KIND_MOVEMENT,
-    line_status: str | None = None,
-    budget_scope: str | None = None,
     budget_before_amount=None,
     budget_after_amount=None,
-    revisionnum: int | None = None,
 ):
     amount = _rounded(_as_decimal(amount))
     if amount == Decimal("0.00"):
@@ -97,29 +103,29 @@ def add_period_transaction(
             return existing
 
     tx = PeriodTransaction(
-        finperiodid=finperiodid,
-        budgetid=budgetid,
-        source=source,
-        type=tx_type,
+        finperiodid=context.finperiodid,
+        budgetid=context.budgetid,
+        source=context.source,
+        type=context.tx_type,
         amount=amount,
         note=note,
         entrydate=entrydate or dt.utcnow(),
         is_system=is_system,
         system_reason=system_reason,
-        source_key=source_key,
-        source_label=source_label,
-        affected_account_desc=affected_account_desc,
-        related_account_desc=related_account_desc,
-        linked_incomedesc=linked_incomedesc,
+        source_key=context.source_key,
+        source_label=context.source_label,
+        affected_account_desc=context.affected_account_desc,
+        related_account_desc=context.related_account_desc,
+        linked_incomedesc=context.linked_incomedesc,
         legacy_table=legacy_table,
         legacy_id=legacy_id,
         dedupe_key=dedupe_key,
         entry_kind=entry_kind,
-        line_status=line_status,
-        budget_scope=budget_scope,
+        line_status=context.line_status,
+        budget_scope=context.budget_scope,
         budget_before_amount=_rounded(_as_decimal(budget_before_amount)) if budget_before_amount is not None else None,
         budget_after_amount=_rounded(_as_decimal(budget_after_amount)) if budget_after_amount is not None else None,
-        revisionnum=revisionnum,
+        revisionnum=context.revisionnum,
     )
     db.add(tx)
     db.flush()
@@ -150,22 +156,26 @@ def build_expense_tx(
         )
         .first()
     )
-    tx_type = TX_TYPE_ADJUST if is_system else (TX_TYPE_DEBIT if amount >= 0 else TX_TYPE_CREDIT)
+    tx_type = TX_TYPE_ADJUST
+    if not is_system:
+        tx_type = TX_TYPE_DEBIT if amount >= 0 else TX_TYPE_CREDIT
     return add_period_transaction(
         db,
-        finperiodid=finperiodid,
-        budgetid=budgetid,
-        source="expense",
-        tx_type=tx_type,
+        PeriodTransactionContext(
+            finperiodid=finperiodid,
+            budgetid=budgetid,
+            source="expense",
+            tx_type=tx_type,
+            source_key=expensedesc,
+            source_label=expensedesc,
+            affected_account_desc=get_primary_account_desc(budgetid, db),
+            line_status=getattr(expense, "status", None),
+        ),
         amount=amount,
         note=note,
         entrydate=entrydate,
         is_system=is_system,
         system_reason=system_reason,
-        source_key=expensedesc,
-        source_label=expensedesc,
-        affected_account_desc=get_primary_account_desc(budgetid, db),
-        line_status=getattr(expense, "status", None),
         legacy_table=legacy_table,
         legacy_id=legacy_id,
         dedupe_key=dedupe_key,
@@ -189,38 +199,44 @@ def build_income_tx(
     if incomedesc.startswith(TRANSFER_PREFIX):
         return add_period_transaction(
             db,
-            finperiodid=finperiodid,
-            budgetid=budgetid,
-            source="transfer",
-            tx_type=TX_TYPE_TRANSFER,
+            PeriodTransactionContext(
+                finperiodid=finperiodid,
+                budgetid=budgetid,
+                source="transfer",
+                tx_type=TX_TYPE_TRANSFER,
+                source_key=incomedesc,
+                source_label=incomedesc,
+                affected_account_desc=get_primary_account_desc(budgetid, db),
+                related_account_desc=incomedesc[len(TRANSFER_PREFIX):],
+            ),
             amount=amount,
             note=note,
             entrydate=entrydate,
             is_system=is_system,
             system_reason=system_reason,
-            source_key=incomedesc,
-            source_label=incomedesc,
-            affected_account_desc=get_primary_account_desc(budgetid, db),
-            related_account_desc=incomedesc[len(TRANSFER_PREFIX):],
             dedupe_key=dedupe_key,
         )
 
     income_type = db.get(IncomeType, (budgetid, incomedesc))
-    tx_type = TX_TYPE_ADJUST if is_system else (TX_TYPE_CREDIT if amount >= 0 else TX_TYPE_DEBIT)
+    tx_type = TX_TYPE_ADJUST
+    if not is_system:
+        tx_type = TX_TYPE_CREDIT if amount >= 0 else TX_TYPE_DEBIT
     return add_period_transaction(
         db,
-        finperiodid=finperiodid,
-        budgetid=budgetid,
-        source="income",
-        tx_type=tx_type,
+        PeriodTransactionContext(
+            finperiodid=finperiodid,
+            budgetid=budgetid,
+            source="income",
+            tx_type=tx_type,
+            source_key=incomedesc,
+            source_label=incomedesc,
+            affected_account_desc=income_type.linked_account if income_type else None,
+        ),
         amount=amount,
         note=note,
         entrydate=entrydate,
         is_system=is_system,
         system_reason=system_reason,
-        source_key=incomedesc,
-        source_label=incomedesc,
-        affected_account_desc=income_type.linked_account if income_type else None,
         dedupe_key=dedupe_key,
     )
 
@@ -244,23 +260,27 @@ def build_investment_tx(
     amount = _rounded(_as_decimal(amount))
     item = db.get(InvestmentItem, (budgetid, investmentdesc))
     investment = db.get(PeriodInvestment, (finperiodid, investmentdesc))
-    tx_type = TX_TYPE_ADJUST if is_system else (TX_TYPE_CREDIT if amount >= 0 else TX_TYPE_DEBIT)
+    tx_type = TX_TYPE_ADJUST
+    if not is_system:
+        tx_type = TX_TYPE_CREDIT if amount >= 0 else TX_TYPE_DEBIT
     return add_period_transaction(
         db,
-        finperiodid=finperiodid,
-        budgetid=budgetid,
-        source="investment",
-        tx_type=tx_type,
+        PeriodTransactionContext(
+            finperiodid=finperiodid,
+            budgetid=budgetid,
+            source="investment",
+            tx_type=tx_type,
+            source_key=investmentdesc,
+            source_label=investmentdesc,
+            affected_account_desc=item.linked_account_desc if item else None,
+            linked_incomedesc=linked_incomedesc,
+            line_status=getattr(investment, "status", None),
+        ),
         amount=amount,
         note=note,
         entrydate=entrydate,
         is_system=is_system,
         system_reason=system_reason,
-        source_key=investmentdesc,
-        source_label=investmentdesc,
-        affected_account_desc=item.linked_account_desc if item else None,
-        linked_incomedesc=linked_incomedesc,
-        line_status=getattr(investment, "status", None),
         legacy_table=legacy_table,
         legacy_id=legacy_id,
         dedupe_key=dedupe_key,
@@ -280,30 +300,28 @@ def build_balance_adjustment_tx(
 ):
     return add_period_transaction(
         db,
-        finperiodid=finperiodid,
-        budgetid=budgetid,
-        source="balance",
-        tx_type=TX_TYPE_ADJUST,
+        PeriodTransactionContext(
+            finperiodid=finperiodid,
+            budgetid=budgetid,
+            source="balance",
+            tx_type=TX_TYPE_ADJUST,
+            source_key=balancedesc,
+            source_label=balancedesc,
+            affected_account_desc=balancedesc,
+        ),
         amount=amount,
         note=note,
         is_system=True,
         system_reason=system_reason,
-        source_key=balancedesc,
-        source_label=balancedesc,
-        affected_account_desc=balancedesc,
         dedupe_key=dedupe_key,
     )
 
 
 def build_budget_adjustment_tx(
-    finperiodid: int,
-    budgetid: int,
-    source: str,
-    source_key: str,
     db: Session,
+    context: PeriodTransactionContext,
     *,
     note: str,
-    budget_scope: str,
     budget_before_amount,
     budget_after_amount,
     is_system: bool = False,
@@ -311,29 +329,29 @@ def build_budget_adjustment_tx(
     entrydate: dt | None = None,
     source_label: str | None = None,
     dedupe_key: str | None = None,
-    line_status: str | None = None,
-    revisionnum: int | None = None,
 ):
     return add_period_transaction(
         db,
-        finperiodid=finperiodid,
-        budgetid=budgetid,
-        source=source,
-        tx_type=TX_TYPE_BUDGET_ADJ,
+        PeriodTransactionContext(
+            finperiodid=context.finperiodid,
+            budgetid=context.budgetid,
+            source=context.source,
+            tx_type=TX_TYPE_BUDGET_ADJ,
+            source_key=context.source_key,
+            source_label=source_label or context.source_label or context.source_key,
+            line_status=context.line_status,
+            budget_scope=context.budget_scope,
+            revisionnum=context.revisionnum,
+        ),
         amount=_rounded(_as_decimal(budget_after_amount) - _as_decimal(budget_before_amount)),
         note=note,
         entrydate=entrydate,
         is_system=is_system,
         system_reason=system_reason,
-        source_key=source_key,
-        source_label=source_label or source_key,
         dedupe_key=dedupe_key,
         entry_kind=ENTRY_KIND_BUDGET_ADJUSTMENT,
-        line_status=line_status,
-        budget_scope=budget_scope,
         budget_before_amount=budget_before_amount,
         budget_after_amount=budget_after_amount,
-        revisionnum=revisionnum,
     )
 
 

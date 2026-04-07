@@ -5,7 +5,7 @@ from decimal import Decimal
 
 from app.cycle_constants import CARRIED_FORWARD_DESC
 from app.models import FinancialPeriod, PeriodIncome
-from app.transaction_ledger import build_budget_adjustment_tx
+from app.transaction_ledger import PeriodTransactionContext, build_budget_adjustment_tx
 from app.time_utils import app_now_naive
 
 from .factories import create_minimum_budget_setup, generate_periods, iso_date
@@ -123,13 +123,16 @@ def test_planned_cycle_delete_ignores_budget_adjustment_history(client, db_sessi
     first_planned_period = next(period for period in periods if period["cycle_status"] == "PLANNED")
 
     build_budget_adjustment_tx(
-        first_planned_period["finperiodid"],
-        budget.budgetid,
-        "income",
-        "Salary",
         db_session,
+        PeriodTransactionContext(
+            finperiodid=first_planned_period["finperiodid"],
+            budgetid=budget.budgetid,
+            source="income",
+            tx_type="BUDGETADJ",
+            source_key="Salary",
+            budget_scope="future",
+        ),
         note="Planning adjustment only",
-        budget_scope="future",
         budget_before_amount=Decimal("2500.00"),
         budget_after_amount=Decimal("2600.00"),
     )

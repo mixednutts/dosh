@@ -60,6 +60,80 @@ export default function SetupItemHistoryModal({ historyQuery, itemDesc, category
   const { data, isLoading, error } = historyQuery
   const title = `History Details — ${itemDesc}`
   const setupSummary = buildSetupSummary(category, currentItem)
+  let historyDetails
+
+  if (isLoading) {
+    historyDetails = <div className="flex justify-center py-6"><Spinner className="w-5 h-5" /></div>
+  } else if (error) {
+    historyDetails = (
+      <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300">
+        {error?.response?.data?.detail || 'Unable to load history details right now.'}
+      </div>
+    )
+  } else if (data?.entries?.length) {
+    historyDetails = (
+      <div className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+          Revision And Adjustment History
+        </div>
+        <div className="divide-y divide-gray-100 dark:divide-gray-800 max-h-[28rem] overflow-y-auto">
+          {data.entries.map(entry => {
+            const scopeLabel = entry.budget_scope === 'future' ? 'Current + Future' : 'Current Only'
+            const startLabel = entry.period_startdate ? format(parseISO(entry.period_startdate), 'dd MMM yyyy') : '—'
+            const endLabel = entry.period_enddate ? format(parseISO(entry.period_enddate), 'dd MMM yyyy') : '—'
+
+            return (
+              <div key={entry.id} className="px-4 py-3 space-y-1.5">
+                {entry.history_kind === 'setup_revision' ? (
+                  <>
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="text-sm font-medium text-gray-800 dark:text-gray-100">
+                        {entry.revisionnum ? `Setup revision ${entry.revisionnum}` : 'Setup change'}
+                      </div>
+                      <span className="badge-blue">Setup Change</span>
+                    </div>
+                    <div className="space-y-1">
+                      {entry.change_details?.map(change => (
+                        <div key={`${entry.id}-${change.field}`} className="text-sm text-gray-600 dark:text-gray-300">
+                          <span className="font-medium text-gray-800 dark:text-gray-100">{change.label}:</span>{' '}
+                          {formatChangeValue(change.before_value)} {'->'} {formatChangeValue(change.after_value)}
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="text-sm font-medium text-gray-800 dark:text-gray-100">
+                        {fmt(entry.budget_before_amount)} {'->'} {fmt(entry.budget_after_amount)}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {entry.revisionnum ? <span className="badge-blue">{`Revision ${entry.revisionnum}`}</span> : null}
+                        <span className="badge-blue">{scopeLabel}</span>
+                      </div>
+                    </div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                      {`Period ${startLabel} to ${endLabel} · ${scopeLabel}`}
+                    </div>
+                    {entry.note && <div className="text-sm text-gray-600 dark:text-gray-300">{entry.note}</div>}
+                  </>
+                )}
+                <div className="text-xs text-gray-400">
+                  Logged {format(parseISO(entry.entrydate), 'dd MMM yyyy HH:mm')}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    )
+  } else {
+    historyDetails = (
+      <div className="rounded-lg border border-dashed border-gray-300 dark:border-gray-700 px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
+        No revision or budget adjustment history has been recorded for this item yet.
+      </div>
+    )
+  }
 
   return (
     <Modal title={title} onClose={onClose} size="lg">
@@ -95,68 +169,7 @@ export default function SetupItemHistoryModal({ historyQuery, itemDesc, category
           </div>
         ) : null}
 
-        {isLoading ? (
-          <div className="flex justify-center py-6"><Spinner className="w-5 h-5" /></div>
-        ) : error ? (
-          <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300">
-            {error?.response?.data?.detail || 'Unable to load history details right now.'}
-          </div>
-        ) : data?.entries?.length ? (
-          <div className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-            <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
-              Revision And Adjustment History
-            </div>
-            <div className="divide-y divide-gray-100 dark:divide-gray-800 max-h-[28rem] overflow-y-auto">
-              {data.entries.map(entry => (
-                <div key={entry.id} className="px-4 py-3 space-y-1.5">
-                  {entry.history_kind === 'setup_revision' ? (
-                    <>
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="text-sm font-medium text-gray-800 dark:text-gray-100">
-                          {entry.revisionnum ? `Setup revision ${entry.revisionnum}` : 'Setup change'}
-                        </div>
-                        <span className="badge-blue">Setup Change</span>
-                      </div>
-                      <div className="space-y-1">
-                        {entry.change_details?.map(change => (
-                          <div key={`${entry.id}-${change.field}`} className="text-sm text-gray-600 dark:text-gray-300">
-                            <span className="font-medium text-gray-800 dark:text-gray-100">{change.label}:</span>{' '}
-                            {formatChangeValue(change.before_value)} {'->'} {formatChangeValue(change.after_value)}
-                          </div>
-                        ))}
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="text-sm font-medium text-gray-800 dark:text-gray-100">
-                          {fmt(entry.budget_before_amount)} {'->'} {fmt(entry.budget_after_amount)}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {entry.revisionnum ? <span className="badge-blue">{`Revision ${entry.revisionnum}`}</span> : null}
-                          <span className="badge-blue">{entry.budget_scope === 'future' ? 'Current + Future' : 'Current Only'}</span>
-                        </div>
-                      </div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400">
-                        Period {entry.period_startdate ? format(parseISO(entry.period_startdate), 'dd MMM yyyy') : '—'}
-                        {' '}to{' '}
-                        {entry.period_enddate ? format(parseISO(entry.period_enddate), 'dd MMM yyyy') : '—'}
-                      </div>
-                      {entry.note && <div className="text-sm text-gray-600 dark:text-gray-300">{entry.note}</div>}
-                    </>
-                  )}
-                  <div className="text-xs text-gray-400">
-                    Logged {format(parseISO(entry.entrydate), 'dd MMM yyyy HH:mm')}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div className="rounded-lg border border-dashed border-gray-300 dark:border-gray-700 px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
-            No revision or budget adjustment history has been recorded for this item yet.
-          </div>
-        )}
+        {historyDetails}
 
         <div className="flex justify-end">
           <button type="button" className="btn-secondary" onClick={onClose}>Close</button>
