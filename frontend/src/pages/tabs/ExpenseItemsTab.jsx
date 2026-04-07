@@ -7,7 +7,11 @@ import { getExpenseItems, createExpenseItem, updateExpenseItem, deleteExpenseIte
 import Modal from '../../components/Modal'
 import SetupItemHistoryModal from '../../components/SetupItemHistoryModal'
 
-const FREQTYPES = ['Always', 'Fixed Day of Month', 'Every N Days']
+const FREQTYPES = [
+  { value: 'Always', label: 'Always included' },
+  { value: 'Fixed Day of Month', label: 'Fixed Day of Month' },
+  { value: 'Every N Days', label: 'Every N Days' },
+]
 const PAYTYPES = ['AUTO', 'MANUAL']
 
 const emptyForm = {
@@ -81,7 +85,7 @@ function ExpenseItemForm({ initial = emptyForm, isEdit = false, onSubmit, onClos
         <div>
           <label htmlFor={`${formIdPrefix}-freqtype`} className="label">Frequency Type</label>
           <select id={`${formIdPrefix}-freqtype`} className="input" value={form.freqtype} onChange={e => set('freqtype', e.target.value)}>
-            {FREQTYPES.map(f => <option key={f}>{f}</option>)}
+            {FREQTYPES.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
           </select>
         </div>
         <div>
@@ -118,10 +122,13 @@ function ExpenseItemForm({ initial = emptyForm, isEdit = false, onSubmit, onClos
           "Always" — this expense is included in every budget cycle at the set amount, regardless of dates.
         </p>
       )}
-      <label htmlFor={`${formIdPrefix}-active`} className="flex items-center gap-2 text-sm cursor-pointer">
+      <label htmlFor={`${formIdPrefix}-active`} className="flex items-start gap-3 text-sm cursor-pointer">
         <input id={`${formIdPrefix}-active`} type="checkbox" disabled={activeLocked} checked={form.active} onChange={e => set('active', e.target.checked)}
           className="rounded border-gray-300 dark:border-gray-600 text-dosh-600 focus:ring-dosh-500" />
-        <span className="text-gray-700 dark:text-gray-300">Active (include in future generated budget cycles)</span>
+        <span className="space-y-0.5">
+          <span className="block font-medium text-gray-800 dark:text-gray-100">Active</span>
+          <span className="block text-xs text-gray-500 dark:text-gray-400">Include in future generated budget cycles.</span>
+        </span>
       </label>
       {activeLocked && (
         <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-300">
@@ -148,7 +155,7 @@ const fmt = v => Number(v).toLocaleString('en-AU', { style: 'currency', currency
 
 function FreqBadge({ freqtype, frequencyValue }) {
   if (!freqtype) return <span className="badge-gray">—</span>
-  if (freqtype === 'Always') return <span className="badge-green">Always</span>
+  if (freqtype === 'Always') return <span className="badge-green">Always included</span>
   if (freqtype === 'Fixed Day of Month') return <span className="badge-blue">Day {frequencyValue}</span>
   if (freqtype === 'Every N Days') return <span className="badge-blue">Every {frequencyValue}d</span>
   return <span className="badge-gray">{freqtype}</span>

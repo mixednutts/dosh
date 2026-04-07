@@ -13,7 +13,7 @@ function formatChangeValue(value) {
 }
 
 function categoryLabel(category) {
-  if (category === 'income') return 'Income Type'
+  if (category === 'income') return 'Income Source'
   if (category === 'expense') return 'Expense Item'
   if (category === 'investment') return 'Investment Line'
   return 'Item'
@@ -26,7 +26,6 @@ function buildSetupSummary(category, item) {
     return [
       ['Default Amount', fmt(item.amount ?? 0)],
       ['Paid into Account', item.linked_account || '—'],
-      ['Fixed', item.isfixed ? 'Yes' : 'No'],
       ['Auto Include', item.autoinclude ? 'Yes' : 'No'],
     ]
   }

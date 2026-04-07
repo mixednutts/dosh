@@ -1042,7 +1042,7 @@ function BudgetForm({ initial = emptyForm, onSubmit, onCreateDemo, onClose, load
           </div>
         ) : null}
         <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-xs text-gray-600 dark:border-gray-700 dark:bg-gray-800/60 dark:text-gray-300">
-          After saving the basic budget information, we will add accounts, income types, and expense items before generating our first budget cycle.
+          After saving the basic budget information, we will add accounts, income sources, and expense items before generating our first budget cycle.
         </div>
         <div className="flex justify-end gap-2 pt-2">
           <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>

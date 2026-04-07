@@ -58,9 +58,6 @@ def create_income_type(budgetid: int, payload: IncomeTypeCreate, db: DbSession):
     if existing:
         raise HTTPException(409, "Income type with this description already exists")
     data = payload.model_dump()
-    # enforce autoinclude when isfixed
-    if data.get("isfixed"):
-        data["autoinclude"] = True
     it = IncomeType(budgetid=budgetid, revisionnum=0, **data)
     db.add(it)
     db.commit()
@@ -85,9 +82,6 @@ def update_income_type(
     is_revision = bool(changed_fields)
     for field, value in data.items():
         setattr(it, field, value)
-    # enforce autoinclude when isfixed
-    if it.isfixed:
-        it.autoinclude = True
     if is_revision:
         it.revisionnum = next_supported_revisionnum(
             db,

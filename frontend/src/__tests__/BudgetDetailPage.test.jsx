@@ -14,7 +14,7 @@ jest.mock('../api/client', () => ({
   updateBudget: jest.fn(),
 }))
 
-jest.mock('../pages/tabs/IncomeTypesTab', () => () => <div>Income Types Tab</div>)
+jest.mock('../pages/tabs/IncomeTypesTab', () => () => <div>Income Sources Tab</div>)
 jest.mock('../pages/tabs/ExpenseItemsTab', () => () => <div>Expense Items Tab</div>)
 jest.mock('../pages/tabs/InvestmentItemsTab', () => () => <div>Investment Items Tab</div>)
 jest.mock('../pages/tabs/BalanceTypesTab', () => () => <div>Balance Types Tab</div>)
@@ -110,7 +110,7 @@ describe('BudgetDetailPage', () => {
       path: '/budgets/:budgetId/setup',
     })
 
-    expect(await screen.findByText(/3 accounts, 2 income types, 1 active expense item, 1 investment/)).toBeTruthy()
+    expect(await screen.findByText(/3 accounts, 2 income sources, 1 active expense item, 1 investment/)).toBeTruthy()
     expect(screen.queryByText(/Add an account first if you want income to flow into a tracked account\./)).toBeNull()
     expect(screen.queryByText(/Add an account first if you want investment contributions linked to a tracked account\./)).toBeNull()
     expect(screen.queryByText(/Choose one account as the primary account, this allow expenses to know which account to deduct from by default\./)).toBeNull()
@@ -144,7 +144,7 @@ describe('BudgetDetailPage', () => {
       path: '/budgets/:budgetId/setup',
     })
 
-    expect(await screen.findByText(/1 account, 1 income type, 1 active expense item, 0 investments/)).toBeTruthy()
+    expect(await screen.findByText(/1 account, 1 income source, 1 active expense item, 0 investments/)).toBeTruthy()
     expect(screen.queryByText(/Add an account first if you want income to flow into a tracked account\./)).toBeNull()
     expect(screen.queryByText(/Add an account first so future expense entries can be connected to one when you need that\./)).toBeNull()
     expect(screen.queryByText(/Add an account first if you want investment contributions linked to a tracked account\./)).toBeNull()
@@ -200,7 +200,7 @@ describe('BudgetDetailPage', () => {
       can_generate: false,
       blocking_issues: [
         'Add at least one active expense item so your budget cycle has spending to plan for.',
-        'Add at least one income type so your budget cycle has income to plan with.',
+        'Add at least one income source so your budget cycle has income to plan with.',
         'Add at least one active account so Dosh has a place to track this budget\'s balances.',
       ],
     })
@@ -214,12 +214,12 @@ describe('BudgetDetailPage', () => {
 
     const setupIssues = [
       'Add at least one active account so Dosh has a place to track this budget\'s balances.',
-      'Add at least one income type so your budget cycle has income to plan with.',
+      'Add at least one income source so your budget cycle has income to plan with.',
       'Add at least one active expense item so your budget cycle has spending to plan for.',
     ].map(issue => screen.getByText(issue).textContent)
     expect(setupIssues).toEqual([
       'Add at least one active account so Dosh has a place to track this budget\'s balances.',
-      'Add at least one income type so your budget cycle has income to plan with.',
+      'Add at least one income source so your budget cycle has income to plan with.',
       'Add at least one active expense item so your budget cycle has spending to plan for.',
     ])
   })

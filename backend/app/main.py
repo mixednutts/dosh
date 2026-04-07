@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 
 from .cycle_management import assign_period_lifecycle_states
 from .database import Base, engine
@@ -20,6 +21,16 @@ from .routers import (
 
 # Create all tables on startup
 Base.metadata.create_all(bind=engine)
+
+
+def _cleanup_legacy_income_type_columns():
+    with engine.begin() as connection:
+        columns = {row[1] for row in connection.execute(text("PRAGMA table_info(incometypes)")).fetchall()}
+        if "isfixed" in columns:
+            connection.execute(text("ALTER TABLE incometypes DROP COLUMN isfixed"))
+
+
+_cleanup_legacy_income_type_columns()
 
 app = FastAPI(title="Dosh API", version="1.0.0")
 

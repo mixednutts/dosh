@@ -39,15 +39,15 @@ describe('IncomeTypesTab', () => {
     client.getIncomeTypeHistory.mockResolvedValue({ item_desc: 'Salary', category: 'income', current_revisionnum: 0, entries: [] })
   })
 
-  it('auto-sets auto-include when a fixed income type is created', async () => {
+  it('defaults new income sources to auto-include and allows opting out', async () => {
     client.getIncomeTypes.mockResolvedValue([])
     client.getBalanceTypes.mockResolvedValue([{ balancedesc: 'Everyday', balance_type: 'Transaction' }])
     client.createIncomeType.mockResolvedValue({})
 
     renderWithProviders(<IncomeTypesTab budgetId={1} />)
 
-    fireEvent.click(await screen.findByText('Add Income Type'))
-    expect(await screen.findByRole('heading', { name: 'Add Income Type' })).toBeTruthy()
+    fireEvent.click(await screen.findByText('Add Income Source'))
+    expect(await screen.findByRole('heading', { name: 'Add Income Source' })).toBeTruthy()
 
     fireEvent.change(screen.getByPlaceholderText('e.g. Salary'), {
       target: { value: 'Salary' },
@@ -59,11 +59,10 @@ describe('IncomeTypesTab', () => {
       target: { value: 'Everyday' },
     })
 
-    const toggles = screen.getAllByRole('checkbox')
-    fireEvent.click(toggles[0])
-
-    expect(toggles[1].checked).toBe(true)
-    expect(screen.getByText('(auto-set when fixed)')).toBeTruthy()
+    const autoIncludeToggle = screen.getByRole('checkbox')
+    expect(autoIncludeToggle.checked).toBe(true)
+    fireEvent.click(autoIncludeToggle)
+    expect(autoIncludeToggle.checked).toBe(false)
 
     fireEvent.click(screen.getByText('Save'))
 
@@ -71,22 +70,21 @@ describe('IncomeTypesTab', () => {
       expect(client.createIncomeType).toHaveBeenCalledWith(1, {
         incomedesc: 'Salary',
         issavings: false,
-        isfixed: true,
-        autoinclude: true,
+        autoinclude: false,
         amount: 2500,
         linked_account: 'Everyday',
       })
     })
   })
 
-  it('still allows an income type to be created when no linked account exists', async () => {
+  it('still allows an income source to be created when no linked account exists', async () => {
     client.getIncomeTypes.mockResolvedValue([])
     client.getBalanceTypes.mockResolvedValue([])
     client.createIncomeType.mockResolvedValue({})
 
     renderWithProviders(<IncomeTypesTab budgetId={1} />)
 
-    fireEvent.click(await screen.findByText('Add Income Type'))
+    fireEvent.click(await screen.findByText('Add Income Source'))
 
     fireEvent.change(screen.getByPlaceholderText('e.g. Salary'), {
       target: { value: 'Casual Work' },
@@ -100,20 +98,18 @@ describe('IncomeTypesTab', () => {
       expect(client.createIncomeType).toHaveBeenCalledWith(1, {
         incomedesc: 'Casual Work',
         issavings: false,
-        isfixed: false,
-        autoinclude: false,
+        autoinclude: true,
         amount: 300,
         linked_account: null,
       })
     })
   })
 
-  it('updates an existing income type, including renaming it and removing its linked account', async () => {
+  it('updates an existing income source, including renaming it and removing its linked account', async () => {
     client.getIncomeTypes.mockResolvedValue([
       {
         incomedesc: 'Salary',
         issavings: false,
-        isfixed: true,
         autoinclude: true,
         amount: 2500,
         linked_account: 'Everyday',
@@ -126,7 +122,7 @@ describe('IncomeTypesTab', () => {
 
     expect(await screen.findByText('Salary')).toBeTruthy()
     fireEvent.click(screen.getAllByRole('button').find(button => button.className.includes('btn-secondary') && !button.title))
-    expect(await screen.findByRole('heading', { name: 'Edit Income Type' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'Edit Income Source' })).toBeTruthy()
 
     fireEvent.change(screen.getByPlaceholderText('e.g. Salary'), {
       target: { value: 'Main Salary' },
@@ -143,7 +139,6 @@ describe('IncomeTypesTab', () => {
       expect(client.updateIncomeType).toHaveBeenCalledWith(1, 'Salary', {
         incomedesc: 'Main Salary',
         issavings: false,
-        isfixed: true,
         autoinclude: true,
         amount: 2600,
         linked_account: null,
@@ -151,12 +146,11 @@ describe('IncomeTypesTab', () => {
     })
   })
 
-  it('disables delete for an income type already in use', async () => {
+  it('disables delete for an income source already in use', async () => {
     client.getIncomeTypes.mockResolvedValue([
       {
         incomedesc: 'Salary',
         issavings: false,
-        isfixed: true,
         autoinclude: true,
         amount: 2500,
         linked_account: 'Everyday',
@@ -201,16 +195,15 @@ describe('IncomeTypesTab', () => {
       />
     )
 
-    fireEvent.click(await screen.findByText('Add Income Type'))
+    fireEvent.click(await screen.findByText('Add Income Source'))
     expect(await screen.findByRole('option', { name: 'Everyday (Checking)' })).toBeTruthy()
   })
 
-  it('shows history details for an income type using budget adjustment entries', async () => {
+  it('shows history details for an income source using budget adjustment entries', async () => {
     client.getIncomeTypes.mockResolvedValue([
       {
         incomedesc: 'Salary',
         issavings: false,
-        isfixed: true,
         autoinclude: true,
         amount: 2500,
         linked_account: 'Everyday',

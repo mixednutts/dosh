@@ -4,10 +4,10 @@ from decimal import Decimal
 
 from app.time_utils import app_now_naive
 
-from .factories import create_budget, create_expense_item, create_income_type, create_investment_item, generate_periods
+from .factories import create_balance_type, create_budget, create_expense_item, create_income_type, create_investment_item, generate_periods
 
 
-def test_fixed_income_setup_enforces_autoinclude_on_create_and_update(client, db_session):
+def test_income_source_defaults_to_autoinclude_on_create_and_can_be_switched_off(client, db_session):
     budget = create_budget(db_session)
 
     create_response = client.post(
@@ -15,8 +15,6 @@ def test_fixed_income_setup_enforces_autoinclude_on_create_and_update(client, db
         json={
             "incomedesc": "Salary",
             "issavings": False,
-            "isfixed": True,
-            "autoinclude": False,
             "amount": "2500.00",
             "linked_account": None,
         },
@@ -24,27 +22,74 @@ def test_fixed_income_setup_enforces_autoinclude_on_create_and_update(client, db
     assert create_response.status_code == 201, create_response.text
     assert create_response.json()["autoinclude"] is True
 
-    variable_income = client.post(
-        f"/api/budgets/{budget.budgetid}/income-types/",
-        json={
-            "incomedesc": "Bonus",
-            "issavings": False,
-            "isfixed": False,
-            "autoinclude": False,
-            "amount": "0.00",
-            "linked_account": None,
-        },
-    )
-    assert variable_income.status_code == 201, variable_income.text
-
     update_response = client.patch(
-        f"/api/budgets/{budget.budgetid}/income-types/Bonus",
-        json={"isfixed": True, "autoinclude": False, "amount": "400.00"},
+        f"/api/budgets/{budget.budgetid}/income-types/Salary",
+        json={"autoinclude": False, "amount": "400.00"},
     )
     assert update_response.status_code == 200, update_response.text
     payload = update_response.json()
-    assert payload["isfixed"] is True
-    assert payload["autoinclude"] is True
+    assert payload["autoinclude"] is False
+    assert payload["amount"] == "400.00"
+
+
+def test_generated_periods_use_income_source_amount_for_auto_included_income(client, db_session):
+    budget = create_budget(db_session)
+    create_balance_type(db_session, budgetid=budget.budgetid, balancedesc="Everyday", is_primary=True)
+    create_income_type(db_session, budgetid=budget.budgetid, incomedesc="Salary", amount=Decimal("2750.00"))
+    create_expense_item(db_session, budgetid=budget.budgetid, expensedesc="Rent")
+
+    generate_response = client.post(
+        "/api/periods/generate",
+        json={
+            "budgetid": budget.budgetid,
+            "startdate": app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0).isoformat(),
+            "count": 1,
+        },
+    )
+    assert generate_response.status_code == 201, generate_response.text
+
+    detail_response = client.get(f"/api/periods/{generate_response.json()['finperiodid']}")
+    assert detail_response.status_code == 200, detail_response.text
+    incomes = {row["incomedesc"]: row for row in detail_response.json()["incomes"]}
+    assert incomes["Salary"]["budgetamount"] == "2750.00"
+
+
+def test_adding_existing_income_to_current_and_future_updates_source_amount(client, db_session):
+    budget = create_budget(db_session)
+    create_balance_type(db_session, budgetid=budget.budgetid, balancedesc="Everyday", is_primary=True)
+    income_type = create_income_type(db_session, budgetid=budget.budgetid, incomedesc="Salary", amount=Decimal("2500.00"))
+    create_expense_item(db_session, budgetid=budget.budgetid, expensedesc="Rent")
+    periods = generate_periods(
+        client,
+        budgetid=budget.budgetid,
+        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        count=2,
+    )
+    current_period = periods[0]
+
+    remove_response = client.delete(f"/api/periods/{current_period['finperiodid']}/income/Salary")
+    assert remove_response.status_code == 204, remove_response.text
+
+    add_response = client.post(
+        f"/api/periods/{current_period['finperiodid']}/add-income",
+        json={
+            "budgetid": budget.budgetid,
+            "incomedesc": "Salary",
+            "budgetamount": "2800.00",
+            "scope": "future",
+            "note": "Pay rise",
+        },
+    )
+    assert add_response.status_code == 201, add_response.text
+
+    db_session.refresh(income_type)
+    assert income_type.amount == Decimal("2800.00")
+
+    next_period_id = periods[1]["finperiodid"]
+    next_period_detail = client.get(f"/api/periods/{next_period_id}")
+    assert next_period_detail.status_code == 200, next_period_detail.text
+    incomes = {row["incomedesc"]: row for row in next_period_detail.json()["incomes"]}
+    assert incomes["Salary"]["budgetamount"] == "2800.00"
 
 
 def test_income_type_can_be_renamed_from_budget_setup_when_not_in_use(client, db_session):
@@ -293,7 +338,7 @@ def test_multi_transaction_setup_uses_primary_account_for_expense_activity(clien
     assert Decimal(balances["Joint Account"]["movement_amount"]) == Decimal("0.00")
 
 
-def test_expense_activity_fails_clearly_when_primary_account_is_removed_after_generation(client, db_session):
+def test_primary_account_cannot_be_removed_when_it_is_the_only_active_primary(client, db_session):
     budget = create_budget(db_session)
     create_income_type(db_session, budgetid=budget.budgetid)
     create_expense_item(db_session, budgetid=budget.budgetid)
@@ -321,14 +366,50 @@ def test_expense_activity_fails_clearly_when_primary_account_is_removed_after_ge
         f"/api/budgets/{budget.budgetid}/balance-types/Main%20Account",
         json={"is_primary": False},
     )
-    assert demote_primary.status_code == 200, demote_primary.text
+    assert demote_primary.status_code == 422
+    assert "active primary account" in demote_primary.json()["detail"].lower()
 
     expense_entry = client.post(
         f"/api/periods/{active_period['finperiodid']}/expenses/Rent/entries/",
-        json={"amount": "125.00", "note": "Should fail without primary"},
+        json={"amount": "125.00", "note": "Primary account should still be available"},
     )
-    assert expense_entry.status_code == 422
-    assert "primary account" in expense_entry.json()["detail"].lower()
+    assert expense_entry.status_code == 201, expense_entry.text
+
+
+def test_primary_transaction_account_cannot_be_deleted_when_it_would_leave_no_primary(client, db_session):
+    budget = create_budget(db_session)
+    create_income_type(db_session, budgetid=budget.budgetid)
+    create_expense_item(db_session, budgetid=budget.budgetid)
+
+    main_balance = client.post(
+        f"/api/budgets/{budget.budgetid}/balance-types/",
+        json={
+            "balancedesc": "Main Account",
+            "balance_type": "Transaction",
+            "opening_balance": "1000.00",
+            "active": True,
+            "is_primary": True,
+        },
+    )
+    assert main_balance.status_code == 201, main_balance.text
+
+    backup_balance = client.post(
+        f"/api/budgets/{budget.budgetid}/balance-types/",
+        json={
+            "balancedesc": "Backup Account",
+            "balance_type": "Transaction",
+            "opening_balance": "200.00",
+            "active": True,
+            "is_primary": False,
+        },
+    )
+    assert backup_balance.status_code == 201, backup_balance.text
+
+    delete_response = client.delete(
+        f"/api/budgets/{budget.budgetid}/balance-types/Main%20Account",
+    )
+    assert delete_response.status_code == 422
+    assert "primary account" in delete_response.json()["detail"].lower()
 
 
 def test_multi_transaction_setup_routes_linked_income_to_non_primary_account(client, db_session):
@@ -419,12 +500,6 @@ def test_reassigning_primary_account_changes_future_expense_activity_home(client
         startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
         count=1,
     )[0]
-
-    primary_reassignment = client.patch(
-        f"/api/budgets/{budget.budgetid}/balance-types/Main%20Account",
-        json={"is_primary": False},
-    )
-    assert primary_reassignment.status_code == 200, primary_reassignment.text
 
     bills_reassignment = client.patch(
         f"/api/budgets/{budget.budgetid}/balance-types/Bills%20Account",

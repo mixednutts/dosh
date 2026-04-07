@@ -182,7 +182,7 @@ describe('BudgetPeriodsPage', () => {
       budgetid: 1,
       can_generate: false,
       blocking_issues: [
-        'Add at least one income type so your budget cycle has income to plan with.',
+        'Add at least one income source so your budget cycle has income to plan with.',
         'Add at least one active expense item so your budget cycle has spending to plan for.',
       ],
       warnings: [],
@@ -195,12 +195,12 @@ describe('BudgetPeriodsPage', () => {
       path: '/budgets/:budgetId',
     })
 
-    expect(await screen.findByText(/Add at least one income type so your budget cycle has income to plan with\./)).toBeTruthy()
+    expect(await screen.findByText(/Add at least one income source so your budget cycle has income to plan with\./)).toBeTruthy()
     expect(screen.getByText(/Add at least one active expense item so your budget cycle has spending to plan for\./)).toBeTruthy()
     expect(screen.getByText(/Complete the setup steps first, then come back here to generate the first budget cycle\./)).toBeTruthy()
     expect(screen.queryByText(/This budget is ready to start using once you generate the first budget cycle\./)).toBeNull()
 
-    const newCycleButton = screen.getByTitle('Add at least one income type so your budget cycle has income to plan with.')
+    const newCycleButton = screen.getByTitle('Add at least one income source so your budget cycle has income to plan with.')
     expect(newCycleButton.disabled).toBe(true)
 
     const firstCycleButton = screen.getByText('Generate First Budget Cycle')

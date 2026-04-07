@@ -20,7 +20,6 @@ FIELD_LABELS: dict[str, str] = {
     "effectivedate": "Effective date",
     "linked_account": "Linked account",
     "linked_account_desc": "Linked account",
-    "isfixed": "Fixed income",
     "autoinclude": "Auto include",
     "issavings": "Savings",
     "initial_value": "Initial value",

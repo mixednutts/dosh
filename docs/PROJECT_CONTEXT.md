@@ -140,7 +140,7 @@ Frontend:
 
 Operational note:
 
-- transitional startup schema patching has now been removed from [main.py](/home/ubuntu/dosh/backend/app/main.py)
+- transitional startup schema patching is no longer the primary schema strategy, but one lightweight compatibility cleanup still exists in [main.py](/home/ubuntu/dosh/backend/app/main.py) to remove a legacy `incometypes.isfixed` column if that column is still present
 - the repo now has an explicit transaction-ledger cutover script in [cutover_unified_transactions.py](/home/ubuntu/dosh/backend/scripts/cutover_unified_transactions.py) for the current schema baseline
 - proper versioned migrations still remain a near-term engineering need from that new baseline
 - backend tests now run against an isolated SQLite database per test case through [conftest.py](/home/ubuntu/dosh/backend/tests/conftest.py)
@@ -183,6 +183,8 @@ These rules should be treated as current product invariants unless deliberately 
 - expense and investment workflows should remain aligned, including `Current`, `Paid`, and `Revised` behavior
 - paid lines are treated as finalized unless intentionally revised through the supported workflow, which now allows direct `Paid` to `Revised` reopening without a required revision-reason modal
 - setup records already used by generated cycles or downstream activity should be protected from destructive edits
+- the active primary transaction account is a hard setup requirement for expense-driven workflows and setup should not allow edits or deletes that leave the budget without one
+- income generation now uses the stored income-source amount directly; the retired `isfixed` concept should not be reintroduced casually
 - carry-forward should only be created from close-out of the prior cycle, not from simple future-cycle generation
 - budget adjustments for income, expense, and investment lines now live in `PeriodTransaction` as `BUDGETADJ` history and must stay excluded from actual and balance calculations
 - the detailed workflow and history rules for this area are captured in [BUDGET_ADJUSTMENT_REVISION_HISTORY_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_ADJUSTMENT_REVISION_HISTORY_PLAN.md)
@@ -222,6 +224,9 @@ The repository already supports:
 - the create-budget modal now includes a compact guidance card plus expandable `More about Budgets and Budget Cycles` help content instead of a permanently expanded explainer block
 - budget creation now supports custom fixed-length cycles using `Every N Days`, with the create-budget form exposing that as a custom day-cycle option
 - budget setup now supports renaming an income type through the setup edit flow when that item is not already protected by downstream use
+- budget setup now uses `Income Source` wording in the touched setup flows, and new income sources default `Auto-include` to on
+- period-detail expense and investment `View transactions` actions now open read-only details modals, while add-transaction actions remain explicit
+- period-detail remaining and budget-surplus summaries now roll up from the same positive-remaining line logic used by the row-level expense and investment calculations
 
 Current frontend wording trends toward `Budget Cycle` for user clarity while backend naming still uses `period` for stability.
 

@@ -491,6 +491,10 @@ Status:
 
 - `Next`
 
+- `Completed`: align the budget-setup account table headings and values, separate add-account helper copy more clearly, and tighten primary-account affordances so the setup flow explains what is active, what is primary, and why
+- `Completed`: rename budget-setup income wording from `Income Type` to `Income Source` across the relevant setup surfaces
+- `Completed`: make expense and investment `View transactions` behave as read-only details modals so they match the movement-details pattern instead of showing add-transaction controls
+- `Completed`: move the expense status filter inline with the period-detail status column header
 - `Completed`: tighten period-detail UI polish around totals and status affordances, especially for the income, investment, and balance sections
 - `Completed`: add period-detail totals for investments and balances while keeping movement read-only and avoiding a meaningless movement total
 - `Completed`: continue navigation and information architecture cleanup so the sidebar stays centered on one active budget context at a time
@@ -512,6 +516,11 @@ Status:
 
 - `Active`
 
+- `Completed`: prevent account-setup edits or deletes from leaving the budget with no active primary transaction account, while defaulting the first transaction account to primary and warning before switching primary status
+- `Completed`: protect account opening balances from edits once downstream budget-cycle use exists and explain the lock reason in the setup UI
+- `Completed`: remove the retired income `isfixed` behavior so generated cycles now use the income source amount directly and new income sources default to auto-include unless the user unchecks it
+- `Completed`: correct period-detail remaining-expense, remaining-investment, and surplus rollups so deficit lines stay visible at the row level without distorting top-level remaining or budget-surplus totals
+- `Completed`: hide `Add Remaining` in credit or refund transaction-entry views and only show it when there is a real positive remaining obligation to add
 - `Completed`: fix the empty visual artifact at the end of the total income line on the period detail page
 - `Completed`: align the investment spent pill wording and behavior with the expense spent pill so both outflow workflows feel consistent
 - `Completed`: ensure `Surplus (Budget)` reflects deficit on expense lines even when the affected expense line is already in `Paid` state
@@ -537,9 +546,10 @@ Status:
 - `Completed`: extend setup-item history so revision-number increases can show the actual changed setup fields, not only `BUDGETADJ` entries
 - `Completed`: align setup revision numbers with real stored history records and link setup-affecting future budget adjustments into that revision sequence
 - `Completed`: add inline arithmetic amount entry to period-detail transaction, budget-adjustment, add-income, and add-expense modals, with resolved previews for valid calculations and in-progress summaries for incomplete arithmetic input
+- `Completed`: add an expense status filter to the period-detail expenses table and align the control with the existing status column rather than introducing a separate toolbar
 - provide an activation workflow for income lines in budget setup and align that workflow consistently across income, investment, and expense setup sections
-- change modal wording in expense, investment, and income workflows from `Add Full` to `Add Remaining` for clearer and more consistent transaction-entry language
-- make modal `Add Remaining` values in expense, investment, and income workflows resolve as budget amount minus total recorded amount, with deficit outcomes clamped to `$0.00`
+- `Completed`: change modal transaction quick-fill wording so `Add Remaining` appears only when expense or investment workflows have a true positive remaining amount, while credit or refund views continue using full-amount entry
+- define `AUTO` expense pay-type behavior so only explicitly automatic expenses deduct from the primary account, while keeping setup defaults at `AUTO` until that workflow is implemented
 
 #### Activity Group: Test Coverage
 

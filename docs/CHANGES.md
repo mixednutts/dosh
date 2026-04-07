@@ -31,6 +31,76 @@ For the dedicated workflow plan that now owns budget-adjustment, revision-histor
 
 For the implemented amount-entry plan that now defines inline arithmetic scope, preview behavior, and parser boundaries for period-detail modals, read [INLINE_EXPRESSION_AMOUNT_INPUT_PLAN.md](/home/ubuntu/dosh/docs/plans/INLINE_EXPRESSION_AMOUNT_INPUT_PLAN.md).
 
+## Latest Session: Budget-Setup Safeguards, Income-Source Simplification, And Period-Detail Rollup Corrections
+
+This session focused on accepted user-facing setup and period-detail fixes rather than another broad platform refactor. The main outcomes were clearer setup protection rules, a simpler income-source model, and bottom-up period-detail calculations that now match the underlying line behavior more consistently.
+
+Important direction now in place:
+
+- budget setup now protects the active primary transaction-account requirement more explicitly, including first-account defaults, switch-warning behavior, and delete or edit guards that prevent the setup from falling into an invalid no-primary state
+- account opening balances are now intentionally editable only before downstream budget-cycle use exists, and the setup UI now explains that protection rather than leaving it as a silent lock
+- budget setup wording now uses `Income Source` rather than `Income Type` in the touched setup flows
+- the previous `isfixed` income behavior has been removed from the product model, so generated periods now always use the current stored income-source amount whenever the source is auto-included
+- new income sources now default `Auto-include` to on, while existing records intentionally retain their current `autoinclude` setting
+- period-detail remaining and surplus summaries now roll up from positive remaining obligations at the line level, so deficit rows stay visible without distorting the top summary
+- expense and investment `View transactions` now behave as true read-only details modals, matching the existing movement-details pattern instead of exposing add-transaction controls through the details action
+- transaction quick-fill wording now uses `Add Remaining` only when a real positive remaining amount exists, and credit or refund flows intentionally do not show that shortcut
+- the legacy `incometypes.isfixed` database column is now removed through a lightweight startup cleanup if it still exists, which restores correctness for the current baseline but also reinforces that proper versioned migrations remain the long-term follow-up
+
+### 1. Budget setup now enforces primary-account integrity more clearly
+
+The setup flow previously allowed users to create or reach invalid account states too easily, especially around which transaction account was active and primary.
+
+Current behavior:
+
+- [BalanceTypesTab.jsx](/home/ubuntu/dosh/frontend/src/pages/tabs/BalanceTypesTab.jsx) now aligns the account table headings and displayed values more cleanly
+- the add-account modal separates the `Active` and `Primary transaction account` helper text so the labels remain scannable
+- the first transaction account created during setup now defaults to the primary transaction account automatically
+- switching primary status now warns before replacing an existing active primary account
+- edit and delete paths now block the setup from ending up with no active primary transaction account
+- opening balances become read-only once the account has downstream cycle usage, and the edit flow now explains why that value is protected
+
+Important product meaning:
+
+- setup should stay editable where safe, but primary-account integrity is now treated as a hard requirement rather than a recover-later suggestion
+- once downstream cycles depend on an account opening balance, preserving continuity matters more than offering unrestricted setup editing
+
+### 2. Income-source defaults are now simpler and less confusing
+
+The earlier `Fixed amount` model overlapped with the newer period-detail `current + future` workflow and made the income-source behavior harder to explain.
+
+Current behavior:
+
+- [models.py](/home/ubuntu/dosh/backend/app/models.py), [schemas.py](/home/ubuntu/dosh/backend/app/schemas.py), [income_types.py](/home/ubuntu/dosh/backend/app/routers/income_types.py), [periods.py](/home/ubuntu/dosh/backend/app/routers/periods.py), and [cycle_management.py](/home/ubuntu/dosh/backend/app/cycle_management.py) no longer use `isfixed`
+- generated periods and closeout-created future periods now use the current stored income-source amount whenever the source is auto-included
+- `Current + Future` period-detail income changes now update the income source default amount as part of the same workflow so future generation remains aligned
+- new income sources default `Auto-include` to on, and the setup copy now explains that it controls inclusion in newly generated budget cycles
+- setup history and UI wording now use `Income Source` consistently across the touched surfaces
+
+Important engineering meaning:
+
+- the source amount is now the single product-facing default for generated income lines rather than one of two overlapping concepts
+- existing records intentionally keep their current `autoinclude` value, so this change does not silently alter older user choices
+- the current startup cleanup that removes a legacy `isfixed` column should still be treated as temporary migration-era support, not the final schema-evolution model
+
+### 3. Period-detail totals now roll up from the same lowest-level remaining logic
+
+The period-detail page had drifted into inconsistent summary math where some totals used positive-only remaining logic while others still mixed in deficit lines or higher-level shortcuts.
+
+Current behavior:
+
+- [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx) now totals remaining expenses and remaining investments from positive remaining values only
+- deficit lines still display their own negative remaining values at the row level
+- `Surplus (Budget)` now rolls up from `Surplus (Actual) - Remaining Expenses - Remaining Investments`
+- the expense status filter now sits inline with the `Status / Txns` column header rather than floating as a separate control
+- expense and investment details modals now open in read-only mode from `View transactions`, reserving add-transaction behavior for the explicit add actions
+- modal quick-fill language now says `Add Remaining` only when there is a real positive remaining obligation to record, and not in credit-style flows
+
+Important product meaning:
+
+- top-level period summaries should now agree with the line-item logic users can see underneath them
+- details actions are now separated more clearly from transaction-entry actions, which reduces accidental workflow mixing
+
 ## Latest Session: Sonar Coverage Buffer Recovery, Medium-Issue Cleanup Pass, And CI Compatibility Follow-Through
 
 This session focused on stabilizing the SonarQube quality gate after another `new_coverage` failure, then using the latest successful artifact to target the remaining medium-severity maintainability issues in one coordinated pass.

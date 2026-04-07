@@ -16,7 +16,7 @@ import { getPreferredTransactionLabel } from '../utils/accountNaming'
 const SECTIONS = [
   { id: 'budget-info', label: 'Budget Info' },
   { id: 'accounts', label: 'Accounts' },
-  { id: 'income-types', label: 'Income Types' },
+  { id: 'income-types', label: 'Income Sources' },
   { id: 'expense-items', label: 'Expense Items' },
   { id: 'investments', label: 'Investments' },
   { id: 'personalisation', label: 'Personalisation' },
@@ -49,7 +49,7 @@ function getIssueSectionId(issue) {
   if (lower.includes('account') || lower.includes('primary account')) {
     return 'accounts'
   }
-  if (lower.includes('income type')) {
+  if (lower.includes('income type') || lower.includes('income source')) {
     return 'income-types'
   }
   if (lower.includes('expense item')) {
@@ -138,7 +138,7 @@ function getSectionStatus(sectionKey, setupAssessment) {
   const matchesBlockingIssue = blockingIssues.some(issue => {
     const lower = issue.toLowerCase()
     if (sectionKey === 'accounts') return lower.includes('account')
-    if (sectionKey === 'income_types') return lower.includes('income type')
+    if (sectionKey === 'income_types') return lower.includes('income type') || lower.includes('income source')
     if (sectionKey === 'expense_items') return lower.includes('expense item')
     if (sectionKey === 'investment_items') return lower.includes('investment')
     return false
@@ -376,7 +376,7 @@ export default function BudgetDetailPage() {
           <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/50">
             <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Current Setup</p>
             <p className="mt-1 text-sm font-medium text-gray-900 dark:text-gray-100">
-              {countLabel(accounts.length, 'account')}, {countLabel(incomeTypes.length, 'income type')}, {countLabel(activeExpenseItems.length, 'active expense item')}, {countLabel(investmentItems.length, 'investment')}
+              {countLabel(accounts.length, 'account')}, {countLabel(incomeTypes.length, 'income source')}, {countLabel(activeExpenseItems.length, 'active expense item')}, {countLabel(investmentItems.length, 'investment')}
             </p>
           </div>
           {setupAssessment ? (
@@ -429,8 +429,8 @@ export default function BudgetDetailPage() {
 
       <SectionShell
         id="income-types"
-        title="Income Types"
-        badge={countLabel(incomeTypes.length, 'income type')}
+        title="Income Sources"
+        badge={countLabel(incomeTypes.length, 'income source')}
         statusBadge={getSectionStatus('income_types', setupAssessment)}
         summary="Add the income lines you want to plan with in each budget cycle, including steady income and optional transfers."
         helper={incomeHelper}

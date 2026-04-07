@@ -62,7 +62,7 @@ def account_assessment(budgetid: int, balancedesc: str, db: Session) -> dict:
         .first()
         is not None
     ):
-        setup_reasons.append("Linked to one or more income types")
+        setup_reasons.append("Linked to one or more income sources")
 
     if (
         db.query(InvestmentItem)
@@ -243,7 +243,7 @@ def budget_setup_assessment(budgetid: int, db: Session) -> dict | None:
     warnings: list[str] = []
 
     if not income_types:
-        blocking_issues.append("Add at least one income type so your budget cycle has income to plan with.")
+        blocking_issues.append("Add at least one income source so your budget cycle has income to plan with.")
 
     if not active_expense_items:
         blocking_issues.append("Add at least one active expense item so your budget cycle has spending to plan for.")

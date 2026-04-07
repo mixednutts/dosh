@@ -176,16 +176,9 @@ class BudgetSetupAssessmentOut(BaseModel):
 class IncomeTypeBase(BaseModel):
     incomedesc: str
     issavings: bool = False
-    isfixed: bool = False
-    autoinclude: bool = False
+    autoinclude: bool = True
     amount: Decimal = Decimal("0.00")
     linked_account: Optional[str] = None
-
-    @model_validator(mode="after")
-    def auto_set_autoinclude(self) -> "IncomeTypeBase":
-        if self.isfixed:
-            self.autoinclude = True
-        return self
 
 
 class IncomeTypeCreate(IncomeTypeBase):
@@ -195,7 +188,6 @@ class IncomeTypeCreate(IncomeTypeBase):
 class IncomeTypeUpdate(BaseModel):
     incomedesc: Optional[str] = None
     issavings: Optional[bool] = None
-    isfixed: Optional[bool] = None
     autoinclude: Optional[bool] = None
     amount: Optional[Decimal] = None
     linked_account: Optional[str] = None

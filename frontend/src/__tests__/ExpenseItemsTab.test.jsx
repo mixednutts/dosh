@@ -209,7 +209,7 @@ describe('ExpenseItemsTab', () => {
     expect(client.getExpenseItemHistory).toHaveBeenCalledWith(1, 'Rent')
   })
 
-  it('creates an every-n-days expense item with a commencement date', async () => {
+  it('creates an every-n-days expense item with a commencement date and AUTO pay type by default', async () => {
     client.getExpenseItems.mockResolvedValue([])
     client.createExpenseItem.mockResolvedValue({})
 
@@ -226,9 +226,6 @@ describe('ExpenseItemsTab', () => {
     fireEvent.change(screen.getByLabelText(/Interval \(days\)/i), {
       target: { value: '10' },
     })
-    fireEvent.change(screen.getByLabelText(/Pay Type/i), {
-      target: { value: '' },
-    })
     fireEvent.change(screen.getByLabelText(/Amount/i), {
       target: { value: '85.50' },
     })
@@ -243,11 +240,31 @@ describe('ExpenseItemsTab', () => {
         active: true,
         freqtype: 'Every N Days',
         frequency_value: 10,
-        paytype: null,
+        paytype: 'AUTO',
         effectivedate: '2026-04-01',
         expenseamount: 85.5,
       })
     })
+  })
+
+  it('shows always-included wording for always expense items', async () => {
+    client.getExpenseItems.mockResolvedValue([
+      {
+        expensedesc: 'Rent',
+        active: true,
+        freqtype: 'Always',
+        frequency_value: null,
+        paytype: 'MANUAL',
+        effectivedate: null,
+        expenseamount: '1200.00',
+        revisionnum: 1,
+        sort_order: 0,
+      },
+    ])
+
+    renderWithProviders(<ExpenseItemsTab budgetId={1} />)
+
+    expect(await screen.findByText('Always included')).toBeTruthy()
   })
 
   it('reveals inactive items and reorders active items', async () => {

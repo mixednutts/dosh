@@ -52,6 +52,82 @@ def _assert_balance_edit_allowed(budgetid: int, balancedesc: str, db: Session) -
         raise HTTPException(422, f'Account "{balancedesc}" is in use and its structure cannot be edited. {"; ".join(assessment["reasons"])}.')
 
 
+def _assert_active_primary_will_remain(
+    budgetid: int,
+    balancedesc: str,
+    bt: BalanceType,
+    updates: dict,
+    db: Session,
+) -> None:
+    was_active_primary = bool(bt.active and bt.is_primary)
+    will_be_active = updates.get("active", bt.active)
+    will_be_primary = updates.get("is_primary", bt.is_primary)
+    active_transaction_accounts_exist = (
+        db.query(BalanceType)
+        .filter(
+            BalanceType.budgetid == budgetid,
+            BalanceType.balancedesc != balancedesc,
+            BalanceType.active == True,  # noqa: E712
+            BalanceType.balance_type == "Transaction",
+        )
+        .first()
+        is not None
+    ) or (
+        updates.get("balance_type", bt.balance_type) == "Transaction" and will_be_active
+    )
+
+    if not was_active_primary or (will_be_active and will_be_primary) or not active_transaction_accounts_exist:
+        return
+
+    other_active_primary = (
+        db.query(BalanceType)
+        .filter(
+            BalanceType.budgetid == budgetid,
+            BalanceType.balancedesc != balancedesc,
+            BalanceType.active == True,  # noqa: E712
+            BalanceType.is_primary == True,  # noqa: E712
+        )
+        .first()
+    )
+    if other_active_primary is None:
+        raise HTTPException(422, "One active primary account is required. Choose another primary account before removing this one.")
+
+
+def _assert_delete_wont_remove_required_primary(
+    budgetid: int,
+    bt: BalanceType,
+    db: Session,
+) -> None:
+    if not (bt.active and bt.is_primary and bt.balance_type == "Transaction"):
+        return
+
+    other_active_transaction = (
+        db.query(BalanceType)
+        .filter(
+            BalanceType.budgetid == budgetid,
+            BalanceType.balancedesc != bt.balancedesc,
+            BalanceType.active == True,  # noqa: E712
+            BalanceType.balance_type == "Transaction",
+        )
+        .first()
+    )
+    if other_active_transaction is None:
+        return
+
+    other_active_primary = (
+        db.query(BalanceType)
+        .filter(
+            BalanceType.budgetid == budgetid,
+            BalanceType.balancedesc != bt.balancedesc,
+            BalanceType.active == True,  # noqa: E712
+            BalanceType.is_primary == True,  # noqa: E712
+        )
+        .first()
+    )
+    if other_active_primary is None:
+        raise HTTPException(422, "One active primary account is required. Choose another primary account before deleting this one.")
+
+
 @router.post("/", response_model=BalanceTypeOut, status_code=201, responses=error_responses(404, 409))
 def create_balance_type(budgetid: int, payload: BalanceTypeCreate, db: DbSession):
     _get_budget_or_404(budgetid, db)
@@ -74,9 +150,10 @@ def update_balance_type(
     bt = db.get(BalanceType, (budgetid, balancedesc))
     if not bt:
         raise HTTPException(404, "Balance type not found")
+    updates = payload.model_dump(exclude_none=True)
+    _assert_active_primary_will_remain(budgetid, balancedesc, bt, updates, db)
     if payload.is_primary:
         _clear_primary(budgetid, db)
-    updates = payload.model_dump(exclude_none=True)
     if "active" in updates and updates["active"] is False:
         _assert_balance_deactivate_allowed(budgetid, balancedesc, db)
     if {"balance_type", "opening_balance"}.intersection(updates.keys()):
@@ -93,6 +170,7 @@ def delete_balance_type(budgetid: int, balancedesc: str, db: DbSession):
     bt = db.get(BalanceType, (budgetid, balancedesc))
     if not bt:
         raise HTTPException(404, "Balance type not found")
+    _assert_delete_wont_remove_required_primary(budgetid, bt, db)
     _assert_balance_delete_allowed(budgetid, balancedesc, db)
     db.delete(bt)
     db.commit()

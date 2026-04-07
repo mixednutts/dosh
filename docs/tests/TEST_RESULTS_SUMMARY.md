@@ -4,6 +4,106 @@ This document records meaningful automated test results from major working sessi
 
 It exists separately from [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) so the strategy can stay stable while future sessions still have a record of what was actually run and verified.
 
+## Latest Session: Budget-Setup Protection, Income-Source Cleanup, Period-Detail Rollups, And Deployment Verification
+
+Session outcomes verified in this run:
+
+- budget setup now guards the active primary transaction-account requirement more directly, including first-account defaults, primary-switch confirmation, and protection against edit or delete paths that would leave no active primary account
+- account opening balances now become read-only once downstream budget-cycle usage exists, with regression coverage for the protected edit behavior
+- setup wording now uses `Income Source` across the touched setup surfaces
+- the legacy income `isfixed` behavior was removed from frontend, backend, factories, smoke coverage, and focused regressions; generated cycles now use the current stored income-source amount directly whenever the source is auto-included
+- period-detail remaining-expense, remaining-investment, and budget-surplus totals now roll up from the same lowest-level positive-remaining logic
+- expense and investment `View transactions` actions now open read-only details modals, and transaction quick-fill wording now uses `Add Remaining` only when a real positive remaining amount exists
+- all accepted changes were deployed through the shared Docker Compose path, and the live health endpoint returned `{\"status\":\"ok\",\"app\":\"Dosh\"}` after each final rollout
+
+### Backend verification
+
+Commands run during this session:
+
+```bash
+cd /home/ubuntu/dosh/backend
+../backend/.venv/bin/python -m pytest tests/test_budget_setup_workflows.py
+../backend/.venv/bin/python -m pytest tests/test_budget_setup_workflows.py tests/test_app_smoke.py
+```
+
+Result:
+
+- the focused budget-setup regression batch passed after the account-protection, primary-account, and opening-balance changes
+- the focused backend income-source cleanup and smoke batch passed after removing `isfixed` from the model and generation logic
+- backend startup now performs a one-time compatibility drop of the legacy `incometypes.isfixed` column when present, but this session did not introduce a full migration framework
+
+Files with meaningful backend updates in this session:
+
+- [models.py](/home/ubuntu/dosh/backend/app/models.py)
+- [schemas.py](/home/ubuntu/dosh/backend/app/schemas.py)
+- [main.py](/home/ubuntu/dosh/backend/app/main.py)
+- [balance_types.py](/home/ubuntu/dosh/backend/app/routers/balance_types.py)
+- [income_types.py](/home/ubuntu/dosh/backend/app/routers/income_types.py)
+- [periods.py](/home/ubuntu/dosh/backend/app/routers/periods.py)
+- [cycle_management.py](/home/ubuntu/dosh/backend/app/cycle_management.py)
+- [setup_history.py](/home/ubuntu/dosh/backend/app/setup_history.py)
+- [test_budget_setup_workflows.py](/home/ubuntu/dosh/backend/tests/test_budget_setup_workflows.py)
+- [test_app_smoke.py](/home/ubuntu/dosh/backend/tests/test_app_smoke.py)
+
+### Frontend verification
+
+Commands run during this session:
+
+```bash
+cd /home/ubuntu/dosh/frontend
+npm test -- --runInBand src/__tests__/BalanceTypesTab.test.jsx src/__tests__/IncomeTypesTab.test.jsx src/__tests__/ExpenseItemsTab.test.jsx src/__tests__/PeriodDetailPage.test.jsx
+npm test -- --runInBand src/__tests__/BudgetDetailPage.test.jsx
+npm test -- --runInBand src/__tests__/IncomeTypesTab.test.jsx src/__tests__/PeriodDetailPage.test.jsx src/__tests__/BudgetDetailPage.test.jsx src/__tests__/BudgetPeriodsPage.test.jsx src/__tests__/BudgetsPage.test.jsx src/__tests__/Layout.test.jsx
+npm test -- --runInBand src/__tests__/PeriodDetailPage.test.jsx
+npm test -- --runInBand src/__tests__/BalanceTypesTab.test.jsx
+```
+
+Result:
+
+- the focused setup and period-detail frontend regressions passed after the initial remediation changes
+- the setup-page heading change from `Income Types` to `Income Sources` passed in its focused regression rerun
+- the income-source cleanup batch passed after removing `Fixed amount` from the product-facing setup and period-detail flows
+- the later focused reruns for period-detail summary logic, read-only details modals, inline status-filter placement, and `Add Remaining` transaction-entry behavior all passed
+
+Files with meaningful frontend updates in this session:
+
+- [BalanceTypesTab.jsx](/home/ubuntu/dosh/frontend/src/pages/tabs/BalanceTypesTab.jsx)
+- [IncomeTypesTab.jsx](/home/ubuntu/dosh/frontend/src/pages/tabs/IncomeTypesTab.jsx)
+- [ExpenseItemsTab.jsx](/home/ubuntu/dosh/frontend/src/pages/tabs/ExpenseItemsTab.jsx)
+- [BudgetDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/BudgetDetailPage.jsx)
+- [BudgetsPage.jsx](/home/ubuntu/dosh/frontend/src/pages/BudgetsPage.jsx)
+- [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx)
+- [SetupItemHistoryModal.jsx](/home/ubuntu/dosh/frontend/src/components/SetupItemHistoryModal.jsx)
+- [BalanceTypesTab.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/BalanceTypesTab.test.jsx)
+- [IncomeTypesTab.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/IncomeTypesTab.test.jsx)
+- [ExpenseItemsTab.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/ExpenseItemsTab.test.jsx)
+- [BudgetDetailPage.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/BudgetDetailPage.test.jsx)
+- [BudgetPeriodsPage.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/BudgetPeriodsPage.test.jsx)
+- [BudgetsPage.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/BudgetsPage.test.jsx)
+- [Layout.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/Layout.test.jsx)
+- [PeriodDetailPage.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/PeriodDetailPage.test.jsx)
+- [budget-smoke.spec.js](/home/ubuntu/dosh/frontend/e2e/budget-smoke.spec.js)
+
+### Deployment verification
+
+Commands run during this session:
+
+```bash
+docker compose -f /home/ubuntu/dosh/docker-compose.yml -f /home/ubuntu/dosh/docker-compose.override.yml up -d --build
+curl -sS http://127.0.0.1:3080/api/health
+```
+
+Result:
+
+- the stack was rebuilt and redeployed repeatedly as accepted fixes landed
+- final health verification returned `{\"status\":\"ok\",\"app\":\"Dosh\"}`
+
+### Test failures and resolution notes
+
+- no unresolved automated test failures remained at the end of the session
+- the main follow-through in this session was regression rewriting rather than chasing a flaky suite; once the focused expectations were updated to the new income-source and period-detail rules, the documented runs finished green
+- no additional plan document was required because this session did not run in a separate plan-only mode
+
 ## Latest Session: Sonar Coverage Recovery, Medium-Issue Cleanup Verification, And CI Compatibility Resolution
 
 Session outcomes verified in this run:

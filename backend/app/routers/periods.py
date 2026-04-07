@@ -252,7 +252,7 @@ def generate_period(payload: PeriodGenerateRequest, db: DbSession):
     # Validate once
     income_count = db.query(IncomeType).filter(IncomeType.budgetid == payload.budgetid).count()
     if income_count == 0:
-        raise HTTPException(422, "Budget must have at least one income type before generating a period")
+        raise HTTPException(422, "Budget must have at least one income source before generating a period")
 
     expense_count = db.query(ExpenseItem).filter(
         ExpenseItem.budgetid == payload.budgetid,
@@ -310,9 +310,9 @@ def generate_period(payload: PeriodGenerateRequest, db: DbSession):
         db.add(period)
         db.flush()
 
-        # Populate income rows for autoinclude income types
+        # Populate income rows for auto-included income sources
         for it in income_types:
-            budget_amount = Decimal(str(it.amount)) if it.isfixed else Decimal("0.00")
+            budget_amount = Decimal(str(it.amount))
             db.add(PeriodIncome(
                 finperiodid=period.finperiodid,
                 budgetid=payload.budgetid,
@@ -381,10 +381,7 @@ def generate_period(payload: PeriodGenerateRequest, db: DbSession):
                 closing_amount=opening,
             ))
 
-        projected_period_surplus = sum(
-            (Decimal(str(it.amount)) if it.isfixed else Decimal("0.00") for it in income_types),
-            Decimal("0.00"),
-        ) - projected_expense_budget
+        projected_period_surplus = sum((Decimal(str(it.amount)) for it in income_types), Decimal("0.00")) - projected_expense_budget
         auto_surplus_amount = projected_period_surplus if projected_period_surplus > Decimal("0.00") else Decimal("0.00")
 
         # Populate investment rows
@@ -907,6 +904,13 @@ def add_income_to_period(
 
     if not is_oneoff:
         it.autoinclude = True
+        it.amount = payload.budgetamount
+        it.revisionnum = next_supported_revisionnum(
+            db,
+            budgetid=payload.budgetid,
+            category="income",
+            item_desc=it.incomedesc,
+        )
         future_periods = (
             db.query(FinancialPeriod)
             .filter(
@@ -918,17 +922,20 @@ def add_income_to_period(
         )
         for fp in future_periods:
             already = db.get(PeriodIncome, (fp.finperiodid, payload.incomedesc))
-            if not already:
-                budget_amount = Decimal(str(it.amount)) if it.isfixed else payload.budgetamount
-                db.add(PeriodIncome(
-                    finperiodid=fp.finperiodid,
-                    budgetid=payload.budgetid,
-                    incomedesc=payload.incomedesc,
-                    budgetamount=budget_amount,
-                    actualamount=Decimal("0.00"),
-                    varianceamount=Decimal("0.00"),
-                    revision_snapshot=it.revisionnum,
-                ))
+            if already:
+                already.budgetamount = Decimal(str(it.amount))
+                already.revision_snapshot = it.revisionnum
+                continue
+
+            db.add(PeriodIncome(
+                finperiodid=fp.finperiodid,
+                budgetid=payload.budgetid,
+                incomedesc=payload.incomedesc,
+                budgetamount=Decimal(str(it.amount)),
+                actualamount=Decimal("0.00"),
+                varianceamount=Decimal("0.00"),
+                revision_snapshot=it.revisionnum,
+            ))
 
     if payload.note:
         _record_budget_adjustment(
@@ -941,7 +948,7 @@ def add_income_to_period(
             before_amount=Decimal("0.00"),
             after_amount=Decimal(str(payload.budgetamount)),
             line_status=None,
-            revisionnum=it.revisionnum if payload.scope == "future" else None,
+            revisionnum=it.revisionnum if not is_oneoff else None,
             db=db,
         )
 

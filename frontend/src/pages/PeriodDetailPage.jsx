@@ -313,7 +313,7 @@ function calcNextDue(freqtype, frequencyValue, effectivedate) {
 
 function freqLabel(freqtype, frequencyValue) {
   if (!freqtype) return null
-  if (freqtype === 'Always') return 'Always'
+  if (freqtype === 'Always') return 'Always included'
   if (freqtype === 'Fixed Day of Month') return `Recurring: Day ${frequencyValue}`
   if (freqtype === 'Every N Days') return `Recurring: Every ${frequencyValue}d`
   return freqtype
@@ -432,6 +432,7 @@ function TransactionListPanel({
 }
 
 function TransactionEntryForm({
+  kind,
   locked,
   amount,
   setAmount,
@@ -448,6 +449,7 @@ function TransactionEntryForm({
   submitLabel,
   isPending,
   onClose,
+  actualAmount,
 }) {
   if (locked) {
     return (
@@ -459,10 +461,16 @@ function TransactionEntryForm({
 
   const selectedOption = typeOptions.find(option => option.value === type) ?? typeOptions[0]
   const noteInputId = `transaction-note-${selectedOption.value}`
+  const remainingAmount = Number(budgetAmount ?? 0) - Number(actualAmount ?? 0)
+  const usesRemainingQuickFill = (
+    (kind === 'expense' && type === 'debit') ||
+    (kind === 'investment' && type === 'increase')
+  ) && remainingAmount > 0
+  const quickFillValue = usesRemainingQuickFill ? remainingAmount : Number(budgetAmount)
+  const quickFillLabel = usesRemainingQuickFill ? 'Add Remaining' : 'Full'
 
   return (
     <form onSubmit={onSubmit} className="space-y-3 border-t border-gray-200 pt-1 dark:border-gray-700">
-      <p className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Add Transaction</p>
       <div className="flex overflow-hidden rounded-md border border-gray-200 text-sm dark:border-gray-700">
         {typeOptions.map(option => (
           <button
@@ -498,13 +506,13 @@ function TransactionEntryForm({
           <button
             type="button"
             onClick={() => {
-              setAmount(String(Number(budgetAmount)))
+              setAmount(String(quickFillValue))
               setError('')
             }}
             className="btn-secondary whitespace-nowrap text-xs"
-            title="Allocate full budget amount"
+            title={usesRemainingQuickFill ? 'Allocate remaining budget amount' : 'Allocate full budget amount'}
           >
-            Full ({fmt(budgetAmount)})
+            {quickFillLabel} ({fmt(quickFillValue)})
           </button>
         )}
         <label htmlFor={noteInputId} className="sr-only">Transaction note</label>
@@ -533,6 +541,7 @@ function TransactionWorkflowModal({
   items,
   isLoading,
   locked,
+  readOnly = false,
   amount,
   setAmount,
   note,
@@ -552,6 +561,7 @@ function TransactionWorkflowModal({
 }) {
   const config = getTransactionModalConfig(kind)
   const resolveDisplay = buildTransactionDisplayResolver(config)
+  const interactionLocked = locked || readOnly
 
   return (
     <div className="space-y-4">
@@ -559,7 +569,7 @@ function TransactionWorkflowModal({
       <TransactionListPanel
         items={items}
         isLoading={isLoading}
-        locked={locked}
+        locked={interactionLocked}
         headerLabel="Transactions"
         emptyLabel="No transactions yet"
         totalValue={totalValue}
@@ -571,24 +581,32 @@ function TransactionWorkflowModal({
         getPrimaryText={(item, itemAmount) => resolveDisplay(item, itemAmount).primaryText}
         onDelete={onDelete}
       />
-      <TransactionEntryForm
-        locked={locked}
-        amount={amount}
-        setAmount={setAmount}
-        note={note}
-        setNote={setNote}
-        error={error}
-        setError={setError}
-        setResolvedAmount={setResolvedAmount}
-        budgetAmount={budgetAmount}
-        type={type}
-        setType={setType}
-        typeOptions={config.typeOptions}
-        onSubmit={onSubmit}
-        submitLabel={config.submitLabel}
-        isPending={isPending}
-        onClose={onClose}
-      />
+      {readOnly ? (
+        <div className="flex justify-end">
+          <button type="button" className="btn-secondary" onClick={onClose}>Close</button>
+        </div>
+      ) : (
+        <TransactionEntryForm
+          kind={kind}
+          locked={locked}
+          amount={amount}
+          setAmount={setAmount}
+          note={note}
+          setNote={setNote}
+          error={error}
+          setError={setError}
+          setResolvedAmount={setResolvedAmount}
+          budgetAmount={budgetAmount}
+          type={type}
+          setType={setType}
+          typeOptions={config.typeOptions}
+          onSubmit={onSubmit}
+          submitLabel={config.submitLabel}
+          isPending={isPending}
+          onClose={onClose}
+          actualAmount={actualAmount}
+        />
+      )}
     </div>
   )
 }
@@ -794,7 +812,7 @@ function BalanceTransactionsModal({ periodId, balancedesc, movementAmount }) {
                     <p className="text-xs text-gray-400">{format(parseISO(tx.entrydate), 'dd MMM yyyy HH:mm')}</p>
                   </div>
                   <div className={`text-sm font-semibold ${isPositive ? 'text-dosh-700 dark:text-dosh-400' : 'text-red-700 dark:text-red-400'}`}>
-                    {fmt(Math.abs(delta))}
+                    {fmt(delta)}
                   </div>
                 </div>
               )
@@ -807,7 +825,7 @@ function BalanceTransactionsModal({ periodId, balancedesc, movementAmount }) {
 }
 
 // ── Expense Entry Modal (view + add + delete entries) ─────────────────────────
-function ExpenseEntriesModal({ periodId, budgetId, expensedesc, budgetamount, actualamount, locked, onClose, defaultType = 'debit' }) {
+function ExpenseEntriesModal({ periodId, budgetId, expensedesc, budgetamount, actualamount, locked, readOnly = false, onClose, defaultType = 'debit' }) {
   const config = getTransactionModalConfig('expense')
   const qc = useQueryClient()
   const [amount, setAmount] = useState('')
@@ -859,6 +877,7 @@ function ExpenseEntriesModal({ periodId, budgetId, expensedesc, budgetamount, ac
       items={entries}
       isLoading={isLoading}
       locked={locked}
+      readOnly={readOnly}
       amount={amount}
       setAmount={setAmount}
       note={note}
@@ -879,8 +898,20 @@ function ExpenseEntriesModal({ periodId, budgetId, expensedesc, budgetamount, ac
   )
 }
 
+ExpenseEntriesModal.propTypes = {
+  periodId: PropTypes.number.isRequired,
+  budgetId: PropTypes.number.isRequired,
+  expensedesc: PropTypes.string.isRequired,
+  budgetamount: PropTypes.oneOfType([PropTypes.number, PropTypes.string]).isRequired,
+  actualamount: PropTypes.oneOfType([PropTypes.number, PropTypes.string]).isRequired,
+  locked: PropTypes.bool.isRequired,
+  readOnly: PropTypes.bool,
+  onClose: PropTypes.func.isRequired,
+  defaultType: PropTypes.oneOf(['debit', 'credit']),
+}
+
 // ── Investment Transaction Modal ──────────────────────────────────────────────
-function InvestmentTxModal({ periodId, investmentdesc, openingValue, closingValue, budgetedAmount, locked, onClose, defaultType = 'increase' }) {
+function InvestmentTxModal({ periodId, investmentdesc, openingValue, closingValue, budgetedAmount, locked, readOnly = false, onClose, defaultType = 'increase' }) {
   const config = getTransactionModalConfig('investment')
   const qc = useQueryClient()
   const [amount, setAmount] = useState('')
@@ -932,6 +963,7 @@ function InvestmentTxModal({ periodId, investmentdesc, openingValue, closingValu
       items={transactions}
       isLoading={isLoading}
       locked={locked}
+      readOnly={readOnly}
       amount={amount}
       setAmount={setAmount}
       note={note}
@@ -950,6 +982,18 @@ function InvestmentTxModal({ periodId, investmentdesc, openingValue, closingValu
       totalValue={null}
     />
   )
+}
+
+InvestmentTxModal.propTypes = {
+  periodId: PropTypes.number.isRequired,
+  investmentdesc: PropTypes.string.isRequired,
+  openingValue: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  closingValue: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  budgetedAmount: PropTypes.oneOfType([PropTypes.number, PropTypes.string]).isRequired,
+  locked: PropTypes.bool.isRequired,
+  readOnly: PropTypes.bool,
+  onClose: PropTypes.func.isRequired,
+  defaultType: PropTypes.oneOf(['increase', 'decrease']),
 }
 
 function BudgetAdjustmentModal({ title, currentAmount, onSubmit, onClose }) {
@@ -1163,7 +1207,6 @@ function AddIncomeModal({ periodId, budgetId, existingDescs, onClose }) {
   const [error, setError] = useState('')
   const [newDesc, setNewDesc] = useState('')
   const [newLinkedAccount, setNewLinkedAccount] = useState('')
-  const [newIsFixed, setNewIsFixed] = useState(true)
   const [newAutoInclude, setNewAutoInclude] = useState(true)
 
   const { data: incomeTypes = [] } = useQuery({
@@ -1227,8 +1270,7 @@ function AddIncomeModal({ periodId, budgetId, existingDescs, onClose }) {
         await createItem.mutateAsync({
           incomedesc: trimmedDesc,
           issavings: false,
-          isfixed: newIsFixed,
-          autoinclude: newIsFixed ? true : newAutoInclude,
+          autoinclude: newAutoInclude,
           amount: resolvedValue,
           linked_account: newLinkedAccount || null,
         })
@@ -1236,7 +1278,7 @@ function AddIncomeModal({ periodId, budgetId, existingDescs, onClose }) {
         return
       }
 
-      if (!selected) { setError('Select an income type'); return }
+      if (!selected) { setError('Select an income source'); return }
       add.mutate({ budgetid: budgetId, incomedesc: selected, budgetamount: resolvedValue, scope, note: note || null })
     } catch (err) {
       setError(err.response?.data?.detail ?? 'Failed to add income')
@@ -1269,32 +1311,27 @@ function AddIncomeModal({ periodId, budgetId, existingDescs, onClose }) {
             </select>
           </div>
           <div className="space-y-2">
-            <label htmlFor="new-income-fixed" className="flex items-center gap-2 text-sm cursor-pointer">
-              <input type="checkbox" checked={newIsFixed} onChange={e => {
-                setNewIsFixed(e.target.checked)
-                if (e.target.checked) setNewAutoInclude(true)
-              }} className="rounded border-gray-300 text-dosh-600 focus:ring-dosh-500" id="new-income-fixed" />
-              <span>Fixed amount (same every budget cycle)</span>
-            </label>
-            <label htmlFor="new-income-auto-include" className="flex items-center gap-2 text-sm cursor-pointer">
-              <input id="new-income-auto-include" type="checkbox" checked={newAutoInclude} disabled={newIsFixed} onChange={e => setNewAutoInclude(e.target.checked)} className="rounded border-gray-300 text-dosh-600 focus:ring-dosh-500" />
-              <span>Auto-include in new budget cycles</span>
-              {newIsFixed && <span className="text-xs text-gray-400">(auto-set when fixed)</span>}
+            <label htmlFor="new-income-auto-include" className="flex items-start gap-3 text-sm cursor-pointer">
+              <input id="new-income-auto-include" type="checkbox" checked={newAutoInclude} onChange={e => setNewAutoInclude(e.target.checked)} className="mt-0.5 rounded border-gray-300 text-dosh-600 focus:ring-dosh-500" />
+              <span className="space-y-0.5">
+                <span className="block font-medium text-gray-800 dark:text-gray-100">Auto-include</span>
+                <span className="block text-xs text-gray-500 dark:text-gray-400">Will automatically add this to any new budget cycles generated. Uncheck this if you only want to add it manually when needed.</span>
+              </span>
             </label>
           </div>
         </div>
       ) : (
         <div>
-          <label className="label" htmlFor="add-income-existing-select">{mode === 'savings' ? 'Savings Account' : 'Income Type'}</label>
+          <label className="label" htmlFor="add-income-existing-select">{mode === 'savings' ? 'Savings Account' : 'Income Source'}</label>
           {currentList.length === 0
             ? <p className="text-sm text-gray-500 italic">
-                {mode === 'savings' ? 'No savings accounts available. Add a Savings account in budget settings.' : 'All income types already in this budget cycle. Use "New income".'}
+                {mode === 'savings' ? 'No savings accounts available. Add a Savings account in budget settings.' : 'All income sources already in this budget cycle. Use "New income".'}
               </p>
             : <select id="add-income-existing-select" required className="input" value={selected} onChange={e => {
                 setSelected(e.target.value)
                 if (mode !== 'savings') {
                   const it = incomeTypes.find(i => i.incomedesc === e.target.value)
-                  if (it?.isfixed) setAmount(String(it.amount))
+                  if (it) setAmount(String(it.amount))
                 }
               }}>
                 <option value="">— select —</option>
@@ -1359,7 +1396,7 @@ function AddExpenseModal({ periodId, budgetId, existingDescs, onClose }) {
   const [newDesc, setNewDesc] = useState('')
   const [newFreqtype, setNewFreqtype] = useState('Fixed Day of Month')
   const [newFreqVal, setNewFreqVal] = useState('')
-  const [newPaytype, setNewPaytype] = useState('MANUAL')
+  const [newPaytype, setNewPaytype] = useState('AUTO')
   const [newEffDate, setNewEffDate] = useState('')
 
   const { data: expenseItems = [] } = useQuery({
@@ -1477,6 +1514,7 @@ export default function PeriodDetailPage() {
   const [confirmPaidInvestmentModal, setConfirmPaidInvestmentModal] = useState(null)
   const [balanceModal, setBalanceModal] = useState(null)
   const [showCloseout, setShowCloseout] = useState(false)
+  const [expenseStatusFilter, setExpenseStatusFilter] = useState('all')
 
   const [investmentModal, setInvestmentModal] = useState(null)
 
@@ -1526,6 +1564,7 @@ export default function PeriodDetailPage() {
   const handleDrop = (e, targetDesc) => {
     e.preventDefault()
     setDragOver(null)
+    if (expenseStatusFilter !== 'all') return
     const src = dragSrc.current
     if (!src || src === targetDesc) return
     const cur = [...expenses]
@@ -1545,13 +1584,14 @@ export default function PeriodDetailPage() {
   const totalExpenseActual   = expenses.reduce((s, e) => s + Number(e.actualamount), 0)
   const effectiveInvestmentBudget = investments.reduce((s, inv) => s + Number(inv.status === 'Paid' ? inv.actualamount : inv.budgeted_amount ?? 0), 0)
   const totalInvestmentActual = investments.reduce((s, inv) => s + Number(inv.actualamount ?? 0), 0)
-  const totalInvestmentRemaining = investments.reduce((s, inv) => s + Number(inv.remaining_amount ?? 0), 0)
-  const totalExpenseRemaining = expenses.reduce((s, e) => s + Number(e.remaining_amount ?? 0), 0)
+  const totalInvestmentRemaining = investments.reduce((s, inv) => s + Math.max(Number(inv.remaining_amount ?? 0), 0), 0)
+  const totalExpenseRemaining = expenses.reduce((s, e) => s + Math.max(Number(e.remaining_amount ?? 0), 0), 0)
   const totalBalanceOpening = balances.reduce((s, b) => s + Number(b.opening_amount ?? 0), 0)
   const totalBalanceClosing = balances.reduce((s, b) => s + Number(b.opening_amount ?? 0) + Number(b.movement_amount ?? 0), 0)
-  const surplusBudget = totalIncomeBudget - effectiveExpenseBudget - effectiveInvestmentBudget
   const surplusActual = totalIncomeActual - totalExpenseActual - totalInvestmentActual
+  const surplusBudget = surplusActual - totalExpenseRemaining - totalInvestmentRemaining
   const projectedSavings = Number(data.projected_savings ?? 0)
+  const filteredExpenses = expenses.filter(expense => expenseStatusFilter === 'all' || expense.status === expenseStatusFilter)
 
   const handleMarkPaid = expense => {
     const remaining = Number(expense.remaining_amount ?? 0)
@@ -1769,28 +1809,46 @@ export default function PeriodDetailPage() {
                 </th>
                 <th className="table-header-cell text-right">Remaining</th>
                 <th className="table-header-cell text-left">Schedule</th>
-                <th className="table-header-cell text-center">Status / Txns</th>
+                <th className="table-header-cell text-center">
+                  <div className="flex items-center justify-center gap-2">
+                    <span>Status / Txns</span>
+                    <label htmlFor="expense-status-filter" className="sr-only">Status</label>
+                    <select
+                      id="expense-status-filter"
+                      aria-label="Status"
+                      className="input min-w-[5.5rem] py-1 text-xs font-normal normal-case tracking-normal"
+                      value={expenseStatusFilter}
+                      onChange={event => setExpenseStatusFilter(event.target.value)}
+                    >
+                      <option value="all">All</option>
+                      <option value="Current">Current</option>
+                      <option value="Revised">Revised</option>
+                      <option value="Paid">Paid</option>
+                    </select>
+                  </div>
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
-              {expenses.length === 0 && <tr><td colSpan={7} className="px-4 py-4 text-center text-gray-400 italic text-sm">No expense line items</td></tr>}
-              {expenses.map(e => {
+              {filteredExpenses.length === 0 && <tr><td colSpan={7} className="px-4 py-4 text-center text-gray-400 italic text-sm">No expense line items match this status.</td></tr>}
+              {filteredExpenses.map(e => {
                 const remaining = Number(e.remaining_amount ?? 0)
                 const isOver = dragOver === e.expensedesc
                 const isPaid = e.status === 'Paid'
                 const canDelete = !locked && !closed && Number(e.actualamount) === 0 && Number(e.budgetamount) === 0
                 const canEditBudget = !locked && !closed && !isPaid
+                const canReorder = expenseStatusFilter === 'all' && !locked && !closed && !isPaid
                 return (
                   <tr
                     key={e.expensedesc}
-                    draggable={!locked && !closed && !isPaid}
+                    draggable={canReorder}
                     onDragStart={() => handleDragStart(e.expensedesc)}
                     onDragOver={ev => handleDragOver(ev, e.expensedesc)}
                     onDragLeave={handleDragLeave}
                     onDrop={ev => handleDrop(ev, e.expensedesc)}
                     className={`table-row transition-colors ${isOver ? 'bg-dosh-50 dark:bg-dosh-900/20 border-t-2 border-dosh-400' : ''}`}
                   >
-                    <td className={`w-6 px-2 ${isPaid || locked || closed ? 'text-gray-200 dark:text-gray-700 cursor-not-allowed' : 'text-gray-300 dark:text-gray-600 cursor-grab active:cursor-grabbing'}`}>
+                    <td className={`w-6 px-2 ${canReorder ? 'text-gray-300 dark:text-gray-600 cursor-grab active:cursor-grabbing' : 'text-gray-200 dark:text-gray-700 cursor-not-allowed'}`}>
                       <Bars2Icon className="w-4 h-4" />
                     </td>
                     <td className="table-cell font-medium">
@@ -1846,7 +1904,7 @@ export default function PeriodDetailPage() {
                           icon={MinusIcon}
                         />
                         <ActionIconButton
-                          onClick={() => setEntriesModal({ expensedesc: e.expensedesc, budgetamount: e.budgetamount, actualamount: e.actualamount, defaultType: 'debit', readOnly: closed || isPaid })}
+                          onClick={() => setEntriesModal({ expensedesc: e.expensedesc, budgetamount: e.budgetamount, actualamount: e.actualamount, defaultType: 'debit', readOnly: true })}
                           title="View transactions"
                           icon={ListBulletIcon}
                         />
@@ -1937,7 +1995,7 @@ export default function PeriodDetailPage() {
                             icon={MinusIcon}
                           />
                           <ActionIconButton
-                            onClick={() => setInvestmentModal({ investmentdesc: inv.investmentdesc, openingValue: inv.opening_value, closingValue: inv.closing_value, budgetedAmount: inv.budgeted_amount, defaultType: 'increase', readOnly: closed || inv.status === 'Paid' })}
+                            onClick={() => setInvestmentModal({ investmentdesc: inv.investmentdesc, openingValue: inv.opening_value, closingValue: inv.closing_value, budgetedAmount: inv.budgeted_amount, defaultType: 'increase', readOnly: true })}
                             title="View transactions"
                             icon={ListBulletIcon}
                           />
@@ -2052,6 +2110,7 @@ export default function PeriodDetailPage() {
             budgetamount={entriesModal.budgetamount}
             actualamount={entriesModal.actualamount}
             locked={!!(closed || entriesModal.readOnly)}
+            readOnly={!!entriesModal.readOnly}
             defaultType={entriesModal.defaultType ?? 'debit'}
             onClose={() => setEntriesModal(null)}
           />
@@ -2126,6 +2185,7 @@ export default function PeriodDetailPage() {
             closingValue={investmentModal.closingValue}
             budgetedAmount={investmentModal.budgetedAmount}
             locked={!!(investmentModal.readOnly || closed)}
+            readOnly={!!investmentModal.readOnly}
             defaultType={investmentModal.defaultType ?? 'increase'}
             onClose={() => setInvestmentModal(null)}
           />
@@ -2229,6 +2289,7 @@ TransactionWorkflowModal.propTypes = {
   })).isRequired,
   isLoading: PropTypes.bool.isRequired,
   locked: PropTypes.bool.isRequired,
+  readOnly: PropTypes.bool,
   amount: PropTypes.string.isRequired,
   setAmount: PropTypes.func.isRequired,
   note: PropTypes.string.isRequired,

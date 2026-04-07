@@ -7,16 +7,12 @@ import Modal from '../../components/Modal'
 import SetupItemHistoryModal from '../../components/SetupItemHistoryModal'
 import { getBalanceTypeLabel } from '../../utils/accountNaming'
 
-const emptyForm = { incomedesc: '', issavings: false, isfixed: false, autoinclude: false, amount: '', linked_account: '' }
+const emptyForm = { incomedesc: '', issavings: false, autoinclude: true, amount: '', linked_account: '' }
 
 function IncomeTypeForm({ initial = emptyForm, onSubmit, onClose, loading, budgetId, structureLocked = false, lockReasons = [], accountNamingPreference = 'Transaction' }) {
   const [form, setForm] = useState({ ...initial, amount: initial.amount ?? '', linked_account: initial.linked_account ?? '' })
   const formIdPrefix = initial.incomedesc ? 'edit-income-type' : 'create-income-type'
-  const set = (k, v) => setForm(f => {
-    const next = { ...f, [k]: v }
-    if (k === 'isfixed' && v) next.autoinclude = true
-    return next
-  })
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
   const { data: accounts = [] } = useQuery({
     queryKey: ['balance-types', budgetId],
@@ -45,30 +41,25 @@ function IncomeTypeForm({ initial = emptyForm, onSubmit, onClose, loading, budge
           {accounts.map(a => <option key={a.balancedesc} value={a.balancedesc}>{a.balancedesc}{a.balance_type ? ` (${getBalanceTypeLabel(a.balance_type, accountNamingPreference)})` : ''}</option>)}
         </select>
       </div>
-      <div className="space-y-2">
-        {[
-          ['isfixed',    'Fixed amount (same every budget cycle)'],
-          ['autoinclude','Auto-include in new budget cycles'],
-        ].map(([key, label]) => (
-          <label key={key} htmlFor={`${formIdPrefix}-${key}`} className="flex items-center gap-2 text-sm cursor-pointer">
-            <input
-              id={`${formIdPrefix}-${key}`}
-              type="checkbox"
-              checked={!!form[key]}
-              disabled={structureLocked}
-              onChange={e => set(key, e.target.checked)}
-              className="rounded border-gray-300 text-dosh-600 focus:ring-dosh-500"
-            />
-            {label}
-            {key === 'autoinclude' && form.isfixed && (
-              <span className="text-xs text-gray-400">(auto-set when fixed)</span>
-            )}
-          </label>
-        ))}
+      <div className="space-y-3">
+        <label htmlFor={`${formIdPrefix}-autoinclude`} className="flex items-start gap-3 text-sm cursor-pointer">
+          <input
+            id={`${formIdPrefix}-autoinclude`}
+            type="checkbox"
+            checked={!!form.autoinclude}
+            disabled={structureLocked}
+            onChange={e => set('autoinclude', e.target.checked)}
+            className="rounded border-gray-300 text-dosh-600 focus:ring-dosh-500"
+          />
+          <span className="space-y-0.5">
+            <span className="block font-medium text-gray-800 dark:text-gray-100">Auto-include</span>
+            <span className="block text-xs text-gray-500 dark:text-gray-400">Will automatically add this to any new budget cycles generated. Uncheck this if you only want to add it manually when needed.</span>
+          </span>
+        </label>
       </div>
       {structureLocked && (
         <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-300">
-          This income type is already in use. Structural changes are locked while it is referenced by generated or recorded budget activity.
+          This income source is already in use. Structural changes are locked while it is referenced by generated or recorded budget activity.
           {lockReasons.length > 0 ? ` ${lockReasons.join('. ')}.` : ''}
         </div>
       )}
@@ -112,7 +103,7 @@ export default function IncomeTypesTab({ budgetId, budget }) {
       setActionError('')
       setModal(null)
     },
-    onError: error => setActionError(error?.response?.data?.detail || 'Unable to save this income type right now.'),
+    onError: error => setActionError(error?.response?.data?.detail || 'Unable to save this income source right now.'),
   })
 
   const update = useMutation({
@@ -123,7 +114,7 @@ export default function IncomeTypesTab({ budgetId, budget }) {
       setActionError('')
       setModal(null)
     },
-    onError: error => setActionError(error?.response?.data?.detail || 'Unable to update this income type right now.'),
+    onError: error => setActionError(error?.response?.data?.detail || 'Unable to update this income source right now.'),
   })
 
   const remove = useMutation({
@@ -133,7 +124,7 @@ export default function IncomeTypesTab({ budgetId, budget }) {
       qc.invalidateQueries({ queryKey: ['budget-setup-assessment', budgetId] })
       setActionError('')
     },
-    onError: error => setActionError(error?.response?.data?.detail || 'Unable to delete this income type right now.'),
+    onError: error => setActionError(error?.response?.data?.detail || 'Unable to delete this income source right now.'),
   })
 
   const handleSubmit = form => {
@@ -151,7 +142,7 @@ export default function IncomeTypesTab({ budgetId, budget }) {
     <div className="space-y-3">
       <div className="flex justify-end">
         <button className="btn-primary" onClick={() => setModal({ mode: 'create' })}>
-          <PlusIcon className="w-4 h-4" /> Add Income Type
+          <PlusIcon className="w-4 h-4" /> Add Income Source
         </button>
       </div>
 
@@ -162,7 +153,7 @@ export default function IncomeTypesTab({ budgetId, budget }) {
       )}
 
       {types.length === 0 ? (
-        <div className="card p-8 text-center text-gray-500 dark:text-gray-400">No income types defined yet.</div>
+        <div className="card p-8 text-center text-gray-500 dark:text-gray-400">No income sources defined yet.</div>
       ) : (
         <div className="card overflow-hidden">
           <table className="w-full text-sm">
@@ -171,7 +162,6 @@ export default function IncomeTypesTab({ budgetId, budget }) {
                 <th className="table-header-cell text-left">Description</th>
                 <th className="table-header-cell text-right">Amount</th>
                 <th className="table-header-cell text-left">Paid into Account</th>
-                <th className="table-header-cell text-center">Fixed</th>
                 <th className="table-header-cell text-center">Auto</th>
                 <th className="table-header-cell"></th>
               </tr>
@@ -187,7 +177,6 @@ export default function IncomeTypesTab({ budgetId, budget }) {
                   </td>
                   <td className="table-cell text-right text-gray-600 dark:text-gray-300">{fmt(t.amount)}</td>
                   <td className="table-cell text-gray-600 dark:text-gray-300">{t.linked_account ?? <span className="text-gray-400 italic">—</span>}</td>
-                  <td className="table-cell text-center">{t.isfixed ? <span className="badge-green">Yes</span> : <span className="badge-gray">No</span>}</td>
                   <td className="table-cell text-center">{t.autoinclude ? <span className="badge-green">Yes</span> : <span className="badge-gray">No</span>}</td>
                   <td className="table-cell">
                     <div className="flex gap-1 justify-end">
@@ -210,12 +199,11 @@ export default function IncomeTypesTab({ budgetId, budget }) {
       )}
 
       {modal && (
-        <Modal title={modal.mode === 'create' ? 'Add Income Type' : 'Edit Income Type'} onClose={() => setModal(null)}>
+        <Modal title={modal.mode === 'create' ? 'Add Income Source' : 'Edit Income Source'} onClose={() => setModal(null)}>
           <IncomeTypeForm
             initial={modal.item ? {
               incomedesc: modal.item.incomedesc,
               issavings: modal.item.issavings,
-              isfixed: modal.item.isfixed,
               autoinclude: modal.item.autoinclude,
               amount: modal.item.amount,
               linked_account: modal.item.linked_account ?? '',
@@ -248,7 +236,6 @@ IncomeTypeForm.propTypes = {
   initial: PropTypes.shape({
     incomedesc: PropTypes.string,
     issavings: PropTypes.bool,
-    isfixed: PropTypes.bool,
     autoinclude: PropTypes.bool,
     amount: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
     linked_account: PropTypes.string,

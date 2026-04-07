@@ -31,13 +31,12 @@ async function completeMinimumSetup(page) {
   await page.getByRole('button', { name: 'Save' }).click()
   await expect(page.getByText('Main Account')).toBeVisible()
 
-  await page.getByRole('button', { name: 'Income Types' }).click()
-  await page.getByRole('button', { name: /Add Income Type/i }).click()
-  await expect(page.getByRole('heading', { name: 'Add Income Type' })).toBeVisible()
+  await page.getByRole('button', { name: 'Income Sources' }).click()
+  await page.getByRole('button', { name: /Add Income Source/i }).click()
+  await expect(page.getByRole('heading', { name: 'Add Income Source' })).toBeVisible()
   await page.getByPlaceholder('e.g. Salary').fill('Salary')
   await page.locator('input[type="number"]').nth(0).fill('5000')
   await page.locator('select').nth(0).selectOption('Main Account')
-  await page.getByLabel(/Fixed amount \(same every budget cycle\)/i).check()
   await page.getByRole('button', { name: 'Save' }).click()
   await expect(page.getByText('Salary')).toBeVisible()
 
@@ -69,7 +68,7 @@ async function generateFirstCycle(page, startDate = '2026-04-01') {
 test('creates a budget and reaches setup and budget-cycle handoff', async ({ page }) => {
   await createBudget(page, 'E2E Household')
   await expect(page.getByText('Current Setup')).toBeVisible()
-  await expect(page.getByText('0 accounts, 0 income types, 0 active expense items, 0 investments')).toBeVisible()
+  await expect(page.getByText('0 accounts, 0 income sources, 0 active expense items, 0 investments')).toBeVisible()
   await expect(page.getByText('Choose one account as the primary transaction account so expense entries know where to land by default.')).toBeVisible()
 
   await page.goto(page.url().replace(/\/setup$/, ''))

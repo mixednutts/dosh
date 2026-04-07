@@ -81,7 +81,7 @@ describe('Layout navigation', () => {
     client.getBudgetSetupAssessment.mockResolvedValue({
       budgetid: 1,
       can_generate: false,
-      blocking_issues: ['Add at least one income type before generating budget cycles.'],
+      blocking_issues: ['Add at least one income source before generating budget cycles.'],
       warnings: [],
       accounts: [],
     })

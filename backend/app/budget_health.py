@@ -162,7 +162,7 @@ def _build_setup_pillar(
         {
             "label": "Setup prerequisites",
             "value": "Ready" if prereqs_ready else "Not ready",
-            "detail": f"{income_type_count} income type{'s' if income_type_count != 1 else ''}, {active_expense_count} active expense item{'s' if active_expense_count != 1 else ''}",
+            "detail": f"{income_type_count} income source{'s' if income_type_count != 1 else ''}, {active_expense_count} active expense item{'s' if active_expense_count != 1 else ''}",
         },
         {
             "label": "Current period coverage",

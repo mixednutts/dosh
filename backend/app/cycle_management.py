@@ -221,7 +221,7 @@ def create_next_cycle(period: FinancialPeriod, budget: Budget, db: Session) -> F
             finperiodid=next_period.finperiodid,
             budgetid=budget.budgetid,
             incomedesc=income_type.incomedesc,
-            budgetamount=Decimal(str(income_type.amount)) if income_type.isfixed else Decimal("0.00"),
+            budgetamount=Decimal(str(income_type.amount)),
             actualamount=Decimal("0.00"),
             varianceamount=Decimal("0.00"),
             revision_snapshot=income_type.revisionnum,

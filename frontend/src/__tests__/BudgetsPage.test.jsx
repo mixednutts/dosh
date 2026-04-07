@@ -100,7 +100,7 @@ describe('BudgetsPage', () => {
     expect(screen.getByText(/A budget cycle is a repeating period in days that represents the time frame of your financial planning\./)).toBeTruthy()
     expect(screen.getByText(/We will create our basic budget information here, then guide you through setup before we create your first budget cycle\./)).toBeTruthy()
     expect(screen.getByText(/Choose the budget cycle you want Dosh to plan around\./)).toBeTruthy()
-    expect(screen.getByText(/After saving the basic budget information, we will add accounts, income types, and expense items before generating our first budget cycle\./)).toBeTruthy()
+    expect(screen.getByText(/After saving the basic budget information, we will add accounts, income sources, and expense items before generating our first budget cycle\./)).toBeTruthy()
 
     fireEvent.change(screen.getByPlaceholderText('e.g. Household Budget 2025'), {
       target: { value: 'Ten Day Budget' },

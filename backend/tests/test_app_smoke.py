@@ -62,7 +62,7 @@ def test_generate_period_requires_income_and_expense_prerequisites(client):
     )
 
     assert response.status_code == 422
-    assert "income type" in response.json()["detail"]
+    assert "income source" in response.json()["detail"]
 
 
 def test_budget_account_naming_preference_can_be_saved(client):
