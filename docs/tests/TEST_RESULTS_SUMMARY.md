@@ -4,6 +4,102 @@ This document records meaningful automated test results from major working sessi
 
 It exists separately from [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) so the strategy can stay stable while future sessions still have a record of what was actually run and verified.
 
+## Latest Session: Sonar Coverage Recovery, Medium-Issue Cleanup Verification, And CI Compatibility Resolution
+
+Session outcomes verified in this run:
+
+- the latest failed SonarQube artifact showed `new_coverage` at `79.5`, confirming the project was sitting too close to the `80` gate threshold to absorb routine feature edits comfortably
+- focused behavior-first coverage was added in the undercovered touched areas rather than by adding metric-only tests
+- the follow-up workflow returned green, and the latest successful Sonar artifact showed `new_coverage` at `81.5`
+- the latest successful artifact was then used to identify the remaining `MAJOR` issue clusters, which were concentrated in [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx), [BudgetsPage.jsx](/home/ubuntu/dosh/frontend/src/pages/BudgetsPage.jsx), [BudgetPeriodsPage.jsx](/home/ubuntu/dosh/frontend/src/pages/BudgetPeriodsPage.jsx), and small shared-component or backend-ledger helpers
+- a single cleanup pass was applied across those files, and focused frontend and backend verification passed locally
+- the first version of the backend ledger cleanup introduced `@dataclass(slots=True)`, which failed in CI during import; the helper was corrected to plain `@dataclass`, and the backend verification reran successfully
+
+### Sonar artifact verification
+
+Commands run during this session:
+
+```bash
+cd /home/ubuntu/dosh
+gh run list --workflow SonarQube --limit 5 --json databaseId,headSha,headBranch,status,conclusion,createdAt,updatedAt,displayTitle
+gh api repos/mixednutts/dosh/actions/runs/24058415746/artifacts
+gh run download 24058415746 -n sonar-summary-24058415746 -D /tmp/dosh-sonar-artifact/run-24058415746
+jq '[.issues[] | select(.severity=="MAJOR")] | length' /tmp/dosh-sonar-artifact/run-24058415746/sonar-issues-full.json
+```
+
+Result:
+
+- the latest successful run was `24058415746`
+- the latest successful artifact showed the gate green and left `56` medium (`MAJOR`) issues concentrated mostly in the main period and budget pages
+- the medium issue distribution confirmed that a grouped cleanup pass was a better next step than another scattered low-yield Sonar sweep
+
+### Frontend verification
+
+Commands run during this session:
+
+```bash
+cd /home/ubuntu/dosh/frontend
+npm test -- --runInBand src/__tests__/ExpenseItemsTab.test.jsx src/__tests__/BudgetPeriodsPage.test.jsx src/__tests__/BudgetDetailPage.test.jsx
+npm test -- --runInBand --coverage --collectCoverageFrom=src/pages/tabs/ExpenseItemsTab.jsx --collectCoverageFrom=src/pages/BudgetPeriodsPage.jsx --collectCoverageFrom=src/pages/BudgetDetailPage.jsx src/__tests__/ExpenseItemsTab.test.jsx src/__tests__/BudgetPeriodsPage.test.jsx src/__tests__/BudgetDetailPage.test.jsx
+npm test -- --runInBand src/__tests__/BudgetsPage.test.jsx src/__tests__/BudgetPeriodsPage.test.jsx src/__tests__/PeriodDetailPage.test.jsx src/__tests__/AmountCell.test.jsx src/__tests__/InvestmentItemsTab.test.jsx
+```
+
+Result:
+
+- the focused coverage-lift batch passed with 3 suites and 23 tests
+- the focused coverage spot check reported:
+  - [BudgetDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/BudgetDetailPage.jsx) at `85.47%` lines
+  - [BudgetPeriodsPage.jsx](/home/ubuntu/dosh/frontend/src/pages/BudgetPeriodsPage.jsx) at `94.11%` lines
+  - [ExpenseItemsTab.jsx](/home/ubuntu/dosh/frontend/src/pages/tabs/ExpenseItemsTab.jsx) at `91.07%` lines
+- the focused Sonar-cleanup frontend batch then passed with 5 suites and 50 tests
+
+Files with meaningful frontend test or cleanup updates in this session:
+
+- [ExpenseItemsTab.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/ExpenseItemsTab.test.jsx)
+- [BudgetPeriodsPage.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/BudgetPeriodsPage.test.jsx)
+- [BudgetDetailPage.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/BudgetDetailPage.test.jsx)
+- [BudgetsPage.jsx](/home/ubuntu/dosh/frontend/src/pages/BudgetsPage.jsx)
+- [BudgetPeriodsPage.jsx](/home/ubuntu/dosh/frontend/src/pages/BudgetPeriodsPage.jsx)
+- [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx)
+- [Layout.jsx](/home/ubuntu/dosh/frontend/src/components/Layout.jsx)
+- [AmountCell.jsx](/home/ubuntu/dosh/frontend/src/components/AmountCell.jsx)
+- [SetupItemHistoryModal.jsx](/home/ubuntu/dosh/frontend/src/components/SetupItemHistoryModal.jsx)
+- [InvestmentItemsTab.jsx](/home/ubuntu/dosh/frontend/src/pages/tabs/InvestmentItemsTab.jsx)
+
+### Backend verification
+
+Commands run during this session:
+
+```bash
+cd /home/ubuntu/dosh
+backend/.venv/bin/python -m pytest backend/tests/test_setup_assessment.py backend/tests/test_budget_schema_validation.py
+cd /home/ubuntu/dosh/backend
+../backend/.venv/bin/python -m pytest tests/test_delete_continuity.py tests/test_budget_setup_workflows.py tests/test_period_logic.py tests/test_app_smoke.py
+```
+
+Result:
+
+- the focused setup-assessment and schema-validation batch passed with 20 tests
+- the focused backend cleanup and continuity batch passed with 29 tests
+- the rerun after removing `slots=True` from the dataclass also passed with the same 29 tests
+- backend verification still emits the known FastAPI `on_event` and `datetime.utcnow()` deprecation warnings, which remain follow-up cleanup rather than session regressions
+
+Files with meaningful backend updates in this session:
+
+- [test_setup_assessment.py](/home/ubuntu/dosh/backend/tests/test_setup_assessment.py)
+- [test_budget_schema_validation.py](/home/ubuntu/dosh/backend/tests/test_budget_schema_validation.py)
+- [transaction_ledger.py](/home/ubuntu/dosh/backend/app/transaction_ledger.py)
+- [periods.py](/home/ubuntu/dosh/backend/app/routers/periods.py)
+- [demo_budget.py](/home/ubuntu/dosh/backend/app/demo_budget.py)
+- [test_delete_continuity.py](/home/ubuntu/dosh/backend/tests/test_delete_continuity.py)
+
+### Test failures and resolution notes
+
+- the first local coverage spot check showed that [ExpenseItemsTab.jsx](/home/ubuntu/dosh/frontend/src/pages/tabs/ExpenseItemsTab.jsx) still needed one more meaningful scenario, so a next-due and delete-confirmation path was added before the final rerun
+- the first medium-issue backend refactor used `@dataclass(slots=True)` in [transaction_ledger.py](/home/ubuntu/dosh/backend/app/transaction_ledger.py); the GitHub Actions workflow failed during import because the runner Python version rejected that keyword argument, so the helper was changed to plain `@dataclass`
+- no automated test failures remained at the end of the session after the compatibility fix
+- no additional plan document was required because this session did not run in a separate plan-only mode
+
 ## Latest Session: Create-Budget Walkthrough Hardening, Setup-Copy Localisation, And Repeated Deployment Verification
 
 Session outcomes verified in this run:

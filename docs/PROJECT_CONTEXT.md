@@ -151,12 +151,13 @@ Operational note:
 - the SonarQube workflow now exports a sanitized artifact summary even when the quality gate fails, and the repo includes [fetch_latest_sonar_artifact.sh](/home/ubuntu/dosh/scripts/fetch_latest_sonar_artifact.sh) so future sessions can inspect the latest successful artifact quickly
 - failed-run Sonar artifacts now include explicit `failingQualityGateConditions` plus [sonar-component-metrics.json](/tmp/dosh-sonar-artifact/run-24018996530/sonar-summary-24018996530/sonar-component-metrics.json) for file-level new-code duplication or coverage hotspots
 - the frontend entry HTML now links the shared public [icon.svg](/home/ubuntu/dosh/frontend/public/icon.svg) as the live favicon and touch icon
-- the latest verified Sonar artifact [24020210275](/tmp/dosh-sonar-artifact/run-24020210275/sonar-summary-24020210275/sonar-summary.md) confirms that the active quality-gate blocker is now `new_coverage`, not duplication
-- [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx) no longer appears as a file-level new-code duplication hotspot in the latest verified Sonar artifact after the shared transaction-workflow and action-rail refactor
-- dedicated frontend regression suites now exist for [AmountCell.jsx](/home/ubuntu/dosh/frontend/src/components/AmountCell.jsx), [Dashboard.jsx](/home/ubuntu/dosh/frontend/src/pages/Dashboard.jsx), and [PersonalisationTab.jsx](/home/ubuntu/dosh/frontend/src/pages/tabs/PersonalisationTab.jsx) because those newer surfaces were previously highlighted as new-code coverage hotspots
+- the latest verified successful Sonar artifact [24058415746](/tmp/dosh-sonar-artifact/run-24058415746/sonar-summary.md) is green and followed a prior failed run where `new_coverage` had slipped to `79.5`, which means future sessions should treat coverage margin, not just threshold crossing, as the practical quality-gate concern
+- [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx) no longer appears as a file-level new-code duplication hotspot in the latest verified artifact after the shared transaction-workflow and action-rail refactor, but it still remains the largest concentration of residual medium-severity maintainability cleanup
+- dedicated frontend regression suites now exist for [AmountCell.jsx](/home/ubuntu/dosh/frontend/src/components/AmountCell.jsx), [Dashboard.jsx](/home/ubuntu/dosh/frontend/src/pages/Dashboard.jsx), [PersonalisationTab.jsx](/home/ubuntu/dosh/frontend/src/pages/tabs/PersonalisationTab.jsx), and newer coverage-follow-through around [ExpenseItemsTab.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/ExpenseItemsTab.test.jsx), [BudgetPeriodsPage.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/BudgetPeriodsPage.test.jsx), and [BudgetDetailPage.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/BudgetDetailPage.test.jsx) because those touched areas were highlighted as thin new-code coverage paths
 - `PeriodTransaction` is now the sole live transaction store; older expense and investment transaction tables have been removed from the active schema
 - the deployed database has already been manually aligned to the current post-session schema expectations, including budget-adjustment and transaction line-state fields
 - the deployed database has since required another explicit live patch for setup-revision history support, including `periodtransactions.revisionnum` and the `setuprevisionevents` table, which reinforces that proper migrations remain an active engineering need
+- the backend ledger helper baseline now includes a shared `PeriodTransactionContext` dataclass in [transaction_ledger.py](/home/ubuntu/dosh/backend/app/transaction_ledger.py), and future refactors should avoid assuming newer stdlib dataclass features such as `slots=True` are safe on the CI runner without first confirming the workflow Python baseline
 
 ## Core Domain Rules
 
@@ -259,6 +260,7 @@ The most useful enabling work for future sessions is:
 8. continue improving summary and calendar usability without letting the budget overview become a dashboard clone
 9. reduce the main frontend bundle by introducing route-level lazy loading for major pages in [App.jsx](/home/ubuntu/dosh/frontend/src/App.jsx)
 10. continue SonarQube-driven cleanup by tackling the remaining frontend coverage and maintainability clusters after the confirmed [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx) duplication reduction, especially nested ternaries, form-label associations, and the still-undercovered new-code paths in the latest Sonar artifact
+11. rerun SonarQube after the latest local medium-issue cleanup pass to confirm the remaining `MAJOR` clusters have actually cleared in CI, with special attention on [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx), [BudgetsPage.jsx](/home/ubuntu/dosh/frontend/src/pages/BudgetsPage.jsx), [BudgetPeriodsPage.jsx](/home/ubuntu/dosh/frontend/src/pages/BudgetPeriodsPage.jsx), and the small shared-component stragglers
 
 ## Testing Posture
 
@@ -336,7 +338,7 @@ These Sonar outputs are not committed files in the repository checkout. They are
 - exported files inside the artifact: `sonar-summary.md`, `sonar-summary.json`, `sonar-issues-summary.json`, `sonar-issues-full.json`, and `sonar-component-metrics.json`
 - the artifact is now uploaded even when the Sonar scan step fails because the quality gate returns `ERROR`
 - the export now includes both issue-driven hotspots and measure-driven failed-gate context such as `failingQualityGateConditions` and file-level new-code duplication or coverage hotspots
-- the latest verified Sonar artifact now reflects the cleared duplication hotspot and shows `new_coverage` as the remaining failed gate condition, so future sessions should treat coverage expansion and residual maintainability cleanup as the active Sonar follow-through work
+- the latest verified successful Sonar artifact reflects the recovered coverage gate and leaves residual maintainability cleanup as the main Sonar follow-through work, but future sessions should still watch for coverage-margin drift because the previous failed run only missed the threshold by `0.5`
 
 Typical retrieval flow from a future session after pulling the latest repository docs:
 
@@ -363,7 +365,7 @@ If the next development task is still open-ended, the best default candidates ar
 
 1. reporting and period-comparison summaries built from the ledger-backed model
 2. reconciliation summary and discrepancy surfaces by account
-3. inspect the latest SonarQube artifact before choosing the next cleanup target so coverage hotspots and rule-cluster hotspots are not confused with the now-cleared [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx) duplication work
+3. inspect the latest SonarQube artifact before choosing the next cleanup target so coverage hotspots and rule-cluster hotspots are not confused with the now-cleared [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx) duplication work or with already-local-only medium cleanup that still needs CI confirmation
 4. close-out and delete continuity hardening with deeper automated coverage
 5. migration framework introduction from the new post-cutover schema baseline
 

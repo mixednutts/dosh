@@ -31,6 +31,85 @@ For the dedicated workflow plan that now owns budget-adjustment, revision-histor
 
 For the implemented amount-entry plan that now defines inline arithmetic scope, preview behavior, and parser boundaries for period-detail modals, read [INLINE_EXPRESSION_AMOUNT_INPUT_PLAN.md](/home/ubuntu/dosh/docs/plans/INLINE_EXPRESSION_AMOUNT_INPUT_PLAN.md).
 
+## Latest Session: Sonar Coverage Buffer Recovery, Medium-Issue Cleanup Pass, And CI Compatibility Follow-Through
+
+This session focused on stabilizing the SonarQube quality gate after another `new_coverage` failure, then using the latest successful artifact to target the remaining medium-severity maintainability issues in one coordinated pass.
+
+Important direction now in place:
+
+- the latest failed Sonar artifact showed that Dosh was sitting too close to the `80%` `new_coverage` threshold, so this session intentionally raised margin through behavior-first regression tests rather than metric-only execution
+- focused new tests were added around budget setup assessment, create-budget and expense-item workflows, budget-cycle grouping and deletion behavior, and budget-detail autosave or section-persistence behavior
+- the follow-up workflow returned green, confirming that the new-code coverage gate recovered above threshold
+- the latest successful artifact then showed the remaining `MAJOR` issue concentration was primarily in [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx), [BudgetsPage.jsx](/home/ubuntu/dosh/frontend/src/pages/BudgetsPage.jsx), [BudgetPeriodsPage.jsx](/home/ubuntu/dosh/frontend/src/pages/BudgetPeriodsPage.jsx), and smaller shared-component or ledger helpers
+- those medium issues were addressed in one local pass through readability, accessibility, and small-structure cleanup rather than by broad workflow rewrites
+- the first backend refactor used `@dataclass(slots=True)` for the new transaction context object, but CI then showed the workflow Python version did not support that keyword argument, so the helper was corrected to plain `@dataclass` for compatibility without changing runtime behavior
+
+### 1. Coverage margin was raised through workflow-level tests rather than gate-chasing
+
+The gate problem was no longer simply “make the number green once.” The project had drifted onto the edge of the Sonar coverage threshold, which meant even small future edits could cause churn.
+
+Current behavior:
+
+- [ExpenseItemsTab.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/ExpenseItemsTab.test.jsx) now covers meaningful expense-item behaviors such as `Every N Days` creation, inactive-item reveal, reorder behavior, next-due display, and delete confirmation
+- [BudgetPeriodsPage.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/BudgetPeriodsPage.test.jsx) now covers hash-driven section expansion persistence and `future_chain` deletion selection
+- [BudgetDetailPage.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/BudgetDetailPage.test.jsx) now covers autosave debounce, blank-owner guard behavior, and persisted section expansion state
+- [test_setup_assessment.py](/home/ubuntu/dosh/backend/tests/test_setup_assessment.py) now covers inactive-only-account readiness and missing-budget handling
+- [test_budget_schema_validation.py](/home/ubuntu/dosh/backend/tests/test_budget_schema_validation.py) now covers custom fixed-day cycle validation and related budget-schema rules
+
+Important engineering meaning:
+
+- the testing strategy principle remains unchanged: quality-gate follow-through should still protect real workflows, business rules, or user-critical guidance rather than chasing isolated lines
+- future coverage work should continue using the artifact hotspot list as a risk signal, not as permission to add shallow assertion-only tests
+
+### 2. The next Sonar focus shifted from coverage back to medium maintainability cleanup
+
+Once coverage recovered, the latest successful Sonar artifact showed the remaining work was concentrated and could be tackled more efficiently than the raw issue count suggested.
+
+Current behavior:
+
+- [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx) had the largest remaining `MAJOR` cluster, mostly nested ternaries, label-association gaps, ambiguous spacing, commented-out code, and a few accessibility issues
+- [BudgetsPage.jsx](/home/ubuntu/dosh/frontend/src/pages/BudgetsPage.jsx) and [BudgetPeriodsPage.jsx](/home/ubuntu/dosh/frontend/src/pages/BudgetPeriodsPage.jsx) carried smaller but still concentrated readability and form-structure findings
+- the ledger-side medium issues were concentrated in [transaction_ledger.py](/home/ubuntu/dosh/backend/app/transaction_ledger.py) and [periods.py](/home/ubuntu/dosh/backend/app/routers/periods.py)
+
+Important engineering meaning:
+
+- future Sonar passes should keep working from concentration and rule families rather than chasing isolated file-by-file counts
+- [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx) remains the center of gravity for frontend maintainability cleanup even after the earlier duplication work was already cleared
+
+### 3. The medium-issue cleanup pass favored local helpers, explicit labels, and low-risk structural cleanup
+
+This session then applied a single coordinated cleanup pass across the hotspot files.
+
+Current behavior:
+
+- [BudgetsPage.jsx](/home/ubuntu/dosh/frontend/src/pages/BudgetsPage.jsx) now uses clearer local helpers for calendar styling and event-kind labels, avoids in-place sort mutation where Sonar flagged it, and removes array-index loading keys
+- [BudgetPeriodsPage.jsx](/home/ubuntu/dosh/frontend/src/pages/BudgetPeriodsPage.jsx) now uses clearer state and title derivation for collapsible groups, safer sorted copies, and distinct label text nodes for radio options
+- [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx) now centralizes repeated transaction-submit logic, replaces several nested ternary clusters with helper functions or explicit branch logic, fixes missing `label` / `htmlFor` wiring in modals and radio groups, removes stale commented state notes, replaces `window.confirm` with `globalThis.confirm`, and removes the invalid `aria-hidden` footer cell usage
+- [Layout.jsx](/home/ubuntu/dosh/frontend/src/components/Layout.jsx) and [AmountCell.jsx](/home/ubuntu/dosh/frontend/src/components/AmountCell.jsx) now use semantically interactive elements where Sonar previously flagged clickable non-native elements
+- [SetupItemHistoryModal.jsx](/home/ubuntu/dosh/frontend/src/components/SetupItemHistoryModal.jsx) now computes history display labels outside inline nested conditional rendering
+- [InvestmentItemsTab.jsx](/home/ubuntu/dosh/frontend/src/pages/tabs/InvestmentItemsTab.jsx) now wraps checkbox label text in explicit spans to resolve the spacing findings
+- [transaction_ledger.py](/home/ubuntu/dosh/backend/app/transaction_ledger.py) now uses a shared `PeriodTransactionContext` dataclass to reduce high-parameter-count helper signatures and to make transaction-construction intent clearer
+- [periods.py](/home/ubuntu/dosh/backend/app/routers/periods.py) now removes the unused `_period_status` parameter, simplifies nested conditional assignment for delete-mode and deletion targets, and removes the useless paid-status self-assignment
+
+Important engineering meaning:
+
+- this pass intentionally favored readability and local structure cleanup while preserving behavior, which makes it safer than a deeper feature refactor pass
+- a fresh Sonar run is still required before these medium findings should be treated as CI-confirmed resolved
+
+### 4. CI compatibility now constrains how we use dataclass features in backend refactors
+
+The ledger cleanup introduced a small follow-up lesson from the workflow runner.
+
+Current behavior:
+
+- [transaction_ledger.py](/home/ubuntu/dosh/backend/app/transaction_ledger.py) still uses the new `PeriodTransactionContext` helper
+- the helper now uses plain `@dataclass` instead of `@dataclass(slots=True)` because the GitHub Actions runner Python version rejected `slots=True` during import
+
+Important engineering meaning:
+
+- backend refactors should stay conservative about newer stdlib conveniences unless the CI Python baseline is verified first
+- compatibility-only follow-up fixes should be treated as part of the same workstream rather than as separate product changes
+
 ## Latest Session: Create-Budget Guidance Refresh, Custom Day-Cycle Support, Setup-Copy Localisation, And Repeated Deployment Verification
 
 This session focused on the walkthrough surfaces around budget creation and budget setup, including the create-budget modal, custom day-cycle support, setup-guidance wording, and small-but-user-visible alignment or interaction bugs discovered during live review.
