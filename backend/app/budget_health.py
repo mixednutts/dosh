@@ -74,6 +74,12 @@ def _health_status(score: int) -> str:
     return HEALTH_ATTENTION
 
 
+def _timing_factor(progress_ratio: float, criticality_anchor: float) -> float:
+    if progress_ratio >= criticality_anchor:
+        return 1.0 + min(0.45, (progress_ratio - criticality_anchor) * 0.9)
+    return 1.0 - min(0.25, (criticality_anchor - progress_ratio) * 0.5)
+
+
 def _current_future_historical(periods: list[FinancialPeriod]) -> tuple[list[FinancialPeriod], list[FinancialPeriod], list[FinancialPeriod]]:
     current = [period for period in periods if getattr(period, "cycle_status", None) == ACTIVE]
     future = [period for period in periods if getattr(period, "cycle_status", None) == PLANNED]
@@ -333,11 +339,7 @@ def _build_current_period_check(
     )
     progress_ratio = _period_progress_ratio(current_period)
     criticality_anchor = 1 - (period_criticality_bias / 100)
-    timing_factor = 1.0
-    if progress_ratio >= criticality_anchor:
-        timing_factor = 1.0 + min(0.45, (progress_ratio - criticality_anchor) * 0.9)
-    else:
-        timing_factor = 1.0 - min(0.25, (criticality_anchor - progress_ratio) * 0.5)
+    timing_factor = _timing_factor(progress_ratio, criticality_anchor)
 
     income_budget = totals["income_budget"]
     percent_deficit_threshold = _quantize_money(

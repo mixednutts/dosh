@@ -190,6 +190,20 @@ function buildAddTransactionHandler({ event, resolvedAmount, setError, mutate, t
   mutate({ amount: toMutationAmount(type, amountValue), note: note || null })
 }
 
+function createTransactionSubmitHandler({ resolvedAmount, setError, mutate, type, note, toMutationAmount }) {
+  return event => {
+    buildAddTransactionHandler({
+      event,
+      resolvedAmount,
+      setError,
+      mutate,
+      type,
+      note,
+      toMutationAmount,
+    })
+  }
+}
+
 function getProgressToneClasses({ isOver, isNearLimit, status }) {
   let trackClass = 'bg-gray-200 dark:bg-gray-700'
   let fillClass = 'bg-dosh-500'
@@ -232,6 +246,47 @@ function getExpenseScheduleBadge(expense) {
     <span className="badge-blue" title={nextDue ? `Next: ${format(nextDue, 'dd MMM yyyy')}` : undefined}>
       {label}
     </span>
+  )
+}
+
+function getTransactionListContent({ isLoading, items, emptyLabel, maxHeightClass, locked, onDelete, getItemAmount, getBadgeClassName, getBadgeLabel, getAmountClassName, getPrimaryText }) {
+  if (isLoading) {
+    return <div className="flex justify-center py-4"><Spinner className="h-4 w-4" /></div>
+  }
+
+  if (items.length === 0) {
+    return <p className="py-4 text-center text-sm italic text-gray-400">{emptyLabel}</p>
+  }
+
+  return (
+    <div className={`divide-y divide-gray-100 overflow-y-auto dark:divide-gray-800 ${maxHeightClass}`}>
+      {items.map(item => {
+        const amount = Number(getItemAmount(item))
+        return (
+          <div key={item.id} className="flex items-center gap-2 px-3 py-2">
+            <span className={`flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${getBadgeClassName(item)}`}>
+              {getBadgeLabel(item, amount)}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className={`text-sm font-medium ${getAmountClassName(item, amount)}`}>
+                {getPrimaryText(item, amount)}
+              </p>
+              {item.note && <p className="truncate text-xs text-gray-500 dark:text-gray-400">{item.note}</p>}
+              <p className="text-xs text-gray-400">{format(parseISO(item.entrydate), 'dd MMM yyyy HH:mm')}</p>
+            </div>
+            {!locked && item.entry_kind !== 'budget_adjustment' && (
+              <button
+                type="button"
+                onClick={() => onDelete(item.id)}
+                className="rounded p-1 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
+              >
+                <TrashIcon className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+        )
+      })}
+    </div>
   )
 }
 
@@ -353,40 +408,19 @@ function TransactionListPanel({
         <span>{headerLabel}</span>
         <span>{items.length} entries</span>
       </div>
-      {isLoading ? (
-        <div className="flex justify-center py-4"><Spinner className="h-4 w-4" /></div>
-      ) : items.length === 0 ? (
-        <p className="py-4 text-center text-sm italic text-gray-400">{emptyLabel}</p>
-      ) : (
-        <div className={`divide-y divide-gray-100 overflow-y-auto dark:divide-gray-800 ${maxHeightClass}`}>
-          {items.map(item => {
-            const amount = Number(getItemAmount(item))
-            return (
-              <div key={item.id} className="flex items-center gap-2 px-3 py-2">
-                <span className={`flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${getBadgeClassName(item)}`}>
-                  {getBadgeLabel(item, amount)}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className={`text-sm font-medium ${getAmountClassName(item, amount)}`}>
-                    {getPrimaryText(item, amount)}
-                  </p>
-                  {item.note && <p className="truncate text-xs text-gray-500 dark:text-gray-400">{item.note}</p>}
-                  <p className="text-xs text-gray-400">{format(parseISO(item.entrydate), 'dd MMM yyyy HH:mm')}</p>
-                </div>
-                {!locked && item.entry_kind !== 'budget_adjustment' && (
-                  <button
-                    type="button"
-                    onClick={() => onDelete(item.id)}
-                    className="rounded p-1 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
-                  >
-                    <TrashIcon className="h-3.5 w-3.5" />
-                  </button>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      )}
+      {getTransactionListContent({
+        isLoading,
+        items,
+        emptyLabel,
+        maxHeightClass,
+        locked,
+        onDelete,
+        getItemAmount,
+        getBadgeClassName,
+        getBadgeLabel,
+        getAmountClassName,
+        getPrimaryText,
+      })}
       {items.length > 0 && totalValue != null && (
         <div className="flex justify-between border-t border-gray-200 bg-gray-50 px-3 py-2 text-sm font-semibold dark:border-gray-700 dark:bg-gray-800">
           <span className="text-gray-600 dark:text-gray-400">Total</span>
@@ -666,17 +700,14 @@ function IncomeTransactionsModal({ periodId, incomedesc, budgetamount, actualamo
     },
   })
 
-  const handleAdd = e => {
-    buildAddTransactionHandler({
-      event: e,
-      resolvedAmount,
-      setError,
-      mutate: add.mutate,
-      type,
-      note,
-      toMutationAmount: config.toMutationAmount,
-    })
-  }
+  const handleAdd = createTransactionSubmitHandler({
+    resolvedAmount,
+    setError,
+    mutate: add.mutate,
+    type,
+    note,
+    toMutationAmount: config.toMutationAmount,
+  })
 
   const runningTotal = transactions
     .filter(tx => tx.entry_kind !== 'budget_adjustment')
@@ -811,17 +842,14 @@ function ExpenseEntriesModal({ periodId, budgetId, expensedesc, budgetamount, ac
     },
   })
 
-  const handleAdd = e => {
-    buildAddTransactionHandler({
-      event: e,
-      resolvedAmount,
-      setError,
-      mutate: add.mutate,
-      type,
-      note,
-      toMutationAmount: config.toMutationAmount,
-    })
-  }
+  const handleAdd = createTransactionSubmitHandler({
+    resolvedAmount,
+    setError,
+    mutate: add.mutate,
+    type,
+    note,
+    toMutationAmount: config.toMutationAmount,
+  })
 
   const runningTotal = entries.filter(entry => entry.entry_kind !== 'budget_adjustment').reduce((s, e) => s + Number(e.amount), 0)
 
@@ -887,17 +915,14 @@ function InvestmentTxModal({ periodId, investmentdesc, openingValue, closingValu
     },
   })
 
-  const handleAdd = e => {
-    buildAddTransactionHandler({
-      event: e,
-      resolvedAmount,
-      setError,
-      mutate: add.mutate,
-      type,
-      note,
-      toMutationAmount: config.toMutationAmount,
-    })
-  }
+  const handleAdd = createTransactionSubmitHandler({
+    resolvedAmount,
+    setError,
+    mutate: add.mutate,
+    type,
+    note,
+    toMutationAmount: config.toMutationAmount,
+  })
 
   // Derive actual from transactions total for live display
   const txTotal = transactions.filter(tx => tx.entry_kind !== 'budget_adjustment').reduce((s, t) => s + Number(t.amount), 0)

@@ -34,12 +34,12 @@ function BalanceTypeForm({ initial = emptyForm, onSubmit, onClose, loading, stru
         <label htmlFor={`${formIdPrefix}-active`} className="flex items-center gap-2 text-sm cursor-pointer">
           <input id={`${formIdPrefix}-active`} disabled={structureLocked} type="checkbox" checked={!!form.active} onChange={e => set('active', e.target.checked)}
             className="rounded border-gray-300 text-dosh-600 focus:ring-dosh-500" />
-          Active (include in new budget cycles)
+          <span>Active (include in new budget cycles)</span>
         </label>
         <label htmlFor={`${formIdPrefix}-primary`} className="flex items-center gap-2 text-sm cursor-pointer">
           <input id={`${formIdPrefix}-primary`} type="checkbox" checked={!!form.is_primary} onChange={e => set('is_primary', e.target.checked)}
             className="rounded border-gray-300 text-dosh-600 focus:ring-dosh-500" />
-          Primary {getPreferredTransactionLabel(accountNamingPreference).toLowerCase()} account (expenses deducted from this account)
+          <span>Primary {getPreferredTransactionLabel(accountNamingPreference).toLowerCase()} account (expenses deducted from this account)</span>
         </label>
       </div>
       {structureLocked && (

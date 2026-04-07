@@ -227,13 +227,19 @@ export default function ExpenseItemsTab({ budgetId }) {
   const expenseUsageByDesc = Object.fromEntries((setupAssessment?.expense_items || []).map(item => [item.expensedesc, item]))
   const displayed = showInactive ? items : items.filter(i => i.active)
 
+  function getPayTypeBadge(paytype) {
+    if (paytype === 'AUTO') return <span className="badge-blue">AUTO</span>
+    if (paytype === 'MANUAL') return <span className="badge-gray">MANUAL</span>
+    return <span className="text-gray-400">—</span>
+  }
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <label htmlFor="expense-items-show-inactive" className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 cursor-pointer">
           <input id="expense-items-show-inactive" type="checkbox" checked={showInactive} onChange={e => setShowInactive(e.target.checked)}
             className="rounded border-gray-300 dark:border-gray-600 text-dosh-600" />
-          Show inactive
+          <span>Show inactive</span>
         </label>
         <button className="btn-primary" onClick={() => setModal({ mode: 'create' })}>
           <PlusIcon className="w-4 h-4" /> Add Expense Item
@@ -295,9 +301,7 @@ export default function ExpenseItemsTab({ budgetId }) {
                       <FreqBadge freqtype={item.freqtype} frequencyValue={item.frequency_value} />
                     </td>
                     <td className="px-3 py-2">
-                      {item.paytype === 'AUTO' ? <span className="badge-blue">AUTO</span>
-                        : item.paytype === 'MANUAL' ? <span className="badge-gray">MANUAL</span>
-                        : <span className="text-gray-400">—</span>}
+                      {getPayTypeBadge(item.paytype)}
                     </td>
                     <td className="px-3 py-2 text-right text-gray-800 dark:text-gray-100 font-medium">{fmt(item.expenseamount)}</td>
                     <td className="px-3 py-2 text-gray-500 dark:text-gray-400 text-xs">{commDate}</td>
