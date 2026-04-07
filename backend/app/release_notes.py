@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -11,7 +10,13 @@ _CANDIDATE_RELEASE_NOTES_PATHS = (
     Path(__file__).resolve().parents[1] / "release_notes" / "RELEASE_NOTES.md",
     Path(__file__).resolve().parents[2] / "docs" / "RELEASE_NOTES.md",
 )
-_ENTRY_HEADER_RE = re.compile(r"^##\s+(.+?)\s*\|\s*(released|unreleased)\s*\|\s*(.+?)\s*$")
+_RELEASED_STATUS = "released"
+_UNRELEASED_STATUS = "unreleased"
+_PRERELEASE_STAGE_ORDER = {
+    "alpha": 0,
+    "beta": 1,
+    "rc": 2,
+}
 
 
 @dataclass(frozen=True)
@@ -23,21 +28,54 @@ class ParsedReleaseNote:
     sections: list[dict[str, list[str]]]
 
 
+def _parse_release_note_header(line: str) -> tuple[str, str, str] | None:
+    stripped = line.strip()
+    if not stripped.startswith("## "):
+        return None
+
+    parts = [part.strip() for part in stripped[3:].split("|")]
+    if len(parts) != 3 or not all(parts):
+        return None
+
+    version, status, release_date = parts
+    normalized_status = status.lower()
+    if normalized_status not in {_RELEASED_STATUS, _UNRELEASED_STATUS}:
+        return None
+
+    return version, normalized_status, release_date
+
+
+def _parse_prerelease_suffix(suffix: str) -> tuple[int, int]:
+    if not suffix:
+        return (3, 0)
+
+    for stage_name, stage_order in _PRERELEASE_STAGE_ORDER.items():
+        if suffix == stage_name:
+            return (stage_order, 0)
+        if suffix.startswith(stage_name):
+            stage_num_text = suffix[len(stage_name):]
+            if stage_num_text.isdigit():
+                return (stage_order, int(stage_num_text))
+            return (0, -1)
+
+    return (0, -1)
+
+
 def _version_key(version: str) -> tuple[int, int, int, int, int]:
-    match = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)(?:-([A-Za-z]+)(\d+)?)?", version.strip())
-    if not match:
+    normalized = version.strip()
+    if not normalized:
         return (0, 0, 0, -1, -1)
 
-    major, minor, patch, prerelease, prerelease_num = match.groups()
-    stage_order = {
-        None: 3,
-        "alpha": 0,
-        "beta": 1,
-        "rc": 2,
-    }
-    stage = stage_order.get(prerelease.lower() if prerelease else None, 0)
-    stage_num = int(prerelease_num or 0)
-    return (int(major), int(minor), int(patch), stage, stage_num)
+    base_version, separator, prerelease = normalized.partition("-")
+    version_parts = base_version.split(".")
+    if len(version_parts) != 3 or not all(part.isdigit() for part in version_parts):
+        return (0, 0, 0, -1, -1)
+    if separator and not prerelease:
+        return (0, 0, 0, -1, -1)
+
+    major, minor, patch = (int(part) for part in version_parts)
+    stage, stage_num = _parse_prerelease_suffix(prerelease.lower() if prerelease else "")
+    return (major, minor, patch, stage, stage_num)
 
 
 def _parse_release_notes(text: str) -> list[ParsedReleaseNote]:
@@ -78,10 +116,10 @@ def _parse_release_notes(text: str) -> list[ParsedReleaseNote]:
 
     for raw_line in text.splitlines():
         line = raw_line.rstrip()
-        header_match = _ENTRY_HEADER_RE.match(line)
-        if header_match:
+        header_parts = _parse_release_note_header(line)
+        if header_parts:
             flush_entry()
-            current_version, current_status, current_date = header_match.groups()
+            current_version, current_status, current_date = header_parts
             continue
         if current_version is None:
             continue
@@ -111,11 +149,12 @@ def read_release_notes() -> list[ParsedReleaseNote]:
 
 def release_notes_payload(current_version: str = APP_VERSION) -> dict:
     entries = read_release_notes()
-    released_entries = [entry for entry in entries if entry.status == "released"]
+    released_entries = [entry for entry in entries if entry.status == _RELEASED_STATUS]
     released_entries.sort(key=lambda entry: _version_key(entry.version), reverse=True)
 
     current_entry = next((entry for entry in released_entries if entry.version == current_version), None)
     newer_entries = [entry for entry in released_entries if _version_key(entry.version) > _version_key(current_version)]
+    previous_entries = [entry for entry in released_entries if _version_key(entry.version) < _version_key(current_version)]
 
     def serialize(entry: ParsedReleaseNote) -> dict:
         return {
@@ -130,6 +169,8 @@ def release_notes_payload(current_version: str = APP_VERSION) -> dict:
         "current_version": current_version,
         "update_available": bool(newer_entries),
         "newer_release_count": len(newer_entries),
+        "previous_release_count": len(previous_entries),
         "current_release": serialize(current_entry) if current_entry else None,
         "newer_releases": [serialize(entry) for entry in newer_entries],
+        "previous_releases": [serialize(entry) for entry in previous_entries],
     }

@@ -17,6 +17,7 @@ It is a synthesis of the current Markdown sources in this repository:
 - [TEST_RESULTS_SUMMARY.md](/home/ubuntu/dosh/docs/tests/TEST_RESULTS_SUMMARY.md)
 - [INCOME_TRANSACTIONS_UNIFICATION_AND_LEGACY_LEDGER_CLEANUP_PLAN.md](/home/ubuntu/dosh/docs/plans/INCOME_TRANSACTIONS_UNIFICATION_AND_LEGACY_LEDGER_CLEANUP_PLAN.md)
 - [INLINE_EXPRESSION_AMOUNT_INPUT_PLAN.md](/home/ubuntu/dosh/docs/plans/INLINE_EXPRESSION_AMOUNT_INPUT_PLAN.md)
+- [GITHUB_RELEASE_MANAGEMENT_WORKFLOW_PLAN.md](/home/ubuntu/dosh/docs/plans/GITHUB_RELEASE_MANAGEMENT_WORKFLOW_PLAN.md)
 
 Use this as the quick-start development handoff. Use the source documents above when deeper detail is needed.
 
@@ -129,6 +130,7 @@ Backend:
 - budgeting and generation logic in [period_logic.py](/home/ubuntu/dosh/backend/app/period_logic.py)
 - budget health logic in [budget_health.py](/home/ubuntu/dosh/backend/app/budget_health.py)
 - transaction-backed movement and ledger support in [transaction_ledger.py](/home/ubuntu/dosh/backend/app/transaction_ledger.py)
+- repo-managed release-note parsing in [release_notes.py](/home/ubuntu/dosh/backend/app/release_notes.py) now uses bounded string parsing rather than regex-based header matching
 
 Frontend:
 
@@ -144,12 +146,13 @@ Frontend:
 
 Operational note:
 
-- the current app-version baseline is `0.1.0-alpha`, displayed in the UI as `v0.1.0-alpha`
+- the current app-version baseline is `0.1.2-alpha`, displayed in the UI as `v0.1.2-alpha`
 - Alembic now owns normal schema evolution from the current aligned baseline, with migration and release rules defined in [MIGRATION_AND_RELEASE_MANAGEMENT.md](/home/ubuntu/dosh/docs/MIGRATION_AND_RELEASE_MANAGEMENT.md)
 - the repo now has an explicit transaction-ledger cutover script in [cutover_unified_transactions.py](/home/ubuntu/dosh/backend/scripts/cutover_unified_transactions.py) for the current schema baseline
 - backend tests now run against an isolated SQLite database per test case through [conftest.py](/home/ubuntu/dosh/backend/tests/conftest.py)
 - Docker Compose remains the active deployment path, with the frontend exposed on port `3080`
-- this repo also includes [docker-compose.override.yml](/home/ubuntu/dosh/docker-compose.override.yml) for Traefik-facing frontend deployment wiring, so deploys that need the public host path should include both compose files rather than the base file alone
+- this repo also includes [docker-compose.override.yml](/home/ubuntu/dosh/docker-compose.override.yml), but that file represents optional environment-specific deployment wiring rather than the core repo release path
+- the next release-management follow-up is Git alignment rather than deployment replacement, with the preferred workflow captured in [GITHUB_RELEASE_MANAGEMENT_WORKFLOW_PLAN.md](/home/ubuntu/dosh/docs/plans/GITHUB_RELEASE_MANAGEMENT_WORKFLOW_PLAN.md)
 - the frontend Docker build now uses Node 20 rather than the old Node 16 baseline
 - Docker Compose `DEV_MODE` is now the shared control point for dev-only demo-budget behavior across frontend build visibility and backend runtime enforcement
 - the backend router baseline now uses a shared [api_docs.py](/home/ubuntu/dosh/backend/app/api_docs.py) helper with `DbSession` and centralized `error_responses(...)` metadata for FastAPI endpoints

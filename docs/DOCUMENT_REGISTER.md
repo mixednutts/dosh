@@ -352,6 +352,35 @@ Maintenance notes:
 
 - should remain the main design-boundary document for inline arithmetic amount entry rather than becoming a second change log
 
+### GITHUB_RELEASE_MANAGEMENT_WORKFLOW_PLAN.md
+
+Document:
+
+- [GITHUB_RELEASE_MANAGEMENT_WORKFLOW_PLAN.md](/home/ubuntu/dosh/docs/plans/GITHUB_RELEASE_MANAGEMENT_WORKFLOW_PLAN.md)
+
+Document type:
+
+- domain or workflow plan
+
+Primary purpose:
+
+- define the intended GitHub-managed workflow for release tagging and release-checkpoint validation
+
+Primary source-of-truth scope:
+
+- GitHub release-tagging workflow shape
+- version-bump validation expectations
+- authority split between local workflow, GitHub tagging, and deployment release steps
+
+Key relationships:
+
+- complements release and migration policy in [MIGRATION_AND_RELEASE_MANAGEMENT.md](/home/ubuntu/dosh/docs/MIGRATION_AND_RELEASE_MANAGEMENT.md)
+- linked from [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md) as the current planning reference for this active follow-up
+
+Maintenance notes:
+
+- should remain focused on GitHub release orchestration rather than absorb deployment-only operational detail
+
 ## Testing Documents
 
 ### TEST_STRATEGY.md

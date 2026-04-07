@@ -1,4 +1,5 @@
 import PropTypes from 'prop-types'
+import { useState } from 'react'
 
 import Modal from './Modal'
 
@@ -70,6 +71,8 @@ ReleaseCard.propTypes = {
 }
 
 export default function ReleaseNotesModal({ releaseNotes, onClose }) {
+  const [showPreviousReleases, setShowPreviousReleases] = useState(false)
+
   return (
     <Modal title="Release Notes" onClose={onClose} size="xl">
       <div className="space-y-5">
@@ -104,6 +107,33 @@ export default function ReleaseNotesModal({ releaseNotes, onClose }) {
             ))}
           </div>
         ) : null}
+
+        {releaseNotes.previous_releases.length ? (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-900/60">
+              <div>
+                <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">Previous Releases</h3>
+                <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                  Browse older released versions that came before the app version currently running here.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPreviousReleases(current => !current)}
+                className="rounded-full border border-gray-300 bg-gray-50 px-3 py-1.5 text-xs font-semibold text-gray-700 transition-colors hover:border-dosh-400 hover:bg-dosh-50 hover:text-dosh-800 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:border-dosh-700 dark:hover:bg-dosh-950/40 dark:hover:text-white"
+              >
+                {showPreviousReleases ? 'Hide previous releases' : `View previous releases (${releaseNotes.previous_release_count})`}
+              </button>
+            </div>
+            {showPreviousReleases ? (
+              <div className="space-y-3">
+                {releaseNotes.previous_releases.map(release => (
+                  <ReleaseCard key={release.version} release={release} tone="current" />
+                ))}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </Modal>
   )
@@ -114,8 +144,10 @@ ReleaseNotesModal.propTypes = {
     current_version: PropTypes.string.isRequired,
     update_available: PropTypes.bool.isRequired,
     newer_release_count: PropTypes.number.isRequired,
+    previous_release_count: PropTypes.number.isRequired,
     current_release: PropTypes.object,
     newer_releases: PropTypes.arrayOf(PropTypes.object).isRequired,
+    previous_releases: PropTypes.arrayOf(PropTypes.object).isRequired,
   }).isRequired,
   onClose: PropTypes.func.isRequired,
 }

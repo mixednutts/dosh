@@ -551,6 +551,7 @@ Status:
 - `Completed`: align setup revision numbers with real stored history records and link setup-affecting future budget adjustments into that revision sequence
 - `Completed`: add inline arithmetic amount entry to period-detail transaction, budget-adjustment, add-income, and add-expense modals, with resolved previews for valid calculations and in-progress summaries for incomplete arithmetic input
 - `Completed`: add an expense status filter to the period-detail expenses table and align the control with the existing status column rather than introducing a separate toolbar
+- `Completed`: add a `View previous releases` option to the in-app release-notes modal by extending the backend payload and revealing older released versions on demand
 - provide an activation workflow for income lines in budget setup and align that workflow consistently across income, investment, and expense setup sections
 - `Completed`: change modal transaction quick-fill wording so `Add Remaining` appears only when expense or investment workflows have a true positive remaining amount, while credit or refund views continue using full-amount entry
 - define `AUTO` expense pay-type behavior so only explicitly automatic expenses deduct from the primary account, while keeping setup defaults at `AUTO` until that workflow is implemented
@@ -596,6 +597,8 @@ Status:
 - `Completed`: separate one-time migration work from normal app startup permanently for the current baseline
 - `Completed`: capture the unified-ledger baseline, close-out schema, and setup-assessment schema in the real migration path
 - `Completed`: harden the SonarQube workflow so failed quality-gate runs still upload sanitized artifacts with explicit failed-condition context and file-level measure hotspots
+- `Completed`: harden backend release-notes parsing by replacing the regex-based header parser with bounded string parsing and dedicated regression coverage after the regex DoS exposure was flagged
+- `Active`: align Dosh to a GitHub-managed release-tagging workflow that creates official Git tags from validated version bumps on `main` rather than relying on local manual tagging; use [GITHUB_RELEASE_MANAGEMENT_WORKFLOW_PLAN.md](/home/ubuntu/dosh/docs/plans/GITHUB_RELEASE_MANAGEMENT_WORKFLOW_PLAN.md) as the current design reference
 
 #### Activity Group: Consistency
 

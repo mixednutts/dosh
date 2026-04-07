@@ -30,8 +30,10 @@ class ReleaseNotesResponseOut(BaseModel):
     current_version: str
     update_available: bool = False
     newer_release_count: int = 0
+    previous_release_count: int = 0
     current_release: Optional[ReleaseNoteOut] = None
     newer_releases: list[ReleaseNoteOut] = []
+    previous_releases: list[ReleaseNoteOut] = []
 
 
 # ── Budget ───────────────────────────────────────────────────────────────────

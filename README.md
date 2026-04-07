@@ -72,6 +72,7 @@ dosh/
 - [INCOME_TRANSACTIONS_UNIFICATION_AND_LEGACY_LEDGER_CLEANUP_PLAN.md](/home/ubuntu/dosh/docs/plans/INCOME_TRANSACTIONS_UNIFICATION_AND_LEGACY_LEDGER_CLEANUP_PLAN.md): transaction unification and ledger cleanup planning
 - [INLINE_EXPRESSION_AMOUNT_INPUT_PLAN.md](/home/ubuntu/dosh/docs/plans/INLINE_EXPRESSION_AMOUNT_INPUT_PLAN.md): implemented inline arithmetic amount-entry scope, parsing boundaries, and modal UX decisions
 - [AI_INSIGHT_ON_CLOSEOUT_PLAN.md](/home/ubuntu/dosh/docs/plans/AI_INSIGHT_ON_CLOSEOUT_PLAN.md): supporting close-out planning insight
+- [GITHUB_RELEASE_MANAGEMENT_WORKFLOW_PLAN.md](/home/ubuntu/dosh/docs/plans/GITHUB_RELEASE_MANAGEMENT_WORKFLOW_PLAN.md): planned GitHub-managed release-tagging workflow for validated version bumps
 
 ### Testing
 
@@ -83,7 +84,7 @@ dosh/
 
 - `Budget Cycle` is the preferred user-facing wording where it improves clarity, while backend naming may still use `period` for stability.
 - The product direction is practical, supportive, and workflow-driven rather than accounting-heavy.
-- The current release baseline is `0.1.0-alpha`, displayed in the UI as `v0.1.0-alpha`.
+- The current release baseline is `0.1.2-alpha`, displayed in the UI as `v0.1.2-alpha`.
 - Versioning, migration naming, and release-step expectations are defined in [MIGRATION_AND_RELEASE_MANAGEMENT.md](/home/ubuntu/dosh/docs/MIGRATION_AND_RELEASE_MANAGEMENT.md).
 - Detailed roadmap, plan, and testing content should live in the next-layer documents above rather than growing this README.
 

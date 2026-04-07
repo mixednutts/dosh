@@ -31,6 +31,122 @@ For the dedicated workflow plan that now owns budget-adjustment, revision-histor
 
 For the implemented amount-entry plan that now defines inline arithmetic scope, preview behavior, and parser boundaries for period-detail modals, read [INLINE_EXPRESSION_AMOUNT_INPUT_PLAN.md](/home/ubuntu/dosh/docs/plans/INLINE_EXPRESSION_AMOUNT_INPUT_PLAN.md).
 
+## Latest Session: Previous Release Visibility, Release Process Clarification, GitHub Release Workflow Planning, And Deployment Verification
+
+This session focused on finishing the in-app release-notes usability gap, clarifying where deployment automation and Git release management actually differ, and then capturing the preferred GitHub-centered release-tagging model as an explicit plan rather than leaving it as session-only discussion.
+
+Important direction now in place:
+
+- the release-notes modal can now reveal previous released versions on demand instead of only showing the running version plus newer available updates
+- the backend release-notes payload now includes previous released entries so the frontend does not need to reconstruct that history client-side
+- the release baseline moved from `0.1.1-alpha` to `0.1.2-alpha` because this session shipped a small backward-compatible user-facing enhancement that was deployed to the running app
+- the deployment helper and the future GitHub release workflow are now treated as separate concerns: the shell script remains deployment automation, while GitHub release-tagging is tracked as a still-active follow-up
+- a dedicated plan now exists at [GITHUB_RELEASE_MANAGEMENT_WORKFLOW_PLAN.md](/home/ubuntu/dosh/docs/plans/GITHUB_RELEASE_MANAGEMENT_WORKFLOW_PLAN.md) so future work can implement the preferred version-bump-on-`main` tagging model without rediscovering the design decisions
+
+### 1. Release notes now provide an explicit path to older versions
+
+The in-app release-notes view previously stopped at the current release and any newer released updates. That meant older shipped versions were effectively hidden even though the release-note source already contained them.
+
+Current behavior:
+
+- [release_notes.py](/home/ubuntu/dosh/backend/app/release_notes.py) now returns `previous_release_count` plus `previous_releases` in the API payload
+- [schemas.py](/home/ubuntu/dosh/backend/app/schemas.py) now models those fields explicitly for the release-notes response
+- [ReleaseNotesModal.jsx](/home/ubuntu/dosh/frontend/src/components/ReleaseNotesModal.jsx) now includes a `View previous releases` toggle so older versions can be revealed on demand rather than expanding the default modal state
+- [Layout.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/Layout.test.jsx) and [test_release_notes.py](/home/ubuntu/dosh/backend/tests/test_release_notes.py) now protect both the payload shape and the modal interaction
+
+Important product meaning:
+
+- the release-notes surface is now more complete for users who want historical context, while still keeping the default focus on the running version
+- the modal still treats the current release as primary and newer updates as more important than older history
+
+### 2. This session clarified the boundary between deployment automation and Git release management
+
+Part of the session was spent untangling a real source of confusion: Alembic, the release shell script, and a future GitHub release process each solve different parts of release management.
+
+Current understanding now captured:
+
+- Alembic manages schema migrations, not the full release lifecycle
+- [release_with_migrations.sh](/home/ubuntu/dosh/scripts/release_with_migrations.sh) remains a deployment helper that automates backup, migration or stamping, rebuild, and restart
+- Git release management for version tags and GitHub releases is still a separate missing layer and should not be conflated with the shell script
+- environment-specific compose overrides should remain optional deployment detail rather than project-wide release policy
+
+Important operational meaning:
+
+- future sessions should not treat the existence of a deploy script as proof that Git release orchestration is already solved
+- future release-process work should build on the documented versioning policy rather than overloading the deployment script with Git authority
+
+### 3. The preferred GitHub-managed release workflow now has a concrete plan
+
+The preferred direction discussed in-session was not local manual tag creation, but a GitHub workflow that evaluates real version bumps on `main` and creates official release tags only when the repository is aligned correctly.
+
+Current behavior:
+
+- [GITHUB_RELEASE_MANAGEMENT_WORKFLOW_PLAN.md](/home/ubuntu/dosh/docs/plans/GITHUB_RELEASE_MANAGEMENT_WORKFLOW_PLAN.md) now defines the intended model
+- the plan makes GitHub the single authority for creating release tags
+- the plan explicitly avoids commit-message-only tagging in favor of validating canonical version files and release-note alignment
+- [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md) now tracks this as an active reliability follow-up rather than completed work
+
+Important engineering meaning:
+
+- Dosh now has a concrete path toward Git-aligned releases without prematurely implementing a workflow that could duplicate tags or conflict with local tooling
+- future implementation should add a `main`-push version-bump detector first, then optionally a tag-triggered GitHub Release workflow second
+
+## Latest Session: Release-Notes Parser Hardening, Patch Release Alignment, And Deployment Verification
+
+This session focused on a narrow backend security fix and checkpoint alignment rather than broad product work. The main outcomes were removing the regex-based release-notes header parser that had a denial-of-service exposure, adding targeted parser coverage, aligning the documentation set to the new state, and rolling the deployed app forward to the next patch pre-release version.
+
+Important direction now in place:
+
+- [release_notes.py](/home/ubuntu/dosh/backend/app/release_notes.py) no longer parses release-note headers through a broad regex; it now uses bounded string parsing for entry headers and version suffix handling
+- dedicated backend tests now cover valid and invalid release-note header parsing, section preservation, version ordering, and exclusion of `unreleased` entries from the app payload
+- the release baseline moved from `0.1.0-alpha` to `0.1.1-alpha` because this session delivered a backward-compatible security hardening fix that was deployed through the normal release path
+- app-facing release notes in [RELEASE_NOTES.md](/home/ubuntu/dosh/docs/RELEASE_NOTES.md) and the runtime bundled copy in [backend/release_notes/RELEASE_NOTES.md](/home/ubuntu/dosh/backend/release_notes/RELEASE_NOTES.md) are now aligned to the current patch release
+- no new managed documents or plan-only artifacts were introduced in this session, so the existing document register structure remains valid without new register entries
+
+### 1. Release-note parsing is now bounded and easier to reason about
+
+The original parser matched every candidate header line with a regex that was broad enough to attract a regex DoS finding. This session replaced that path with direct string splitting and explicit shape checks.
+
+Current behavior:
+
+- [release_notes.py](/home/ubuntu/dosh/backend/app/release_notes.py) now validates release-note entry headers by checking the `## ` prefix, splitting on `|`, and normalizing the status field explicitly
+- version ordering now uses bounded string parsing for semver and prerelease suffixes instead of a regex fullmatch
+- the in-app release-notes endpoint contract stays the same, so the fix did not require frontend workflow changes
+
+Important engineering meaning:
+
+- release-note parsing no longer depends on a backtracking regex in the request path for `/api/release-notes`
+- future parser changes in this file should prefer explicit bounded parsing over convenience regex patterns unless the input shape is demonstrably narrow and safe
+
+### 2. This area now has dedicated backend regression ownership
+
+Before this session, release-note behavior only had smoke-path coverage through the API response. That was enough to confirm the route worked, but not enough to protect the parser boundaries directly.
+
+Current behavior:
+
+- [test_release_notes.py](/home/ubuntu/dosh/backend/tests/test_release_notes.py) now covers expected headers, malformed headers, summary and section extraction, supported prerelease ordering, and filtering of unreleased entries
+- [test_app_smoke.py](/home/ubuntu/dosh/backend/tests/test_app_smoke.py) still keeps the route-level smoke assertion for the running release
+
+Important engineering meaning:
+
+- future refactors in this module now have parser-level guardrails instead of relying only on endpoint smoke tests
+- this follows the project testing rule that targeted tests should protect meaningful behavior in touched risk areas rather than merely executing lines once
+
+### 3. The patch release and documentation checkpoint are now aligned
+
+Because this was a backward-compatible fix to a shipped runtime path, the session treated it as a patch increment under the release-management rules.
+
+Current behavior:
+
+- the app version baseline is now `0.1.1-alpha` across backend, frontend, Compose, package metadata, and runtime display fallbacks
+- [README.md](/home/ubuntu/dosh/README.md), [PROJECT_CONTEXT.md](/home/ubuntu/dosh/docs/PROJECT_CONTEXT.md), [MIGRATION_AND_RELEASE_MANAGEMENT.md](/home/ubuntu/dosh/docs/MIGRATION_AND_RELEASE_MANAGEMENT.md), [RELEASE_NOTES.md](/home/ubuntu/dosh/docs/RELEASE_NOTES.md), [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md), and [TEST_RESULTS_SUMMARY.md](/home/ubuntu/dosh/docs/tests/TEST_RESULTS_SUMMARY.md) were refreshed to reflect the current checkpoint
+- no document-placement changes were needed, so [DOCUMENT_REGISTER.md](/home/ubuntu/dosh/docs/DOCUMENT_REGISTER.md) remains structurally accurate without new entries
+
+Important operational meaning:
+
+- future sessions can keep using the same README to PROJECT_CONTEXT initialization path; only the current release baseline and the release-notes parser implementation details changed
+- the deployed environment was brought back into alignment with the repository after the version bump and documentation refresh
+
 ## Latest Session: Budget-Setup Safeguards, Income-Source Simplification, And Period-Detail Rollup Corrections
 
 This session focused on accepted user-facing setup and period-detail fixes rather than another broad platform refactor. The main outcomes were clearer setup protection rules, a simpler income-source model, and bottom-up period-detail calculations that now match the underlying line behavior more consistently.

@@ -12,8 +12,8 @@ Use it when:
 
 ## Current Baseline
 
-- current canonical app version: `0.1.0-alpha`
-- current UI display format: `v0.1.0-alpha`
+- current canonical app version: `0.1.2-alpha`
+- current UI display format: `v0.1.2-alpha`
 - current app state classification: `alpha`
 - current schema management authority: Alembic
 - current deployment path: Docker Compose
@@ -39,8 +39,8 @@ Rules for incrementing versions:
 
 Storage and display rules:
 
-- store the canonical version as plain semver text, for example `0.1.0-alpha`
-- display it in the UI with a `v` prefix, for example `v0.1.0-alpha`
+- store the canonical version as plain semver text, for example `0.1.2-alpha`
+- display it in the UI with a `v` prefix, for example `v0.1.2-alpha`
 - do not store the `v` prefix as part of the canonical version value
 
 ## Release Notes Management
@@ -121,6 +121,7 @@ Guidance:
 - do not rely on app startup to perform normal schema upgrades
 - do not skip the backup step before a schema-changing release
 - do not treat a partially migrated deployment as a successful release
+- if an environment uses an optional local [docker-compose.override.yml](/home/ubuntu/dosh/docker-compose.override.yml) or equivalent server-specific compose file, include it explicitly when running the release script; repo-level release guidance should still treat the base script invocation as the canonical default
 
 ## Rollback
 

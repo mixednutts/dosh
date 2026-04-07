@@ -4,6 +4,157 @@ This document records meaningful automated test results from major working sessi
 
 It exists separately from [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) so the strategy can stay stable while future sessions still have a record of what was actually run and verified.
 
+## Latest Session: Previous Release Visibility, Release Workflow Planning, And Deployment Verification
+
+Session outcomes verified in this run:
+
+- the backend release-notes payload now includes previous released versions in addition to the running release and any newer updates
+- the in-app release-notes modal now offers a `View previous releases` option so older released versions can be revealed on demand
+- the release baseline was bumped from `0.1.1-alpha` to `0.1.2-alpha` as a small backward-compatible user-facing enhancement
+- a GitHub-centered release-tagging workflow plan was documented for future work, but no GitHub release automation was implemented in this session
+- the app was redeployed successfully after the release-notes enhancement and version alignment
+
+### Backend verification
+
+Commands run during this session:
+
+```bash
+cd /home/ubuntu/dosh/backend
+../backend/.venv/bin/python -m pytest tests/test_release_notes.py tests/test_app_smoke.py
+```
+
+Result:
+
+- the focused backend verification passed with 15 tests
+- the parser-focused suite now also protects the previous-releases payload shape
+- the backend verification still emits the existing FastAPI `on_event` and `datetime.utcnow()` deprecation warnings, which remain follow-up cleanup rather than session regressions
+
+Files with meaningful backend updates in this session:
+
+- [release_notes.py](/home/ubuntu/dosh/backend/app/release_notes.py)
+- [schemas.py](/home/ubuntu/dosh/backend/app/schemas.py)
+- [version.py](/home/ubuntu/dosh/backend/app/version.py)
+- [test_release_notes.py](/home/ubuntu/dosh/backend/tests/test_release_notes.py)
+- [test_app_smoke.py](/home/ubuntu/dosh/backend/tests/test_app_smoke.py)
+
+### Frontend verification
+
+Commands run during this session:
+
+```bash
+cd /home/ubuntu/dosh/frontend
+npm test -- --runInBand src/__tests__/Layout.test.jsx
+```
+
+Result:
+
+- the focused layout regression passed with 7 tests after the previous-releases modal interaction was added and the visible version baseline moved to `v0.1.2-alpha`
+
+Files with meaningful frontend updates in this session:
+
+- [ReleaseNotesModal.jsx](/home/ubuntu/dosh/frontend/src/components/ReleaseNotesModal.jsx)
+- [Layout.jsx](/home/ubuntu/dosh/frontend/src/components/Layout.jsx)
+- [Layout.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/Layout.test.jsx)
+- [package.json](/home/ubuntu/dosh/frontend/package.json)
+- [package-lock.json](/home/ubuntu/dosh/frontend/package-lock.json)
+
+### Deployment verification
+
+Commands run during this session:
+
+```bash
+cd /home/ubuntu/dosh
+INCLUDE_OVERRIDE=true ./scripts/release_with_migrations.sh
+curl -sS http://127.0.0.1:3080/api/health
+curl -sS http://127.0.0.1:3080/api/release-notes
+```
+
+Result:
+
+- the stack rebuilt and restarted successfully after the release-notes enhancement
+- the live health endpoint returned `{\"status\":\"ok\",\"app\":\"Dosh\"}`
+- the live release-notes endpoint returned `0.1.2-alpha` as the current version and included the new `previous_release_count` plus `previous_releases` fields
+
+### Test failures and resolution notes
+
+- no unresolved automated test failures remained at the end of the session
+- no additional plan document was required because this session did not run in a separate plan-only mode, but a normal implementation plan was added for future GitHub release workflow work
+
+## Latest Session: Release-Notes Parser Hardening, Patch Release Alignment, And Deployment Verification
+
+Session outcomes verified in this run:
+
+- the backend release-notes parser no longer uses a regex-based entry-header path in the runtime `/api/release-notes` flow
+- dedicated backend regression coverage now protects release-note header parsing, summary and section extraction, prerelease ordering, and unreleased-entry filtering
+- the release baseline was bumped from `0.1.0-alpha` to `0.1.1-alpha` as a backward-compatible security hardening patch
+- the app-facing release notes and bundled backend release-notes copy were aligned to the new patch release
+- the stack was redeployed successfully after the parser hardening and version-alignment pass
+
+### Backend verification
+
+Commands run during this session:
+
+```bash
+cd /home/ubuntu/dosh/backend
+../backend/.venv/bin/python -m pytest tests/test_release_notes.py tests/test_app_smoke.py
+```
+
+Result:
+
+- the focused backend verification passed with 15 tests
+- the new parser-focused suite passed alongside the existing release-notes smoke coverage
+- the backend verification still emits the previously known FastAPI `on_event` and `datetime.utcnow()` deprecation warnings, which remain follow-up cleanup rather than session regressions
+
+Files with meaningful backend updates in this session:
+
+- [release_notes.py](/home/ubuntu/dosh/backend/app/release_notes.py)
+- [version.py](/home/ubuntu/dosh/backend/app/version.py)
+- [test_release_notes.py](/home/ubuntu/dosh/backend/tests/test_release_notes.py)
+- [test_app_smoke.py](/home/ubuntu/dosh/backend/tests/test_app_smoke.py)
+
+### Frontend verification
+
+Commands run during this session:
+
+```bash
+cd /home/ubuntu/dosh/frontend
+npm test -- --runInBand src/__tests__/Layout.test.jsx
+```
+
+Result:
+
+- the focused layout regression passed after the visible app-version baseline moved to `v0.1.1-alpha`
+- no additional frontend behavior changes were required beyond version-alignment touchpoints
+
+Files with meaningful frontend updates in this session:
+
+- [Layout.jsx](/home/ubuntu/dosh/frontend/src/components/Layout.jsx)
+- [Layout.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/Layout.test.jsx)
+- [package.json](/home/ubuntu/dosh/frontend/package.json)
+- [package-lock.json](/home/ubuntu/dosh/frontend/package-lock.json)
+
+### Deployment verification
+
+Commands run during this session:
+
+```bash
+cd /home/ubuntu/dosh
+./scripts/release_with_migrations.sh
+curl -sS http://127.0.0.1:3080/api/health
+curl -sS http://127.0.0.1:3080/api/release-notes
+```
+
+Result:
+
+- the shared Compose release script rebuilt the backend and frontend images, performed the migration/bootstrap step, and restarted both containers successfully
+- the live health endpoint returned `{\"status\":\"ok\",\"app\":\"Dosh\"}`
+- the live release-notes endpoint returned the expected `0.1.1-alpha` payload after deployment
+
+### Test failures and resolution notes
+
+- no unresolved automated test failures remained at the end of the session
+- no additional plan document was required because this session did not run in a separate plan-only mode
+
 ## Latest Session: Release Management Foundation, In-App Release Notes, Frontend Bundle Cleanup, And Deployment Verification
 
 Session outcomes verified in this run:
