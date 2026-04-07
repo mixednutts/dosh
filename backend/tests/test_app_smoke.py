@@ -13,6 +13,25 @@ def test_health_endpoint_returns_ok(client):
     assert response.json() == {"status": "ok", "app": "Dosh"}
 
 
+def test_info_endpoint_returns_app_version(client):
+    response = client.get("/api/info")
+
+    assert response.status_code == 200
+    assert response.json()["app"] == "Dosh"
+    assert response.json()["version"] == "0.1.0-alpha"
+
+
+def test_release_notes_endpoint_returns_current_release(client):
+    response = client.get("/api/release-notes")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["current_version"] == "0.1.0-alpha"
+    assert payload["update_available"] is False
+    assert payload["newer_release_count"] == 0
+    assert payload["current_release"]["version"] == "0.1.0-alpha"
+
+
 def test_generate_period_creates_expected_core_rows(client, db_session):
     setup = create_minimum_budget_setup(db_session)
     budget = setup["budget"]

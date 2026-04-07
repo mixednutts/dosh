@@ -2,7 +2,9 @@
 FROM node:20-alpine AS build
 WORKDIR /app
 ARG DEV_MODE=false
+ARG APP_VERSION=0.1.0-alpha
 ENV VITE_DEV_MODE=${DEV_MODE}
+ENV VITE_APP_VERSION=${APP_VERSION}
 COPY package*.json ./
 RUN npm ci
 COPY . .

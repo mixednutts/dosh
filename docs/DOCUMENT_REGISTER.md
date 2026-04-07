@@ -51,6 +51,68 @@ Maintenance notes:
 - should remain concise and current
 - should summarize rather than duplicate detailed design or backlog content
 
+### MIGRATION_AND_RELEASE_MANAGEMENT.md
+
+Document:
+
+- [MIGRATION_AND_RELEASE_MANAGEMENT.md](/home/ubuntu/dosh/docs/MIGRATION_AND_RELEASE_MANAGEMENT.md)
+
+Document type:
+
+- operational policy document
+
+Primary purpose:
+
+- define release versioning, migration management, and deployment update expectations
+
+Primary source-of-truth scope:
+
+- semantic versioning rules
+- pre-release classification rules
+- Alembic migration conventions
+- release sequencing and rollback expectations
+
+Key relationships:
+
+- linked from [README.md](/home/ubuntu/dosh/README.md) and [PROJECT_CONTEXT.md](/home/ubuntu/dosh/docs/PROJECT_CONTEXT.md)
+- informs future release and schema-update work across backend and deployment tooling
+
+Maintenance notes:
+
+- should remain the canonical operational reference for release and migration behavior
+- should be updated whenever the release path or versioning policy changes materially
+
+### RELEASE_NOTES.md
+
+Document:
+
+- [RELEASE_NOTES.md](/home/ubuntu/dosh/docs/RELEASE_NOTES.md)
+
+Document type:
+
+- overview document
+
+Primary purpose:
+
+- provide app-facing release notes aligned with the running and available Dosh versions
+
+Primary source-of-truth scope:
+
+- release-note content shown in the app
+- per-version user-facing highlights and fixes
+- released versus unreleased visibility intent for app consumption
+
+Key relationships:
+
+- used by the in-app release-notes surface
+- complements deeper engineering history in [CHANGES.md](/home/ubuntu/dosh/docs/CHANGES.md)
+- should stay aligned with versioning rules in [MIGRATION_AND_RELEASE_MANAGEMENT.md](/home/ubuntu/dosh/docs/MIGRATION_AND_RELEASE_MANAGEMENT.md)
+
+Maintenance notes:
+
+- should stay concise and version-oriented
+- should remain suitable for direct app display rather than becoming a full engineering log
+
 ## Roadmap and Activity Documents
 
 ### DEVELOPMENT_ACTIVITIES.md

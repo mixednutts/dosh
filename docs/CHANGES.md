@@ -2473,7 +2473,10 @@ Useful directions:
 
 ## Technical Notes
 
-- Backend startup currently performs lightweight SQLite schema migrations.
+- Backend startup no longer serves as the normal schema-migration path for the current aligned baseline; Alembic now owns managed schema evolution from baseline revision `abfa823847b9`.
+- Dosh now has a canonical runtime app version baseline of `0.1.0-alpha`, exposed through `/api/info` and displayed in the UI as `v0.1.0-alpha`.
+- App-facing release notes now live in [RELEASE_NOTES.md](/home/ubuntu/dosh/docs/RELEASE_NOTES.md) and are surfaced in the app through the backend `/api/release-notes` endpoint.
+- The repository now includes a Compose-oriented release helper at [release_with_migrations.sh](/home/ubuntu/dosh/scripts/release_with_migrations.sh) for backup, migration or baseline stamping, restart, and verification.
 - A new `revision_comment` field now exists on period expenses.
 - A centralized `periodtransactions` table now exists for period-level ledger activity.
 - Active-period transaction reconciliation/backfill now runs during startup migration flow.
@@ -2488,6 +2491,11 @@ Useful directions:
 ## Summary
 
 This session pushed Dosh toward:
+
+- explicit release versioning and managed schema evolution
+- in-app release visibility aligned with repo-managed release notes
+- safer deployment sequencing with baseline-aware migration handling
+- smaller frontend startup payloads through route-level lazy loading
 
 - clearer finalization rules for expenses
 - better budget-side accounting after payment finalization

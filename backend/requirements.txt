@@ -1,3 +1,4 @@
+alembic
 fastapi
 python-dateutil
 sqlalchemy

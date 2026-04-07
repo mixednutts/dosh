@@ -8,8 +8,15 @@ import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import clsx from 'clsx'
 import { format, parseISO } from 'date-fns'
+import Modal from './Modal'
+import ReleaseNotesModal from './ReleaseNotesModal'
+import Spinner from './Spinner'
 import { useDarkMode } from '../hooks/useDarkMode'
-import { getBudgets, getBudgetSetupAssessment, getPeriodDetail, getPeriodsForBudget } from '../api/client'
+import { getAppInfo, getBudgets, getBudgetSetupAssessment, getPeriodDetail, getPeriodsForBudget, getReleaseNotes } from '../api/client'
+
+function displayVersion(version) {
+  return `v${version || '0.1.0-alpha'}`
+}
 
 function PeriodShortcutGroup({ title, periods, activePeriodId, onNav, emptyMessage = null, moreText = null, moreTo = null, moreSubtle = false }) {
   if (periods.length === 0 && !emptyMessage) return null
@@ -317,6 +324,7 @@ export default function Layout() {
   const [open, setOpen] = useState(false)
   const [dark, setDark] = useDarkMode()
   const [budgetsExpanded, setBudgetsExpanded] = useState(false)
+  const [releaseNotesOpen, setReleaseNotesOpen] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     if (typeof window === 'undefined') return false
     return localStorage.getItem('dosh-sidebar-collapsed') === 'true'
@@ -345,10 +353,23 @@ export default function Layout() {
     queryFn: getBudgets,
     staleTime: 60_000,
   })
+  const { data: appInfo } = useQuery({
+    queryKey: ['app-info'],
+    queryFn: getAppInfo,
+    staleTime: 300_000,
+  })
+  const { data: releaseNotes, isLoading: releaseNotesLoading, isError: releaseNotesError } = useQuery({
+    queryKey: ['release-notes'],
+    queryFn: getReleaseNotes,
+    staleTime: 300_000,
+    enabled: releaseNotesOpen,
+  })
 
   const currentBudgetId = activeBudgetId ?? periodData?.period?.budgetid ?? null
   const currentBudget = budgets.find(budget => budget.budgetid === currentBudgetId) ?? null
   const onBudgetOrPeriod = !!(budgetMatch || budgetSetupMatch || periodMatch)
+  const versionLabel = displayVersion(appInfo?.version)
+  const updateAvailable = releaseNotes?.update_available ?? false
 
   useEffect(() => {
     if (!currentBudgetId) setBudgetsExpanded(true)
@@ -385,21 +406,33 @@ export default function Layout() {
                     <span className="block">Finance</span>
                     <span className="block">Management</span>
                   </span>
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.preventDefault()
+                      setReleaseNotesOpen(true)
+                    }}
+                    className="mt-1.5 inline-flex items-center gap-2 text-[9px] font-medium uppercase tracking-[0.16em] text-dosh-600 transition-colors hover:text-dosh-800 dark:text-dosh-400 dark:hover:text-dosh-200"
+                  >
+                    <span>{versionLabel}</span>
+                    {updateAvailable ? (
+                      <span className="rounded-full border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[8px] font-semibold tracking-[0.18em] text-amber-700 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+                        update
+                      </span>
+                    ) : null}
+                  </button>
                 </div>
               ) : null}
             </Link>
             {!sidebarCollapsed ? (
               <div className="hidden flex-col items-end gap-1 lg:flex">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-medium uppercase tracking-[0.18em] text-dosh-600 dark:text-dosh-400">v1.0</span>
-                  <button
-                    onClick={() => setDark(value => !value)}
-                    title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
-                    className="rounded-md p-1.5 text-dosh-700 transition-colors hover:bg-dosh-100 hover:text-dosh-900 dark:text-dosh-300 dark:hover:bg-slate-950 dark:hover:text-white"
-                  >
-                    {dark ? <SunIcon className="h-4 w-4" /> : <MoonIcon className="h-4 w-4" />}
-                  </button>
-                </div>
+                <button
+                  onClick={() => setDark(value => !value)}
+                  title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+                  className="rounded-md p-1.5 text-dosh-700 transition-colors hover:bg-dosh-100 hover:text-dosh-900 dark:text-dosh-300 dark:hover:bg-slate-950 dark:hover:text-white"
+                >
+                  {dark ? <SunIcon className="h-4 w-4" /> : <MoonIcon className="h-4 w-4" />}
+                </button>
                 <button
                   type="button"
                   onClick={() => setSidebarCollapsed(true)}
@@ -421,7 +454,14 @@ export default function Layout() {
               >
                 {dark ? <SunIcon className="h-4 w-4" /> : <MoonIcon className="h-4 w-4" />}
               </button>
-              <span className="text-[9px] font-medium uppercase tracking-[0.18em] text-dosh-600 dark:text-dosh-400">v1.0</span>
+              <button
+                type="button"
+                onClick={() => setReleaseNotesOpen(true)}
+                className="inline-flex items-center gap-1 text-[9px] font-medium uppercase tracking-[0.18em] text-dosh-600 transition-colors hover:text-dosh-800 dark:text-dosh-400 dark:hover:text-dosh-200"
+              >
+                <span>{versionLabel}</span>
+                {updateAvailable ? <span className="h-1.5 w-1.5 rounded-full bg-amber-500" /> : null}
+              </button>
               <button
                 type="button"
                 onClick={() => setSidebarCollapsed(false)}
@@ -511,6 +551,23 @@ export default function Layout() {
           <Outlet />
         </main>
       </div>
+      {releaseNotesOpen ? (
+        releaseNotesLoading ? (
+          <Modal title="Release Notes" onClose={() => setReleaseNotesOpen(false)} size="md">
+            <div className="flex min-h-[12rem] items-center justify-center">
+              <Spinner className="h-8 w-8" />
+            </div>
+          </Modal>
+        ) : releaseNotesError || !releaseNotes ? (
+          <Modal title="Release Notes" onClose={() => setReleaseNotesOpen(false)} size="md">
+            <p className="text-sm text-gray-700 dark:text-gray-200">
+              Release notes could not be loaded right now.
+            </p>
+          </Modal>
+        ) : (
+          <ReleaseNotesModal releaseNotes={releaseNotes} onClose={() => setReleaseNotesOpen(false)} />
+        )
+      ) : null}
     </div>
   )
 }

@@ -51,6 +51,8 @@ dosh/
 ### Start and Orientation
 
 - [PROJECT_CONTEXT.md](/home/ubuntu/dosh/docs/PROJECT_CONTEXT.md): the working handoff document for future AI sessions and new development starts
+- [MIGRATION_AND_RELEASE_MANAGEMENT.md](/home/ubuntu/dosh/docs/MIGRATION_AND_RELEASE_MANAGEMENT.md): the source of truth for semantic versioning, Alembic migrations, and release sequencing
+- [RELEASE_NOTES.md](/home/ubuntu/dosh/docs/RELEASE_NOTES.md): app-facing release notes shown in Dosh and maintained in the repo
 - [DOCUMENT_REGISTER.md](/home/ubuntu/dosh/docs/DOCUMENT_REGISTER.md): the map of project documents, ownership boundaries, and source-of-truth scope
 - [DOCUMENTATION_FRAMEWORK.md](/home/ubuntu/dosh/docs/DOCUMENTATION_FRAMEWORK.md): the generic documentation structure and governance framework
 
@@ -81,6 +83,8 @@ dosh/
 
 - `Budget Cycle` is the preferred user-facing wording where it improves clarity, while backend naming may still use `period` for stability.
 - The product direction is practical, supportive, and workflow-driven rather than accounting-heavy.
+- The current release baseline is `0.1.0-alpha`, displayed in the UI as `v0.1.0-alpha`.
+- Versioning, migration naming, and release-step expectations are defined in [MIGRATION_AND_RELEASE_MANAGEMENT.md](/home/ubuntu/dosh/docs/MIGRATION_AND_RELEASE_MANAGEMENT.md).
 - Detailed roadmap, plan, and testing content should live in the next-layer documents above rather than growing this README.
 
 ## SonarQube

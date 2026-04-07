@@ -6,10 +6,12 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import Layout from '../components/Layout'
 
 jest.mock('../api/client', () => ({
+  getAppInfo: jest.fn(),
   getBudgets: jest.fn(),
   getBudgetSetupAssessment: jest.fn(),
   getPeriodDetail: jest.fn(),
   getPeriodsForBudget: jest.fn(),
+  getReleaseNotes: jest.fn(),
 }))
 
 const client = require('../api/client')
@@ -78,6 +80,26 @@ describe('Layout navigation', () => {
         budget_frequency: 'Fortnightly',
       },
     ])
+    client.getAppInfo.mockResolvedValue({
+      app: 'Dosh',
+      version: '0.1.0-alpha',
+      schema_revision: 'baseline_current_schema',
+    })
+    client.getReleaseNotes.mockResolvedValue({
+      current_version: '0.1.0-alpha',
+      update_available: false,
+      newer_release_count: 0,
+      current_release: {
+        version: '0.1.0-alpha',
+        status: 'released',
+        release_date: '2026-04-08',
+        summary: 'Dosh now has a formal versioning and migration-management foundation.',
+        sections: [
+          { title: 'Highlights', items: ['Added a canonical app version of 0.1.0-alpha'] },
+        ],
+      },
+      newer_releases: [],
+    })
     client.getBudgetSetupAssessment.mockResolvedValue({
       budgetid: 1,
       can_generate: false,
@@ -109,6 +131,26 @@ describe('Layout navigation', () => {
     expect(screen.queryByRole('link', { name: 'Setup' })).toBeNull()
     expect(screen.queryByRole('link', { name: 'Open setup' })).toBeNull()
     expect(screen.getByText('No budget cycles yet. Open Budget Cycles to generate your first budget cycle.')).toBeTruthy()
+  })
+
+  it('shows the canonical release version in the sidebar chrome', async () => {
+    renderLayout('/budgets')
+
+    expect(await screen.findByText('v0.1.0-alpha')).toBeTruthy()
+
+    fireEvent.click(screen.getByTitle('Collapse sidebar'))
+
+    expect(await screen.findByText('v0.1.0-alpha')).toBeTruthy()
+  })
+
+  it('opens release notes from the version label', async () => {
+    renderLayout('/budgets')
+
+    fireEvent.click(await screen.findByRole('button', { name: /v0.1.0-alpha/i }))
+
+    expect(await screen.findByRole('heading', { name: 'Release Notes' })).toBeTruthy()
+    expect(await screen.findByText(/running version/i)).toBeTruthy()
+    expect(await screen.findByText(/up to date/i)).toBeTruthy()
   })
 
   it('collapses the current budget cycle shortcuts when the budget list is collapsed', async () => {

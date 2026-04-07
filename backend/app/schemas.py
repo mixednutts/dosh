@@ -13,6 +13,27 @@ class PayTypeOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class ReleaseNotesSectionOut(BaseModel):
+    title: str
+    items: list[str] = []
+
+
+class ReleaseNoteOut(BaseModel):
+    version: str
+    status: str
+    release_date: str
+    summary: str = ""
+    sections: list[ReleaseNotesSectionOut] = []
+
+
+class ReleaseNotesResponseOut(BaseModel):
+    current_version: str
+    update_available: bool = False
+    newer_release_count: int = 0
+    current_release: Optional[ReleaseNoteOut] = None
+    newer_releases: list[ReleaseNoteOut] = []
+
+
 # ── Budget ───────────────────────────────────────────────────────────────────
 
 class BudgetBase(BaseModel):

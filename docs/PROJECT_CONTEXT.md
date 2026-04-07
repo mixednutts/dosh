@@ -5,6 +5,8 @@ This document initializes a practical working context for new Dosh development.
 It is a synthesis of the current Markdown sources in this repository:
 
 - [README.md](/home/ubuntu/dosh/README.md)
+- [MIGRATION_AND_RELEASE_MANAGEMENT.md](/home/ubuntu/dosh/docs/MIGRATION_AND_RELEASE_MANAGEMENT.md)
+- [RELEASE_NOTES.md](/home/ubuntu/dosh/docs/RELEASE_NOTES.md)
 - [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md)
 - [CHANGES.md](/home/ubuntu/dosh/docs/CHANGES.md)
 - [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_CYCLE_LIFECYCLE_PLAN.md)
@@ -27,6 +29,7 @@ These guidelines apply across the project as a whole and should continue guiding
 - follow [DOCUMENTATION_FRAMEWORK.md](/home/ubuntu/dosh/docs/DOCUMENTATION_FRAMEWORK.md)
 - use [README.md](/home/ubuntu/dosh/README.md) as the top-level entry point
 - use this document as the operational handoff for new AI sessions
+- keep [RELEASE_NOTES.md](/home/ubuntu/dosh/docs/RELEASE_NOTES.md) as the app-facing release-notes source used by the in-app release notes view
 - maintain one primary source of truth per topic
 - prefer cross-links over duplicating maintained content
 - update [DOCUMENT_REGISTER.md](/home/ubuntu/dosh/docs/DOCUMENT_REGISTER.md) when managed documents are added, moved, renamed, or materially repurposed
@@ -93,6 +96,7 @@ These guidelines apply across the project as a whole and should continue guiding
 
 - keep demo-budget import additive-only unless a separately designed reset workflow exists
 - keep Docker Compose as the shared source of truth for `DEV_MODE`
+- keep [MIGRATION_AND_RELEASE_MANAGEMENT.md](/home/ubuntu/dosh/docs/MIGRATION_AND_RELEASE_MANAGEMENT.md) as the source of truth for versioning, migration naming, and release sequencing
 - backend enforcement should continue even when the frontend hides dev-only controls
 
 ## Current Product Shape
@@ -140,9 +144,9 @@ Frontend:
 
 Operational note:
 
-- transitional startup schema patching is no longer the primary schema strategy, but one lightweight compatibility cleanup still exists in [main.py](/home/ubuntu/dosh/backend/app/main.py) to remove a legacy `incometypes.isfixed` column if that column is still present
+- the current app-version baseline is `0.1.0-alpha`, displayed in the UI as `v0.1.0-alpha`
+- Alembic now owns normal schema evolution from the current aligned baseline, with migration and release rules defined in [MIGRATION_AND_RELEASE_MANAGEMENT.md](/home/ubuntu/dosh/docs/MIGRATION_AND_RELEASE_MANAGEMENT.md)
 - the repo now has an explicit transaction-ledger cutover script in [cutover_unified_transactions.py](/home/ubuntu/dosh/backend/scripts/cutover_unified_transactions.py) for the current schema baseline
-- proper versioned migrations still remain a near-term engineering need from that new baseline
 - backend tests now run against an isolated SQLite database per test case through [conftest.py](/home/ubuntu/dosh/backend/tests/conftest.py)
 - Docker Compose remains the active deployment path, with the frontend exposed on port `3080`
 - this repo also includes [docker-compose.override.yml](/home/ubuntu/dosh/docker-compose.override.yml) for Traefik-facing frontend deployment wiring, so deploys that need the public host path should include both compose files rather than the base file alone

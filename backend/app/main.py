@@ -1,11 +1,14 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import text
 
+from .api_docs import error_responses
 from .cycle_management import assign_period_lifecycle_states
-from .database import Base, engine
+from .database import engine
 from . import models as _models  # noqa: F401 - ensure all models are registered
 from .models import PayType
+from .release_notes import release_notes_payload
+from .schemas import ReleaseNotesResponseOut
+from .version import APP_VERSION, get_schema_revision
 from .routers import (
     budgets,
     periods,
@@ -19,20 +22,7 @@ from .routers import (
     period_transactions,
 )
 
-# Create all tables on startup
-Base.metadata.create_all(bind=engine)
-
-
-def _cleanup_legacy_income_type_columns():
-    with engine.begin() as connection:
-        columns = {row[1] for row in connection.execute(text("PRAGMA table_info(incometypes)")).fetchall()}
-        if "isfixed" in columns:
-            connection.execute(text("ALTER TABLE incometypes DROP COLUMN isfixed"))
-
-
-_cleanup_legacy_income_type_columns()
-
-app = FastAPI(title="Dosh API", version="1.0.0")
+app = FastAPI(title="Dosh API", version=APP_VERSION)
 
 app.add_middleware(
     CORSMiddleware,
@@ -66,13 +56,6 @@ def seed_reference_data():
             if not db.get(PayType, pt):
                 db.add(PayType(paytype=pt))
 
-        # Seed app info
-        from .models import AppInfo
-        if not db.query(AppInfo).first():
-            db.add(AppInfo(versionnum="1.0.0"))
-
-        db.commit()
-
         from .models import Budget
         budget_ids = [budget_id for (budget_id,) in db.query(Budget.budgetid).all()]
         for budget_id in budget_ids:
@@ -86,3 +69,21 @@ def seed_reference_data():
 @app.get("/api/health")
 def health():
     return {"status": "ok", "app": "Dosh"}
+
+
+@app.get("/api/info")
+def info():
+    return {
+        "app": "Dosh",
+        "version": APP_VERSION,
+        "schema_revision": get_schema_revision(),
+    }
+
+
+@app.get(
+    "/api/release-notes",
+    response_model=ReleaseNotesResponseOut,
+    responses=error_responses(404),
+)
+def release_notes():
+    return release_notes_payload(APP_VERSION)

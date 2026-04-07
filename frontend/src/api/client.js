@@ -4,6 +4,9 @@ const api = axios.create({ baseURL: '/api' })
 
 export default api
 
+export const getAppInfo = () => api.get('/info').then(r => r.data)
+export const getReleaseNotes = () => api.get('/release-notes').then(r => r.data)
+
 // ── Budgets ──────────────────────────────────────────────────────────────────
 export const getBudgets = () => api.get('/budgets/').then(r => r.data)
 export const getBudget = id => api.get(`/budgets/${id}`).then(r => r.data)

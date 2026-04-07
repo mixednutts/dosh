@@ -583,18 +583,18 @@ Status:
 
 - `Completed`: align the deployed SQLite schema to the new budget-adjustment and transaction-line-state code after deployment exposed the gap
 - `Completed`: align the live SQLite schema again after setup-history revision support exposed the missing `periodtransactions.revisionnum` column and `setuprevisionevents` table
-- pin frontend install behavior more reliably
+- `Completed`: pin frontend install behavior more reliably by keeping the Vite toolchain on a patched release and restoring a clean `npm audit` baseline
 - keep the Node 20 frontend Docker baseline healthy and revisit newer LTS adoption only when the toolchain is ready
 - verify compose assumptions around networks and Traefik usage
 - document expected production vs local deployment differences
 - confirm build and startup paths remain clean as the app grows
-- introduce route-level lazy loading for major pages in [App.jsx](/home/ubuntu/dosh/frontend/src/App.jsx) so the frontend stops shipping one oversized initial Vite chunk
+- `Completed`: introduce route-level lazy loading for major pages in [App.jsx](/home/ubuntu/dosh/frontend/src/App.jsx) so the frontend stops shipping one oversized initial Vite chunk
 - clean up startup and timestamp deprecation warnings that appear during test and deployment runs
-- formalize the database migration strategy by introducing proper versioned migrations
-- turn the current explicit cutover-script baseline into a real migration history
+- `Completed`: formalize the database migration strategy by introducing proper versioned migrations through Alembic from the current aligned baseline
+- `Completed`: turn the current explicit cutover-script baseline into a real migration history
 - make schema evolution safer and more observable than ad hoc one-time scripts
-- separate one-time migration work from normal app startup permanently
-- capture the unified-ledger baseline, close-out schema, and setup-assessment schema in the real migration path
+- `Completed`: separate one-time migration work from normal app startup permanently for the current baseline
+- `Completed`: capture the unified-ledger baseline, close-out schema, and setup-assessment schema in the real migration path
 - `Completed`: harden the SonarQube workflow so failed quality-gate runs still upload sanitized artifacts with explicit failed-condition context and file-level measure hotspots
 
 #### Activity Group: Consistency

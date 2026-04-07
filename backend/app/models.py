@@ -6,14 +6,6 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship
 from .database import Base
 
-
-class AppInfo(Base):
-    __tablename__ = "appinfo"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    versionnum = Column(String, nullable=False)
-
-
 class Budget(Base):
     __tablename__ = "budgets"
 

@@ -21,7 +21,7 @@ from app import models as _models  # noqa: F401 - ensure all models are register
 from app import database as database
 from app import main as main
 from app.database import Base, get_db
-from app.models import AppInfo, PayType
+from app.models import PayType
 
 app = main.app
 
@@ -31,8 +31,6 @@ def _seed_reference_rows(session_local) -> None:
         for paytype in ("AUTO", "MANUAL"):
             if not db.get(PayType, paytype):
                 db.add(PayType(paytype=paytype))
-        if not db.query(AppInfo).first():
-            db.add(AppInfo(versionnum="1.0.0"))
         db.commit()
 
 

@@ -4,6 +4,108 @@ This document records meaningful automated test results from major working sessi
 
 It exists separately from [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) so the strategy can stay stable while future sessions still have a record of what was actually run and verified.
 
+## Latest Session: Release Management Foundation, In-App Release Notes, Frontend Bundle Cleanup, And Deployment Verification
+
+Session outcomes verified in this run:
+
+- Dosh now has a canonical runtime app version of `0.1.0-alpha`, displayed in the UI as `v0.1.0-alpha`
+- the backend now exposes runtime release metadata through `/api/info`, including the current schema revision
+- Alembic was introduced as the managed schema migration path, with a baseline revision representing the current aligned schema and a Compose-friendly release script that handles backup, migration or baseline stamping, and restart
+- the legacy `AppInfo` database version row was removed so runtime versioning no longer depends on mutable database content
+- the app now has repo-managed in-app release notes sourced from [RELEASE_NOTES.md](/home/ubuntu/dosh/docs/RELEASE_NOTES.md) and exposed through `/api/release-notes`
+- the sidebar version label now opens release notes for the running version and can indicate newer released-but-unapplied updates when such entries exist
+- the frontend Vite dependency was patched to `6.4.2`, clearing the previously reported `npm audit` high-severity issue
+- major frontend pages now lazy-load from [App.jsx](/home/ubuntu/dosh/frontend/src/App.jsx), reducing the main bundle from the earlier `535.72 kB` warning state to roughly `304 kB` minified in the final build
+- the stack was redeployed successfully after the release-management foundation, version-display, frontend bundle, and in-app release-notes changes
+
+### Backend verification
+
+Commands run during this session:
+
+```bash
+cd /home/ubuntu/dosh/backend
+DATABASE_URL=sqlite:////tmp/dosh-migrate-verify.sqlite3 ./.venv/bin/alembic upgrade head
+./.venv/bin/python -m pytest tests/test_app_smoke.py
+./.venv/bin/python - <<'PY'
+from app.release_notes import release_notes_payload
+print(release_notes_payload())
+PY
+```
+
+Result:
+
+- the Alembic baseline migration applied successfully to a fresh SQLite database
+- the focused backend smoke batch passed with 10 tests after the versioning and release-notes endpoints were introduced
+- the local release-notes payload check confirmed the current-version release data was parsed correctly from the managed Markdown source
+- backend verification still emits the known FastAPI `on_event` and `datetime.utcnow()` deprecation warnings, which remain follow-up cleanup rather than session regressions
+
+Files with meaningful backend updates in this session:
+
+- [main.py](/home/ubuntu/dosh/backend/app/main.py)
+- [version.py](/home/ubuntu/dosh/backend/app/version.py)
+- [release_notes.py](/home/ubuntu/dosh/backend/app/release_notes.py)
+- [models.py](/home/ubuntu/dosh/backend/app/models.py)
+- [schemas.py](/home/ubuntu/dosh/backend/app/schemas.py)
+- [test_app_smoke.py](/home/ubuntu/dosh/backend/tests/test_app_smoke.py)
+- [alembic.ini](/home/ubuntu/dosh/backend/alembic.ini)
+- [env.py](/home/ubuntu/dosh/backend/alembic/env.py)
+- [abfa823847b9_baseline_current_schema.py](/home/ubuntu/dosh/backend/alembic/versions/abfa823847b9_baseline_current_schema.py)
+
+### Frontend verification
+
+Commands run during this session:
+
+```bash
+cd /home/ubuntu/dosh/frontend
+npm test -- --runInBand src/__tests__/Layout.test.jsx
+npm audit --json
+npm run build
+```
+
+Result:
+
+- the focused layout regression batch passed with 6 tests after the runtime version display, version-label placement, and release-notes modal work
+- `npm audit` returned zero vulnerabilities after upgrading Vite to `6.4.2`
+- the production build passed after route-level lazy loading was introduced
+- the final Vite build no longer produced the previous oversized-main-chunk warning; the main entry chunk landed at about `303.79 kB` minified and `96.79 kB` gzip in the final verified build
+
+Files with meaningful frontend updates in this session:
+
+- [App.jsx](/home/ubuntu/dosh/frontend/src/App.jsx)
+- [Layout.jsx](/home/ubuntu/dosh/frontend/src/components/Layout.jsx)
+- [ReleaseNotesModal.jsx](/home/ubuntu/dosh/frontend/src/components/ReleaseNotesModal.jsx)
+- [client.js](/home/ubuntu/dosh/frontend/src/api/client.js)
+- [Layout.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/Layout.test.jsx)
+- [package.json](/home/ubuntu/dosh/frontend/package.json)
+- [package-lock.json](/home/ubuntu/dosh/frontend/package-lock.json)
+
+### Deployment verification
+
+Commands run during this session:
+
+```bash
+cd /home/ubuntu/dosh
+INCLUDE_OVERRIDE=true ./scripts/release_with_migrations.sh
+curl -sS http://127.0.0.1:3080/api/health
+curl -sS http://127.0.0.1:3080/api/info
+curl -sS http://127.0.0.1:3080/api/release-notes
+```
+
+Result:
+
+- the first deployment under the new release model stamped the existing aligned SQLite database to the Alembic baseline revision instead of trying to replay historical schema changes
+- the final deployed app reported `{\"app\":\"Dosh\",\"version\":\"0.1.0-alpha\",\"schema_revision\":\"abfa823847b9\"}` from `/api/info`
+- the live health endpoint returned `{\"status\":\"ok\",\"app\":\"Dosh\"}`
+- the final `/api/release-notes` call returned the expected current release-notes payload from the managed repo content
+
+### Test failures and resolution notes
+
+- the first backend smoke rerun failed because the tests still monkeypatched `main.engine` after a local cleanup removed that attribute; reintroducing the module-level engine import restored the expected test seam
+- the first version-label layout regression assumed both expanded and collapsed labels were visible at once; the test was corrected to verify each state explicitly
+- the first deployed `/api/release-notes` call failed because the backend container did not include the repo `docs/` path; a runtime-safe bundled copy at [backend/release_notes/RELEASE_NOTES.md](/home/ubuntu/dosh/backend/release_notes/RELEASE_NOTES.md) and a fallback path check in [release_notes.py](/home/ubuntu/dosh/backend/app/release_notes.py) resolved the issue
+- no unresolved automated test failures remained at the end of the session
+- no additional plan document was required because this session did not run in a separate plan-only mode
+
 ## Latest Session: Budget-Setup Protection, Income-Source Cleanup, Period-Detail Rollups, And Deployment Verification
 
 Session outcomes verified in this run:
