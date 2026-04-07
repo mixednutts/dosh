@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from app.setup_assessment import budget_setup_assessment
 from app.models import FinancialPeriod, PeriodBalance, PeriodTransaction
 from app.time_utils import app_now_naive
 
@@ -138,6 +139,27 @@ def test_setup_assessment_warns_when_auto_surplus_has_no_primary_investment(clie
     payload = response.json()
     assert payload["can_generate"] is True
     assert any("automatic surplus allocation" in warning.lower() for warning in payload["warnings"])
+
+
+def test_setup_assessment_requires_an_active_account_when_only_inactive_accounts_exist(client, db_session):
+    budget = create_budget(db_session)
+    create_income_type(db_session, budgetid=budget.budgetid)
+    create_expense_item(db_session, budgetid=budget.budgetid)
+    inactive_account = create_balance_type(db_session, budgetid=budget.budgetid, balancedesc="Dormant Account", is_primary=True)
+    inactive_account.active = False
+    db_session.add(inactive_account)
+    db_session.commit()
+
+    response = client.get(f"/api/budgets/{budget.budgetid}/setup-assessment")
+
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["can_generate"] is False
+    assert any("add at least one active account" in issue.lower() for issue in payload["blocking_issues"])
+
+
+def test_budget_setup_assessment_returns_none_for_missing_budget(db_session):
+    assert budget_setup_assessment(999999, db_session) is None
 
 
 def test_delete_rejects_account_that_is_already_in_use(client, db_session):

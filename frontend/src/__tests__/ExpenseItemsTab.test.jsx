@@ -39,6 +39,10 @@ describe('ExpenseItemsTab', () => {
     client.getExpenseItemHistory.mockResolvedValue({ item_desc: 'Rent', category: 'expense', current_revisionnum: 0, entries: [] })
   })
 
+  afterEach(() => {
+    jest.useRealTimers()
+  })
+
   it('disables delete for an expense item already in use', async () => {
     client.getExpenseItems.mockResolvedValue([
       {
@@ -203,5 +207,136 @@ describe('ExpenseItemsTab', () => {
     expect(await screen.findByText('Revision 2')).toBeTruthy()
     expect(await screen.findByText('Rent increased mid-cycle.')).toBeTruthy()
     expect(client.getExpenseItemHistory).toHaveBeenCalledWith(1, 'Rent')
+  })
+
+  it('creates an every-n-days expense item with a commencement date', async () => {
+    client.getExpenseItems.mockResolvedValue([])
+    client.createExpenseItem.mockResolvedValue({})
+
+    renderWithProviders(<ExpenseItemsTab budgetId={1} />)
+
+    fireEvent.click(await screen.findByText('Add Expense Item'))
+
+    fireEvent.change(screen.getByLabelText(/Description/i), {
+      target: { value: 'Fuel' },
+    })
+    fireEvent.change(screen.getByLabelText(/Frequency Type/i), {
+      target: { value: 'Every N Days' },
+    })
+    fireEvent.change(screen.getByLabelText(/Interval \(days\)/i), {
+      target: { value: '10' },
+    })
+    fireEvent.change(screen.getByLabelText(/Pay Type/i), {
+      target: { value: '' },
+    })
+    fireEvent.change(screen.getByLabelText(/Amount/i), {
+      target: { value: '85.50' },
+    })
+    fireEvent.change(screen.getByLabelText(/Commencement Date/i), {
+      target: { value: '2026-04-01' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => {
+      expect(client.createExpenseItem).toHaveBeenCalledWith(1, {
+        expensedesc: 'Fuel',
+        active: true,
+        freqtype: 'Every N Days',
+        frequency_value: 10,
+        paytype: null,
+        effectivedate: '2026-04-01',
+        expenseamount: 85.5,
+      })
+    })
+  })
+
+  it('reveals inactive items and reorders active items', async () => {
+    client.getExpenseItems.mockResolvedValue([
+      {
+        expensedesc: 'Rent',
+        active: true,
+        freqtype: 'Always',
+        frequency_value: null,
+        paytype: 'MANUAL',
+        effectivedate: null,
+        expenseamount: '1200.00',
+        revisionnum: 1,
+        sort_order: 0,
+      },
+      {
+        expensedesc: 'Gym',
+        active: true,
+        freqtype: 'Fixed Day of Month',
+        frequency_value: 15,
+        paytype: 'AUTO',
+        effectivedate: '2026-04-15T00:00:00',
+        expenseamount: '25.00',
+        revisionnum: 0,
+        sort_order: 1,
+      },
+      {
+        expensedesc: 'Old Subscription',
+        active: false,
+        freqtype: 'Always',
+        frequency_value: null,
+        paytype: 'MANUAL',
+        effectivedate: null,
+        expenseamount: '12.00',
+        revisionnum: 0,
+        sort_order: 2,
+      },
+    ])
+    client.reorderExpenseItems.mockResolvedValue({})
+
+    renderWithProviders(<ExpenseItemsTab budgetId={1} />)
+
+    expect(await screen.findByText('Rent')).toBeTruthy()
+    expect(screen.queryByText('Old Subscription')).toBeNull()
+
+    fireEvent.click(screen.getByLabelText('Show inactive'))
+    expect(screen.getByText('Old Subscription')).toBeTruthy()
+
+    fireEvent.click(screen.getAllByTitle('Move down')[0])
+
+    await waitFor(() => {
+      expect(client.reorderExpenseItems).toHaveBeenCalledWith(1, [
+        { expensedesc: 'Gym', sort_order: 0 },
+        { expensedesc: 'Rent', sort_order: 1 },
+        { expensedesc: 'Old Subscription', sort_order: 2 },
+      ])
+    })
+  })
+
+  it('shows next due for every-n-days items and deletes an item after confirmation', async () => {
+    jest.useFakeTimers()
+    jest.setSystemTime(Date.parse('2026-04-10T09:00:00Z'))
+    globalThis.confirm = jest.fn(() => true)
+
+    client.getExpenseItems.mockResolvedValue([
+      {
+        expensedesc: 'Fuel',
+        active: true,
+        freqtype: 'Every N Days',
+        frequency_value: 10,
+        paytype: 'MANUAL',
+        effectivedate: '2026-04-01T00:00:00',
+        expenseamount: '85.50',
+        revisionnum: 1,
+        sort_order: 0,
+      },
+    ])
+    client.deleteExpenseItem.mockResolvedValue({})
+
+    renderWithProviders(<ExpenseItemsTab budgetId={1} />)
+
+    expect(await screen.findByText('Fuel')).toBeTruthy()
+    expect(screen.getByText('Every 10d')).toBeTruthy()
+    expect(screen.getByText('11 Apr 2026')).toBeTruthy()
+
+    const deleteButton = screen.getAllByRole('button').find(button => button.className.includes('btn-danger'))
+    fireEvent.click(deleteButton)
+    await waitFor(() => {
+      expect(client.deleteExpenseItem).toHaveBeenCalledWith(1, 'Fuel')
+    })
   })
 })

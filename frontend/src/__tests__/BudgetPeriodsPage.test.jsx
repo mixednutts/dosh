@@ -392,4 +392,109 @@ describe('BudgetPeriodsPage', () => {
       })
     })
   })
+
+  it('opens the upcoming group from the URL hash and remembers that open state', async () => {
+    client.getBudget.mockResolvedValue({
+      budgetid: 1,
+      budgetowner: 'Alex',
+      description: 'Home Budget',
+      budget_frequency: 'Monthly',
+    })
+    client.getPeriodSummariesForBudget.mockResolvedValue([
+      {
+        period: {
+          finperiodid: 41,
+          budgetid: 1,
+          startdate: '2026-06-01T00:00:00',
+          enddate: '2026-06-30T00:00:00',
+          islocked: false,
+          cycle_status: 'PLANNED',
+        },
+        income_budget: '1000.00',
+        income_actual: '0.00',
+        expense_budget: '700.00',
+        expense_actual: '0.00',
+        investment_budget: '0.00',
+        investment_actual: '0.00',
+        surplus_budget: '300.00',
+        surplus_actual: '0.00',
+        projected_savings: '300.00',
+        can_delete: true,
+        delete_mode: 'single',
+      },
+    ])
+
+    const firstRender = renderWithProviders(<BudgetPeriodsPage />, {
+      route: '/budgets/1#upcoming',
+      path: '/budgets/:budgetId',
+    })
+
+    expect(await screen.findByTitle('Collapse upcoming budget cycles')).toBeTruthy()
+    expect(screen.getByText('30 Jun 26')).toBeTruthy()
+
+    firstRender.unmount()
+
+    renderWithProviders(<BudgetPeriodsPage />, {
+      route: '/budgets/1',
+      path: '/budgets/:budgetId',
+    })
+
+    expect(await screen.findByTitle('Collapse upcoming budget cycles')).toBeTruthy()
+    expect(screen.getByText('30 Jun 26')).toBeTruthy()
+  })
+
+  it('allows choosing future-chain deletion when both delete options are available', async () => {
+    client.getBudget.mockResolvedValue({
+      budgetid: 1,
+      budgetowner: 'Alex',
+      description: 'Home Budget',
+      budget_frequency: 'Monthly',
+    })
+    client.getPeriodSummariesForBudget.mockResolvedValue([
+      {
+        period: {
+          finperiodid: 51,
+          budgetid: 1,
+          startdate: '2026-07-01T00:00:00',
+          enddate: '2026-07-31T00:00:00',
+          islocked: false,
+          cycle_status: 'PLANNED',
+        },
+        income_budget: '1000.00',
+        income_actual: '0.00',
+        expense_budget: '700.00',
+        expense_actual: '0.00',
+        investment_budget: '0.00',
+        investment_actual: '0.00',
+        surplus_budget: '300.00',
+        surplus_actual: '0.00',
+        projected_savings: '300.00',
+        can_delete: true,
+        delete_mode: 'single',
+      },
+    ])
+    client.getPeriodDeleteOptions.mockResolvedValue({
+      can_delete_single: true,
+      can_delete_future_chain: true,
+      future_chain_count: 4,
+      delete_reason: null,
+      cycle_status: 'PLANNED',
+    })
+    client.deletePeriod.mockResolvedValue({})
+
+    renderWithProviders(<BudgetPeriodsPage />, {
+      route: '/budgets/1',
+      path: '/budgets/:budgetId',
+    })
+
+    expect(await screen.findByText('Budget Cycles')).toBeTruthy()
+    fireEvent.click(screen.getByTitle('Expand upcoming budget cycles'))
+    fireEvent.click(screen.getByTitle('Delete budget cycle'))
+    fireEvent.click(await screen.findByLabelText(/Delete this cycle and all upcoming cycles/i))
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Budget Cycle' }))
+
+    await waitFor(() => {
+      expect(client.deletePeriod).toHaveBeenCalledWith(51, 'future_chain')
+    })
+  })
 })

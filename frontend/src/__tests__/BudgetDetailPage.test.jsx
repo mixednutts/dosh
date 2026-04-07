@@ -1,5 +1,5 @@
 import React from 'react'
-import { screen } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 
 import BudgetDetailPage from '../pages/BudgetDetailPage'
 import { renderWithProviders } from '../testUtils'
@@ -26,6 +26,10 @@ const client = require('../api/client')
 describe('BudgetDetailPage', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+  })
+
+  afterEach(() => {
+    jest.useRealTimers()
   })
 
   function mockSetupAssessment(overrides = {}) {
@@ -218,5 +222,94 @@ describe('BudgetDetailPage', () => {
       'Add at least one income type so your budget cycle has income to plan with.',
       'Add at least one active expense item so your budget cycle has spending to plan for.',
     ])
+  })
+
+  it('autosaves budget info edits after the debounce and blocks blank-owner saves', async () => {
+    jest.useFakeTimers()
+    client.getBudget.mockResolvedValue({
+      budgetid: 1,
+      budgetowner: 'Alex',
+      description: 'Home Budget',
+      budget_frequency: 'Monthly',
+      account_naming_preference: 'Transaction',
+    })
+    client.getBalanceTypes.mockResolvedValue([])
+    client.getIncomeTypes.mockResolvedValue([])
+    client.getExpenseItems.mockResolvedValue([])
+    client.getInvestmentItems.mockResolvedValue([])
+    client.updateBudget.mockResolvedValue({
+      budgetid: 1,
+      budgetowner: 'Jordan',
+      description: 'Renamed Budget',
+      budget_frequency: 'Monthly',
+    })
+    mockSetupAssessment()
+
+    renderWithProviders(<BudgetDetailPage />, {
+      route: '/budgets/1/setup',
+      path: '/budgets/:budgetId/setup',
+    })
+
+    const nameInput = await screen.findByLabelText('Budget Name')
+    const ownerInput = screen.getByLabelText('Budget Owner')
+
+    fireEvent.change(nameInput, { target: { value: 'Renamed Budget' } })
+    fireEvent.change(ownerInput, { target: { value: 'Jordan' } })
+
+    act(() => {
+      jest.advanceTimersByTime(450)
+    })
+
+    await waitFor(() => {
+      expect(client.updateBudget).toHaveBeenCalledWith(1, {
+        description: 'Renamed Budget',
+        budgetowner: 'Jordan',
+      })
+    })
+
+    client.updateBudget.mockClear()
+    fireEvent.change(ownerInput, { target: { value: '   ' } })
+    act(() => {
+      jest.advanceTimersByTime(450)
+    })
+
+    expect(screen.getByText(/Budget Owner can't be blank/i)).toBeTruthy()
+    expect(client.updateBudget).not.toHaveBeenCalled()
+  })
+
+  it('remembers collapsed section state for the setup session', async () => {
+    client.getBudget.mockResolvedValue({
+      budgetid: 1,
+      budgetowner: 'Alex',
+      description: 'Home Budget',
+      budget_frequency: 'Monthly',
+      account_naming_preference: 'Checking',
+    })
+    client.getBalanceTypes.mockResolvedValue([
+      { balancedesc: 'Everyday', balance_type: 'Transaction', active: true, is_primary: true },
+    ])
+    client.getIncomeTypes.mockResolvedValue([{ incomedesc: 'Salary' }])
+    client.getExpenseItems.mockResolvedValue([{ expensedesc: 'Rent', active: true }])
+    client.getInvestmentItems.mockResolvedValue([])
+    mockSetupAssessment()
+
+    const firstRender = renderWithProviders(<BudgetDetailPage />, {
+      route: '/budgets/1/setup',
+      path: '/budgets/:budgetId/setup',
+    })
+
+    expect(await screen.findByTitle('Expand personalisation')).toBeTruthy()
+    fireEvent.click(screen.getByTitle('Expand personalisation'))
+    expect(screen.getByText('Personalisation Tab')).toBeTruthy()
+
+    firstRender.unmount()
+
+    renderWithProviders(<BudgetDetailPage />, {
+      route: '/budgets/1/setup',
+      path: '/budgets/:budgetId/setup',
+    })
+
+    expect(await screen.findByTitle('Collapse personalisation')).toBeTruthy()
+    expect(screen.getByText('Personalisation Tab')).toBeTruthy()
   })
 })
