@@ -184,14 +184,14 @@ function BudgetInfoForm({ budgetId, budget }) {
     if (!isDirty) return
     if (!form.budgetowner.trim()) return
 
-    const timeoutId = window.setTimeout(() => {
+    const timeoutId = globalThis.setTimeout(() => {
       saveBudget.mutate({
         description: form.description,
         budgetowner: form.budgetowner.trim(),
       })
     }, 400)
 
-    return () => window.clearTimeout(timeoutId)
+    return () => globalThis.clearTimeout(timeoutId)
   }, [budget, form, saveBudget])
 
   return (
@@ -267,17 +267,17 @@ BudgetInfoForm.propTypes = {
 
 export default function BudgetDetailPage() {
   const { budgetId } = useParams()
-  const id = parseInt(budgetId, 10)
+  const id = Number.parseInt(budgetId, 10)
   const [activeSection, setActiveSection] = useState('budget-info')
   const [showReturnTop, setShowReturnTop] = useState(false)
   const [collapsedSections, setCollapsedSections] = useState(() => {
-    if (typeof window === 'undefined') {
+    if (typeof globalThis === 'undefined') {
       return { personalisation: true, settings: true }
     }
 
     return {
-      personalisation: window.sessionStorage.getItem(`${SECTION_SESSION_KEY_PREFIX}:personalisation`) !== 'false',
-      settings: window.sessionStorage.getItem(`${SECTION_SESSION_KEY_PREFIX}:settings`) !== 'false',
+      personalisation: globalThis.sessionStorage.getItem(`${SECTION_SESSION_KEY_PREFIX}:personalisation`) !== 'false',
+      settings: globalThis.sessionStorage.getItem(`${SECTION_SESSION_KEY_PREFIX}:settings`) !== 'false',
     }
   })
 
@@ -289,10 +289,10 @@ export default function BudgetDetailPage() {
   const { data: setupAssessment } = useQuery({ queryKey: ['budget-setup-assessment', id], queryFn: () => getBudgetSetupAssessment(id), enabled: !!budget })
 
   useEffect(() => {
-    const handleScroll = () => setShowReturnTop(window.scrollY > 420)
+    const handleScroll = () => setShowReturnTop(globalThis.scrollY > 420)
     handleScroll()
-    window.addEventListener('scroll', handleScroll, { passive: true })
-    return () => window.removeEventListener('scroll', handleScroll)
+    globalThis.addEventListener('scroll', handleScroll, { passive: true })
+    return () => globalThis.removeEventListener('scroll', handleScroll)
   }, [])
 
   if (isLoading) return <div className="flex justify-center pt-16"><Spinner /></div>
@@ -302,6 +302,12 @@ export default function BudgetDetailPage() {
   const hasAccounts = accounts.length > 0
   const primaryAccount = accounts.find(account => account.is_primary)
   const preferredTransactionLabel = getPreferredTransactionLabel(budget.account_naming_preference)
+  const accountsHelper = primaryAccount
+    ? null
+    : `Choose one account as the primary ${preferredTransactionLabel.toLowerCase()} account, this allow expenses to know which account to deduct from by default.`
+  const incomeHelper = hasAccounts ? null : 'Add an account first if you want income to flow into a tracked account.'
+  const expenseHelper = hasAccounts ? null : 'Add an account first so future expense entries can be connected to one when you need that.'
+  const investmentHelper = hasAccounts ? null : 'Add an account first if you want investment contributions linked to a tracked account.'
   const orderedBlockingIssues = sortBlockingIssues(setupAssessment?.blocking_issues)
     .map(issue => localizeSetupIssue(issue, preferredTransactionLabel))
 
@@ -312,14 +318,14 @@ export default function BudgetDetailPage() {
 
   const returnToTop = () => {
     setActiveSection('budget-info')
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    globalThis.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const toggleSection = sectionId => {
     setCollapsedSections(current => {
       const nextCollapsed = !current[sectionId]
-      if (typeof window !== 'undefined') {
-        window.sessionStorage.setItem(`${SECTION_SESSION_KEY_PREFIX}:${sectionId}`, String(nextCollapsed))
+      if (typeof globalThis !== 'undefined') {
+        globalThis.sessionStorage.setItem(`${SECTION_SESSION_KEY_PREFIX}:${sectionId}`, String(nextCollapsed))
       }
 
       return { ...current, [sectionId]: nextCollapsed }
@@ -416,7 +422,7 @@ export default function BudgetDetailPage() {
         badge={countLabel(accounts.length, 'account')}
         statusBadge={getSectionStatus('accounts', setupAssessment)}
         summary="Start here by adding the accounts you want this budget to track for spending, savings, and cash."
-        helper={!primaryAccount ? `Choose one account as the primary ${preferredTransactionLabel.toLowerCase()} account, this allow expenses to know which account to deduct from by default.` : null}
+        helper={accountsHelper}
       >
         <BalanceTypesTab budgetId={id} budget={budget} />
       </SectionShell>
@@ -427,7 +433,7 @@ export default function BudgetDetailPage() {
         badge={countLabel(incomeTypes.length, 'income type')}
         statusBadge={getSectionStatus('income_types', setupAssessment)}
         summary="Add the income lines you want to plan with in each budget cycle, including steady income and optional transfers."
-        helper={!hasAccounts ? 'Add an account first if you want income to flow into a tracked account.' : null}
+        helper={incomeHelper}
       >
         <IncomeTypesTab budgetId={id} budget={budget} />
       </SectionShell>
@@ -438,7 +444,7 @@ export default function BudgetDetailPage() {
         badge={countLabel(expenseItems.length, 'expense item')}
         statusBadge={getSectionStatus('expense_items', setupAssessment)}
         summary="Define the recurring and one-off expenses you want each cycle to plan around."
-        helper={!hasAccounts ? 'Add an account first so future expense entries can be connected to one when you need that.' : null}
+        helper={expenseHelper}
       >
         <ExpenseItemsTab budgetId={id} />
       </SectionShell>
@@ -449,7 +455,7 @@ export default function BudgetDetailPage() {
         badge={countLabel(investmentItems.length, 'investment')}
         statusBadge={getSectionStatus('investment_items', setupAssessment)}
         summary="Add investment lines for contributions, balances, and longer-term goals you want this budget to reflect."
-        helper={!hasAccounts ? 'Add an account first if you want investment contributions linked to a tracked account.' : null}
+        helper={investmentHelper}
       >
         <InvestmentItemsTab budgetId={id} budget={budget} />
       </SectionShell>

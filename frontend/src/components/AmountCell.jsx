@@ -29,9 +29,9 @@ export default function AmountCell({ value, onSave, disabled = false }) {
       step="0.01"
       value={draft}
       onChange={e => setDraft(e.target.value)}
-      onBlur={() => { setEditing(false); onSave(parseFloat(draft) || 0) }}
+      onBlur={() => { setEditing(false); onSave(Number.parseFloat(draft) || 0) }}
       onKeyDown={e => {
-        if (e.key === 'Enter') { setEditing(false); onSave(parseFloat(draft) || 0) }
+        if (e.key === 'Enter') { setEditing(false); onSave(Number.parseFloat(draft) || 0) }
         if (e.key === 'Escape') setEditing(false)
       }}
       className="w-28 rounded border border-dosh-400 px-1 py-0.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-dosh-500"

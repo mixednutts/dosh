@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import defaultdict
 from datetime import datetime, timedelta
 from decimal import Decimal
+from typing import Annotated
 from typing import Optional
 from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy.orm import Session
@@ -850,6 +851,8 @@ def add_expense_to_period(
             scope="future" if payload.scope == "future" else "current",
             before_amount=Decimal("0.00"),
             after_amount=Decimal(str(payload.budgetamount)),
+            line_status=WORKING,
+            revisionnum=ei.revisionnum if payload.scope == "future" else None,
             db=db,
         )
 
@@ -928,6 +931,8 @@ def add_income_to_period(
             scope="future" if payload.scope == "future" else "current",
             before_amount=Decimal("0.00"),
             after_amount=Decimal(str(payload.budgetamount)),
+            line_status=None,
+            revisionnum=it.revisionnum if payload.scope == "future" else None,
             db=db,
         )
 
@@ -1018,7 +1023,7 @@ def get_period_delete_options(finperiodid: int, db: DbSession):
 def delete_period(
     finperiodid: int,
     db: DbSession,
-    delete_mode: str = Query("single"),
+    delete_mode: Annotated[str, Query()] = "single",
 ):
     period = _get_period_or_404(finperiodid, db)
     _assert_not_closed(period)

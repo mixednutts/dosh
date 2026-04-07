@@ -85,11 +85,11 @@ function expenseOccurrencesInRange(expense, periodStart, periodEnd) {
   if (!expense?.freqtype || expense.freqtype === 'Always') return []
 
   if (expense.freqtype === 'Fixed Day of Month') {
-    const day = parseInt(expense.frequency_value, 10)
+    const day = Number.parseInt(expense.frequency_value, 10)
     if (!day) return []
 
     const occurrences = []
-    const cursor = new Date(periodStart.getFullYear(), periodStart.getMonth(), 1)
+    let cursor = new Date(periodStart.getFullYear(), periodStart.getMonth(), 1)
     while (cursor <= periodEnd) {
       const candidate = new Date(cursor.getFullYear(), cursor.getMonth(), day)
       if (
@@ -99,13 +99,15 @@ function expenseOccurrencesInRange(expense, periodStart, periodEnd) {
       ) {
         occurrences.push(candidate)
       }
-      cursor.setMonth(cursor.getMonth() + 1, 1)
+      const nextCursor = new Date(cursor)
+      nextCursor.setMonth(nextCursor.getMonth() + 1, 1)
+      cursor = nextCursor
     }
     return occurrences
   }
 
   if (expense.freqtype === 'Every N Days') {
-    const interval = parseInt(expense.frequency_value, 10)
+    const interval = Number.parseInt(expense.frequency_value, 10)
     if (!interval || !expense.effectivedate) return []
 
     const occurrences = []
@@ -201,8 +203,12 @@ function buildMonthGrid(monthDate) {
   const calendarEnd = endOfWeek(endOfMonth(monthDate), { weekStartsOn: 1 })
   const days = []
 
-  for (let cursor = new Date(calendarStart); cursor <= calendarEnd; cursor.setDate(cursor.getDate() + 1)) {
+  let cursor = new Date(calendarStart)
+  while (cursor <= calendarEnd) {
     days.push(new Date(cursor))
+    const nextCursor = new Date(cursor)
+    nextCursor.setDate(nextCursor.getDate() + 1)
+    cursor = nextCursor
   }
 
   const weeks = []
@@ -930,16 +936,17 @@ function BudgetForm({ initial = emptyForm, onSubmit, onCreateDemo, onClose, load
         onSubmit({ ...form, budget_frequency: resolvedFrequency })
       }} className="space-y-4">
         <div>
-          <label className="label">Description</label>
-          <input className="input" value={form.description} onChange={e => set('description', e.target.value)} placeholder="e.g. Household Budget 2025" />
+          <label htmlFor="budget-description" className="label">Description</label>
+          <input id="budget-description" className="input" value={form.description} onChange={e => set('description', e.target.value)} placeholder="e.g. Household Budget 2025" />
         </div>
         <div>
-          <label className="label">Owner <span className="text-red-500">*</span></label>
-          <input required className="input" value={form.budgetowner} onChange={e => set('budgetowner', e.target.value)} placeholder="Your name" />
+          <label htmlFor="budget-owner" className="label">Owner <span className="text-red-500">*</span></label>
+          <input id="budget-owner" required className="input" value={form.budgetowner} onChange={e => set('budgetowner', e.target.value)} placeholder="Your name" />
         </div>
         <div>
-          <label className="label">Budget Cycle <span className="text-red-500">*</span></label>
+          <label htmlFor="budget-cycle" className="label">Budget Cycle <span className="text-red-500">*</span></label>
           <select
+            id="budget-cycle"
             required
             className="input"
             value={frequencySelection}
@@ -959,8 +966,9 @@ function BudgetForm({ initial = emptyForm, onSubmit, onCreateDemo, onClose, load
         </div>
         {frequencySelection === CUSTOM_DAY_CYCLE_VALUE ? (
           <div>
-            <label className="label">Cycle length in days <span className="text-red-500">*</span></label>
+            <label htmlFor="budget-cycle-length-days" className="label">Cycle length in days <span className="text-red-500">*</span></label>
             <input
+              id="budget-cycle-length-days"
               required
               min="2"
               max="365"
@@ -1156,7 +1164,7 @@ export default function BudgetsPage() {
                   <button className="btn-secondary" onClick={() => navigate(`/budgets/${b.budgetid}/setup`)}>
                     <PencilIcon className="w-3.5 h-3.5" />
                   </button>
-                  <button className="btn-danger" onClick={() => { if (window.confirm(`Delete "${b.description}"?`)) remove.mutate(b.budgetid) }}>
+                  <button className="btn-danger" onClick={() => { if (globalThis.confirm(`Delete "${b.description}"?`)) remove.mutate(b.budgetid) }}>
                     <TrashIcon className="w-3.5 h-3.5" />
                   </button>
                 </div>

@@ -11,6 +11,7 @@ const emptyForm = { incomedesc: '', issavings: false, isfixed: false, autoinclud
 
 function IncomeTypeForm({ initial = emptyForm, onSubmit, onClose, loading, budgetId, structureLocked = false, lockReasons = [], accountNamingPreference = 'Transaction' }) {
   const [form, setForm] = useState({ ...initial, amount: initial.amount ?? '', linked_account: initial.linked_account ?? '' })
+  const formIdPrefix = initial.incomedesc ? 'edit-income-type' : 'create-income-type'
   const set = (k, v) => setForm(f => {
     const next = { ...f, [k]: v }
     if (k === 'isfixed' && v) next.autoinclude = true
@@ -24,22 +25,22 @@ function IncomeTypeForm({ initial = emptyForm, onSubmit, onClose, loading, budge
 
   const handleSubmit = e => {
     e.preventDefault()
-    onSubmit({ ...form, amount: parseFloat(form.amount) || 0, linked_account: form.linked_account || null })
+    onSubmit({ ...form, amount: Number.parseFloat(form.amount) || 0, linked_account: form.linked_account || null })
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label className="label">Description <span className="text-red-500">*</span></label>
-        <input required disabled={structureLocked} className="input" value={form.incomedesc} onChange={e => set('incomedesc', e.target.value)} placeholder="e.g. Salary" />
+        <label htmlFor={`${formIdPrefix}-description`} className="label">Description <span className="text-red-500">*</span></label>
+        <input id={`${formIdPrefix}-description`} required disabled={structureLocked} className="input" value={form.incomedesc} onChange={e => set('incomedesc', e.target.value)} placeholder="e.g. Salary" />
       </div>
       <div>
-        <label className="label">Default Amount ($)</label>
-        <input disabled={structureLocked} type="number" step="0.01" min="0" className="input" value={form.amount} onChange={e => set('amount', e.target.value)} />
+        <label htmlFor={`${formIdPrefix}-amount`} className="label">Default Amount ($)</label>
+        <input id={`${formIdPrefix}-amount`} disabled={structureLocked} type="number" step="0.01" min="0" className="input" value={form.amount} onChange={e => set('amount', e.target.value)} />
       </div>
       <div>
-        <label className="label">Paid into Account</label>
-        <select disabled={structureLocked} className="input" value={form.linked_account} onChange={e => set('linked_account', e.target.value)}>
+        <label htmlFor={`${formIdPrefix}-linked-account`} className="label">Paid into Account</label>
+        <select id={`${formIdPrefix}-linked-account`} disabled={structureLocked} className="input" value={form.linked_account} onChange={e => set('linked_account', e.target.value)}>
           <option value="">— none —</option>
           {accounts.map(a => <option key={a.balancedesc} value={a.balancedesc}>{a.balancedesc}{a.balance_type ? ` (${getBalanceTypeLabel(a.balance_type, accountNamingPreference)})` : ''}</option>)}
         </select>
@@ -49,8 +50,9 @@ function IncomeTypeForm({ initial = emptyForm, onSubmit, onClose, loading, budge
           ['isfixed',    'Fixed amount (same every budget cycle)'],
           ['autoinclude','Auto-include in new budget cycles'],
         ].map(([key, label]) => (
-          <label key={key} className="flex items-center gap-2 text-sm cursor-pointer">
+          <label key={key} htmlFor={`${formIdPrefix}-${key}`} className="flex items-center gap-2 text-sm cursor-pointer">
             <input
+              id={`${formIdPrefix}-${key}`}
               type="checkbox"
               checked={!!form[key]}
               disabled={structureLocked}
@@ -195,7 +197,7 @@ export default function IncomeTypesTab({ budgetId, budget }) {
                       <button className="btn-secondary" onClick={() => setModal({ mode: 'edit', item: t })}>
                         <PencilIcon className="w-3 h-3" />
                       </button>
-                      <button className="btn-danger" disabled={usage ? usage.can_delete === false : false} title={usage?.can_delete === false ? usage.reasons.join('. ') : undefined} onClick={() => { if (window.confirm(`Delete "${t.incomedesc}"?`)) remove.mutate(t.incomedesc) }}>
+                      <button className="btn-danger" disabled={usage ? usage.can_delete === false : false} title={usage?.can_delete === false ? usage.reasons.join('. ') : undefined} onClick={() => { if (globalThis.confirm(`Delete "${t.incomedesc}"?`)) remove.mutate(t.incomedesc) }}>
                         <TrashIcon className="w-3 h-3" />
                       </button>
                     </div>

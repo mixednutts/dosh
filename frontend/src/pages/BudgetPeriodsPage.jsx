@@ -44,8 +44,9 @@ function PeriodGenerateForm({ initialStartDate, onSubmit, onClose, loading, erro
   return (
     <form onSubmit={e => { e.preventDefault(); onSubmit({ startDate, count }) }} className="space-y-4">
       <div>
-        <label className="label">Start Date</label>
+        <label htmlFor="generate-period-start-date" className="label">Start Date</label>
         <input
+          id="generate-period-start-date"
           required
           type="date"
           className="input"
@@ -54,8 +55,9 @@ function PeriodGenerateForm({ initialStartDate, onSubmit, onClose, loading, erro
         />
       </div>
       <div>
-        <label className="label">How Many Budget Cycles</label>
+        <label htmlFor="generate-period-count" className="label">How Many Budget Cycles</label>
         <input
+          id="generate-period-count"
           required
           min="1"
           max="12"
@@ -158,11 +160,11 @@ function PeriodSummaryRow({ summary, onDelete }) {
 
 function PeriodSummaryGroup({ title, summaries, collapsed = false, collapsible = false, onDelete, sessionStorageKey, groupId, forceOpen = false }) {
   const [open, setOpen] = useState(() => {
-    if (!collapsible || !sessionStorageKey || typeof window === 'undefined') {
+    if (!collapsible || !sessionStorageKey || typeof globalThis === 'undefined') {
       return !collapsed
     }
 
-    const storedValue = window.sessionStorage.getItem(`${PERIOD_GROUP_SESSION_KEY_PREFIX}:${sessionStorageKey}`)
+    const storedValue = globalThis.sessionStorage.getItem(`${PERIOD_GROUP_SESSION_KEY_PREFIX}:${sessionStorageKey}`)
 
     if (storedValue === null) {
       return !collapsed
@@ -176,8 +178,8 @@ function PeriodSummaryGroup({ title, summaries, collapsed = false, collapsible =
 
     setOpen(true)
 
-    if (collapsible && sessionStorageKey && typeof window !== 'undefined') {
-      window.sessionStorage.setItem(`${PERIOD_GROUP_SESSION_KEY_PREFIX}:${sessionStorageKey}`, 'true')
+    if (collapsible && sessionStorageKey && typeof globalThis !== 'undefined') {
+      globalThis.sessionStorage.setItem(`${PERIOD_GROUP_SESSION_KEY_PREFIX}:${sessionStorageKey}`, 'true')
     }
   }, [forceOpen, collapsible, sessionStorageKey])
 
@@ -189,8 +191,8 @@ function PeriodSummaryGroup({ title, summaries, collapsed = false, collapsible =
     setOpen(current => {
       const nextOpen = !current
 
-      if (sessionStorageKey && typeof window !== 'undefined') {
-        window.sessionStorage.setItem(`${PERIOD_GROUP_SESSION_KEY_PREFIX}:${sessionStorageKey}`, String(nextOpen))
+      if (sessionStorageKey && typeof globalThis !== 'undefined') {
+        globalThis.sessionStorage.setItem(`${PERIOD_GROUP_SESSION_KEY_PREFIX}:${sessionStorageKey}`, String(nextOpen))
       }
 
       return nextOpen
@@ -264,7 +266,7 @@ export default function BudgetPeriodsPage() {
   const { budgetId } = useParams()
   const location = useLocation()
   const navigate = useNavigate()
-  const id = parseInt(budgetId, 10)
+  const id = Number.parseInt(budgetId, 10)
   const qc = useQueryClient()
   const [showGenerate, setShowGenerate] = useState(false)
   const [generateError, setGenerateError] = useState('')
@@ -406,7 +408,7 @@ export default function BudgetPeriodsPage() {
               type="button"
               className="btn-danger"
               onClick={() => {
-                if (window.confirm('Delete this budget? This removes the budget and its setup.')) {
+                if (globalThis.confirm('Delete this budget? This removes the budget and its setup.')) {
                   removeBudget.mutate()
                 }
               }}
@@ -486,6 +488,8 @@ function DeleteCycleModal({ deleteTarget, deleteMode, setDeleteMode, removePerio
     queryKey: ['period-delete-options', deleteTarget.period.finperiodid],
     queryFn: () => getPeriodDeleteOptions(deleteTarget.period.finperiodid),
   })
+  const canDeleteSingle = !!deleteOptions?.can_delete_single
+  const canDeleteFutureChain = !!deleteOptions?.can_delete_future_chain
 
   return (
     <Modal title="Delete Budget Cycle" onClose={onClose}>
@@ -498,14 +502,14 @@ function DeleteCycleModal({ deleteTarget, deleteMode, setDeleteMode, removePerio
         </p>
         {deleteOptions?.can_delete_future_chain && (
           <div className="space-y-2 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/50">
-            {deleteOptions.can_delete_single && (
-              <label className="flex items-center gap-2 text-sm cursor-pointer">
-                <input type="radio" checked={deleteMode === 'single'} onChange={() => setDeleteMode('single')} />
+            {canDeleteSingle && (
+              <label htmlFor="delete-cycle-single" className="flex items-center gap-2 text-sm cursor-pointer">
+                <input id="delete-cycle-single" type="radio" checked={deleteMode === 'single'} onChange={() => setDeleteMode('single')} />
                 Delete only this budget cycle
               </label>
             )}
-            <label className="flex items-center gap-2 text-sm cursor-pointer">
-              <input type="radio" checked={deleteMode === 'future_chain'} onChange={() => setDeleteMode('future_chain')} />
+            <label htmlFor="delete-cycle-future-chain" className="flex items-center gap-2 text-sm cursor-pointer">
+              <input id="delete-cycle-future-chain" type="radio" checked={deleteMode === 'future_chain'} onChange={() => setDeleteMode('future_chain')} />
               Delete this cycle and all upcoming cycles ({deleteOptions.future_chain_count})
             </label>
           </div>
@@ -520,7 +524,7 @@ function DeleteCycleModal({ deleteTarget, deleteMode, setDeleteMode, removePerio
           <button
             type="button"
             className="btn-primary"
-            disabled={removePeriod.isPending || !(deleteOptions?.can_delete_single || deleteOptions?.can_delete_future_chain)}
+            disabled={removePeriod.isPending || !(canDeleteSingle || canDeleteFutureChain)}
             onClick={() => removePeriod.mutate({ periodId: deleteTarget.period.finperiodid, mode: deleteMode })}
           >
             {removePeriod.isPending ? 'Deleting…' : 'Delete Budget Cycle'}

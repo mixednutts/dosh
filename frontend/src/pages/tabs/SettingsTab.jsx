@@ -38,8 +38,9 @@ export default function SettingsTab({ budgetId, budget }) {
           Use these options to control how future budget cycles are prepared and how this budget behaves.
         </p>
 
-        <label className="flex items-start gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-800/50">
+        <div className="flex items-start gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-800/50">
           <input
+            id="auto-add-surplus-to-investment"
             type="checkbox"
             checked={!!budget?.auto_add_surplus_to_investment}
             disabled={saveSettings.isPending}
@@ -48,7 +49,9 @@ export default function SettingsTab({ budgetId, budget }) {
           />
           <span className="space-y-1">
             <span className="flex items-center gap-2 font-medium text-gray-900 dark:text-gray-100">
+              <label htmlFor="auto-add-surplus-to-investment" className="cursor-pointer">
               Automatically add surplus budget to Investment Savings budget when creating a new budget cycle?
+              </label>
               <span className="relative inline-flex">
                 <button
                   type="button"
@@ -76,10 +79,11 @@ export default function SettingsTab({ budgetId, budget }) {
               Set one active investment line as primary to control where this automatic allocation goes.
             </span>
           </span>
-        </label>
+        </div>
 
-        <label className="mt-4 flex items-start gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-800/50">
+        <div className="mt-4 flex items-start gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-800/50">
           <input
+            id="allow-cycle-lock"
             type="checkbox"
             checked={budget?.allow_cycle_lock !== false}
             disabled={saveSettings.isPending}
@@ -87,14 +91,14 @@ export default function SettingsTab({ budgetId, budget }) {
             className="mt-0.5 rounded border-gray-300 text-dosh-600 focus:ring-dosh-500 dark:border-gray-600"
           />
           <span className="space-y-1">
-            <span className="block font-medium text-gray-900 dark:text-gray-100">
+            <label htmlFor="allow-cycle-lock" className="block cursor-pointer font-medium text-gray-900 dark:text-gray-100">
               Allow manual lock/unlock on budget cycles?
-            </span>
+            </label>
             <span className="block text-gray-600 dark:text-gray-400">
               When enabled, locking a cycle protects budgeted amounts and blocks adding or removing income, expense, and investment lines without closing the cycle.
             </span>
           </span>
-        </label>
+        </div>
 
         <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-800/50">
           <label htmlFor="account-naming-preference" className="label">Preferred Primary Account Naming</label>

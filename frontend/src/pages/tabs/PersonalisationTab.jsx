@@ -282,11 +282,11 @@ export default function PersonalisationTab({ budgetId, budget }) {
     )
     if (!hasChanges) return
 
-    const timeoutId = window.setTimeout(() => {
+    const timeoutId = globalThis.setTimeout(() => {
       savePersonalisation.mutate(form)
     }, 400)
 
-    return () => window.clearTimeout(timeoutId)
+    return () => globalThis.clearTimeout(timeoutId)
   }, [budget, form, savePersonalisation])
 
   const resetDefaults = () => {

@@ -12,31 +12,32 @@ const emptyForm = { balancedesc: '', balance_type: 'Transaction', opening_balanc
 function BalanceTypeForm({ initial = emptyForm, onSubmit, onClose, loading, structureLocked = false, lockReasons = [], accountNamingPreference = 'Transaction' }) {
   const [form, setForm] = useState({ ...initial, opening_balance: initial.opening_balance ?? '' })
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+  const formIdPrefix = initial.balancedesc ? 'edit-balance-type' : 'create-balance-type'
 
   return (
-    <form onSubmit={e => { e.preventDefault(); onSubmit({ ...form, opening_balance: parseFloat(form.opening_balance) || 0 }) }} className="space-y-4">
+    <form onSubmit={e => { e.preventDefault(); onSubmit({ ...form, opening_balance: Number.parseFloat(form.opening_balance) || 0 }) }} className="space-y-4">
       <div>
-        <label className="label">Account Name <span className="text-red-500">*</span></label>
-        <input required disabled={structureLocked} className="input" value={form.balancedesc} onChange={e => set('balancedesc', e.target.value)} placeholder="e.g. Everyday Account" />
+        <label htmlFor={`${formIdPrefix}-name`} className="label">Account Name <span className="text-red-500">*</span></label>
+        <input id={`${formIdPrefix}-name`} required disabled={structureLocked} className="input" value={form.balancedesc} onChange={e => set('balancedesc', e.target.value)} placeholder="e.g. Everyday Account" />
       </div>
       <div>
-        <label className="label">Account Type</label>
-        <select disabled={structureLocked} className="input" value={form.balance_type} onChange={e => set('balance_type', e.target.value)}>
+        <label htmlFor={`${formIdPrefix}-type`} className="label">Account Type</label>
+        <select id={`${formIdPrefix}-type`} disabled={structureLocked} className="input" value={form.balance_type} onChange={e => set('balance_type', e.target.value)}>
           {BALANCE_TYPE_OPTIONS.map(o => <option key={o} value={o}>{getBalanceTypeLabel(o, accountNamingPreference)}</option>)}
         </select>
       </div>
       <div>
-        <label className="label">Opening Balance ($)</label>
-        <input disabled={structureLocked} type="number" step="0.01" className="input" value={form.opening_balance} onChange={e => set('opening_balance', e.target.value)} placeholder="0.00" />
+        <label htmlFor={`${formIdPrefix}-opening-balance`} className="label">Opening Balance ($)</label>
+        <input id={`${formIdPrefix}-opening-balance`} disabled={structureLocked} type="number" step="0.01" className="input" value={form.opening_balance} onChange={e => set('opening_balance', e.target.value)} placeholder="0.00" />
       </div>
       <div className="space-y-2">
-        <label className="flex items-center gap-2 text-sm cursor-pointer">
-          <input disabled={structureLocked} type="checkbox" checked={!!form.active} onChange={e => set('active', e.target.checked)}
+        <label htmlFor={`${formIdPrefix}-active`} className="flex items-center gap-2 text-sm cursor-pointer">
+          <input id={`${formIdPrefix}-active`} disabled={structureLocked} type="checkbox" checked={!!form.active} onChange={e => set('active', e.target.checked)}
             className="rounded border-gray-300 text-dosh-600 focus:ring-dosh-500" />
           Active (include in new budget cycles)
         </label>
-        <label className="flex items-center gap-2 text-sm cursor-pointer">
-          <input type="checkbox" checked={!!form.is_primary} onChange={e => set('is_primary', e.target.checked)}
+        <label htmlFor={`${formIdPrefix}-primary`} className="flex items-center gap-2 text-sm cursor-pointer">
+          <input id={`${formIdPrefix}-primary`} type="checkbox" checked={!!form.is_primary} onChange={e => set('is_primary', e.target.checked)}
             className="rounded border-gray-300 text-dosh-600 focus:ring-dosh-500" />
           Primary {getPreferredTransactionLabel(accountNamingPreference).toLowerCase()} account (expenses deducted from this account)
         </label>
@@ -167,7 +168,7 @@ export default function BalanceTypesTab({ budgetId, budget }) {
                 <button className="btn-secondary" onClick={() => setModal({ mode: 'edit', item: t })}>
                   <PencilIcon className="w-3 h-3" />
                 </button>
-                <button className="btn-danger" disabled={usage ? usage.can_delete === false : false} title={usage?.can_delete === false ? usage.reasons.join('. ') : undefined} onClick={() => { if (window.confirm(`Delete "${t.balancedesc}"?`)) remove.mutate(t.balancedesc) }}>
+                <button className="btn-danger" disabled={usage ? usage.can_delete === false : false} title={usage?.can_delete === false ? usage.reasons.join('. ') : undefined} onClick={() => { if (globalThis.confirm(`Delete "${t.balancedesc}"?`)) remove.mutate(t.balancedesc) }}>
                   <TrashIcon className="w-3 h-3" />
                 </button>
               </div>

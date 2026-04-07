@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Annotated, Optional
 
 from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy.orm import Session
@@ -21,9 +21,9 @@ def _get_period_or_404(finperiodid: int, db: Session) -> FinancialPeriod:
 def list_period_transactions(
     finperiodid: int,
     db: DbSession,
-    source: Optional[str] = Query(None),
-    source_key: Optional[str] = Query(None),
-    balancedesc: Optional[str] = Query(None),
+    source: Annotated[Optional[str], Query()] = None,
+    source_key: Annotated[Optional[str], Query()] = None,
+    balancedesc: Annotated[Optional[str], Query()] = None,
 ):
     _get_period_or_404(finperiodid, db)
     q = db.query(PeriodTransaction).filter(PeriodTransaction.finperiodid == finperiodid)

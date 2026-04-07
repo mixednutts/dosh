@@ -327,11 +327,11 @@ export default function Layout() {
   const periodMatch = useMatch('/periods/:periodId')
 
   const activeBudgetId = budgetMatch
-    ? parseInt(budgetMatch.params.budgetId, 10)
+    ? Number.parseInt(budgetMatch.params.budgetId, 10)
     : budgetSetupMatch
-      ? parseInt(budgetSetupMatch.params.budgetId, 10)
+      ? Number.parseInt(budgetSetupMatch.params.budgetId, 10)
       : null
-  const activePeriodId = periodMatch ? parseInt(periodMatch.params.periodId, 10) : null
+  const activePeriodId = periodMatch ? Number.parseInt(periodMatch.params.periodId, 10) : null
 
   const { data: periodData } = useQuery({
     queryKey: ['period', activePeriodId],

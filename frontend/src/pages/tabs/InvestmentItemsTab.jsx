@@ -13,6 +13,7 @@ const emptyForm = { investmentdesc: '', active: true, effectivedate: '', initial
 function InvestmentForm({ initial = emptyForm, isEdit = false, onSubmit, onClose, loading, balanceTypes = [], structureLocked = false, lockReasons = [], accountNamingPreference = 'Transaction' }) {
   const [form, setForm] = useState(initial)
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+  const formIdPrefix = isEdit ? 'edit-investment' : 'create-investment'
 
   return (
     <form onSubmit={e => {
@@ -20,36 +21,36 @@ function InvestmentForm({ initial = emptyForm, isEdit = false, onSubmit, onClose
       onSubmit({
         ...form,
         effectivedate: form.effectivedate || null,
-        initial_value: parseFloat(form.initial_value) || 0,
-        planned_amount: parseFloat(form.planned_amount) || 0,
+        initial_value: Number.parseFloat(form.initial_value) || 0,
+        planned_amount: Number.parseFloat(form.planned_amount) || 0,
         linked_account_desc: form.linked_account_desc || null,
         is_primary: !!form.is_primary,
       })
     }} className="space-y-4">
       <div>
-        <label className="label">Description <span className="text-red-500">*</span></label>
-        <input required disabled={isEdit || structureLocked} className="input" value={form.investmentdesc} onChange={e => set('investmentdesc', e.target.value)}
+        <label htmlFor={`${formIdPrefix}-description`} className="label">Description <span className="text-red-500">*</span></label>
+        <input id={`${formIdPrefix}-description`} required disabled={isEdit || structureLocked} className="input" value={form.investmentdesc} onChange={e => set('investmentdesc', e.target.value)}
           placeholder="e.g. ETF Portfolio" />
       </div>
       <div>
-        <label className="label">Initial / Seed Value ($)</label>
-        <input disabled={structureLocked} type="number" step="0.01" min="0" className="input" value={form.initial_value}
+        <label htmlFor={`${formIdPrefix}-initial-value`} className="label">Initial / Seed Value ($)</label>
+        <input id={`${formIdPrefix}-initial-value`} disabled={structureLocked} type="number" step="0.01" min="0" className="input" value={form.initial_value}
           onChange={e => set('initial_value', e.target.value)} placeholder="0.00" />
         <p className="text-xs text-gray-400 mt-1">Starting balance or initial investment amount</p>
       </div>
       <div>
-        <label className="label">Planned Contribution ($)</label>
-        <input disabled={structureLocked} type="number" step="0.01" min="0" className="input" value={form.planned_amount}
+        <label htmlFor={`${formIdPrefix}-planned-amount`} className="label">Planned Contribution ($)</label>
+        <input id={`${formIdPrefix}-planned-amount`} disabled={structureLocked} type="number" step="0.01" min="0" className="input" value={form.planned_amount}
           onChange={e => set('planned_amount', e.target.value)} placeholder="0.00" />
         <p className="text-xs text-gray-400 mt-1">Used as the default budgeted amount for future budget cycles when you want a planned contribution.</p>
       </div>
       <div>
-        <label className="label">Effective Date</label>
-        <input disabled={structureLocked} type="date" className="input" value={form.effectivedate} onChange={e => set('effectivedate', e.target.value)} />
+        <label htmlFor={`${formIdPrefix}-effective-date`} className="label">Effective Date</label>
+        <input id={`${formIdPrefix}-effective-date`} disabled={structureLocked} type="date" className="input" value={form.effectivedate} onChange={e => set('effectivedate', e.target.value)} />
       </div>
       <div>
-        <label className="label">Linked Account</label>
-        <select disabled={structureLocked} className="input" value={form.linked_account_desc} onChange={e => set('linked_account_desc', e.target.value)}>
+        <label htmlFor={`${formIdPrefix}-linked-account`} className="label">Linked Account</label>
+        <select id={`${formIdPrefix}-linked-account`} disabled={structureLocked} className="input" value={form.linked_account_desc} onChange={e => set('linked_account_desc', e.target.value)}>
           <option value="">— none —</option>
           {balanceTypes.map(bt => (
             <option key={bt.balancedesc} value={bt.balancedesc}>{bt.balancedesc}{bt.balance_type ? ` (${getBalanceTypeLabel(bt.balance_type, accountNamingPreference)})` : ''}</option>
@@ -57,13 +58,13 @@ function InvestmentForm({ initial = emptyForm, isEdit = false, onSubmit, onClose
         </select>
         <p className="text-xs text-gray-400 mt-1">Contributions to this investment will be credited to this account balance.</p>
       </div>
-      <label className="flex items-center gap-2 text-sm cursor-pointer">
-        <input disabled={structureLocked} type="checkbox" checked={form.active} onChange={e => set('active', e.target.checked)}
+      <label htmlFor={`${formIdPrefix}-active`} className="flex items-center gap-2 text-sm cursor-pointer">
+        <input id={`${formIdPrefix}-active`} disabled={structureLocked} type="checkbox" checked={form.active} onChange={e => set('active', e.target.checked)}
           className="rounded border-gray-300 dark:border-gray-600 text-dosh-600 focus:ring-dosh-500" />
         Active
       </label>
-      <label className="flex items-center gap-2 text-sm cursor-pointer">
-        <input disabled={structureLocked} type="checkbox" checked={!!form.is_primary} onChange={e => set('is_primary', e.target.checked)}
+      <label htmlFor={`${formIdPrefix}-primary`} className="flex items-center gap-2 text-sm cursor-pointer">
+        <input id={`${formIdPrefix}-primary`} disabled={structureLocked} type="checkbox" checked={!!form.is_primary} onChange={e => set('is_primary', e.target.checked)}
           className="rounded border-gray-300 dark:border-gray-600 text-dosh-600 focus:ring-dosh-500" />
         Primary investment line
       </label>
@@ -203,7 +204,7 @@ export default function InvestmentItemsTab({ budgetId, budget }) {
                 <button className="btn-secondary" onClick={() => setModal({ mode: 'edit', item })}>
                   <PencilIcon className="w-3 h-3" />
                 </button>
-                <button className="btn-danger" disabled={usage ? usage.can_delete === false : false} title={usage?.can_delete === false ? usage.reasons.join('. ') : undefined} onClick={() => { if (window.confirm(`Delete "${item.investmentdesc}"?`)) remove.mutate(item.investmentdesc) }}>
+                <button className="btn-danger" disabled={usage ? usage.can_delete === false : false} title={usage?.can_delete === false ? usage.reasons.join('. ') : undefined} onClick={() => { if (globalThis.confirm(`Delete "${item.investmentdesc}"?`)) remove.mutate(item.investmentdesc) }}>
                   <TrashIcon className="w-3 h-3" />
                 </button>
               </div>

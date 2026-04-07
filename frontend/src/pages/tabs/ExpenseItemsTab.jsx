@@ -26,7 +26,7 @@ function calcNextDue(freqtype, frequencyValue, effectivedate) {
   if (freqtype === 'Always') return null  // always in period, no specific date
 
   if (freqtype === 'Fixed Day of Month') {
-    const day = parseInt(frequencyValue)
+    const day = Number.parseInt(frequencyValue, 10)
     if (!day) return null
     // Try this month, then next month
     let candidate = new Date(today.getFullYear(), today.getMonth(), day)
@@ -35,7 +35,7 @@ function calcNextDue(freqtype, frequencyValue, effectivedate) {
   }
 
   if (freqtype === 'Every N Days') {
-    const interval = parseInt(frequencyValue)
+    const interval = Number.parseInt(frequencyValue, 10)
     if (!interval || !effectivedate) return null
     let cursor = parseISO(effectivedate)
     cursor.setHours(0, 0, 0, 0)
@@ -52,6 +52,7 @@ function calcNextDue(freqtype, frequencyValue, effectivedate) {
 function ExpenseItemForm({ initial = emptyForm, isEdit = false, onSubmit, onClose, loading, activeLocked = false, lockReasons = [] }) {
   const [form, setForm] = useState(initial)
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+  const formIdPrefix = isEdit ? 'edit-expense-item' : 'create-expense-item'
 
   const isAlways = form.freqtype === 'Always'
   const isEveryNDays = form.freqtype === 'Every N Days'
@@ -65,27 +66,28 @@ function ExpenseItemForm({ initial = emptyForm, isEdit = false, onSubmit, onClos
         expensedesc: form.expensedesc,
         active: form.active,
         freqtype: form.freqtype || null,
-        frequency_value: (!isAlways && form.frequency_value) ? parseInt(form.frequency_value) : null,
+        frequency_value: (!isAlways && form.frequency_value) ? Number.parseInt(form.frequency_value, 10) : null,
         paytype: form.paytype || null,
         effectivedate: form.effectivedate || null,
-        expenseamount: parseFloat(form.expenseamount) || 0,
+        expenseamount: Number.parseFloat(form.expenseamount) || 0,
       })
     }} className="space-y-4">
       <div>
-        <label className="label">Description <span className="text-red-500">*</span></label>
-        <input required className="input" value={form.expensedesc} onChange={e => set('expensedesc', e.target.value)}
+        <label htmlFor={`${formIdPrefix}-description`} className="label">Description <span className="text-red-500">*</span></label>
+        <input id={`${formIdPrefix}-description`} required className="input" value={form.expensedesc} onChange={e => set('expensedesc', e.target.value)}
           placeholder="e.g. Netflix" disabled={isEdit} />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="label">Frequency Type</label>
-          <select className="input" value={form.freqtype} onChange={e => set('freqtype', e.target.value)}>
+          <label htmlFor={`${formIdPrefix}-freqtype`} className="label">Frequency Type</label>
+          <select id={`${formIdPrefix}-freqtype`} className="input" value={form.freqtype} onChange={e => set('freqtype', e.target.value)}>
             {FREQTYPES.map(f => <option key={f}>{f}</option>)}
           </select>
         </div>
         <div>
-          <label className={`label ${isAlways ? 'opacity-40' : ''}`}>{freqValueLabel}</label>
+          <label htmlFor={`${formIdPrefix}-freq-value`} className={`label ${isAlways ? 'opacity-40' : ''}`}>{freqValueLabel}</label>
           <input
+            id={`${formIdPrefix}-freq-value`}
             type="number" min="1" max={form.freqtype === 'Fixed Day of Month' ? 31 : undefined}
             className="input" value={form.frequency_value} onChange={e => set('frequency_value', e.target.value)}
             disabled={isAlways}
@@ -94,21 +96,21 @@ function ExpenseItemForm({ initial = emptyForm, isEdit = false, onSubmit, onClos
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="label">Pay Type</label>
-          <select className="input" value={form.paytype} onChange={e => set('paytype', e.target.value)}>
+          <label htmlFor={`${formIdPrefix}-paytype`} className="label">Pay Type</label>
+          <select id={`${formIdPrefix}-paytype`} className="input" value={form.paytype} onChange={e => set('paytype', e.target.value)}>
             <option value="">— none —</option>
             {PAYTYPES.map(p => <option key={p}>{p}</option>)}
           </select>
         </div>
         <div>
-          <label className="label">Amount ($) <span className="text-red-500">*</span></label>
-          <input required type="number" step="0.01" min="0" className="input"
+          <label htmlFor={`${formIdPrefix}-amount`} className="label">Amount ($) <span className="text-red-500">*</span></label>
+          <input id={`${formIdPrefix}-amount`} required type="number" step="0.01" min="0" className="input"
             value={form.expenseamount} onChange={e => set('expenseamount', e.target.value)} />
         </div>
       </div>
       <div>
-        <label className={`label ${isAlways ? 'opacity-40' : ''}`}>{commencementLabel}</label>
-        <input type="date" className="input" value={form.effectivedate} onChange={e => set('effectivedate', e.target.value)}
+        <label htmlFor={`${formIdPrefix}-effective-date`} className={`label ${isAlways ? 'opacity-40' : ''}`}>{commencementLabel}</label>
+        <input id={`${formIdPrefix}-effective-date`} type="date" className="input" value={form.effectivedate} onChange={e => set('effectivedate', e.target.value)}
           disabled={isAlways} />
       </div>
       {isAlways && (
@@ -116,8 +118,8 @@ function ExpenseItemForm({ initial = emptyForm, isEdit = false, onSubmit, onClos
           "Always" — this expense is included in every budget cycle at the set amount, regardless of dates.
         </p>
       )}
-      <label className="flex items-center gap-2 text-sm cursor-pointer">
-        <input type="checkbox" disabled={activeLocked} checked={form.active} onChange={e => set('active', e.target.checked)}
+      <label htmlFor={`${formIdPrefix}-active`} className="flex items-center gap-2 text-sm cursor-pointer">
+        <input id={`${formIdPrefix}-active`} type="checkbox" disabled={activeLocked} checked={form.active} onChange={e => set('active', e.target.checked)}
           className="rounded border-gray-300 dark:border-gray-600 text-dosh-600 focus:ring-dosh-500" />
         <span className="text-gray-700 dark:text-gray-300">Active (include in future generated budget cycles)</span>
       </label>
@@ -228,8 +230,8 @@ export default function ExpenseItemsTab({ budgetId }) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 cursor-pointer">
-          <input type="checkbox" checked={showInactive} onChange={e => setShowInactive(e.target.checked)}
+        <label htmlFor="expense-items-show-inactive" className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 cursor-pointer">
+          <input id="expense-items-show-inactive" type="checkbox" checked={showInactive} onChange={e => setShowInactive(e.target.checked)}
             className="rounded border-gray-300 dark:border-gray-600 text-dosh-600" />
           Show inactive
         </label>
@@ -316,7 +318,7 @@ export default function ExpenseItemsTab({ budgetId }) {
                         <button className="btn-secondary" onClick={() => setModal({ mode: 'edit', item })}>
                           <PencilIcon className="w-3 h-3" />
                         </button>
-                        <button className="btn-danger" disabled={usage ? usage.can_delete === false : false} title={usage?.can_delete === false ? usage.reasons.join('. ') : undefined} onClick={() => { if (window.confirm(`Delete "${item.expensedesc}"?`)) remove.mutate(item.expensedesc) }}>
+                        <button className="btn-danger" disabled={usage ? usage.can_delete === false : false} title={usage?.can_delete === false ? usage.reasons.join('. ') : undefined} onClick={() => { if (globalThis.confirm(`Delete "${item.expensedesc}"?`)) remove.mutate(item.expensedesc) }}>
                           <TrashIcon className="w-3 h-3" />
                         </button>
                       </div>
