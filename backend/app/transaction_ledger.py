@@ -28,7 +28,7 @@ ENTRY_KIND_MOVEMENT = "movement"
 ENTRY_KIND_BUDGET_ADJUSTMENT = "budget_adjustment"
 
 
-@dataclass(slots=True)
+@dataclass
 class PeriodTransactionContext:
     finperiodid: int
     budgetid: int
