@@ -598,7 +598,7 @@ Status:
 - `Completed`: capture the unified-ledger baseline, close-out schema, and setup-assessment schema in the real migration path
 - `Completed`: harden the SonarQube workflow so failed quality-gate runs still upload sanitized artifacts with explicit failed-condition context and file-level measure hotspots
 - `Completed`: harden backend release-notes parsing by replacing the regex-based header parser with bounded string parsing and dedicated regression coverage after the regex DoS exposure was flagged
-- `Active`: align Dosh to a GitHub-managed release-tagging workflow that creates official Git tags from validated version bumps on `main` rather than relying on local manual tagging; use [GITHUB_RELEASE_MANAGEMENT_WORKFLOW_PLAN.md](/home/ubuntu/dosh/docs/plans/GITHUB_RELEASE_MANAGEMENT_WORKFLOW_PLAN.md) as the current design reference
+- `Active`: align Dosh to a GitHub-managed release-tagging and release-publishing workflow that creates official Git tags from validated version bumps on `main`, publishes GitHub Releases from validated repo release content, and feeds the in-app release-notes view through the backend GitHub Releases client; the repository workflows, runtime endpoint, and runbook are now implemented locally, while the remaining follow-through is enabling the `SonarQube` required check on protected `main` and exercising the first remote `v0.1.3-alpha` tag plus GitHub Release publication; use [GITHUB_RELEASE_MANAGEMENT_WORKFLOW_PLAN.md](/home/ubuntu/dosh/docs/plans/GITHUB_RELEASE_MANAGEMENT_WORKFLOW_PLAN.md) and [GITHUB_RELEASE_RUNBOOK.md](/home/ubuntu/dosh/docs/GITHUB_RELEASE_RUNBOOK.md) as the current references
 
 #### Activity Group: Consistency
 

@@ -1,0 +1,76 @@
+name: Auto Tag On Version Bump
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  auto-tag:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Detect canonical version bump
+        id: detect
+        env:
+          BASE_SHA: ${{ github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          version="$(python scripts/release_management.py canonical-version --ref "$HEAD_SHA")"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+          if [[ -z "$BASE_SHA" || "$BASE_SHA" == "0000000000000000000000000000000000000000" ]]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No previous main commit was provided by the push event; skipping auto-tagging."
+            exit 0
+          fi
+
+          if python scripts/release_management.py version-changed --base-ref "$BASE_SHA" --head-ref "$HEAD_SHA"; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "Canonical version did not change between $BASE_SHA and $HEAD_SHA."
+          fi
+
+      - name: Validate release state
+        if: steps.detect.outputs.changed == 'true'
+        env:
+          HEAD_SHA: ${{ github.sha }}
+        run: python scripts/release_management.py validate --ref "$HEAD_SHA" --require-release-entry
+
+      - name: Check for existing remote tag
+        if: steps.detect.outputs.changed == 'true'
+        id: tag_check
+        env:
+          VERSION: ${{ steps.detect.outputs.version }}
+        run: |
+          if git ls-remote --exit-code --tags origin "refs/tags/v${VERSION}" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Tag v${VERSION} already exists remotely; skipping tag creation."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create annotated release tag
+        if: steps.detect.outputs.changed == 'true' && steps.tag_check.outputs.exists != 'true'
+        env:
+          VERSION: ${{ steps.detect.outputs.version }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "v${VERSION}" "$HEAD_SHA" -m "Release v${VERSION}"
+          git push origin "refs/tags/v${VERSION}"

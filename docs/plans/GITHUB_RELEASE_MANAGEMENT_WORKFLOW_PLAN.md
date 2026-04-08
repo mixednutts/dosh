@@ -1,8 +1,8 @@
 # GitHub Release Management Workflow Plan
 
-This plan defines the intended Git-aligned release-management workflow for Dosh.
+This plan defines the Git-aligned release-management workflow for Dosh.
 
-It exists because the repository already has a deployment release helper in [release_with_migrations.sh](/home/ubuntu/dosh/scripts/release_with_migrations.sh), but it does not yet have a GitHub-managed process for turning a version bump on `main` into an official release tag and release checkpoint.
+It exists because the repository already has a deployment release helper in [release_with_migrations.sh](/home/ubuntu/dosh/scripts/release_with_migrations.sh), and Dosh now also needs GitHub-managed tagging, published GitHub Releases, and a stable app-facing release-info source.
 
 ## Purpose
 
@@ -19,9 +19,11 @@ Today Dosh has:
 - app-facing release notes in [RELEASE_NOTES.md](/home/ubuntu/dosh/docs/RELEASE_NOTES.md)
 - manual deployment orchestration in [release_with_migrations.sh](/home/ubuntu/dosh/scripts/release_with_migrations.sh)
 - no Git tags currently recorded in the repository history
-- no GitHub workflow that creates or validates release tags from version bumps
+- a push-to-`main` workflow that validates real version bumps and creates official release tags
+- a tag-triggered workflow that validates tagged commits and publishes GitHub Releases from repo-managed release content
+- a backend `/api/release-notes` endpoint that reads published GitHub Releases instead of container-bundled Markdown
 
-This means Dosh can be deployed safely, but Git is not yet the authoritative release-checkpoint system.
+This means GitHub is now the authoritative release-checkpoint system, while deployment remains a separate manual operational step.
 
 ## Desired Model
 
@@ -30,11 +32,13 @@ GitHub should become the single authority for creating official release tags.
 The intended flow is:
 
 1. normal feature or fix work is committed and merged to `main`
-2. a release-worthy change includes a version bump plus updated release notes
-3. a GitHub workflow triggered by a push to `main` detects that the canonical version changed
-4. the workflow validates required version touchpoints and release-note alignment
-5. if validation passes and the tag does not already exist, GitHub creates the annotated tag for that commit
-6. a separate tag-triggered workflow can later create a GitHub Release, run extra validation, or prepare future deployment automation
+2. `main` is protected so the SonarQube status check must pass before a release-worthy version-bump commit can be merged
+3. a release-worthy change includes a version bump plus updated release notes
+4. a GitHub workflow triggered by a push to `main` detects that the canonical version changed
+5. the workflow validates required version touchpoints and release-note alignment
+6. if validation passes and the tag does not already exist, GitHub creates the annotated tag for that commit
+7. a separate tag-triggered workflow validates the tagged commit and creates or updates the GitHub Release from validated repo release content
+8. the app reads those published GitHub Releases through the backend release-notes endpoint
 
 ## Authority Boundary
 
@@ -47,7 +51,8 @@ To avoid duplicate releases:
 This keeps the responsibility split clear:
 
 - local workflow: edit, test, commit, push
-- GitHub workflow: detect valid version bump and create the official tag
+- branch protection: block merge to `main` until SonarQube passes
+- GitHub workflow: detect valid version bump, create the official tag, and publish the GitHub Release
 - deployment workflow: build, back up, migrate, restart, verify
 
 ## Validation Rules
@@ -58,8 +63,9 @@ The version-bump workflow should validate all of the following before creating a
 - the new version string is valid semver with the currently supported prerelease suffix conventions
 - all required version touchpoints match exactly
 - the new version has a corresponding released entry in [RELEASE_NOTES.md](/home/ubuntu/dosh/docs/RELEASE_NOTES.md)
-- the runtime bundled [backend/release_notes/RELEASE_NOTES.md](/home/ubuntu/dosh/backend/release_notes/RELEASE_NOTES.md) entry matches the repo source
 - the release tag does not already exist remotely
+- the tagged release body is generated from the validated `released` entry in [RELEASE_NOTES.md](/home/ubuntu/dosh/docs/RELEASE_NOTES.md)
+- SonarQube should already have passed through `main` branch protection before this workflow runs on a releasable merge
 
 Required version touchpoints to validate:
 
@@ -79,6 +85,10 @@ Trigger:
 
 - push to `main`
 
+Precondition:
+
+- `main` branch protection requires the `SonarQube` status check to pass before merge
+
 Responsibilities:
 
 - detect whether the canonical version changed
@@ -94,6 +104,8 @@ Failure behavior:
 - skip cleanly when the push does not contain a version bump
 - skip cleanly when the matching tag already exists
 
+This workflow intentionally does not orchestrate or wait on the SonarQube workflow directly. SonarQube gating happens before merge through GitHub branch protection so the tagger can stay simple and post-merge.
+
 ### Workflow 2: Release On Tag
 
 Trigger:
@@ -103,10 +115,28 @@ Trigger:
 Responsibilities:
 
 - validate that the tag points to a commit whose version files match the tag
-- optionally create a GitHub Release using release-note content
-- optionally become the future place for additional release publication checks
+- create or update the GitHub Release using the validated release-note content for that version
+- remain the extension point for future versioned Docker image publication from successful tagged builds
 
 This second workflow should not create tags. It should only react to them.
+
+## Runtime Release Info
+
+The app-facing release-info flow now uses GitHub as its published release source.
+
+- the frontend continues to call `/api/release-notes`
+- the backend is the only GitHub client
+- the backend prefers `GITHUB_RELEASES_TOKEN` when configured and falls back to unauthenticated reads when the repository is public
+- if GitHub is unavailable or a private repo token is missing, the endpoint returns the current app version with `current_release: null` and empty release lists rather than failing the app
+- the runtime repository token belongs in the personal [docker-compose.override.yml](/home/ubuntu/dosh/docker-compose.override.yml), not the shared base Compose file
+
+## GitHub Repository Settings
+
+The release workflow depends on one GitHub repository setting outside committed YAML:
+
+- protect `main` with the `SonarQube` required status check so version-bump merges cannot land until SonarQube succeeds
+
+This keeps release gating at the merge boundary rather than forcing the tagging workflow to coordinate with another workflow run after merge.
 
 ## Suggested Implementation Notes
 
@@ -119,22 +149,24 @@ This second workflow should not create tags. It should only react to them.
 ## Open Decisions
 
 - decide whether the workflow should also validate documentation touchpoints such as [README.md](/home/ubuntu/dosh/README.md), [PROJECT_CONTEXT.md](/home/ubuntu/dosh/docs/PROJECT_CONTEXT.md), and [MIGRATION_AND_RELEASE_MANAGEMENT.md](/home/ubuntu/dosh/docs/MIGRATION_AND_RELEASE_MANAGEMENT.md), or whether those remain soft expectations outside the blocking tag gate
-- decide whether GitHub Releases should be generated automatically from release notes in the first iteration or deferred to a follow-up
+- decide whether documentation touchpoints beyond the current version-validation set should ever become blocking gates
 - decide whether future deployment automation should ever be triggered from tags, or remain a manual operational step
+- decide the exact future Docker image publication policy for prerelease versus stable `latest` tags
 
 ## Initial Delivery Slice
 
 The first practical implementation slice should be:
 
-1. add the `auto-tag-on-version-bump` GitHub workflow
-2. validate canonical version alignment plus release-note presence
-3. create the release tag only when the new version passes validation
-4. leave deployment manual through [release_with_migrations.sh](/home/ubuntu/dosh/scripts/release_with_migrations.sh)
-5. optionally scaffold but do not yet fully automate a tag-triggered GitHub Release workflow
+1. validate canonical version alignment plus release-note presence on push to `main`
+2. create the release tag only when the new version passes validation
+3. publish the GitHub Release from the validated repo release entry when that tag is pushed
+4. source the in-app release-notes endpoint from those published GitHub Releases
+5. leave deployment manual through [release_with_migrations.sh](/home/ubuntu/dosh/scripts/release_with_migrations.sh)
 
 ## Related Documents
 
 - [MIGRATION_AND_RELEASE_MANAGEMENT.md](/home/ubuntu/dosh/docs/MIGRATION_AND_RELEASE_MANAGEMENT.md)
+- [GITHUB_RELEASE_RUNBOOK.md](/home/ubuntu/dosh/docs/GITHUB_RELEASE_RUNBOOK.md)
 - [RELEASE_NOTES.md](/home/ubuntu/dosh/docs/RELEASE_NOTES.md)
 - [PROJECT_CONTEXT.md](/home/ubuntu/dosh/docs/PROJECT_CONTEXT.md)
 - [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md)

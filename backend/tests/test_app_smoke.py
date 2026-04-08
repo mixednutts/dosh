@@ -18,18 +18,35 @@ def test_info_endpoint_returns_app_version(client):
 
     assert response.status_code == 200
     assert response.json()["app"] == "Dosh"
-    assert response.json()["version"] == "0.1.2-alpha"
+    assert response.json()["version"] == "0.1.3-alpha"
 
 
-def test_release_notes_endpoint_returns_current_release(client):
+def test_release_notes_endpoint_returns_current_release(client, monkeypatch):
+    from app import main as app_main
+
+    monkeypatch.setattr(app_main, "release_notes_payload", lambda current_version: {
+        "current_version": current_version,
+        "update_available": False,
+        "newer_release_count": 0,
+        "previous_release_count": 0,
+        "current_release": {
+            "version": current_version,
+            "status": "released",
+            "release_date": "2026-04-08",
+            "summary": "Dosh release test payload",
+            "sections": [],
+        },
+        "newer_releases": [],
+        "previous_releases": [],
+    })
     response = client.get("/api/release-notes")
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["current_version"] == "0.1.2-alpha"
+    assert payload["current_version"] == "0.1.3-alpha"
     assert payload["update_available"] is False
     assert payload["newer_release_count"] == 0
-    assert payload["current_release"]["version"] == "0.1.2-alpha"
+    assert payload["current_release"]["version"] == "0.1.3-alpha"
 
 
 def test_generate_period_creates_expected_core_rows(client, db_session):

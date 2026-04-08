@@ -1,0 +1,90 @@
+name: Release On Tag
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  publish-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Validate tagged release state
+        env:
+          TAG_NAME: ${{ github.ref_name }}
+          HEAD_SHA: ${{ github.sha }}
+        run: python scripts/release_management.py validate --ref "$HEAD_SHA" --expect-tag "$TAG_NAME" --require-release-entry
+
+      - name: Render release body
+        id: body
+        env:
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          version="${TAG_NAME#v}"
+          python scripts/release_management.py release-body --ref "$GITHUB_SHA" --version "$version" > "$RUNNER_TEMP/release-body.md"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "body_path=$RUNNER_TEMP/release-body.md" >> "$GITHUB_OUTPUT"
+
+      - name: Create or update GitHub Release
+        uses: actions/github-script@v7
+        env:
+          BODY_PATH: ${{ steps.body.outputs.body_path }}
+          VERSION: ${{ steps.body.outputs.version }}
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync(process.env.BODY_PATH, 'utf8');
+            const version = process.env.VERSION;
+            const tag = `v${version}`;
+            const prerelease = version.includes('-');
+
+            let release;
+            try {
+              release = await github.rest.repos.getReleaseByTag({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag,
+              });
+            } catch (error) {
+              if (error.status !== 404) {
+                throw error;
+              }
+            }
+
+            const payload = {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: tag,
+              name: tag,
+              body,
+              draft: false,
+              prerelease,
+            };
+
+            if (release) {
+              await github.rest.repos.updateRelease({
+                ...payload,
+                release_id: release.data.id,
+              });
+              core.info(`Updated GitHub Release for ${tag}.`);
+            } else {
+              await github.rest.repos.createRelease(payload);
+              core.info(`Created GitHub Release for ${tag}.`);
+            }
+
+      - name: Future image publication hook
+        run: echo "Tag-triggered Docker image publication can be added here later without changing tag semantics."

@@ -15,7 +15,7 @@ import { useDarkMode } from '../hooks/useDarkMode'
 import { getAppInfo, getBudgets, getBudgetSetupAssessment, getPeriodDetail, getPeriodsForBudget, getReleaseNotes } from '../api/client'
 
 function displayVersion(version) {
-  return `v${version || '0.1.2-alpha'}`
+  return `v${version || '0.1.3-alpha'}`
 }
 
 function PeriodShortcutGroup({ title, periods, activePeriodId, onNav, emptyMessage = null, moreText = null, moreTo = null, moreSubtle = false }) {

@@ -12,8 +12,8 @@ Use it when:
 
 ## Current Baseline
 
-- current canonical app version: `0.1.2-alpha`
-- current UI display format: `v0.1.2-alpha`
+- current canonical app version: `0.1.3-alpha`
+- current UI display format: `v0.1.3-alpha`
 - current app state classification: `alpha`
 - current schema management authority: Alembic
 - current deployment path: Docker Compose
@@ -45,28 +45,29 @@ Storage and display rules:
 
 ## Release Notes Management
 
-[RELEASE_NOTES.md](/home/ubuntu/dosh/docs/RELEASE_NOTES.md) is the app-facing release-notes source of truth.
+[RELEASE_NOTES.md](/home/ubuntu/dosh/docs/RELEASE_NOTES.md) is the repo-managed release-content source of truth.
 
 Management rules:
 
-- keep user-facing release notes in `RELEASE_NOTES.md`, not in frontend code
+- keep user-facing release content in `RELEASE_NOTES.md`, not in frontend code
 - keep deeper engineering history and implementation detail in [CHANGES.md](/home/ubuntu/dosh/docs/CHANGES.md)
 - update `RELEASE_NOTES.md` whenever a version bump represents a releasable change worth surfacing in the app
 - keep release-note entries concise, version-oriented, and suitable for direct app display
 
 In-app visibility rules:
 
-- the app reads release-note content through the backend release-notes endpoint
-- the app should show the currently running version's release notes as the primary entry
-- the app may also show newer released versions as available updates when they exist in the repo but have not yet been applied to the running app
+- validated `released` entries from `RELEASE_NOTES.md` are published into GitHub Releases through the tag workflow
+- the app reads published GitHub release content through the backend release-notes endpoint
+- the app should show the currently running version's published release as the primary entry when one exists
+- the app may also show newer published versions as available updates when they exist in GitHub but have not yet been applied to the running app
 - unreleased or draft entries must not be shown in-app
 
 Practical expectations for entries:
 
 - each release-note entry should identify the version
 - each entry should indicate whether it is `released` or `unreleased`
-- released entries may be surfaced in the app
-- unreleased entries are for repo planning and preparation only until that version is actually released
+- released entries may be published into GitHub Releases and then surfaced in the app
+- unreleased entries are for repo planning and preparation only until that version is actually published
 
 ## Migration Rules
 
@@ -113,6 +114,7 @@ When a release includes a version bump, also:
 
 6. update [RELEASE_NOTES.md](/home/ubuntu/dosh/docs/RELEASE_NOTES.md) for that version
 7. verify the in-app release notes and version display reflect the expected current version and any newer released updates correctly
+8. ensure the `SonarQube` status check has passed before the version-bump merge reaches protected `main`
 
 The repository includes [release_with_migrations.sh](/home/ubuntu/dosh/scripts/release_with_migrations.sh) to run the expected Compose-based build, backup, migration, and restart flow.
 

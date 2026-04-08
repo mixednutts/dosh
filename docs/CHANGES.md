@@ -31,6 +31,46 @@ For the dedicated workflow plan that now owns budget-adjustment, revision-histor
 
 For the implemented amount-entry plan that now defines inline arithmetic scope, preview behavior, and parser boundaries for period-detail modals, read [INLINE_EXPRESSION_AMOUNT_INPUT_PLAN.md](/home/ubuntu/dosh/docs/plans/INLINE_EXPRESSION_AMOUNT_INPUT_PLAN.md).
 
+## Latest Session: GitHub Release Automation, GitHub-Backed In-App Release Info, And Release Runbook
+
+This session turned the release-management plan into working repository behavior. The main outcomes were adding the GitHub tagging and release-publishing workflows, moving the runtime release-notes endpoint to published GitHub Releases, adding private-repo token support through the personal Compose override path, and aligning the release baseline to the next checkpoint.
+
+Important direction now in place:
+
+- the release baseline moved from `0.1.2-alpha` to `0.1.3-alpha` for this backward-compatible release-management and runtime release-info enhancement
+- GitHub now owns official Dosh release tags through a push-to-`main` validation workflow and a tag-triggered GitHub Release workflow
+- the app-facing `/api/release-notes` endpoint now reads published GitHub Releases rather than relying on a container-bundled Markdown source
+- private repositories are supported through a backend `GITHUB_RELEASES_TOKEN` configured in the personal [docker-compose.override.yml](/home/ubuntu/dosh/docker-compose.override.yml), while future public-repo use can fall back to unauthenticated reads
+- a high-level operator runbook now exists at [GITHUB_RELEASE_RUNBOOK.md](/home/ubuntu/dosh/docs/GITHUB_RELEASE_RUNBOOK.md) so the process is usable without rediscovering workflow details
+- the deployed app now runs the GitHub-backed release-info path successfully, but the live `/api/release-notes` payload still returns `current_release: null` until the first matching GitHub Release is published for `v0.1.3-alpha`
+
+### 1. GitHub now creates the official release checkpoints
+
+Current behavior:
+
+- [.github/workflows/auto-tag-on-version-bump.yml](/home/ubuntu/dosh/.github/workflows/auto-tag-on-version-bump.yml) validates the canonical version bump on `main`, checks all required touchpoints, validates the `released` repo entry, and creates the annotated `v<version>` tag
+- [.github/workflows/release-on-tag.yml](/home/ubuntu/dosh/.github/workflows/release-on-tag.yml) validates the tagged commit and creates or updates the GitHub Release from the repo-managed release entry
+- [release_management.py](/home/ubuntu/dosh/scripts/release_management.py) now owns the shared version-alignment and release-body rendering logic used by the workflows
+
+Important engineering meaning:
+
+- GitHub is now the single authority for official release tags and GitHub Releases
+- the tag workflow is already positioned to grow into future Docker image publication without changing the release-authority model
+- the remaining remote follow-through is repository settings plus first-run verification, not additional local workflow design
+
+### 2. Runtime release info now comes from published GitHub Releases
+
+Current behavior:
+
+- [release_notes.py](/home/ubuntu/dosh/backend/app/release_notes.py) now fetches published GitHub Releases, sorts them with Dosh semver and prerelease ordering, and returns the existing frontend payload shape
+- [release_markdown.py](/home/ubuntu/dosh/backend/app/release_markdown.py) now centralizes release-body parsing and rendering so repo release entries and GitHub Release bodies stay structurally aligned
+- the app continues calling the same `/api/release-notes` route, so no frontend contract redesign was required
+
+Important product meaning:
+
+- the in-app modal now reflects official published releases instead of a filesystem copy inside the container
+- if GitHub is temporarily unavailable or a private-repo token is missing, the app degrades safely instead of throwing a runtime failure
+
 ## Latest Session: Previous Release Visibility, Release Process Clarification, GitHub Release Workflow Planning, And Deployment Verification
 
 This session focused on finishing the in-app release-notes usability gap, clarifying where deployment automation and Git release management actually differ, and then capturing the preferred GitHub-centered release-tagging model as an explicit plan rather than leaving it as session-only discussion.

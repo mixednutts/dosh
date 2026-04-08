@@ -4,6 +4,81 @@ This document records meaningful automated test results from major working sessi
 
 It exists separately from [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) so the strategy can stay stable while future sessions still have a record of what was actually run and verified.
 
+## Latest Session: GitHub Release Automation, GitHub-Backed Release Info, And Version Alignment
+
+Session outcomes verified in this run:
+
+- the repository now has a push-to-`main` workflow that validates version alignment and creates official release tags
+- the repository now has a tag-triggered workflow that creates or updates GitHub Releases from validated repo release content
+- the backend `/api/release-notes` implementation now reads published GitHub Releases with safe fallback behavior for private-repo auth gaps or GitHub API failures
+- the release baseline was bumped from `0.1.2-alpha` to `0.1.3-alpha`
+- the release-management docs now include a high-level operator runbook and private-repo override-token guidance
+- the stack was redeployed successfully with the new runtime path, and the live release-notes endpoint safely returned an empty published-release payload because `v0.1.3-alpha` has not yet been published to GitHub
+
+### Backend verification
+
+Commands run during this session:
+
+```bash
+cd /home/ubuntu/dosh/backend
+../backend/.venv/bin/python -m pytest tests/test_release_notes.py tests/test_app_smoke.py
+```
+
+Result:
+
+- the focused backend verification passed after the GitHub-backed release-notes implementation replaced the old file-based runtime source
+- the parser and payload suite now protects GitHub release-body parsing plus safe fallback behavior
+
+### Frontend verification
+
+Commands run during this session:
+
+```bash
+cd /home/ubuntu/dosh/frontend
+npm test -- --runInBand src/__tests__/Layout.test.jsx
+```
+
+Result:
+
+- the focused layout regression passed after the visible app-version baseline moved to `v0.1.3-alpha`
+- no frontend contract changes were required beyond the version touchpoint update
+
+### Workflow and tooling verification
+
+Commands run during this session:
+
+```bash
+cd /home/ubuntu/dosh
+python scripts/release_management.py validate --ref HEAD --require-release-entry
+python scripts/release_management.py release-body --ref HEAD --version 0.1.3-alpha
+```
+
+Result:
+
+- the shared validation script confirmed the required version touchpoints aligned at `0.1.3-alpha`
+- the release-body renderer produced publishable GitHub Release content from the repo-managed release entry
+
+### Deployment verification
+
+Commands run during this session:
+
+```bash
+cd /home/ubuntu/dosh
+INCLUDE_OVERRIDE=true ./scripts/release_with_migrations.sh
+curl -sS http://127.0.0.1:3080/api/health
+curl -sS http://127.0.0.1:3080/api/info
+curl -sS http://127.0.0.1:3080/api/release-notes
+docker compose -f docker-compose.yml -f docker-compose.override.yml exec backend sh -lc 'echo "${GITHUB_RELEASES_TOKEN:+set}"'
+```
+
+Result:
+
+- the stack rebuilt and restarted successfully on `0.1.3-alpha`
+- the live health endpoint returned `{\"status\":\"ok\",\"app\":\"Dosh\"}`
+- the live info endpoint returned `0.1.3-alpha`
+- the runtime backend token was present in the container
+- the live release-notes endpoint returned a safe empty published-release payload with `current_release: null`, which matches the expected interim state until the first GitHub Release is published for `v0.1.3-alpha`
+
 ## Latest Session: Previous Release Visibility, Release Workflow Planning, And Deployment Verification
 
 Session outcomes verified in this run:

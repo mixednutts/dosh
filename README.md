@@ -52,6 +52,7 @@ dosh/
 
 - [PROJECT_CONTEXT.md](/home/ubuntu/dosh/docs/PROJECT_CONTEXT.md): the working handoff document for future AI sessions and new development starts
 - [MIGRATION_AND_RELEASE_MANAGEMENT.md](/home/ubuntu/dosh/docs/MIGRATION_AND_RELEASE_MANAGEMENT.md): the source of truth for semantic versioning, Alembic migrations, and release sequencing
+- [GITHUB_RELEASE_RUNBOOK.md](/home/ubuntu/dosh/docs/GITHUB_RELEASE_RUNBOOK.md): the high-level operator guide for GitHub-managed releases, private-repo token setup, and the current manual deployment handoff
 - [RELEASE_NOTES.md](/home/ubuntu/dosh/docs/RELEASE_NOTES.md): app-facing release notes shown in Dosh and maintained in the repo
 - [DOCUMENT_REGISTER.md](/home/ubuntu/dosh/docs/DOCUMENT_REGISTER.md): the map of project documents, ownership boundaries, and source-of-truth scope
 - [DOCUMENTATION_FRAMEWORK.md](/home/ubuntu/dosh/docs/DOCUMENTATION_FRAMEWORK.md): the generic documentation structure and governance framework
@@ -72,7 +73,7 @@ dosh/
 - [INCOME_TRANSACTIONS_UNIFICATION_AND_LEGACY_LEDGER_CLEANUP_PLAN.md](/home/ubuntu/dosh/docs/plans/INCOME_TRANSACTIONS_UNIFICATION_AND_LEGACY_LEDGER_CLEANUP_PLAN.md): transaction unification and ledger cleanup planning
 - [INLINE_EXPRESSION_AMOUNT_INPUT_PLAN.md](/home/ubuntu/dosh/docs/plans/INLINE_EXPRESSION_AMOUNT_INPUT_PLAN.md): implemented inline arithmetic amount-entry scope, parsing boundaries, and modal UX decisions
 - [AI_INSIGHT_ON_CLOSEOUT_PLAN.md](/home/ubuntu/dosh/docs/plans/AI_INSIGHT_ON_CLOSEOUT_PLAN.md): supporting close-out planning insight
-- [GITHUB_RELEASE_MANAGEMENT_WORKFLOW_PLAN.md](/home/ubuntu/dosh/docs/plans/GITHUB_RELEASE_MANAGEMENT_WORKFLOW_PLAN.md): planned GitHub-managed release-tagging workflow for validated version bumps
+- [GITHUB_RELEASE_MANAGEMENT_WORKFLOW_PLAN.md](/home/ubuntu/dosh/docs/plans/GITHUB_RELEASE_MANAGEMENT_WORKFLOW_PLAN.md): GitHub-managed release-tagging, release publishing, and in-app release-info workflow
 
 ### Testing
 
@@ -84,8 +85,9 @@ dosh/
 
 - `Budget Cycle` is the preferred user-facing wording where it improves clarity, while backend naming may still use `period` for stability.
 - The product direction is practical, supportive, and workflow-driven rather than accounting-heavy.
-- The current release baseline is `0.1.2-alpha`, displayed in the UI as `v0.1.2-alpha`.
+- The current release baseline is `0.1.3-alpha`, displayed in the UI as `v0.1.3-alpha`.
 - Versioning, migration naming, and release-step expectations are defined in [MIGRATION_AND_RELEASE_MANAGEMENT.md](/home/ubuntu/dosh/docs/MIGRATION_AND_RELEASE_MANAGEMENT.md).
+- Published GitHub Releases are now the app-facing source for in-app release information, while [RELEASE_NOTES.md](/home/ubuntu/dosh/docs/RELEASE_NOTES.md) remains the repo-managed source used to generate those release bodies.
 - Detailed roadmap, plan, and testing content should live in the next-layer documents above rather than growing this README.
 
 ## SonarQube

@@ -364,22 +364,53 @@ Document type:
 
 Primary purpose:
 
-- define the intended GitHub-managed workflow for release tagging and release-checkpoint validation
+- define the GitHub-managed workflow for release tagging, release publishing, and in-app release-info sourcing
 
 Primary source-of-truth scope:
 
 - GitHub release-tagging workflow shape
+- GitHub Release publishing workflow shape
 - version-bump validation expectations
-- authority split between local workflow, GitHub tagging, and deployment release steps
+- authority split between local workflow, GitHub tagging, GitHub Release publishing, and deployment release steps
 
 Key relationships:
 
 - complements release and migration policy in [MIGRATION_AND_RELEASE_MANAGEMENT.md](/home/ubuntu/dosh/docs/MIGRATION_AND_RELEASE_MANAGEMENT.md)
-- linked from [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md) as the current planning reference for this active follow-up
+- linked from [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md) as the current design reference for release orchestration
+- paired with the operator-facing [GITHUB_RELEASE_RUNBOOK.md](/home/ubuntu/dosh/docs/GITHUB_RELEASE_RUNBOOK.md)
 
 Maintenance notes:
 
 - should remain focused on GitHub release orchestration rather than absorb deployment-only operational detail
+
+### GITHUB_RELEASE_RUNBOOK.md
+
+Document:
+
+- [GITHUB_RELEASE_RUNBOOK.md](/home/ubuntu/dosh/docs/GITHUB_RELEASE_RUNBOOK.md)
+
+Document type:
+
+- operational policy document
+
+Primary purpose:
+
+- provide the high-level human workflow for preparing, publishing, and deploying GitHub-managed releases
+
+Primary source-of-truth scope:
+
+- operator release checklist
+- private-repo token setup expectations
+- boundary between GitHub release automation and manual deployment
+
+Key relationships:
+
+- complements the design boundary in [GITHUB_RELEASE_MANAGEMENT_WORKFLOW_PLAN.md](/home/ubuntu/dosh/docs/plans/GITHUB_RELEASE_MANAGEMENT_WORKFLOW_PLAN.md)
+- complements release policy in [MIGRATION_AND_RELEASE_MANAGEMENT.md](/home/ubuntu/dosh/docs/MIGRATION_AND_RELEASE_MANAGEMENT.md)
+
+Maintenance notes:
+
+- should stay concise and instruction-oriented rather than becoming a second design document
 
 ## Testing Documents
 

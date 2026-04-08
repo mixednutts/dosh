@@ -1,5 +1,16 @@
 # Dosh Release Notes
 
+## 0.1.3-alpha | released | 2026-04-08
+
+Dosh now treats GitHub as the published release authority for both release tags and the in-app release-notes view.
+
+### Highlights
+
+- Added a push-to-`main` workflow that validates version alignment and creates the official `v<version>` tag only when the repo is release-ready
+- Added a tag-triggered workflow that creates or updates the matching GitHub Release from the validated repo release entry
+- Switched the backend `/api/release-notes` endpoint to read published GitHub Releases, with safe fallback behavior when GitHub is unavailable or private-repo auth is missing
+- Added a GitHub release runbook and personal override token guidance so private repos work now while public-repo access can remain unauthenticated later
+
 ## 0.1.2-alpha | released | 2026-04-08
 
 Dosh now lets the in-app release notes reveal previous released versions without crowding the default current-version view.
