@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 from collections import defaultdict
+import csv
 from datetime import datetime, timedelta
 from decimal import Decimal
+import io
+import json
 from typing import Annotated
 from typing import Optional
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 from ..api_docs import DbSession, error_responses
 from ..budget_health import _build_current_period_check, _current_period_totals
@@ -45,7 +48,7 @@ from ..schemas import (
     PeriodBalanceOut, PeriodExpenseReorderRequest, PeriodInvestmentOut,
     PeriodExpenseStatusUpdate, PeriodExpenseBudgetUpdate, PeriodLineBudgetAdjustRequest,
     PeriodCloseoutPreviewOut, PeriodCloseoutRequest, PeriodDeleteOptionsOut,
-    PeriodInvestmentStatusUpdate,
+    PeriodInvestmentStatusUpdate, PeriodTransactionOut,
 )
 from ..period_logic import calc_period_end, periods_overlap, expense_occurs_in_period
 from ..setup_assessment import budget_setup_assessment
@@ -226,6 +229,271 @@ def _projected_savings(period_status: str, savings_budget: Decimal, savings_actu
             return savings_budget - savings_actual
         return savings_actual
     return savings_budget
+
+
+def _effective_expense_budget(expense: PeriodExpenseOut) -> Decimal:
+    if (getattr(expense, "status", WORKING) or WORKING) == PAID:
+        return Decimal(str(expense.actualamount or 0))
+    return Decimal(str(expense.budgetamount or 0))
+
+
+def _effective_investment_budget(investment: PeriodInvestmentOut) -> Decimal:
+    if (getattr(investment, "status", WORKING) or WORKING) == PAID:
+        return Decimal(str(investment.actualamount or 0))
+    return Decimal(str(investment.budgeted_amount or 0))
+
+
+def _serialize_export_value(value):
+    if isinstance(value, Decimal):
+        return f"{value:.2f}"
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, list):
+        return [_serialize_export_value(item) for item in value]
+    if isinstance(value, dict):
+        return {key: _serialize_export_value(item) for key, item in value.items()}
+    return value
+
+
+def _stringify_csv_value(value) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, Decimal):
+        return f"{value:.2f}"
+    if isinstance(value, datetime):
+        return value.isoformat()
+    return str(value)
+
+
+def _export_filename(period: FinancialPeriod, export_format: str) -> str:
+    start = period.startdate.strftime("%Y-%m-%d")
+    end = period.enddate.strftime("%Y-%m-%d")
+    return f"dosh-budget-cycle-{start}_to_{end}.{export_format}"
+
+
+def _load_period_detail_components(period: FinancialPeriod, db: Session) -> dict:
+    finperiodid = period.finperiodid
+    incomes = db.query(PeriodIncome).filter(PeriodIncome.finperiodid == finperiodid).all()
+    expenses = (
+        db.query(PeriodExpense)
+        .filter(PeriodExpense.finperiodid == finperiodid)
+        .order_by(PeriodExpense.sort_order, PeriodExpense.expensedesc)
+        .all()
+    )
+    investments = (
+        db.query(PeriodInvestment)
+        .filter(PeriodInvestment.finperiodid == finperiodid)
+        .all()
+    )
+    balance_rows = db.query(PeriodBalance).filter(PeriodBalance.finperiodid == finperiodid).all()
+    enriched_balances = []
+    for pb in balance_rows:
+        bt = db.get(BalanceType, (pb.budgetid, pb.balancedesc))
+        balance = PeriodBalanceOut.model_validate(pb)
+        balance.balance_type = bt.balance_type if bt else None
+        enriched_balances.append(balance)
+
+    income_out = [PeriodIncomeOut.model_validate(i) for i in incomes]
+    expense_out = _enrich_expenses(expenses, db)
+    investment_out = _enrich_investments(investments, db)
+    period_status = _period_status(period)
+    investment_budget = sum((_effective_investment_budget(row) for row in investment_out), Decimal("0.00"))
+    investment_actual = sum((Decimal(str(row.actualamount or 0)) for row in investment_out), Decimal("0.00"))
+
+    return {
+        "incomes": income_out,
+        "expenses": expense_out,
+        "investments": investment_out,
+        "balances": enriched_balances,
+        "projected_savings": _projected_savings(period_status, investment_budget, investment_actual),
+    }
+
+
+def _income_export_base_row(income: PeriodIncomeOut) -> dict:
+    return {
+        "line_type": "income",
+        "line_name": income.incomedesc,
+        "row_kind": "budget_only",
+        "line_status": None,
+        "line_budget_amount": Decimal(str(income.budgetamount or 0)),
+        "line_actual_amount": Decimal(str(income.actualamount or 0)),
+        "line_remaining_amount": None,
+        "transaction_id": None,
+        "transaction_date": None,
+        "transaction_type": None,
+        "transaction_amount": None,
+        "transaction_note": None,
+        "transaction_account": None,
+        "related_account": None,
+        "linked_income_desc": None,
+        "budget_before_amount": None,
+        "budget_after_amount": None,
+    }
+
+
+def _expense_export_base_row(expense: PeriodExpenseOut) -> dict:
+    return {
+        "line_type": "expense",
+        "line_name": expense.expensedesc,
+        "row_kind": "budget_only",
+        "line_status": expense.status,
+        "line_budget_amount": _effective_expense_budget(expense),
+        "line_actual_amount": Decimal(str(expense.actualamount or 0)),
+        "line_remaining_amount": Decimal(str(expense.remaining_amount or 0)),
+        "transaction_id": None,
+        "transaction_date": None,
+        "transaction_type": None,
+        "transaction_amount": None,
+        "transaction_note": None,
+        "transaction_account": None,
+        "related_account": None,
+        "linked_income_desc": None,
+        "budget_before_amount": None,
+        "budget_after_amount": None,
+    }
+
+
+def _investment_export_base_row(investment: PeriodInvestmentOut) -> dict:
+    return {
+        "line_type": "investment",
+        "line_name": investment.investmentdesc,
+        "row_kind": "budget_only",
+        "line_status": investment.status,
+        "line_budget_amount": _effective_investment_budget(investment),
+        "line_actual_amount": Decimal(str(investment.actualamount or 0)),
+        "line_remaining_amount": Decimal(str(investment.remaining_amount or 0)),
+        "transaction_id": None,
+        "transaction_date": None,
+        "transaction_type": None,
+        "transaction_amount": None,
+        "transaction_note": None,
+        "transaction_account": None,
+        "related_account": None,
+        "linked_income_desc": None,
+        "budget_before_amount": None,
+        "budget_after_amount": None,
+    }
+
+
+def _export_row_from_transaction(base_row: dict, tx: PeriodTransactionOut) -> dict:
+    row = dict(base_row)
+    row["row_kind"] = "budget_adjustment" if tx.entry_kind == "budget_adjustment" else "transaction"
+    row["transaction_id"] = tx.id
+    row["transaction_date"] = tx.entrydate
+    row["transaction_type"] = tx.type
+    row["transaction_amount"] = Decimal(str(tx.amount or 0))
+    row["transaction_note"] = tx.note
+    row["transaction_account"] = tx.affected_account_desc
+    row["related_account"] = tx.related_account_desc
+    row["linked_income_desc"] = tx.linked_incomedesc
+    row["budget_before_amount"] = tx.budget_before_amount
+    row["budget_after_amount"] = tx.budget_after_amount
+    return row
+
+
+def _build_period_export_rows(
+    incomes: list[PeriodIncomeOut],
+    expenses: list[PeriodExpenseOut],
+    investments: list[PeriodInvestmentOut],
+    transactions: list[PeriodTransactionOut],
+) -> list[dict]:
+    txs_by_line: dict[tuple[str, str], list[PeriodTransactionOut]] = defaultdict(list)
+    for tx in transactions:
+        if tx.source in {"income", "transfer"} and tx.source_key:
+            txs_by_line[("income", tx.source_key)].append(tx)
+        elif tx.source == "expense" and tx.source_key:
+            txs_by_line[("expense", tx.source_key)].append(tx)
+        elif tx.source == "investment" and tx.source_key:
+            txs_by_line[("investment", tx.source_key)].append(tx)
+
+    rows: list[dict] = []
+    for income in incomes:
+        base_row = _income_export_base_row(income)
+        matched = txs_by_line.get(("income", income.incomedesc), [])
+        rows.extend(_export_row_from_transaction(base_row, tx) for tx in matched) if matched else rows.append(base_row)
+
+    for expense in expenses:
+        base_row = _expense_export_base_row(expense)
+        matched = txs_by_line.get(("expense", expense.expensedesc), [])
+        rows.extend(_export_row_from_transaction(base_row, tx) for tx in matched) if matched else rows.append(base_row)
+
+    for investment in investments:
+        base_row = _investment_export_base_row(investment)
+        matched = txs_by_line.get(("investment", investment.investmentdesc), [])
+        rows.extend(_export_row_from_transaction(base_row, tx) for tx in matched) if matched else rows.append(base_row)
+
+    def sort_key(row: dict):
+        transaction_date = row.get("transaction_date")
+        return (
+            transaction_date is not None,
+            transaction_date or datetime.min,
+            row.get("line_type") or "",
+            row.get("line_name") or "",
+            row.get("transaction_id") or 0,
+        )
+
+    return sorted(rows, key=sort_key)
+
+
+def _build_period_export_payload(period: FinancialPeriod, budget: Budget | None, db: Session) -> dict:
+    detail = _load_period_detail_components(period, db)
+    transactions = (
+        db.query(PeriodTransaction)
+        .filter(PeriodTransaction.finperiodid == period.finperiodid)
+        .order_by(PeriodTransaction.entrydate, PeriodTransaction.id)
+        .all()
+    )
+    transaction_out = [PeriodTransactionOut.model_validate(tx) for tx in transactions]
+    export_rows = _build_period_export_rows(
+        detail["incomes"],
+        detail["expenses"],
+        detail["investments"],
+        transaction_out,
+    )
+    return {
+        "period": PeriodOut.model_validate(period).model_dump(mode="json"),
+        "budget": (
+            {
+                "budgetid": budget.budgetid,
+                "description": budget.description,
+                "budgetowner": budget.budgetowner,
+                "budget_frequency": budget.budget_frequency,
+            }
+            if budget else None
+        ),
+        "incomes": [item.model_dump(mode="json") for item in detail["incomes"]],
+        "expenses": [item.model_dump(mode="json") for item in detail["expenses"]],
+        "investments": [item.model_dump(mode="json") for item in detail["investments"]],
+        "transactions": _serialize_export_value(export_rows),
+    }
+
+
+def _build_period_export_csv(rows: list[dict]) -> str:
+    fieldnames = [
+        "line_type",
+        "line_name",
+        "row_kind",
+        "line_status",
+        "line_budget_amount",
+        "line_actual_amount",
+        "line_remaining_amount",
+        "transaction_id",
+        "transaction_date",
+        "transaction_type",
+        "transaction_amount",
+        "transaction_note",
+        "transaction_account",
+        "related_account",
+        "linked_income_desc",
+        "budget_before_amount",
+        "budget_after_amount",
+    ]
+    output = io.StringIO(newline="")
+    writer = csv.DictWriter(output, fieldnames=fieldnames)
+    writer.writeheader()
+    for row in rows:
+        writer.writerow({key: _stringify_csv_value(row.get(key)) for key in fieldnames})
+    return output.getvalue()
 
 
 def _pick_auto_surplus_investment(investment_items: list[InvestmentItem]) -> Optional[InvestmentItem]:
@@ -553,49 +821,42 @@ def list_period_summaries_for_budget(budgetid: int, db: DbSession):
 @router.get("/{finperiodid}", response_model=PeriodDetailOut, responses=error_responses(404))
 def get_period_detail(finperiodid: int, db: DbSession):
     period = _get_period_or_404(finperiodid, db)
-    incomes = db.query(PeriodIncome).filter(PeriodIncome.finperiodid == finperiodid).all()
-    expenses = (
-        db.query(PeriodExpense)
-        .filter(PeriodExpense.finperiodid == finperiodid)
-        .order_by(PeriodExpense.sort_order, PeriodExpense.expensedesc)
-        .all()
-    )
-    investments = (
-        db.query(PeriodInvestment)
-        .filter(PeriodInvestment.finperiodid == finperiodid)
-        .all()
-    )
-    balance_rows = db.query(PeriodBalance).filter(PeriodBalance.finperiodid == finperiodid).all()
-    enriched_balances = []
-    for pb in balance_rows:
-        bt = db.get(BalanceType, (pb.budgetid, pb.balancedesc))
-        d = PeriodBalanceOut.model_validate(pb)
-        d.balance_type = bt.balance_type if bt else None
-        enriched_balances.append(d)
-
-    income_budget = sum((Decimal(str(row.budgetamount or 0)) for row in incomes), Decimal("0.00"))
-    income_actual = sum((Decimal(str(row.actualamount or 0)) for row in incomes), Decimal("0.00"))
-    expense_budget = sum((
-        Decimal(str(row.actualamount if (getattr(row, "status", WORKING) or WORKING) == PAID else row.budgetamount or 0))
-        for row in expenses
-    ), Decimal("0.00"))
-    expense_actual = sum((Decimal(str(row.actualamount or 0)) for row in expenses), Decimal("0.00"))
-    investment_budget = sum((
-        Decimal(str(row.actualamount if (getattr(row, "status", WORKING) or WORKING) == PAID else row.budgeted_amount or 0))
-        for row in investments
-    ), Decimal("0.00"))
-    investment_actual = sum((Decimal(str(row.actualamount or 0)) for row in investments), Decimal("0.00"))
-    period_status = _period_status(period)
-    projected_savings = _projected_savings(period_status, investment_budget, investment_actual)
+    detail = _load_period_detail_components(period, db)
 
     return PeriodDetailOut(
         period=PeriodOut.model_validate(period),
-        incomes=[PeriodIncomeOut.model_validate(i) for i in incomes],
-        expenses=_enrich_expenses(expenses, db),
-        investments=_enrich_investments(investments, db),
-        balances=enriched_balances,
-        projected_savings=projected_savings,
+        incomes=detail["incomes"],
+        expenses=detail["expenses"],
+        investments=detail["investments"],
+        balances=detail["balances"],
+        projected_savings=detail["projected_savings"],
         closeout_snapshot=period.closeout_snapshot,
+    )
+
+
+@router.get("/{finperiodid}/export", responses=error_responses(404, 422))
+def export_period(finperiodid: int, export_format: Annotated[str, Query(alias="format")], db: DbSession):
+    period = _get_period_or_404(finperiodid, db)
+    budget = db.get(Budget, period.budgetid)
+    if export_format not in {"csv", "json"}:
+        raise HTTPException(422, "format must be 'csv' or 'json'")
+
+    payload = _build_period_export_payload(period, budget, db)
+    filename = _export_filename(period, export_format)
+
+    if export_format == "csv":
+        content = _build_period_export_csv(payload["transactions"])
+        return Response(
+            content=content,
+            media_type="text/csv; charset=utf-8",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+
+    content = json.dumps(_serialize_export_value(payload), indent=2)
+    return Response(
+        content=content,
+        media_type="application/json",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 

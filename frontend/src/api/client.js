@@ -4,6 +4,27 @@ const api = axios.create({ baseURL: '/api' })
 
 export default api
 
+function getAttachmentFilename(contentDisposition, fallback) {
+  if (!contentDisposition) return fallback
+  const utfMatch = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i)
+  if (utfMatch?.[1]) {
+    return decodeURIComponent(utfMatch[1])
+  }
+  const plainMatch = contentDisposition.match(/filename="?([^"]+)"?/i)
+  return plainMatch?.[1] || fallback
+}
+
+function triggerBrowserDownload(blob, filename) {
+  const objectUrl = globalThis.URL.createObjectURL(blob)
+  const link = globalThis.document.createElement('a')
+  link.href = objectUrl
+  link.download = filename
+  globalThis.document.body.appendChild(link)
+  link.click()
+  link.remove()
+  globalThis.URL.revokeObjectURL(objectUrl)
+}
+
 export const getAppInfo = () => api.get('/info').then(r => r.data)
 export const getReleaseNotes = () => api.get('/release-notes').then(r => r.data)
 
@@ -66,6 +87,18 @@ export const getPeriodDeleteOptions = periodId =>
   api.get(`/periods/${periodId}/delete-options`).then(r => r.data)
 export const getPeriodCloseoutPreview = periodId =>
   api.get(`/periods/${periodId}/closeout-preview`).then(r => r.data)
+export const exportPeriod = async (periodId, format) => {
+  const response = await api.get(`/periods/${periodId}/export`, {
+    params: { format },
+    responseType: 'blob',
+  })
+  const filename = getAttachmentFilename(
+    response.headers?.['content-disposition'],
+    `dosh-budget-cycle-export.${format}`
+  )
+  triggerBrowserDownload(response.data, filename)
+  return filename
+}
 export const generatePeriod = data => api.post('/periods/generate', data).then(r => r.data)
 export const setPeriodLock = (periodId, islocked) =>
   api.patch(`/periods/${periodId}/lock`, { islocked }).then(r => r.data)

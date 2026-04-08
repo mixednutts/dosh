@@ -353,6 +353,38 @@ Maintenance notes:
 
 - should remain the main design-boundary document for inline arithmetic amount entry rather than becoming a second change log
 
+### BUDGET_CYCLE_EXPORT_PLAN.md
+
+Document:
+
+- [BUDGET_CYCLE_EXPORT_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_CYCLE_EXPORT_PLAN.md)
+
+Document type:
+
+- domain or workflow plan
+
+Primary purpose:
+
+- preserve the implemented plan decisions for budget-cycle export shape, ordering, and spreadsheet-oriented constraints
+
+Primary source-of-truth scope:
+
+- budget-cycle export entry-point direction
+- flat CSV row semantics and ordering rules
+- JSON parity shape for the same export domain
+- reconciliation constraints between exported rows and the period-detail page
+
+Key relationships:
+
+- linked from [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md) as the current design reference for export follow-through
+- complements current-state and handoff guidance in [PROJECT_CONTEXT.md](/home/ubuntu/dosh/docs/PROJECT_CONTEXT.md)
+- paired with verification notes in [TEST_RESULTS_SUMMARY.md](/home/ubuntu/dosh/docs/tests/TEST_RESULTS_SUMMARY.md)
+
+Maintenance notes:
+
+- should remain focused on export shape and behavior rather than absorbing backup or restore policy
+- should be updated if export row semantics, ordering, or format scope change materially
+
 ### GITHUB_RELEASE_MANAGEMENT_WORKFLOW_PLAN.md
 
 Document:

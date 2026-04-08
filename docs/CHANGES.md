@@ -31,6 +31,60 @@ For the dedicated workflow plan that now owns budget-adjustment, revision-histor
 
 For the implemented amount-entry plan that now defines inline arithmetic scope, preview behavior, and parser boundaries for period-detail modals, read [INLINE_EXPRESSION_AMOUNT_INPUT_PLAN.md](/home/ubuntu/dosh/docs/plans/INLINE_EXPRESSION_AMOUNT_INPUT_PLAN.md).
 
+For the implemented export-shape plan that now defines budget-cycle export behavior, read [BUDGET_CYCLE_EXPORT_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_CYCLE_EXPORT_PLAN.md).
+
+## Latest Session: Budget-Cycle Export, Export Ordering Refinement, And Playwright Harness Repair
+
+This session added the first user-facing export slice for budget cycles and then carried it through the surrounding validation and deployment work needed to make it trustworthy. The main outcomes were a new backend export endpoint, a period-detail export action for flat `CSV` and grouped `JSON`, explicit flat-row semantics built around `budget_only`, `transaction`, and `budget_adjustment`, ordering refinements for spreadsheet review, and a repaired Playwright harness that now migrates its SQLite test database before backend startup.
+
+Important direction now in place:
+
+- the period-detail page now exposes a direct `Export` action beside the lifecycle controls rather than hiding export behind a broader reporting screen
+- the first export slice is intentionally scoped to a single viewed budget cycle and is available for active, planned, and closed cycles
+- flat CSV export is now designed for spreadsheet use, with repeated line fields and row kinds that preserve reconciliation back to the period-detail view
+- empty `transaction_date` rows now sort first, and dated rows then sort ascending so untouched lines remain easy to scan before ledger-backed activity
+- export calculations reuse the existing period-detail data path, including the effective-budget behavior already used for paid expense and investment lines
+- the Playwright harness now runs `alembic upgrade head` on a fresh SQLite file before backend startup, which removes the previous schema-less e2e boot failure and leaves the export smoke test validating a real downloaded file
+
+### 1. Budget-cycle export is now a first-class period-detail action
+
+Current behavior:
+
+- [periods.py](/home/ubuntu/dosh/backend/app/routers/periods.py) now exposes `GET /api/periods/{finperiodid}/export?format=csv|json`
+- [client.js](/home/ubuntu/dosh/frontend/src/api/client.js) now downloads the response through the normal browser attachment flow
+- [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx) now renders an `Export` button in the period header and opens a small format-selection modal
+
+Important product meaning:
+
+- export now lives in the same place users already review the cycle they want to download
+- the feature stays cross-platform by relying on normal browser download behavior rather than a browser-specific folder picker
+
+### 2. The flat export shape is now explicit and spreadsheet-oriented
+
+Current behavior:
+
+- flat CSV rows now use `budget_only`, `transaction`, and `budget_adjustment` to distinguish untouched lines, normal ledger rows, and stored planning-change history
+- line-level values are repeated on exported transaction rows so spreadsheet grouping and filtering remain meaningful even when multiple rows map back to the same line
+- [BUDGET_CYCLE_EXPORT_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_CYCLE_EXPORT_PLAN.md) now preserves the row semantics, ordering rule, and reconciliation constraints for future sessions
+
+Important engineering meaning:
+
+- export is no longer an undefined roadmap placeholder; it now has a concrete implemented shape that future reporting or backup work should build from deliberately
+- future export growth should keep using the current detail-page values as the reconciliation anchor instead of introducing a second summary-calculation path
+
+### 3. Playwright now validates the downloaded export output directly
+
+Current behavior:
+
+- [budget-smoke.spec.js](/home/ubuntu/dosh/frontend/e2e/budget-smoke.spec.js) now includes a browser-level export scenario that downloads the CSV and parses it for ordering and row-kind assertions
+- [playwright.config.js](/home/ubuntu/dosh/frontend/playwright.config.js) now migrates the fresh e2e SQLite database with Alembic before backend startup
+- stale Playwright selectors were refreshed to match the current `Primary transaction account` wording
+
+Important engineering meaning:
+
+- the export flow is now protected by more than unit or component tests; it has a real downloaded-file assertion at the browser level
+- future e2e failures around startup schema state should first check the Playwright migration boot path before debugging product behavior
+
 ## Latest Session: GitHub Release Automation, GitHub-Backed In-App Release Info, And Release Runbook
 
 This session turned the release-management plan into working repository behavior. The main outcomes were adding the GitHub tagging and release-publishing workflows, moving the runtime release-notes endpoint to published GitHub Releases, adding private-repo token support through the personal Compose override path, and aligning the release baseline to the next checkpoint.

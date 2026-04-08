@@ -4,6 +4,106 @@ This document records meaningful automated test results from major working sessi
 
 It exists separately from [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) so the strategy can stay stable while future sessions still have a record of what was actually run and verified.
 
+## Latest Session: Budget-Cycle Export, Export Ordering Validation, Playwright Harness Migration, And Repeated Deployment Verification
+
+Session outcomes verified in this run:
+
+- budget-cycle export is now implemented from the period-detail header with user-selected flat `CSV` and grouped `JSON` download
+- the backend period router now exposes a dedicated export endpoint that reuses current period-detail and ledger-backed values so export rows reconcile to the detail page
+- flat CSV export now uses the implemented `budget_only`, `transaction`, and `budget_adjustment` row kinds
+- flat export ordering was refined so rows with empty `transaction_date` appear first, followed by dated rows in ascending order
+- the Playwright harness now migrates a fresh SQLite e2e database with Alembic before backend startup, which resolved the earlier `no such table: paytypes` harness failure
+- the existing smoke selectors were refreshed to match current setup wording, and the end-to-end suite now validates the downloaded export output directly
+- the Compose stack was redeployed repeatedly after the export implementation and later ordering refinements
+
+### Frontend verification
+
+Commands run during this session:
+
+```bash
+cd /home/ubuntu/dosh/frontend
+npx jest --runInBand src/__tests__/PeriodDetailPage.test.jsx src/__tests__/client.test.js
+npx playwright test e2e/budget-smoke.spec.js
+```
+
+Result:
+
+- the focused frontend Jest batch passed with the new export modal and download-helper coverage
+- the Playwright smoke suite passed with 5 tests after the harness migration and selector refresh
+- the new end-to-end export test now validates the downloaded flat CSV, including `budget_only` rows and the current blank-date-first then ascending-date ordering rule
+
+Files with meaningful frontend updates in this session:
+
+- [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx)
+- [client.js](/home/ubuntu/dosh/frontend/src/api/client.js)
+- [PeriodDetailPage.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/PeriodDetailPage.test.jsx)
+- [client.test.js](/home/ubuntu/dosh/frontend/src/__tests__/client.test.js)
+- [budget-smoke.spec.js](/home/ubuntu/dosh/frontend/e2e/budget-smoke.spec.js)
+- [playwright.config.js](/home/ubuntu/dosh/frontend/playwright.config.js)
+
+### Backend verification
+
+Commands run during this session:
+
+```bash
+python3 -m py_compile /home/ubuntu/dosh/backend/app/routers/periods.py /home/ubuntu/dosh/backend/tests/test_period_export.py
+```
+
+Attempted but unavailable in this shell environment:
+
+```bash
+pytest /home/ubuntu/dosh/backend/tests/test_period_export.py
+python3 -m pytest /home/ubuntu/dosh/backend/tests/test_period_export.py
+```
+
+Result:
+
+- the new backend export route and focused backend export test file compiled successfully
+- direct backend `pytest` execution could not be completed in this shell environment because `pytest` was not installed on the path or as an available Python module
+- the exported behavior still received indirect end-to-end validation through the passing Playwright download scenario
+
+Files with meaningful backend updates in this session:
+
+- [periods.py](/home/ubuntu/dosh/backend/app/routers/periods.py)
+- [test_period_export.py](/home/ubuntu/dosh/backend/tests/test_period_export.py)
+
+### Playwright harness failure and resolution
+
+Initial failure:
+
+- the first Playwright rerun failed before browser assertions because the backend test server started against a brand-new SQLite file without the baseline schema and hit `sqlite3.OperationalError: no such table: paytypes`
+- after that was fixed conceptually, the next run still failed because the previous config referenced `/tmp/dosh-test-venv/bin/alembic`, which did not exist
+- once the backend boot path was corrected, the smoke suite still reflected outdated `Primary transaction account` selectors from older UI copy
+
+Resolution:
+
+- updated [playwright.config.js](/home/ubuntu/dosh/frontend/playwright.config.js) to run `../backend/.venv/bin/alembic upgrade head` before backend startup
+- switched the config to use the repository backend virtual environment for both Alembic and Uvicorn
+- refreshed the smoke selectors in [budget-smoke.spec.js](/home/ubuntu/dosh/frontend/e2e/budget-smoke.spec.js) to match current setup wording
+
+Final result:
+
+- no unresolved Playwright failures remained at the end of the session
+
+### Deployment verification
+
+Commands run during this session:
+
+```bash
+cd /home/ubuntu/dosh
+docker compose up -d --build
+docker compose ps
+curl -I http://localhost:3080
+docker logs --tail 40 dosh-backend
+docker logs --tail 40 dosh-frontend
+```
+
+Result:
+
+- the stack rebuilt and restarted successfully after the export implementation and again after the export-ordering refinements
+- the frontend responded with `HTTP/1.1 200 OK` on `http://localhost:3080`
+- backend logs showed normal startup with Uvicorn listening on port `80`
+
 ## Latest Session: GitHub Release Automation, GitHub-Backed Release Info, And Version Alignment
 
 Session outcomes verified in this run:

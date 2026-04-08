@@ -9,6 +9,8 @@ Dosh now keeps GitHub Release publishing in the same workflow that creates the o
 - Moved GitHub Release creation into the `auto-tag-on-version-bump` workflow so the normal release path no longer depends on a second workflow being triggered by a `GITHUB_TOKEN` tag push
 - Converted the separate tag-based release workflow into a manual repair or backfill path for existing tags
 - Documented the confirmed remote release flow, including protected `main`, the SonarQube gate, and the successful manual backfill of the first `v0.1.3-alpha` GitHub Release
+- Added budget-cycle export from the period-detail page with user-selected flat `CSV` and grouped `JSON` download
+- Added direct export regression coverage in Jest and Playwright, including validation of the downloaded flat CSV ordering rules
 
 ## 0.1.3-alpha | released | 2026-04-08
 

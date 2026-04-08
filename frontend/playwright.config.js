@@ -14,7 +14,7 @@ module.exports = defineConfig({
   },
   webServer: [
     {
-      command: 'rm -f /tmp/dosh-e2e.db && DATABASE_URL=sqlite:////tmp/dosh-e2e.db /tmp/dosh-test-venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8000',
+      command: 'rm -f /tmp/dosh-e2e.db && DATABASE_URL=sqlite:////tmp/dosh-e2e.db ../backend/.venv/bin/alembic upgrade head && DATABASE_URL=sqlite:////tmp/dosh-e2e.db ../backend/.venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8000',
       cwd: '../backend',
       url: 'http://127.0.0.1:8000/api/health',
       reuseExistingServer: !process.env.CI,

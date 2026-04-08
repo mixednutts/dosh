@@ -18,6 +18,7 @@ It is a synthesis of the current Markdown sources in this repository:
 - [TEST_RESULTS_SUMMARY.md](/home/ubuntu/dosh/docs/tests/TEST_RESULTS_SUMMARY.md)
 - [INCOME_TRANSACTIONS_UNIFICATION_AND_LEGACY_LEDGER_CLEANUP_PLAN.md](/home/ubuntu/dosh/docs/plans/INCOME_TRANSACTIONS_UNIFICATION_AND_LEGACY_LEDGER_CLEANUP_PLAN.md)
 - [INLINE_EXPRESSION_AMOUNT_INPUT_PLAN.md](/home/ubuntu/dosh/docs/plans/INLINE_EXPRESSION_AMOUNT_INPUT_PLAN.md)
+- [BUDGET_CYCLE_EXPORT_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_CYCLE_EXPORT_PLAN.md)
 - [GITHUB_RELEASE_MANAGEMENT_WORKFLOW_PLAN.md](/home/ubuntu/dosh/docs/plans/GITHUB_RELEASE_MANAGEMENT_WORKFLOW_PLAN.md)
 
 Use this as the quick-start development handoff. Use the source documents above when deeper detail is needed.
@@ -164,6 +165,8 @@ Operational note:
 - the latest verified successful Sonar artifact [24058415746](/tmp/dosh-sonar-artifact/run-24058415746/sonar-summary.md) is green and followed a prior failed run where `new_coverage` had slipped to `79.5`, which means future sessions should treat coverage margin, not just threshold crossing, as the practical quality-gate concern
 - [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx) no longer appears as a file-level new-code duplication hotspot in the latest verified artifact after the shared transaction-workflow and action-rail refactor, but it still remains the largest concentration of residual medium-severity maintainability cleanup
 - dedicated frontend regression suites now exist for [AmountCell.jsx](/home/ubuntu/dosh/frontend/src/components/AmountCell.jsx), [Dashboard.jsx](/home/ubuntu/dosh/frontend/src/pages/Dashboard.jsx), [PersonalisationTab.jsx](/home/ubuntu/dosh/frontend/src/pages/tabs/PersonalisationTab.jsx), and newer coverage-follow-through around [ExpenseItemsTab.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/ExpenseItemsTab.test.jsx), [BudgetPeriodsPage.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/BudgetPeriodsPage.test.jsx), and [BudgetDetailPage.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/BudgetDetailPage.test.jsx) because those touched areas were highlighted as thin new-code coverage paths
+- budget-cycle export is now implemented through the period router as flat `CSV` plus grouped `JSON`, with browser-download support in the frontend period-detail page rather than a platform-specific file-picker path
+- the Playwright harness now upgrades a fresh Alembic-backed SQLite database before booting the backend test server, so end-to-end smoke coverage can validate downloaded export output against a real migrated schema
 - the latest local Sonar cleanup pass re-pulled successful artifact [24059573777](/tmp/dosh-sonar-artifact/run-24059573777/sonar-summary.json), confirmed the remaining issue list directly from [sonar-issues-full.json](/tmp/dosh-sonar-artifact/run-24059573777/sonar-issues-full.json), and targeted the small residual medium-issue cluster in [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx), [BalanceTypesTab.jsx](/home/ubuntu/dosh/frontend/src/pages/tabs/BalanceTypesTab.jsx), [ExpenseItemsTab.jsx](/home/ubuntu/dosh/frontend/src/pages/tabs/ExpenseItemsTab.jsx), and [budget_health.py](/home/ubuntu/dosh/backend/app/budget_health.py); a fresh workflow run is still required to confirm those resolutions remotely
 - `PeriodTransaction` is now the sole live transaction store; older expense and investment transaction tables have been removed from the active schema
 - the deployed database previously required manual alignment to reach the current post-session schema expectations, including budget-adjustment, transaction line-state, and setup-revision history fields
@@ -236,6 +239,7 @@ The repository already supports:
 - budget setup now uses `Income Source` wording in the touched setup flows, and new income sources default `Auto-include` to on
 - period-detail expense and investment `View transactions` actions now open read-only details modals, while add-transaction actions remain explicit
 - period-detail remaining and budget-surplus summaries now roll up from line-level budget, actual, and positive-remaining logic so current mixed-actual periods and untouched future periods both behave consistently
+- period-detail now includes a direct `Export` action that downloads the viewed budget cycle as either flat `CSV` or grouped `JSON`, with flat export rows ordered so empty transaction dates appear first and dated transaction rows then sort ascending
 
 Current frontend wording trends toward `Budget Cycle` for user clarity while backend naming still uses `period` for stability.
 
@@ -286,7 +290,7 @@ Dosh now has a meaningful multi-layer regression baseline:
 - frontend Jest and React Testing Library on the Vite-based frontend, including a dedicated layout-navigation regression baseline for current sidebar behavior
 - dedicated frontend regression suites for [AmountCell.jsx](/home/ubuntu/dosh/frontend/src/components/AmountCell.jsx), [Dashboard.jsx](/home/ubuntu/dosh/frontend/src/pages/Dashboard.jsx), [PersonalisationTab.jsx](/home/ubuntu/dosh/frontend/src/pages/tabs/PersonalisationTab.jsx), [AmountExpressionInput.jsx](/home/ubuntu/dosh/frontend/src/components/AmountExpressionInput.jsx), and [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx)
 - direct backend router-guard regression coverage for [periods.py](/home/ubuntu/dosh/backend/app/routers/periods.py) now also exists in [test_period_router_guards.py](/home/ubuntu/dosh/backend/tests/test_period_router_guards.py) for carried-forward removal blocking, recorded-activity delete guards, and invalid paid or revised status transitions
-- Playwright smoke coverage for create-budget, setup gating, first-cycle generation, first expense activity, close-out snapshot visibility, and next-cycle activation
+- Playwright smoke coverage for create-budget, setup gating, first-cycle generation, first expense activity, close-out snapshot visibility, next-cycle activation, and budget-cycle export download validation
 
 Testing emphasis should remain risk-based.
 

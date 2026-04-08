@@ -1,4 +1,41 @@
 const { test, expect } = require('@playwright/test')
+const fs = require('fs/promises')
+
+function parseCsvLine(line) {
+  const values = []
+  let current = ''
+  let inQuotes = false
+
+  for (let index = 0; index < line.length; index += 1) {
+    const char = line[index]
+    const next = line[index + 1]
+    if (char === '"') {
+      if (inQuotes && next === '"') {
+        current += '"'
+        index += 1
+      } else {
+        inQuotes = !inQuotes
+      }
+    } else if (char === ',' && !inQuotes) {
+      values.push(current)
+      current = ''
+    } else {
+      current += char
+    }
+  }
+
+  values.push(current)
+  return values
+}
+
+function parseCsv(content) {
+  const lines = content.trim().split(/\r?\n/)
+  const headers = parseCsvLine(lines[0])
+  return lines.slice(1).map(line => {
+    const values = parseCsvLine(line)
+    return Object.fromEntries(headers.map((header, index) => [header, values[index] ?? '']))
+  })
+}
 
 async function createBudget(page, name) {
   await page.goto('/budgets')
@@ -27,7 +64,7 @@ async function completeMinimumSetup(page) {
   await expect(page.getByRole('heading', { name: 'Add Account' })).toBeVisible()
   await page.getByPlaceholder('e.g. Everyday Account').fill('Main Account')
   await page.getByPlaceholder('0.00').fill('1000')
-  await page.getByLabel(/Primary transaction account \(expenses deducted from this account\)/i).check()
+  await page.getByLabel(/Primary transaction account/i).check()
   await page.getByRole('button', { name: 'Save' }).click()
   await expect(page.getByText('Main Account')).toBeVisible()
 
@@ -47,6 +84,16 @@ async function completeMinimumSetup(page) {
   await page.locator('input[type="number"]').nth(1).fill('1200')
   await page.getByRole('button', { name: 'Save' }).click()
   await expect(page.getByText(/^Rent$/)).toBeVisible()
+}
+
+async function addExpenseItem(page, name, amount) {
+  await page.getByRole('button', { name: 'Expense Items' }).click()
+  await page.getByRole('button', { name: /Add Expense Item/i }).click()
+  await expect(page.getByRole('heading', { name: 'Add Expense Item' })).toBeVisible()
+  await page.getByPlaceholder('e.g. Netflix').fill(name)
+  await page.locator('input[type="number"]').nth(1).fill(String(amount))
+  await page.getByRole('button', { name: 'Save' }).click()
+  await expect(page.getByText(new RegExp(`^${name}$`))).toBeVisible()
 }
 
 async function generateFirstCycle(page, startDate = '2026-04-01') {
@@ -69,7 +116,7 @@ test('creates a budget and reaches setup and budget-cycle handoff', async ({ pag
   await createBudget(page, 'E2E Household')
   await expect(page.getByText('Current Setup')).toBeVisible()
   await expect(page.getByText('0 accounts, 0 income sources, 0 active expense items, 0 investments')).toBeVisible()
-  await expect(page.getByText('Choose one account as the primary transaction account so expense entries know where to land by default.')).toBeVisible()
+  await expect(page.getByText(/Choose one account as the primary transaction account, this allow expenses to know which account to deduct from by default\./)).toBeVisible()
 
   await page.goto(page.url().replace(/\/setup$/, ''))
 
@@ -142,4 +189,57 @@ test('closes out a cycle, stores the snapshot, and creates the next active cycle
   await expect(page.getByRole('heading', { name: 'Budget Cycles' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Current' })).toBeVisible()
   await expect(page.getByText('ACTIVE')).toBeVisible()
+})
+
+test('exports a flat csv with budget-only rows first and transaction rows after in ascending date order', async ({ page }) => {
+  await createBudget(page, 'E2E Export')
+  await completeMinimumSetup(page)
+  await addExpenseItem(page, 'Groceries', 300)
+  await generateFirstCycle(page)
+
+  await page.getByRole('link', { name: 'Details' }).click()
+  await expect(page).toHaveURL(/\/periods\/\d+$/)
+
+  const rentRow = page.locator('tr', { hasText: 'Rent' })
+  await rentRow.getByTitle('Add expense transaction').click()
+  await expect(page.getByRole('heading', { name: 'Transactions — Rent' })).toBeVisible()
+  await page.getByPlaceholder('Amount').fill('400')
+  await page.getByPlaceholder('Note (optional)').fill('First rent payment')
+  await page.getByRole('button', { name: 'Add Expense', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Transactions — Rent' })).not.toBeVisible()
+
+  await rentRow.getByTitle('Add expense transaction').click()
+  await expect(page.getByRole('heading', { name: 'Transactions — Rent' })).toBeVisible()
+  await page.getByPlaceholder('Amount').fill('300')
+  await page.getByPlaceholder('Note (optional)').fill('Second rent payment')
+  await page.getByRole('button', { name: 'Add Expense', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Transactions — Rent' })).not.toBeVisible()
+
+  const downloadPromise = page.waitForEvent('download')
+  await page.getByTitle('Export budget cycle').click()
+  await expect(page.getByRole('heading', { name: 'Export Budget Cycle' })).toBeVisible()
+  await page.getByRole('button', { name: 'Download Export' }).click()
+
+  const download = await downloadPromise
+  expect(download.suggestedFilename()).toMatch(/\.csv$/)
+
+  const downloadPath = await download.path()
+  const content = await fs.readFile(downloadPath, 'utf8')
+  const rows = parseCsv(content)
+
+  expect(rows.length).toBeGreaterThan(0)
+  expect(rows.some(row => row.row_kind === 'budget_only' && row.line_name === 'Salary')).toBeTruthy()
+  expect(rows.some(row => row.row_kind === 'budget_only' && row.line_name === 'Groceries')).toBeTruthy()
+
+  const firstDatedIndex = rows.findIndex(row => row.transaction_date)
+  expect(firstDatedIndex).toBeGreaterThan(0)
+  expect(rows.slice(0, firstDatedIndex).every(row => !row.transaction_date)).toBeTruthy()
+
+  const datedRows = rows.filter(row => row.transaction_date)
+  const sortedDates = [...datedRows.map(row => row.transaction_date)].sort()
+  expect(datedRows.map(row => row.transaction_date)).toEqual(sortedDates)
+
+  const rentTransactionRows = rows.filter(row => row.line_name === 'Rent' && row.row_kind === 'transaction')
+  expect(rentTransactionRows).toHaveLength(2)
+  expect(rentTransactionRows.map(row => row.transaction_note)).toEqual(['First rent payment', 'Second rent payment'])
 })

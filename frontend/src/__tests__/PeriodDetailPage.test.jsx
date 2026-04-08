@@ -36,6 +36,7 @@ jest.mock('../api/client', () => ({
   setPeriodInvestmentStatus: jest.fn(),
   getPeriodCloseoutPreview: jest.fn(),
   closeOutPeriod: jest.fn(),
+  exportPeriod: jest.fn(),
 }))
 
 jest.mock('../components/Modal', () => ({ title, children }) => (
@@ -58,6 +59,7 @@ describe('PeriodDetailPage', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     client.createIncomeType.mockResolvedValue({})
+    client.exportPeriod.mockResolvedValue('dosh-budget-cycle.csv')
   })
 
   it('shows closed-cycle read-only messaging and snapshot details', async () => {
@@ -120,6 +122,86 @@ describe('PeriodDetailPage', () => {
     expect(screen.getByText('$150.00')).toBeTruthy()
     expect(screen.getByText(/Closed out smoothly\./)).toBeTruthy()
     expect(screen.getByText(/Next cycle goals: Stay consistent next cycle\./)).toBeTruthy()
+    expect(screen.queryByText('Close Out')).toBeNull()
+    expect(screen.queryByText('Unlocked')).toBeNull()
+  })
+
+  it('shows export alongside lifecycle actions for active cycles and downloads the selected format', async () => {
+    client.getBudget.mockResolvedValue({
+      budgetid: 1,
+      budgetowner: 'Alex',
+      description: 'Home Budget',
+      budget_frequency: 'Monthly',
+      allow_cycle_lock: true,
+    })
+    client.getPeriodDetail.mockResolvedValue({
+      period: {
+        finperiodid: 45,
+        budgetid: 1,
+        startdate: '2026-04-01T00:00:00',
+        enddate: '2026-04-30T00:00:00',
+        islocked: false,
+        cycle_status: 'ACTIVE',
+      },
+      incomes: [],
+      expenses: [],
+      investments: [],
+      balances: [],
+      projected_savings: '0.00',
+      closeout_snapshot: null,
+    })
+
+    renderWithProviders(<PeriodDetailPage />, {
+      route: '/periods/45',
+      path: '/periods/:periodId',
+    })
+
+    expect(await screen.findByText('Close Out')).toBeTruthy()
+    expect(screen.getByTitle('Export budget cycle')).toBeTruthy()
+
+    fireEvent.click(screen.getByTitle('Export budget cycle'))
+    expect(await screen.findByText('Export Budget Cycle')).toBeTruthy()
+    expect(screen.getByRole('radio', { name: /JSON \(.json\)/ })).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('radio', { name: /JSON \(.json\)/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Download Export' }))
+
+    await waitFor(() => {
+      expect(client.exportPeriod).toHaveBeenCalledWith(45, 'json')
+    })
+  })
+
+  it('shows export for closed cycles without lifecycle action buttons', async () => {
+    client.getBudget.mockResolvedValue({
+      budgetid: 1,
+      budgetowner: 'Alex',
+      description: 'Home Budget',
+      budget_frequency: 'Monthly',
+      allow_cycle_lock: true,
+    })
+    client.getPeriodDetail.mockResolvedValue({
+      period: {
+        finperiodid: 46,
+        budgetid: 1,
+        startdate: '2026-05-01T00:00:00',
+        enddate: '2026-05-31T00:00:00',
+        islocked: true,
+        cycle_status: 'CLOSED',
+      },
+      incomes: [],
+      expenses: [],
+      investments: [],
+      balances: [],
+      projected_savings: '0.00',
+      closeout_snapshot: null,
+    })
+
+    renderWithProviders(<PeriodDetailPage />, {
+      route: '/periods/46',
+      path: '/periods/:periodId',
+    })
+
+    expect(await screen.findByTitle('Export budget cycle')).toBeTruthy()
     expect(screen.queryByText('Close Out')).toBeNull()
     expect(screen.queryByText('Unlocked')).toBeNull()
   })

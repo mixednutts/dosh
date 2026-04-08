@@ -336,6 +336,8 @@ Current first smoke scope:
 - close out the active cycle with automatic next-cycle creation
 - confirm the closed-cycle snapshot is shown
 - confirm the next cycle becomes the active cycle
+- export the viewed cycle as flat CSV
+- validate that empty transaction dates sort first and dated transaction rows then sort ascending in the downloaded file
 
 ## Current Harness Status
 
@@ -364,7 +366,8 @@ Backend scaffold now present:
   - period-detail income actual entry now uses a dedicated income transaction modal rather than inline set or add controls
   - income transaction UI coverage now exists alongside expense and investment transaction coverage
 - initial Playwright end-to-end scaffold in [playwright.config.js](/home/ubuntu/dosh/frontend/playwright.config.js) and [budget-smoke.spec.js](/home/ubuntu/dosh/frontend/e2e/budget-smoke.spec.js)
-  The current smoke paths now run successfully in Chromium locally, covering blocked setup handoff, minimum-setup first-cycle generation, first expense-transaction activity with linked account movement, and close-out into the next active cycle.
+  The current smoke paths now run successfully in Chromium locally, covering blocked setup handoff, minimum-setup first-cycle generation, first expense-transaction activity with linked account movement, close-out into the next active cycle, and budget-cycle export download validation.
+  The current Playwright backend harness now runs `alembic upgrade head` against a fresh SQLite database before booting the backend server, so end-to-end flows exercise a migrated schema instead of an uninitialized file.
   The current smoke path selectors have also been updated to match the newer `Primary transaction account` wording so the suite reflects current UI copy.
 
 Current backend run command:
@@ -403,6 +406,7 @@ Current limitation:
 
 - Priority 1 coverage is now present but still partial, and should next be expanded into deeper live transaction-ledger reconciliation scenarios, broader budget health scoring combinations, and broader frontend workflow coverage across setup, delete, and paid or revised edge states
 - the initial Playwright smoke layer is intentionally small and currently covers only the earliest setup, generation, first-transaction, and close-out happy paths, not richer multi-line activity, reconciliation, or broader scenario-shape permutations
+- the current Playwright export coverage validates a real downloaded CSV and its row-ordering rules, but it still does not cover richer JSON assertions, larger multi-line export combinations, or broader reconciliation workflows
 
 ## Coverage Readiness
 

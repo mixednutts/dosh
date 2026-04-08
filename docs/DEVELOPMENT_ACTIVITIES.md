@@ -100,11 +100,12 @@ This remains the clearest next feature stream.
 
 Status:
 
-- `Next`
+- `Active`
 
 - add a period comparison summary endpoint
 - add reporting cards on the budget summary page
 - build account movement summaries grouped by source
+- build on the newly implemented single-cycle export surface instead of designing reporting output from scratch again
 - move period-detail summary-card rollups onto canonical backend-calculated summary values so the API, not the frontend page, owns the mixed budget, actual, and remaining calculations
 
 #### Activity Group: Trend and Variance Visibility
@@ -447,16 +448,20 @@ Cross-links:
 
 As Dosh becomes more trustworthy for day-to-day finance use, users will eventually expect straightforward ways to export their data and keep independent backups.
 
+Reference:
+
+- [BUDGET_CYCLE_EXPORT_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_CYCLE_EXPORT_PLAN.md)
+
 #### Activity Group: Export Scope and Format
 
 Status:
 
-- `Later`
+- `Active`
 
-- define what data should be exportable for user trust, portability, and support
-- define initial export scope for budgets, periods, transactions, balances, and investments
-- decide on export formats such as CSV for review and JSON for structured backup
-- make export useful for both human review and machine-readable portability
+- `Completed`: add budget-cycle detail export from the period-detail header with user-selected flat `CSV` or grouped `JSON` download
+- keep the current flat CSV spreadsheet-friendly for Excel and Google Sheets while preserving line-to-transaction reconciliation
+- decide whether the next export slice should expand to budget-level, multi-cycle, account-level, or reconciliation-oriented reporting
+- make future export additions useful for both human review and machine-readable portability without weakening ledger explainability
 
 #### Activity Group: Backup and Restore Design
 
@@ -481,7 +486,7 @@ Status:
 - keep export and backup aligned with the ledger-backed model so restored data stays explainable
 - identify privacy and security expectations around exported financial data
 - define stable export shapes for the most important financial records
-- add tests or validation around export completeness once the first format is defined
+- continue expanding validation around export completeness now that the first flat CSV and JSON slice exists
 
 ### 9. Quality
 
