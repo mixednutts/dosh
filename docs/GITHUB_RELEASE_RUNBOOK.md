@@ -19,10 +19,15 @@ Typical examples:
 Before merging to `main`:
 
 1. update all required version touchpoints to the same canonical version
-2. add or update the matching `released` entry in [RELEASE_NOTES.md](/home/ubuntu/dosh/docs/RELEASE_NOTES.md)
+2. move the relevant content from the top `Unreleased` section in [RELEASE_NOTES.md](/home/ubuntu/dosh/docs/RELEASE_NOTES.md) into a new matching `released` entry for the chosen version
 3. keep the release-note entry concise and suitable for direct GitHub Release publishing
 4. run the relevant automated tests for the touched areas
 5. wait for the `SonarQube` GitHub check to pass and rely on `main` branch protection to block merge until it does
+
+Between releases:
+
+- keep notable unreleased work in the top `## Unreleased` section
+- do not assign a concrete next version number until you are ready to ship
 
 Required version touchpoints:
 
@@ -103,7 +108,7 @@ That repository setting is the release gate for code quality. The release-taggin
 ## Failure Handling
 
 - version mismatch: fix the inconsistent version touchpoint before merging
-- missing or unreleased release entry: update [RELEASE_NOTES.md](/home/ubuntu/dosh/docs/RELEASE_NOTES.md) before merging
+- missing or unreleased release entry: convert the relevant `Unreleased` content into a matching `released` entry before merging
 - duplicate tag: GitHub skips tag creation rather than creating a second tag
 - missing token for private repo: runtime release info degrades safely instead of breaking the app
 - GitHub API failure: runtime release info degrades safely and should be retried later

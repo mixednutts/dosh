@@ -64,10 +64,10 @@ In-app visibility rules:
 
 Practical expectations for entries:
 
-- each release-note entry should identify the version
-- each entry should indicate whether it is `released` or `unreleased`
+- released entries should identify the version using the `## <version> | released | <date>` format
+- unreleased work should accumulate under a versionless `## Unreleased` section until the release version is intentionally chosen
 - released entries may be published into GitHub Releases and then surfaced in the app
-- unreleased entries are for repo planning and preparation only until that version is actually published
+- the `Unreleased` section is for repo planning and preparation only until that content is assigned a real version and published
 
 ## Migration Rules
 
@@ -115,6 +115,12 @@ When a release includes a version bump, also:
 6. update [RELEASE_NOTES.md](/home/ubuntu/dosh/docs/RELEASE_NOTES.md) for that version
 7. verify the in-app release notes and version display reflect the expected current version and any newer released updates correctly
 8. ensure the `SonarQube` status check has passed before the version-bump merge reaches protected `main`
+
+Recommended release-notes flow:
+
+1. keep in-progress release content under `## Unreleased`
+2. when the release version is intentionally chosen, convert that content into a new top `## <version> | released | <date>` entry
+3. leave `## Unreleased` in place above it for future work
 
 The repository includes [release_with_migrations.sh](/home/ubuntu/dosh/scripts/release_with_migrations.sh) to run the expected Compose-based build, backup, migration, and restart flow.
 

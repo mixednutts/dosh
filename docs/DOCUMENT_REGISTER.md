@@ -100,7 +100,7 @@ Primary source-of-truth scope:
 
 - release-note content shown in the app
 - per-version user-facing highlights and fixes
-- released versus unreleased visibility intent for app consumption
+- published release-note content plus the staged `Unreleased` queue for future release preparation
 
 Key relationships:
 
@@ -111,6 +111,7 @@ Key relationships:
 Maintenance notes:
 
 - should stay concise and version-oriented
+- should keep a versionless top `Unreleased` section for post-release work until the next version is intentionally chosen
 - should remain suitable for direct app display rather than becoming a full engineering log
 
 ## Roadmap and Activity Documents

@@ -67,6 +67,11 @@ The version-bump workflow should validate all of the following before creating a
 - the new version has a corresponding released entry in [RELEASE_NOTES.md](/home/ubuntu/dosh/docs/RELEASE_NOTES.md)
 - the release tag does not already exist remotely
 - the tagged release body is generated from the validated `released` entry in [RELEASE_NOTES.md](/home/ubuntu/dosh/docs/RELEASE_NOTES.md)
+
+Release-note staging expectation:
+
+- unreleased work is maintained in a versionless top `Unreleased` section in [RELEASE_NOTES.md](/home/ubuntu/dosh/docs/RELEASE_NOTES.md)
+- before a version-bump release merges, the relevant `Unreleased` content must be converted into a new matching `released` entry for that chosen version
 - SonarQube should already have passed through `main` branch protection before this workflow runs on a releasable merge
 
 Required version touchpoints to validate:

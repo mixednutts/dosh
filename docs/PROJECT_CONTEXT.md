@@ -32,6 +32,7 @@ These guidelines apply across the project as a whole and should continue guiding
 - use [README.md](/home/ubuntu/dosh/README.md) as the top-level entry point
 - use this document as the operational handoff for new AI sessions
 - keep [RELEASE_NOTES.md](/home/ubuntu/dosh/docs/RELEASE_NOTES.md) as the repo-managed release-content source that feeds published GitHub Releases
+- keep post-release work in the top versionless `Unreleased` section of [RELEASE_NOTES.md](/home/ubuntu/dosh/docs/RELEASE_NOTES.md) until the next release version is intentionally chosen
 - maintain one primary source of truth per topic
 - prefer cross-links over duplicating maintained content
 - update [DOCUMENT_REGISTER.md](/home/ubuntu/dosh/docs/DOCUMENT_REGISTER.md) when managed documents are added, moved, renamed, or materially repurposed
