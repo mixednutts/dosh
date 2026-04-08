@@ -37,8 +37,9 @@ The intended flow is:
 4. a GitHub workflow triggered by a push to `main` detects that the canonical version changed
 5. the workflow validates required version touchpoints and release-note alignment
 6. if validation passes and the tag does not already exist, GitHub creates the annotated tag for that commit
-7. a separate tag-triggered workflow validates the tagged commit and creates or updates the GitHub Release from validated repo release content
-8. the app reads those published GitHub Releases through the backend release-notes endpoint
+7. that same post-merge workflow creates or updates the GitHub Release from validated repo release content so it is not blocked by the `GITHUB_TOKEN` workflow-trigger limitation
+8. an optional manual repair workflow can republish a GitHub Release from an existing tag when backfill or recovery is needed
+9. the app reads those published GitHub Releases through the backend release-notes endpoint
 
 ## Authority Boundary
 
@@ -53,6 +54,7 @@ This keeps the responsibility split clear:
 - local workflow: edit, test, commit, push
 - branch protection: block merge to `main` until SonarQube passes
 - GitHub workflow: detect valid version bump, create the official tag, and publish the GitHub Release
+- manual repair workflow: republish a GitHub Release from an existing tag when needed
 - deployment workflow: build, back up, migrate, restart, verify
 
 ## Validation Rules
@@ -106,19 +108,20 @@ Failure behavior:
 
 This workflow intentionally does not orchestrate or wait on the SonarQube workflow directly. SonarQube gating happens before merge through GitHub branch protection so the tagger can stay simple and post-merge.
 
-### Workflow 2: Release On Tag
+### Workflow 2: Manual Release Backfill Or Repair
 
 Trigger:
 
-- push tag matching `v*`
+- manual `workflow_dispatch` with a `v*` tag input
 
 Responsibilities:
 
-- validate that the tag points to a commit whose version files match the tag
+- validate that the requested tag points to a commit whose version files match the tag
 - create or update the GitHub Release using the validated release-note content for that version
+- provide a safe repair path if a release needs to be republished after a tag already exists
 - remain the extension point for future versioned Docker image publication from successful tagged builds
 
-This second workflow should not create tags. It should only react to them.
+This second workflow should not create tags. It should only republish releases from existing tags on demand.
 
 ## Runtime Release Info
 
@@ -137,6 +140,8 @@ The release workflow depends on one GitHub repository setting outside committed 
 - protect `main` with the `SonarQube` required status check so version-bump merges cannot land until SonarQube succeeds
 
 This keeps release gating at the merge boundary rather than forcing the tagging workflow to coordinate with another workflow run after merge.
+
+This repository setting has now been applied for the current repository and should be preserved.
 
 ## Suggested Implementation Notes
 

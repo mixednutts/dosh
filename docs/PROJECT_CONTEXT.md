@@ -131,7 +131,7 @@ Backend:
 - budgeting and generation logic in [period_logic.py](/home/ubuntu/dosh/backend/app/period_logic.py)
 - budget health logic in [budget_health.py](/home/ubuntu/dosh/backend/app/budget_health.py)
 - transaction-backed movement and ledger support in [transaction_ledger.py](/home/ubuntu/dosh/backend/app/transaction_ledger.py)
-- release metadata for the in-app modal is now fetched from published GitHub Releases through [release_notes.py](/home/ubuntu/dosh/backend/app/release_notes.py), while repo-managed release content still lives in [RELEASE_NOTES.md](/home/ubuntu/dosh/docs/RELEASE_NOTES.md); until a matching GitHub Release has actually been published for the running version, the endpoint will safely return `current_release: null`
+- release metadata for the in-app modal is now fetched from published GitHub Releases through [release_notes.py](/home/ubuntu/dosh/backend/app/release_notes.py), while repo-managed release content still lives in [RELEASE_NOTES.md](/home/ubuntu/dosh/docs/RELEASE_NOTES.md)
 
 Frontend:
 
@@ -153,7 +153,7 @@ Operational note:
 - backend tests now run against an isolated SQLite database per test case through [conftest.py](/home/ubuntu/dosh/backend/tests/conftest.py)
 - Docker Compose remains the active deployment path, with the frontend exposed on port `3080`
 - this repo also includes [docker-compose.override.yml](/home/ubuntu/dosh/docker-compose.override.yml), but that file represents optional environment-specific deployment wiring rather than the core repo release path
-- GitHub release alignment is now implemented through repo validation, auto-tagging, published GitHub Releases, and the runtime GitHub-backed release-notes endpoint; operator steps live in [GITHUB_RELEASE_RUNBOOK.md](/home/ubuntu/dosh/docs/GITHUB_RELEASE_RUNBOOK.md), and the remaining follow-through is enabling `main` branch protection for the required `SonarQube` check and publishing the first matching GitHub Release for the live version
+- GitHub release alignment is now implemented through repo validation, auto-tagging, published GitHub Releases, and the runtime GitHub-backed release-notes endpoint; operator steps live in [GITHUB_RELEASE_RUNBOOK.md](/home/ubuntu/dosh/docs/GITHUB_RELEASE_RUNBOOK.md)
 - the frontend Docker build now uses Node 20 rather than the old Node 16 baseline
 - Docker Compose `DEV_MODE` is now the shared control point for dev-only demo-budget behavior across frontend build visibility and backend runtime enforcement
 - the backend router baseline now uses a shared [api_docs.py](/home/ubuntu/dosh/backend/app/api_docs.py) helper with `DbSession` and centralized `error_responses(...)` metadata for FastAPI endpoints

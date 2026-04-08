@@ -44,14 +44,15 @@ On push to `main`:
 - skip cleanly if there is no version bump
 - skip cleanly if the matching remote tag already exists
 - create the annotated `v<version>` tag when validation passes
+- create or update the GitHub Release from that same workflow run
 
 This tagging flow assumes SonarQube already passed before merge. It does not wait on the Sonar workflow itself.
 
-On push of tag `v*`:
+Manual repair path:
 
-- validate that the tag matches the tagged commit version
-- render the GitHub Release body from the validated repo release entry
-- create or update the published GitHub Release for that tag
+- run the `Publish Release From Tag` workflow manually with an existing `v*` tag
+- use this only when a GitHub Release needs to be backfilled or republished for a tag that already exists
+- this path was used successfully to publish the first `v0.1.3-alpha` GitHub Release after the `GITHUB_TOKEN` workflow-trigger limitation was confirmed in practice
 
 ## In-App Release Info
 

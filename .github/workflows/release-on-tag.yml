@@ -1,9 +1,12 @@
-name: Release On Tag
+name: Publish Release From Tag
 
 on:
-  push:
-    tags:
-      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: Tag to publish or republish, for example v0.1.3-alpha
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -25,17 +28,19 @@ jobs:
 
       - name: Validate tagged release state
         env:
-          TAG_NAME: ${{ github.ref_name }}
-          HEAD_SHA: ${{ github.sha }}
-        run: python scripts/release_management.py validate --ref "$HEAD_SHA" --expect-tag "$TAG_NAME" --require-release-entry
+          TAG_NAME: ${{ inputs.tag_name }}
+        run: |
+          tag_sha="$(git rev-list -n 1 "$TAG_NAME")"
+          python scripts/release_management.py validate --ref "$tag_sha" --expect-tag "$TAG_NAME" --require-release-entry
 
       - name: Render release body
         id: body
         env:
-          TAG_NAME: ${{ github.ref_name }}
+          TAG_NAME: ${{ inputs.tag_name }}
         run: |
+          tag_sha="$(git rev-list -n 1 "$TAG_NAME")"
           version="${TAG_NAME#v}"
-          python scripts/release_management.py release-body --ref "$GITHUB_SHA" --version "$version" > "$RUNNER_TEMP/release-body.md"
+          python scripts/release_management.py release-body --ref "$tag_sha" --version "$version" > "$RUNNER_TEMP/release-body.md"
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "body_path=$RUNNER_TEMP/release-body.md" >> "$GITHUB_OUTPUT"
 

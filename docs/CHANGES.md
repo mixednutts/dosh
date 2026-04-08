@@ -43,6 +43,7 @@ Important direction now in place:
 - private repositories are supported through a backend `GITHUB_RELEASES_TOKEN` configured in the personal [docker-compose.override.yml](/home/ubuntu/dosh/docker-compose.override.yml), while future public-repo use can fall back to unauthenticated reads
 - a high-level operator runbook now exists at [GITHUB_RELEASE_RUNBOOK.md](/home/ubuntu/dosh/docs/GITHUB_RELEASE_RUNBOOK.md) so the process is usable without rediscovering workflow details
 - the deployed app now runs the GitHub-backed release-info path successfully, but the live `/api/release-notes` payload still returns `current_release: null` until the first matching GitHub Release is published for `v0.1.3-alpha`
+- the first matching `v0.1.3-alpha` GitHub Release has now been published and the live `/api/release-notes` payload resolves `current_release` successfully from GitHub
 
 ### 1. GitHub now creates the official release checkpoints
 
@@ -57,6 +58,8 @@ Important engineering meaning:
 - GitHub is now the single authority for official release tags and GitHub Releases
 - the tag workflow is already positioned to grow into future Docker image publication without changing the release-authority model
 - the remaining remote follow-through is repository settings plus first-run verification, not additional local workflow design
+- release publication now happens in the same post-merge workflow that creates the tag, while a separate manual repair workflow remains available for backfill or republishing because `GITHUB_TOKEN` tag pushes do not trigger additional workflows
+- the first remote verification is now complete: protected `main`, tag creation, manual backfill release publishing, and live in-app release resolution all behaved as expected
 
 ### 2. Runtime release info now comes from published GitHub Releases
 

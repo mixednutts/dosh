@@ -74,3 +74,61 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git tag -a "v${VERSION}" "$HEAD_SHA" -m "Release v${VERSION}"
           git push origin "refs/tags/v${VERSION}"
+
+      - name: Render release body
+        if: steps.detect.outputs.changed == 'true'
+        id: body
+        env:
+          VERSION: ${{ steps.detect.outputs.version }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          python scripts/release_management.py release-body --ref "$HEAD_SHA" --version "$VERSION" > "$RUNNER_TEMP/release-body.md"
+          echo "body_path=$RUNNER_TEMP/release-body.md" >> "$GITHUB_OUTPUT"
+
+      - name: Create or update GitHub Release
+        if: steps.detect.outputs.changed == 'true'
+        uses: actions/github-script@v7
+        env:
+          BODY_PATH: ${{ steps.body.outputs.body_path }}
+          VERSION: ${{ steps.detect.outputs.version }}
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync(process.env.BODY_PATH, 'utf8');
+            const version = process.env.VERSION;
+            const tag = `v${version}`;
+            const prerelease = version.includes('-');
+
+            let release;
+            try {
+              release = await github.rest.repos.getReleaseByTag({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag,
+              });
+            } catch (error) {
+              if (error.status !== 404) {
+                throw error;
+              }
+            }
+
+            const payload = {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: tag,
+              name: tag,
+              body,
+              draft: false,
+              prerelease,
+            };
+
+            if (release) {
+              await github.rest.repos.updateRelease({
+                ...payload,
+                release_id: release.data.id,
+              });
+              core.info(`Updated GitHub Release for ${tag}.`);
+            } else {
+              await github.rest.repos.createRelease(payload);
+              core.info(`Created GitHub Release for ${tag}.`);
+            }

@@ -14,6 +14,7 @@ Session outcomes verified in this run:
 - the release baseline was bumped from `0.1.2-alpha` to `0.1.3-alpha`
 - the release-management docs now include a high-level operator runbook and private-repo override-token guidance
 - the stack was redeployed successfully with the new runtime path, and the live release-notes endpoint safely returned an empty published-release payload because `v0.1.3-alpha` has not yet been published to GitHub
+- after the first manual GitHub Release backfill for `v0.1.3-alpha`, the live release-notes endpoint returned a populated `current_release` from GitHub as intended
 
 ### Backend verification
 
@@ -57,6 +58,7 @@ Result:
 
 - the shared validation script confirmed the required version touchpoints aligned at `0.1.3-alpha`
 - the release-body renderer produced publishable GitHub Release content from the repo-managed release entry
+- the first remote workflow exercise also clarified that tags pushed with the repository `GITHUB_TOKEN` do not trigger a second workflow run, so release publication was moved into the same post-merge workflow and the separate tag workflow was retained only as a manual repair path
 
 ### Deployment verification
 
@@ -77,7 +79,17 @@ Result:
 - the live health endpoint returned `{\"status\":\"ok\",\"app\":\"Dosh\"}`
 - the live info endpoint returned `0.1.3-alpha`
 - the runtime backend token was present in the container
-- the live release-notes endpoint returned a safe empty published-release payload with `current_release: null`, which matches the expected interim state until the first GitHub Release is published for `v0.1.3-alpha`
+- before the first GitHub Release existed, the live release-notes endpoint returned a safe empty published-release payload with `current_release: null`
+- after the `v0.1.3-alpha` GitHub Release was published, the live release-notes endpoint returned the expected `current_release` payload from GitHub
+
+### Remote release verification
+
+Manual outcomes confirmed after the initial sync:
+
+- `main` branch protection was added with the `SonarQube` required check
+- the `v0.1.3-alpha` Git tag exists remotely
+- the first GitHub Release for `v0.1.3-alpha` was published successfully
+- the live `/api/release-notes` endpoint now resolves the running release from the published GitHub Release
 
 ## Latest Session: Previous Release Visibility, Release Workflow Planning, And Deployment Verification
 
