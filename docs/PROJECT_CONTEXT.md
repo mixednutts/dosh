@@ -149,7 +149,7 @@ Frontend:
 Operational note:
 
 - the current app-version baseline is `0.1.3-alpha`, displayed in the UI as `v0.1.3-alpha`
-- Alembic now owns normal schema evolution from the current aligned baseline, with migration and release rules defined in [MIGRATION_AND_RELEASE_MANAGEMENT.md](/home/ubuntu/dosh/docs/MIGRATION_AND_RELEASE_MANAGEMENT.md)
+- Alembic is the required path for normal schema evolution from the current aligned baseline, with migration and release rules defined in [MIGRATION_AND_RELEASE_MANAGEMENT.md](/home/ubuntu/dosh/docs/MIGRATION_AND_RELEASE_MANAGEMENT.md)
 - the repo now has an explicit transaction-ledger cutover script in [cutover_unified_transactions.py](/home/ubuntu/dosh/backend/scripts/cutover_unified_transactions.py) for the current schema baseline
 - backend tests now run against an isolated SQLite database per test case through [conftest.py](/home/ubuntu/dosh/backend/tests/conftest.py)
 - Docker Compose remains the active deployment path, with the frontend exposed on port `3080`
@@ -166,8 +166,8 @@ Operational note:
 - dedicated frontend regression suites now exist for [AmountCell.jsx](/home/ubuntu/dosh/frontend/src/components/AmountCell.jsx), [Dashboard.jsx](/home/ubuntu/dosh/frontend/src/pages/Dashboard.jsx), [PersonalisationTab.jsx](/home/ubuntu/dosh/frontend/src/pages/tabs/PersonalisationTab.jsx), and newer coverage-follow-through around [ExpenseItemsTab.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/ExpenseItemsTab.test.jsx), [BudgetPeriodsPage.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/BudgetPeriodsPage.test.jsx), and [BudgetDetailPage.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/BudgetDetailPage.test.jsx) because those touched areas were highlighted as thin new-code coverage paths
 - the latest local Sonar cleanup pass re-pulled successful artifact [24059573777](/tmp/dosh-sonar-artifact/run-24059573777/sonar-summary.json), confirmed the remaining issue list directly from [sonar-issues-full.json](/tmp/dosh-sonar-artifact/run-24059573777/sonar-issues-full.json), and targeted the small residual medium-issue cluster in [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx), [BalanceTypesTab.jsx](/home/ubuntu/dosh/frontend/src/pages/tabs/BalanceTypesTab.jsx), [ExpenseItemsTab.jsx](/home/ubuntu/dosh/frontend/src/pages/tabs/ExpenseItemsTab.jsx), and [budget_health.py](/home/ubuntu/dosh/backend/app/budget_health.py); a fresh workflow run is still required to confirm those resolutions remotely
 - `PeriodTransaction` is now the sole live transaction store; older expense and investment transaction tables have been removed from the active schema
-- the deployed database has already been manually aligned to the current post-session schema expectations, including budget-adjustment and transaction line-state fields
-- the deployed database has since required another explicit live patch for setup-revision history support, including `periodtransactions.revisionnum` and the `setuprevisionevents` table, which reinforces that proper migrations remain an active engineering need
+- the deployed database previously required manual alignment to reach the current post-session schema expectations, including budget-adjustment, transaction line-state, and setup-revision history fields
+- those earlier live patches are historical context and should not be treated as an acceptable ongoing schema-update model; future schema changes are expected to ship through Alembic migrations rather than new ad hoc database patching
 - the backend ledger helper baseline now includes a shared `PeriodTransactionContext` dataclass in [transaction_ledger.py](/home/ubuntu/dosh/backend/app/transaction_ledger.py), and future refactors should avoid assuming newer stdlib dataclass features such as `slots=True` are safe on the CI runner without first confirming the workflow Python baseline
 
 ## Core Domain Rules
