@@ -201,7 +201,7 @@ describe('ExpenseItemsTab', () => {
     expect(await screen.findByText('History Details — Rent')).toBeTruthy()
     expect(await screen.findByText('Current Setup')).toBeTruthy()
     expect((await screen.findAllByText('Pay Type')).length).toBeGreaterThan(0)
-    expect((await screen.findAllByText('Commencement Date')).length).toBeGreaterThan(1)
+    expect((await screen.findAllByText('Effective Date')).length).toBeGreaterThan(1)
     expect(await screen.findByText('Setup revision 2')).toBeTruthy()
     expect(await screen.findByText(/Schedule type:/)).toBeTruthy()
     expect(await screen.findByText('Revision 2')).toBeTruthy()
@@ -209,7 +209,7 @@ describe('ExpenseItemsTab', () => {
     expect(client.getExpenseItemHistory).toHaveBeenCalledWith(1, 'Rent')
   })
 
-  it('creates an every-n-days expense item with a commencement date and AUTO pay type by default', async () => {
+  it('creates an every-n-days expense item with an effective date and AUTO pay type by default', async () => {
     client.getExpenseItems.mockResolvedValue([])
     client.createExpenseItem.mockResolvedValue({})
 
@@ -229,7 +229,7 @@ describe('ExpenseItemsTab', () => {
     fireEvent.change(screen.getByLabelText(/Amount/i), {
       target: { value: '85.50' },
     })
-    fireEvent.change(screen.getByLabelText(/Commencement Date/i), {
+    fireEvent.change(screen.getByLabelText(/Effective Date/i), {
       target: { value: '2026-04-01' },
     })
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
@@ -245,6 +245,32 @@ describe('ExpenseItemsTab', () => {
         expenseamount: 85.5,
       })
     })
+  })
+
+  it('shows fixed-day rollover guidance when day 31 is selected', async () => {
+    client.getExpenseItems.mockResolvedValue([])
+
+    renderWithProviders(<ExpenseItemsTab budgetId={1} />)
+
+    fireEvent.click(await screen.findByText('Add Expense Item'))
+    fireEvent.change(screen.getByLabelText(/Frequency Type/i), {
+      target: { value: 'Fixed Day of Month' },
+    })
+    fireEvent.change(screen.getByLabelText(/Day of Month \(1-31\)/i), {
+      target: { value: '31' },
+    })
+
+    expect(screen.getByText(/If a month does not include day 31, Dosh will move this expense to the next day after month end\./)).toBeTruthy()
+  })
+
+  it('hides effective date when frequency type is always', async () => {
+    client.getExpenseItems.mockResolvedValue([])
+
+    renderWithProviders(<ExpenseItemsTab budgetId={1} />)
+
+    fireEvent.click(await screen.findByText('Add Expense Item'))
+
+    expect(screen.queryByLabelText(/Effective Date/i)).toBeNull()
   })
 
   it('shows always-included wording for always expense items', async () => {

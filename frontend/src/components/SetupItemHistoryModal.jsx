@@ -36,7 +36,7 @@ function buildSetupSummary(category, item) {
       ['Frequency', item.freqtype || '—'],
       ['Schedule Value', item.frequency_value ?? '—'],
       ['Pay Type', item.paytype || '—'],
-      ['Commencement Date', item.effectivedate ? format(parseISO(item.effectivedate), 'dd MMM yyyy') : '—'],
+      ['Effective Date', item.effectivedate ? format(parseISO(item.effectivedate), 'dd MMM yyyy') : '—'],
       ['Active', item.active ? 'Yes' : 'No'],
     ]
   }

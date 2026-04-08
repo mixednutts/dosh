@@ -6,13 +6,8 @@ import { format, parseISO, addDays } from 'date-fns'
 import { getExpenseItems, createExpenseItem, updateExpenseItem, deleteExpenseItem, reorderExpenseItems, getBudgetSetupAssessment, getExpenseItemHistory } from '../../api/client'
 import Modal from '../../components/Modal'
 import SetupItemHistoryModal from '../../components/SetupItemHistoryModal'
-
-const FREQTYPES = [
-  { value: 'Always', label: 'Always included' },
-  { value: 'Fixed Day of Month', label: 'Fixed Day of Month' },
-  { value: 'Every N Days', label: 'Every N Days' },
-]
-const PAYTYPES = ['AUTO', 'MANUAL']
+import ExpenseItemSchedulingFields from '../../components/ExpenseItemSchedulingFields'
+import { getNextFixedDayOccurrence } from '../../utils/fixedDayScheduling'
 
 const emptyForm = {
   expensedesc: '', active: true, freqtype: 'Always',
@@ -32,10 +27,7 @@ function calcNextDue(freqtype, frequencyValue, effectivedate) {
   if (freqtype === 'Fixed Day of Month') {
     const day = Number.parseInt(frequencyValue, 10)
     if (!day) return null
-    // Try this month, then next month
-    let candidate = new Date(today.getFullYear(), today.getMonth(), day)
-    if (candidate < today) candidate = new Date(today.getFullYear(), today.getMonth() + 1, day)
-    return candidate
+    return getNextFixedDayOccurrence(today, day)
   }
 
   if (freqtype === 'Every N Days') {
@@ -59,10 +51,6 @@ function ExpenseItemForm({ initial = emptyForm, isEdit = false, onSubmit, onClos
   const formIdPrefix = isEdit ? 'edit-expense-item' : 'create-expense-item'
 
   const isAlways = form.freqtype === 'Always'
-  const isEveryNDays = form.freqtype === 'Every N Days'
-  const isScheduled = !isAlways && !!form.frequency_value && !!form.effectivedate
-  const freqValueLabel = form.freqtype === 'Fixed Day of Month' ? 'Day of Month (1–31)' : 'Interval (days)'
-  const commencementLabel = isEveryNDays ? 'Commencement Date' : 'Effective Date'
 
   return (
     <form onSubmit={e => {
@@ -73,62 +61,28 @@ function ExpenseItemForm({ initial = emptyForm, isEdit = false, onSubmit, onClos
         freqtype: form.freqtype || null,
         frequency_value: (!isAlways && form.frequency_value) ? Number.parseInt(form.frequency_value, 10) : null,
         paytype: isAlways ? 'MANUAL' : (form.paytype || 'MANUAL'),
-        effectivedate: form.effectivedate || null,
+        effectivedate: isAlways ? null : (form.effectivedate || null),
         expenseamount: Number.parseFloat(form.expenseamount) || 0,
       })
     }} className="space-y-4">
+      <ExpenseItemSchedulingFields
+        formIdPrefix={formIdPrefix}
+        description={form.expensedesc}
+        onDescriptionChange={value => set('expensedesc', value)}
+        freqtype={form.freqtype}
+        onFreqtypeChange={value => set('freqtype', value)}
+        frequencyValue={form.frequency_value}
+        onFrequencyValueChange={value => set('frequency_value', value)}
+        paytype={form.paytype}
+        onPaytypeChange={value => set('paytype', value)}
+        effectivedate={form.effectivedate}
+        onEffectivedateChange={value => set('effectivedate', value)}
+        disableDescription={isEdit}
+      />
       <div>
-        <label htmlFor={`${formIdPrefix}-description`} className="label">Description <span className="text-red-500">*</span></label>
-        <input id={`${formIdPrefix}-description`} required className="input" value={form.expensedesc} onChange={e => set('expensedesc', e.target.value)}
-          placeholder="e.g. Netflix" disabled={isEdit} />
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label htmlFor={`${formIdPrefix}-freqtype`} className="label">Frequency Type</label>
-          <select id={`${formIdPrefix}-freqtype`} className="input" value={form.freqtype} onChange={e => set('freqtype', e.target.value)}>
-            {FREQTYPES.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
-          </select>
-        </div>
-        <div>
-          <label htmlFor={`${formIdPrefix}-freq-value`} className={`label ${isAlways ? 'opacity-40' : ''}`}>{freqValueLabel}</label>
-          <input
-            id={`${formIdPrefix}-freq-value`}
-            type="number" min="1" max={form.freqtype === 'Fixed Day of Month' ? 31 : undefined}
-            className="input" value={form.frequency_value} onChange={e => set('frequency_value', e.target.value)}
-            disabled={isAlways}
-            placeholder={isAlways ? 'N/A' : ''} />
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label htmlFor={`${formIdPrefix}-paytype`} className="label">Pay Type</label>
-          <select
-            id={`${formIdPrefix}-paytype`}
-            className="input"
-            value={isAlways ? 'MANUAL' : form.paytype}
-            onChange={e => set('paytype', e.target.value)}
-            disabled={isAlways}
-          >
-            {PAYTYPES.map(p => (
-              <option key={p} value={p} disabled={p === 'AUTO' && !isScheduled}>
-                {p}
-              </option>
-            ))}
-          </select>
-          <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-            AUTO is only available for scheduled expenses and only runs when Auto Expense is enabled in budget settings.
-          </p>
-        </div>
-        <div>
-          <label htmlFor={`${formIdPrefix}-amount`} className="label">Amount ($) <span className="text-red-500">*</span></label>
-          <input id={`${formIdPrefix}-amount`} required type="number" step="0.01" min="0" className="input"
-            value={form.expenseamount} onChange={e => set('expenseamount', e.target.value)} />
-        </div>
-      </div>
-      <div>
-        <label htmlFor={`${formIdPrefix}-effective-date`} className={`label ${isAlways ? 'opacity-40' : ''}`}>{commencementLabel}</label>
-        <input id={`${formIdPrefix}-effective-date`} type="date" className="input" value={form.effectivedate} onChange={e => set('effectivedate', e.target.value)}
-          disabled={isAlways} />
+        <label htmlFor={`${formIdPrefix}-amount`} className="label">Amount ($) <span className="text-red-500">*</span></label>
+        <input id={`${formIdPrefix}-amount`} required type="number" step="0.01" min="0" className="input"
+          value={form.expenseamount} onChange={e => set('expenseamount', e.target.value)} />
       </div>
       {isAlways && (
         <p className="text-xs text-dosh-600 dark:text-dosh-400 bg-dosh-50 dark:bg-dosh-900/20 rounded px-3 py-2">
@@ -286,7 +240,7 @@ export default function ExpenseItemsTab({ budgetId }) {
                 <th className="px-3 py-2 text-left">Frequency</th>
                 <th className="px-3 py-2 text-left">Pay</th>
                 <th className="px-3 py-2 text-right">Amount</th>
-                <th className="px-3 py-2 text-left">Commencement Date</th>
+                <th className="px-3 py-2 text-left">Effective Date</th>
                 <th className="px-3 py-2 text-left">Next Due</th>
                 <th className="px-3 py-2 text-left">Rev</th>
                 <th className="px-3 py-2 text-left">Status</th>

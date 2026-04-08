@@ -368,6 +368,7 @@ Status:
 
 - `Next`
 
+- `Completed`: introduce a shared expense-flow date field with consistent day-only `DD MMM YYYY` display for effective dates, while keeping stored values normalized and leaving broader locale and currency preference work for a later dedicated localisation pass
 - move locale, currency, and date formatting out of hard-coded UI assumptions
 - introduce shared frontend formatting utilities for currency, number, and date presentation
 - add tests around locale-sensitive display and period-boundary assumptions where practical
@@ -501,6 +502,8 @@ Status:
 
 - `Next`
 
+- `Completed`: consolidate Budget Setup and Period Detail add-expense scheduling onto a shared field set based on the Period Detail flow, standardize `Effective Date` wording, keep period-only note and include controls out of Budget Setup, and finish the accepted date-picker, fixed-day guidance, quick-fill, and neutral action-button polish in the touched expense workflows
+- `Completed`: extend the release-notes modal so newly available versions can expand inline for details without losing the current-version focus
 - provide clear definitions and calculation explanations for the period-detail summary cards, likely through hover helper text or another suitable method, with implementation approach to be confirmed before work starts
 - `Completed`: align the budget-setup account table headings and values, separate add-account helper copy more clearly, and tighten primary-account affordances so the setup flow explains what is active, what is primary, and why
 - `Completed`: rename budget-setup income wording from `Income Type` to `Income Source` across the relevant setup surfaces
@@ -527,6 +530,7 @@ Status:
 
 - `Active`
 
+- `Completed`: fix shared add-expense scheduling and transaction-entry inconsistencies including the expense modal icon mismatch, native-date-control replacement, clickable calendar icon behavior, fixed-day `31` rollover handling, and shared quick-fill rule drift across income, expense, and investment directions
 - `Completed`: fix `Surplus (Budget)` so current mixed-actual periods and untouched future periods both roll up correctly from line-level budget, actual, and remaining values rather than relying on one top-level actual-based shortcut
 - `Completed`: prevent account-setup edits or deletes from leaving the budget with no active primary transaction account, while defaulting the first transaction account to primary and warning before switching primary status
 - `Completed`: protect account opening balances from edits once downstream budget-cycle use exists and explain the lock reason in the setup UI

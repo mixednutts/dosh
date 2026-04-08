@@ -1,6 +1,7 @@
 """
 Period generation and expense scheduling logic.
 """
+from calendar import monthrange
 from datetime import datetime, timedelta
 from decimal import Decimal
 import re
@@ -71,15 +72,11 @@ def expense_occurs_in_period(
     if freqtype == "Fixed Day of Month":
         day = frequency_value
         count = 0
-        # Walk month by month covering the period
-        cursor = period_start.replace(day=1)
+        # Walk month by month, including the previous month because an
+        # overflowed fixed-day occurrence can land on day 1 of the current month.
+        cursor = (period_start.replace(day=1) - timedelta(days=1)).replace(day=1)
         while cursor <= period_end:
-            try:
-                candidate = cursor.replace(day=day)
-            except ValueError:
-                # Day doesn't exist in this month (e.g. Feb 30)
-                cursor = (cursor + relativedelta(months=1)).replace(day=1)
-                continue
+            candidate = fixed_day_occurrence_for_month(cursor, day)
             if period_start <= candidate <= period_end:
                 count += 1
             cursor = (cursor + relativedelta(months=1)).replace(day=1)
@@ -111,3 +108,10 @@ def expense_occurs_in_period(
         return expense_amount * count
 
     return None
+
+
+def fixed_day_occurrence_for_month(month_start: datetime, day: int) -> datetime:
+    last_day = monthrange(month_start.year, month_start.month)[1]
+    if day <= last_day:
+        return month_start.replace(day=day)
+    return month_start.replace(day=last_day) + timedelta(days=1)

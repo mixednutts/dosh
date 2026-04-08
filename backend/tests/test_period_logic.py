@@ -29,3 +29,16 @@ def test_expense_occurs_in_period_every_n_days_counts_multiple_occurrences():
     )
 
     assert result == Decimal("50.00")
+
+
+def test_fixed_day_occurrence_rolls_to_next_day_after_month_end():
+    result = expense_occurs_in_period(
+        freqtype="Fixed Day of Month",
+        frequency_value=31,
+        effectivedate=datetime(2026, 1, 1),
+        period_start=datetime(2026, 5, 1),
+        period_end=datetime(2026, 5, 31),
+        expense_amount=Decimal("10.00"),
+    )
+
+    assert result == Decimal("20.00")

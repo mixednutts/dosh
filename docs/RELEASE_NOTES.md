@@ -4,6 +4,14 @@
 
 Post-release changes will accumulate here until the next version is intentionally chosen.
 
+### Highlights
+
+- Unified expense scheduling across Budget Setup and Period Detail around a shared add-expense field set, including consistent `Effective Date` wording and period-only note/include controls staying scoped to the period-detail flow
+- Replaced the touched native expense date inputs with a shared calendar control that now supports dark mode better, uses a clickable calendar icon, and displays effective dates as `DD MMM YYYY`
+- Added fixed-day-of-month rollover handling for short months, including the accepted `31st` behavior and helper guidance in the expense flows
+- Aligned transaction-modal quick-fill behavior across income, expense, and investment through the shared modal rules, and neutralized transaction submit-button styling so these actions no longer read like cancel or destructive actions
+- Expanded the release-notes modal so newly available versions can reveal their details inline without losing the current-version focus
+
 ## 0.2.0-alpha | released | 2026-04-08
 
 Dosh now adds scheduled Auto Expense automation while also tightening the release and migration reliability needed to ship it safely.

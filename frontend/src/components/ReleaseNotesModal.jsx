@@ -1,5 +1,6 @@
 import PropTypes from 'prop-types'
 import { useState } from 'react'
+import { ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
 
 import Modal from './Modal'
 
@@ -70,8 +71,74 @@ ReleaseCard.propTypes = {
   tone: PropTypes.oneOf(['current', 'update']),
 }
 
+function ReleaseExpandableCard({ release, tone = 'update', expanded, onToggle }) {
+  const toneClasses = tone === 'update'
+    ? 'border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/25'
+    : 'border-dosh-200 bg-dosh-50 dark:border-dosh-800 dark:bg-dosh-950/25'
+  const badgeClasses = tone === 'update'
+    ? 'border-amber-300 bg-white text-amber-700 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-300'
+    : 'border-dosh-300 bg-white text-dosh-700 dark:border-dosh-700 dark:bg-dosh-950/40 dark:text-dosh-300'
+
+  return (
+    <section className={`rounded-2xl border ${toneClasses}`}>
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-start justify-between gap-3 p-4 text-left"
+        aria-expanded={expanded}
+      >
+        <div className="flex min-w-0 items-start gap-3">
+          <span className="mt-0.5 text-gray-500 dark:text-gray-400">
+            {expanded ? <ChevronDownIcon className="h-4 w-4" /> : <ChevronRightIcon className="h-4 w-4" />}
+          </span>
+          <div className="min-w-0">
+            <h3 className="text-base font-semibold text-gray-900 dark:text-white">v{release.version}</h3>
+            <p className="mt-1 text-xs font-medium uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">{release.release_date}</p>
+            {release.summary ? (
+              <p className="mt-2 text-sm text-gray-700 dark:text-gray-200">{release.summary}</p>
+            ) : null}
+          </div>
+        </div>
+        <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${badgeClasses}`}>
+          {expanded ? 'Hide Details' : 'View Details'}
+        </span>
+      </button>
+      {expanded ? (
+        <div className="space-y-3 border-t border-white/60 px-4 pb-4 pt-1 dark:border-gray-800/70">
+          {release.sections.map(section => (
+            <ReleaseSection key={`${release.version}-${section.title}`} title={section.title} items={section.items} />
+          ))}
+        </div>
+      ) : null}
+    </section>
+  )
+}
+
+ReleaseExpandableCard.propTypes = {
+  release: PropTypes.shape({
+    version: PropTypes.string.isRequired,
+    release_date: PropTypes.string.isRequired,
+    summary: PropTypes.string,
+    sections: PropTypes.arrayOf(PropTypes.shape({
+      title: PropTypes.string.isRequired,
+      items: PropTypes.arrayOf(PropTypes.string).isRequired,
+    })).isRequired,
+  }).isRequired,
+  tone: PropTypes.oneOf(['current', 'update']),
+  expanded: PropTypes.bool.isRequired,
+  onToggle: PropTypes.func.isRequired,
+}
+
 export default function ReleaseNotesModal({ releaseNotes, onClose }) {
   const [showPreviousReleases, setShowPreviousReleases] = useState(false)
+  const [expandedNewerVersions, setExpandedNewerVersions] = useState({})
+
+  const toggleNewerVersion = version => {
+    setExpandedNewerVersions(current => ({
+      ...current,
+      [version]: !current[version],
+    }))
+  }
 
   return (
     <Modal title="Release Notes" onClose={onClose} size="xl">
@@ -99,11 +166,17 @@ export default function ReleaseNotesModal({ releaseNotes, onClose }) {
             <div>
               <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">Available Updates</h3>
               <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                These released updates are newer than the version currently running in this app.
+                These released updates are newer than the version currently running in this app. Expand any version to review the details.
               </p>
             </div>
             {releaseNotes.newer_releases.map(release => (
-              <ReleaseCard key={release.version} release={release} tone="update" />
+              <ReleaseExpandableCard
+                key={release.version}
+                release={release}
+                tone="update"
+                expanded={!!expandedNewerVersions[release.version]}
+                onToggle={() => toggleNewerVersion(release.version)}
+              />
             ))}
           </div>
         ) : null}

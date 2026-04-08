@@ -7,6 +7,7 @@ import { addMonths, differenceInCalendarDays, endOfMonth, endOfWeek, format, isS
 import { getBudgets, createBudget, createDemoBudget, deleteBudget, getPeriodsForBudget, getBudgetHealth, getPeriodDetail } from '../api/client'
 import Modal from '../components/Modal'
 import Spinner from '../components/Spinner'
+import { listFixedDayOccurrencesInRange } from '../utils/fixedDayScheduling'
 
 const FREQUENCIES = ['Weekly', 'Fortnightly', 'Monthly']
 const CUSTOM_DAY_CYCLE_VALUE = '__custom_day_cycle__'
@@ -87,23 +88,7 @@ function expenseOccurrencesInRange(expense, periodStart, periodEnd) {
   if (expense.freqtype === 'Fixed Day of Month') {
     const day = Number.parseInt(expense.frequency_value, 10)
     if (!day) return []
-
-    const occurrences = []
-    let cursor = new Date(periodStart.getFullYear(), periodStart.getMonth(), 1)
-    while (cursor <= periodEnd) {
-      const candidate = new Date(cursor.getFullYear(), cursor.getMonth(), day)
-      if (
-        candidate.getMonth() === cursor.getMonth() &&
-        candidate >= periodStart &&
-        candidate <= periodEnd
-      ) {
-        occurrences.push(candidate)
-      }
-      const nextCursor = new Date(cursor)
-      nextCursor.setMonth(nextCursor.getMonth() + 1, 1)
-      cursor = nextCursor
-    }
-    return occurrences
+    return listFixedDayOccurrencesInRange(periodStart, periodEnd, day)
   }
 
   if (expense.freqtype === 'Every N Days') {

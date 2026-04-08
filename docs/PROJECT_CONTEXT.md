@@ -244,6 +244,9 @@ The repository already supports:
 - period-detail remaining and budget-surplus summaries now roll up from line-level budget, actual, and positive-remaining logic so current mixed-actual periods and untouched future periods both behave consistently
 - period-detail now includes a direct `Export` action that downloads the viewed budget cycle as either flat `CSV` or grouped `JSON`, with flat export rows ordered so empty transaction dates appear first and dated transaction rows then sort ascending
 - budget settings now support optional Auto Expense automation with offset days, scheduled expense items can be marked `AUTO` or `MANUAL` under backend-enforced eligibility rules, the period-detail page can run Auto Expense manually, and blocked `MANUAL -> AUTO` attempts now explain themselves in a dedicated warning modal
+- expense scheduling in Budget Setup and Period Detail now shares the same field set through [ExpenseItemSchedulingFields.jsx](/home/ubuntu/dosh/frontend/src/components/ExpenseItemSchedulingFields.jsx), with `Effective Date` as the consistent day-based label for fixed-day and every-x-days flows
+- the shared [DateField.jsx](/home/ubuntu/dosh/frontend/src/components/DateField.jsx) now provides the calendar control for those touched scheduling flows, displaying dates as `DD MMM YYYY` while still submitting normalized storage values
+- the shared transaction-entry modal in [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx) now owns quick-fill and neutral submit-button behavior across income, expense, and investment, while leaving category pills as category-specific visual cues
 
 Current frontend wording trends toward `Budget Cycle` for user clarity while backend naming still uses `period` for stability.
 
@@ -338,6 +341,8 @@ When making changes, preserve these working assumptions from the docs:
 - do not let demo-budget import become destructive; it should remain additive-only unless a separately named reset workflow is intentionally designed
 - do not duplicate setup entry points on the budget cycles sidebar when the page already provides the relevant setup action
 - do not treat current sidebar navigation behavior as unowned presentation detail; update the layout regression baseline deliberately when navigation rules change
+- when assessing a change, first determine whether it touches a shared component, shared logic, shared utility, or shared configuration; if it does, stop and seek explicit user confirmation before extending, generalising, or branching behavior from that shared surface
+- do not generalise a local fix through a shared surface without explicit approval
 
 ## Practical Starting Order For Future Sessions
 
@@ -348,6 +353,7 @@ Before starting a new feature or refactor:
 3. check [CHANGES.md](/home/ubuntu/dosh/docs/CHANGES.md) for product decisions that should not be accidentally undone
 4. check [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) and [TEST_EXPANSION_PLAN.md](/home/ubuntu/dosh/docs/tests/TEST_EXPANSION_PLAN.md) for the expected coverage boundary
 5. confirm whether the work touches lifecycle, close-out, carry-forward, ledger, or health rules before changing behavior
+6. if the work touches the expense scheduling or transaction-entry flows, inspect the current shared implementations in [ExpenseItemSchedulingFields.jsx](/home/ubuntu/dosh/frontend/src/components/ExpenseItemSchedulingFields.jsx), [DateField.jsx](/home/ubuntu/dosh/frontend/src/components/DateField.jsx), and [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx) before assuming the behavior is page-local
 
 ## CI Operational Notes
 

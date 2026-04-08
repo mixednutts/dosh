@@ -936,7 +936,7 @@ describe('PeriodDetailPage', () => {
     fireEvent.click(await screen.findByTitle('Add expense transaction'))
     const amountInput = screen.getByPlaceholderText('Amount')
 
-    fireEvent.click(screen.getByRole('button', { name: /Add Remaining \(\$700\.00\)/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Remaining amount \(\$700\.00\)/ }))
     expect(amountInput.value).toBe('700')
   })
 
@@ -987,8 +987,453 @@ describe('PeriodDetailPage', () => {
     fireEvent.click(await screen.findByTitle('Add expense transaction'))
     fireEvent.click(screen.getByRole('button', { name: 'Refund (−)' }))
 
-    expect(screen.queryByRole('button', { name: /Add Remaining/i })).toBeNull()
-    expect(screen.getByRole('button', { name: /Full \(\$1,000\.00\)/ })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /Remaining amount/i })).toBeNull()
+    expect(screen.getByRole('button', { name: /Full amount \(\$300\.00\)/ })).toBeTruthy()
+  })
+
+  it('hides the expense quick fill when nothing remains on the debit view', async () => {
+    client.getExpenseEntries.mockResolvedValue([])
+    client.getBudget.mockResolvedValue({
+      budgetid: 1,
+      budgetowner: 'Alex',
+      description: 'Home Budget',
+      budget_frequency: 'Monthly',
+      allow_cycle_lock: true,
+    })
+    client.getPeriodDetail.mockResolvedValue({
+      period: {
+        finperiodid: 171,
+        budgetid: 1,
+        startdate: '2026-11-01T00:00:00',
+        enddate: '2026-11-30T00:00:00',
+        islocked: false,
+        cycle_status: 'ACTIVE',
+      },
+      incomes: [],
+      expenses: [
+        {
+          finperiodid: 171,
+          budgetid: 1,
+          expensedesc: 'Rent',
+          budgetamount: '1000.00',
+          actualamount: '1000.00',
+          remaining_amount: '0.00',
+          freqtype: 'Always',
+          is_oneoff: true,
+          note: null,
+          status: 'Current',
+          revision_comment: null,
+        },
+      ],
+      investments: [],
+      balances: [],
+      closeout_snapshot: null,
+    })
+
+    renderWithProviders(<PeriodDetailPage />, {
+      route: '/periods/171',
+      path: '/periods/:periodId',
+    })
+
+    fireEvent.click(await screen.findByTitle('Add expense transaction'))
+
+    expect(screen.queryByRole('button', { name: /Remaining amount/i })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Full amount/i })).toBeNull()
+  })
+
+  it('shows full amount quick fill on the credit expense view when nothing remains', async () => {
+    client.getExpenseEntries.mockResolvedValue([])
+    client.getBudget.mockResolvedValue({
+      budgetid: 1,
+      budgetowner: 'Alex',
+      description: 'Home Budget',
+      budget_frequency: 'Monthly',
+      allow_cycle_lock: true,
+    })
+    client.getPeriodDetail.mockResolvedValue({
+      period: {
+        finperiodid: 172,
+        budgetid: 1,
+        startdate: '2026-11-01T00:00:00',
+        enddate: '2026-11-30T00:00:00',
+        islocked: false,
+        cycle_status: 'ACTIVE',
+      },
+      incomes: [],
+      expenses: [
+        {
+          finperiodid: 172,
+          budgetid: 1,
+          expensedesc: 'Rent',
+          budgetamount: '1000.00',
+          actualamount: '1000.00',
+          remaining_amount: '0.00',
+          freqtype: 'Always',
+          is_oneoff: true,
+          note: null,
+          status: 'Current',
+          revision_comment: null,
+        },
+      ],
+      investments: [],
+      balances: [],
+      closeout_snapshot: null,
+    })
+
+    renderWithProviders(<PeriodDetailPage />, {
+      route: '/periods/172',
+      path: '/periods/:periodId',
+    })
+
+    fireEvent.click(await screen.findByTitle('Add expense transaction'))
+    fireEvent.click(screen.getByRole('button', { name: 'Refund (−)' }))
+
+    expect(screen.queryByRole('button', { name: /Remaining amount/i })).toBeNull()
+    expect(screen.getByRole('button', { name: /Full amount \(\$1,000\.00\)/ })).toBeTruthy()
+  })
+
+  it('uses neutral submit styling for expense transaction actions', async () => {
+    client.getExpenseEntries.mockResolvedValue([])
+    client.getBudget.mockResolvedValue({
+      budgetid: 1,
+      budgetowner: 'Alex',
+      description: 'Home Budget',
+      budget_frequency: 'Monthly',
+      allow_cycle_lock: true,
+    })
+    client.getPeriodDetail.mockResolvedValue({
+      period: {
+        finperiodid: 181,
+        budgetid: 1,
+        startdate: '2026-11-01T00:00:00',
+        enddate: '2026-11-30T00:00:00',
+        islocked: false,
+        cycle_status: 'ACTIVE',
+      },
+      incomes: [],
+      expenses: [
+        {
+          finperiodid: 181,
+          budgetid: 1,
+          expensedesc: 'Rent',
+          budgetamount: '1000.00',
+          actualamount: '300.00',
+          remaining_amount: '700.00',
+          freqtype: 'Always',
+          is_oneoff: true,
+          note: null,
+          status: 'Current',
+          revision_comment: null,
+        },
+      ],
+      investments: [],
+      balances: [],
+      closeout_snapshot: null,
+    })
+
+    renderWithProviders(<PeriodDetailPage />, {
+      route: '/periods/181',
+      path: '/periods/:periodId',
+    })
+
+    fireEvent.click(await screen.findByTitle('Add expense transaction'))
+
+    expect(screen.getByRole('button', { name: 'Add Expense' }).className).toContain('btn-neutral')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Refund (−)' }))
+    expect(screen.getByRole('button', { name: 'Add Refund' }).className).toContain('btn-neutral')
+  })
+
+  it('shows full amount quick fill for the actual value on the refund view when an expense is over budget', async () => {
+    client.getExpenseEntries.mockResolvedValue([])
+    client.getBudget.mockResolvedValue({
+      budgetid: 1,
+      budgetowner: 'Alex',
+      description: 'Home Budget',
+      budget_frequency: 'Monthly',
+      allow_cycle_lock: true,
+    })
+    client.getPeriodDetail.mockResolvedValue({
+      period: {
+        finperiodid: 177,
+        budgetid: 1,
+        startdate: '2026-11-01T00:00:00',
+        enddate: '2026-11-30T00:00:00',
+        islocked: false,
+        cycle_status: 'ACTIVE',
+      },
+      incomes: [],
+      expenses: [
+        {
+          finperiodid: 177,
+          budgetid: 1,
+          expensedesc: 'Rent',
+          budgetamount: '1000.00',
+          actualamount: '1360.00',
+          remaining_amount: '-360.00',
+          freqtype: 'Always',
+          is_oneoff: true,
+          note: null,
+          status: 'Current',
+          revision_comment: null,
+        },
+      ],
+      investments: [],
+      balances: [],
+      closeout_snapshot: null,
+    })
+
+    renderWithProviders(<PeriodDetailPage />, {
+      route: '/periods/177',
+      path: '/periods/:periodId',
+    })
+
+    fireEvent.click(await screen.findByTitle('Add expense transaction'))
+    fireEvent.click(screen.getByRole('button', { name: 'Refund (−)' }))
+
+    expect(screen.queryByRole('button', { name: /Remaining amount/i })).toBeNull()
+    expect(screen.getByRole('button', { name: /Full amount \(\$1,360\.00\)/ })).toBeTruthy()
+  })
+
+  it('hides the income quick fill when nothing remains on the positive view', async () => {
+    client.getIncomeTransactions.mockResolvedValue([])
+    client.getBudget.mockResolvedValue({
+      budgetid: 1,
+      budgetowner: 'Alex',
+      description: 'Home Budget',
+      budget_frequency: 'Monthly',
+      allow_cycle_lock: true,
+    })
+    client.getPeriodDetail.mockResolvedValue({
+      period: {
+        finperiodid: 173,
+        budgetid: 1,
+        startdate: '2026-11-01T00:00:00',
+        enddate: '2026-11-30T00:00:00',
+        islocked: false,
+        cycle_status: 'ACTIVE',
+      },
+      incomes: [
+        {
+          finperiodid: 173,
+          budgetid: 1,
+          incomedesc: 'Salary',
+          budgetamount: '2000.00',
+          actualamount: '2000.00',
+          varianceamount: '0.00',
+          is_system: false,
+          system_key: null,
+        },
+      ],
+      expenses: [],
+      investments: [],
+      balances: [],
+      closeout_snapshot: null,
+    })
+
+    renderWithProviders(<PeriodDetailPage />, {
+      route: '/periods/173',
+      path: '/periods/:periodId',
+    })
+
+    fireEvent.click(await screen.findByTitle('Add income transaction'))
+
+    expect(screen.queryByRole('button', { name: /Remaining amount/i })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Full amount/i })).toBeNull()
+  })
+
+  it('shows full amount quick fill on the income correction view when nothing remains', async () => {
+    client.getIncomeTransactions.mockResolvedValue([])
+    client.getBudget.mockResolvedValue({
+      budgetid: 1,
+      budgetowner: 'Alex',
+      description: 'Home Budget',
+      budget_frequency: 'Monthly',
+      allow_cycle_lock: true,
+    })
+    client.getPeriodDetail.mockResolvedValue({
+      period: {
+        finperiodid: 174,
+        budgetid: 1,
+        startdate: '2026-11-01T00:00:00',
+        enddate: '2026-11-30T00:00:00',
+        islocked: false,
+        cycle_status: 'ACTIVE',
+      },
+      incomes: [
+        {
+          finperiodid: 174,
+          budgetid: 1,
+          incomedesc: 'Salary',
+          budgetamount: '2000.00',
+          actualamount: '2000.00',
+          varianceamount: '0.00',
+          is_system: false,
+          system_key: null,
+        },
+      ],
+      expenses: [],
+      investments: [],
+      balances: [],
+      closeout_snapshot: null,
+    })
+
+    renderWithProviders(<PeriodDetailPage />, {
+      route: '/periods/174',
+      path: '/periods/:periodId',
+    })
+
+    fireEvent.click(await screen.findByTitle('Add income transaction'))
+    fireEvent.click(screen.getByRole('button', { name: 'Correction (−)' }))
+
+    expect(screen.queryByRole('button', { name: /Remaining amount/i })).toBeNull()
+    expect(screen.getByRole('button', { name: /Full amount \(\$2,000\.00\)/ })).toBeTruthy()
+  })
+
+  it('shows full amount quick fill for the actual value on the income correction view when income actual exists below budget', async () => {
+    client.getIncomeTransactions.mockResolvedValue([])
+    client.getBudget.mockResolvedValue({
+      budgetid: 1,
+      budgetowner: 'Alex',
+      description: 'Home Budget',
+      budget_frequency: 'Monthly',
+      allow_cycle_lock: true,
+    })
+    client.getPeriodDetail.mockResolvedValue({
+      period: {
+        finperiodid: 182,
+        budgetid: 1,
+        startdate: '2026-11-01T00:00:00',
+        enddate: '2026-11-30T00:00:00',
+        islocked: false,
+        cycle_status: 'ACTIVE',
+      },
+      incomes: [
+        {
+          finperiodid: 182,
+          budgetid: 1,
+          incomedesc: 'Salary',
+          budgetamount: '2000.00',
+          actualamount: '300.00',
+          varianceamount: '-1700.00',
+          is_system: false,
+          system_key: null,
+        },
+      ],
+      expenses: [],
+      investments: [],
+      balances: [],
+      closeout_snapshot: null,
+    })
+
+    renderWithProviders(<PeriodDetailPage />, {
+      route: '/periods/182',
+      path: '/periods/:periodId',
+    })
+
+    fireEvent.click(await screen.findByTitle('Add income transaction'))
+    fireEvent.click(screen.getByRole('button', { name: 'Correction (−)' }))
+
+    expect(screen.getByRole('button', { name: 'Add Correction' }).className).toContain('btn-neutral')
+    expect(screen.queryByRole('button', { name: /Remaining amount/i })).toBeNull()
+    expect(screen.getByRole('button', { name: /Full amount \(\$300\.00\)/ })).toBeTruthy()
+  })
+
+  it('uses neutral submit styling for income transaction actions', async () => {
+    client.getIncomeTransactions.mockResolvedValue([])
+    client.getBudget.mockResolvedValue({
+      budgetid: 1,
+      budgetowner: 'Alex',
+      description: 'Home Budget',
+      budget_frequency: 'Monthly',
+      allow_cycle_lock: true,
+    })
+    client.getPeriodDetail.mockResolvedValue({
+      period: {
+        finperiodid: 184,
+        budgetid: 1,
+        startdate: '2026-11-01T00:00:00',
+        enddate: '2026-11-30T00:00:00',
+        islocked: false,
+        cycle_status: 'ACTIVE',
+      },
+      incomes: [
+        {
+          finperiodid: 184,
+          budgetid: 1,
+          incomedesc: 'Salary',
+          budgetamount: '2000.00',
+          actualamount: '300.00',
+          varianceamount: '-1700.00',
+          is_system: false,
+          system_key: null,
+        },
+      ],
+      expenses: [],
+      investments: [],
+      balances: [],
+      closeout_snapshot: null,
+    })
+
+    renderWithProviders(<PeriodDetailPage />, {
+      route: '/periods/184',
+      path: '/periods/:periodId',
+    })
+
+    fireEvent.click(await screen.findByTitle('Add income transaction'))
+
+    expect(screen.getByRole('button', { name: 'Add Income' }).className).toContain('btn-neutral')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Correction (−)' }))
+    expect(screen.getByRole('button', { name: 'Add Correction' }).className).toContain('btn-neutral')
+  })
+
+  it('shows full amount quick fill for the actual value on the income correction view when income is over budget', async () => {
+    client.getIncomeTransactions.mockResolvedValue([])
+    client.getBudget.mockResolvedValue({
+      budgetid: 1,
+      budgetowner: 'Alex',
+      description: 'Home Budget',
+      budget_frequency: 'Monthly',
+      allow_cycle_lock: true,
+    })
+    client.getPeriodDetail.mockResolvedValue({
+      period: {
+        finperiodid: 178,
+        budgetid: 1,
+        startdate: '2026-11-01T00:00:00',
+        enddate: '2026-11-30T00:00:00',
+        islocked: false,
+        cycle_status: 'ACTIVE',
+      },
+      incomes: [
+        {
+          finperiodid: 178,
+          budgetid: 1,
+          incomedesc: 'Salary',
+          budgetamount: '2000.00',
+          actualamount: '2360.00',
+          varianceamount: '360.00',
+          is_system: false,
+          system_key: null,
+        },
+      ],
+      expenses: [],
+      investments: [],
+      balances: [],
+      closeout_snapshot: null,
+    })
+
+    renderWithProviders(<PeriodDetailPage />, {
+      route: '/periods/178',
+      path: '/periods/:periodId',
+    })
+
+    fireEvent.click(await screen.findByTitle('Add income transaction'))
+    fireEvent.click(screen.getByRole('button', { name: 'Correction (−)' }))
+
+    expect(screen.queryByRole('button', { name: /Remaining amount/i })).toBeNull()
+    expect(screen.getByRole('button', { name: /Full amount \(\$2,360\.00\)/ })).toBeTruthy()
   })
 
   it('uses add-remaining quick fill for investment transactions when some budget is left', async () => {
@@ -1047,8 +1492,248 @@ describe('PeriodDetailPage', () => {
     const amountInput = screen.getByPlaceholderText('Amount')
 
     await screen.findByText('Initial contribution')
-    fireEvent.click(screen.getByRole('button', { name: /Add Remaining \(\$375\.00\)/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Remaining amount \(\$375\.00\)/ }))
     expect(amountInput.value).toBe('375')
+  })
+
+  it('hides the investment quick fill when nothing remains on the positive view', async () => {
+    client.getInvestmentTransactions.mockResolvedValue([
+      {
+        id: 1,
+        amount: '500.00',
+        note: 'Completed contribution',
+        entrydate: '2026-11-02T09:00:00',
+        entry_kind: 'manual',
+      },
+    ])
+    client.getBudget.mockResolvedValue({
+      budgetid: 1,
+      budgetowner: 'Alex',
+      description: 'Home Budget',
+      budget_frequency: 'Monthly',
+      allow_cycle_lock: true,
+    })
+    client.getPeriodDetail.mockResolvedValue({
+      period: {
+        finperiodid: 175,
+        budgetid: 1,
+        startdate: '2026-11-01T00:00:00',
+        enddate: '2026-11-30T00:00:00',
+        islocked: false,
+        cycle_status: 'ACTIVE',
+      },
+      incomes: [],
+      expenses: [],
+      investments: [
+        {
+          finperiodid: 175,
+          budgetid: 1,
+          investmentdesc: 'Emergency Fund',
+          budgeted_amount: '500.00',
+          actualamount: '500.00',
+          remaining_amount: '0.00',
+          linked_account_desc: 'Savings',
+          opening_value: '1000.00',
+          closing_value: '1500.00',
+          status: 'Current',
+          revision_comment: null,
+        },
+      ],
+      balances: [],
+      closeout_snapshot: null,
+    })
+
+    renderWithProviders(<PeriodDetailPage />, {
+      route: '/periods/175',
+      path: '/periods/:periodId',
+    })
+
+    fireEvent.click(await screen.findByTitle('Add investment transaction'))
+    await screen.findByText('Completed contribution')
+
+    expect(screen.queryByRole('button', { name: /Remaining amount/i })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Full amount/i })).toBeNull()
+  })
+
+  it('shows full amount quick fill on the investment decrease view when nothing remains', async () => {
+    client.getInvestmentTransactions.mockResolvedValue([
+      {
+        id: 1,
+        amount: '500.00',
+        note: 'Completed contribution',
+        entrydate: '2026-11-02T09:00:00',
+        entry_kind: 'manual',
+      },
+    ])
+    client.getBudget.mockResolvedValue({
+      budgetid: 1,
+      budgetowner: 'Alex',
+      description: 'Home Budget',
+      budget_frequency: 'Monthly',
+      allow_cycle_lock: true,
+    })
+    client.getPeriodDetail.mockResolvedValue({
+      period: {
+        finperiodid: 176,
+        budgetid: 1,
+        startdate: '2026-11-01T00:00:00',
+        enddate: '2026-11-30T00:00:00',
+        islocked: false,
+        cycle_status: 'ACTIVE',
+      },
+      incomes: [],
+      expenses: [],
+      investments: [
+        {
+          finperiodid: 176,
+          budgetid: 1,
+          investmentdesc: 'Emergency Fund',
+          budgeted_amount: '500.00',
+          actualamount: '500.00',
+          remaining_amount: '0.00',
+          linked_account_desc: 'Savings',
+          opening_value: '1000.00',
+          closing_value: '1500.00',
+          status: 'Current',
+          revision_comment: null,
+        },
+      ],
+      balances: [],
+      closeout_snapshot: null,
+    })
+
+    renderWithProviders(<PeriodDetailPage />, {
+      route: '/periods/176',
+      path: '/periods/:periodId',
+    })
+
+    fireEvent.click(await screen.findByTitle('Add investment transaction'))
+    await screen.findByText('Completed contribution')
+    fireEvent.click(screen.getByRole('button', { name: 'Subtract (−)' }))
+
+    expect(screen.queryByRole('button', { name: /Remaining amount/i })).toBeNull()
+    expect(screen.getByRole('button', { name: /Full amount \(\$500\.00\)/ })).toBeTruthy()
+  })
+
+  it('shows full amount quick fill for the actual value on the investment decrease view when actual exists below budget', async () => {
+    client.getInvestmentTransactions.mockResolvedValue([
+      {
+        id: 1,
+        amount: '125.00',
+        note: 'Partial contribution',
+        entrydate: '2026-11-02T09:00:00',
+        entry_kind: 'manual',
+      },
+    ])
+    client.getBudget.mockResolvedValue({
+      budgetid: 1,
+      budgetowner: 'Alex',
+      description: 'Home Budget',
+      budget_frequency: 'Monthly',
+      allow_cycle_lock: true,
+    })
+    client.getPeriodDetail.mockResolvedValue({
+      period: {
+        finperiodid: 183,
+        budgetid: 1,
+        startdate: '2026-11-01T00:00:00',
+        enddate: '2026-11-30T00:00:00',
+        islocked: false,
+        cycle_status: 'ACTIVE',
+      },
+      incomes: [],
+      expenses: [],
+      investments: [
+        {
+          finperiodid: 183,
+          budgetid: 1,
+          investmentdesc: 'Emergency Fund',
+          budgeted_amount: '500.00',
+          actualamount: '125.00',
+          remaining_amount: '375.00',
+          linked_account_desc: 'Savings',
+          opening_value: '1000.00',
+          closing_value: '1125.00',
+          status: 'Current',
+          revision_comment: null,
+        },
+      ],
+      balances: [],
+      closeout_snapshot: null,
+    })
+
+    renderWithProviders(<PeriodDetailPage />, {
+      route: '/periods/183',
+      path: '/periods/:periodId',
+    })
+
+    fireEvent.click(await screen.findByTitle('Add investment transaction'))
+    await screen.findByText('Partial contribution')
+    fireEvent.click(screen.getByRole('button', { name: 'Subtract (−)' }))
+
+    expect(screen.getByRole('button', { name: 'Subtract' }).className).toContain('btn-neutral')
+    expect(screen.queryByRole('button', { name: /Remaining amount/i })).toBeNull()
+    expect(screen.getByRole('button', { name: /Full amount \(\$125\.00\)/ })).toBeTruthy()
+  })
+
+  it('uses neutral submit styling for investment transaction actions', async () => {
+    client.getInvestmentTransactions.mockResolvedValue([
+      {
+        id: 1,
+        amount: '125.00',
+        note: 'Partial contribution',
+        entrydate: '2026-11-02T09:00:00',
+        entry_kind: 'manual',
+      },
+    ])
+    client.getBudget.mockResolvedValue({
+      budgetid: 1,
+      budgetowner: 'Alex',
+      description: 'Home Budget',
+      budget_frequency: 'Monthly',
+      allow_cycle_lock: true,
+    })
+    client.getPeriodDetail.mockResolvedValue({
+      period: {
+        finperiodid: 185,
+        budgetid: 1,
+        startdate: '2026-11-01T00:00:00',
+        enddate: '2026-11-30T00:00:00',
+        islocked: false,
+        cycle_status: 'ACTIVE',
+      },
+      incomes: [],
+      expenses: [],
+      investments: [
+        {
+          finperiodid: 185,
+          budgetid: 1,
+          investmentdesc: 'Emergency Fund',
+          budgeted_amount: '500.00',
+          actualamount: '125.00',
+          remaining_amount: '375.00',
+          linked_account_desc: 'Savings',
+          opening_value: '1000.00',
+          closing_value: '1125.00',
+          status: 'Current',
+          revision_comment: null,
+        },
+      ],
+      balances: [],
+      closeout_snapshot: null,
+    })
+
+    renderWithProviders(<PeriodDetailPage />, {
+      route: '/periods/185',
+      path: '/periods/:periodId',
+    })
+
+    fireEvent.click(await screen.findByTitle('Add investment transaction'))
+
+    expect(screen.getByRole('button', { name: 'Add' }).className).toContain('btn-neutral')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Subtract (−)' }))
+    expect(screen.getByRole('button', { name: 'Subtract' }).className).toContain('btn-neutral')
   })
 
   it('submits resolved expressions for investment transactions', async () => {
@@ -1541,7 +2226,7 @@ describe('PeriodDetailPage', () => {
     expect(screen.getByText('Enter a valid amount')).toBeTruthy()
     expect(client.addIncomeTransaction).not.toHaveBeenCalled()
 
-    fireEvent.click(screen.getByRole('button', { name: /Full \(\$2,000\.00\)/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Full amount \(\$2,000\.00\)/ }))
     expect(amountInput.value).toBe('2000')
     expect(screen.queryByText('= $2,000.00')).toBeNull()
 
@@ -1556,6 +2241,182 @@ describe('PeriodDetailPage', () => {
         note: 'Full amount',
       })
     })
+  })
+
+  it('shows full amount quick fill on the positive expense view when no actual has been recorded yet', async () => {
+    client.getExpenseEntries.mockResolvedValue([])
+    client.getBudget.mockResolvedValue({
+      budgetid: 1,
+      budgetowner: 'Alex',
+      description: 'Home Budget',
+      budget_frequency: 'Monthly',
+      allow_cycle_lock: true,
+    })
+    client.getPeriodDetail.mockResolvedValue({
+      period: {
+        finperiodid: 179,
+        budgetid: 1,
+        startdate: '2027-02-01T00:00:00',
+        enddate: '2027-02-28T00:00:00',
+        islocked: false,
+        cycle_status: 'ACTIVE',
+      },
+      incomes: [],
+      expenses: [
+        {
+          finperiodid: 179,
+          budgetid: 1,
+          expensedesc: 'Rent',
+          budgetamount: '1000.00',
+          actualamount: '0.00',
+          remaining_amount: '1000.00',
+          freqtype: 'Always',
+          is_oneoff: true,
+          note: null,
+          status: 'Current',
+          revision_comment: null,
+        },
+      ],
+      investments: [],
+      balances: [],
+      closeout_snapshot: null,
+    })
+
+    renderWithProviders(<PeriodDetailPage />, {
+      route: '/periods/179',
+      path: '/periods/:periodId',
+    })
+
+    fireEvent.click(await screen.findByTitle('Add expense transaction'))
+
+    expect(screen.queryByRole('button', { name: /Remaining amount/i })).toBeNull()
+    expect(screen.getByRole('button', { name: /Full amount \(\$1,000\.00\)/ })).toBeTruthy()
+  })
+
+  it('shows full amount quick fill on the positive investment view when no actual has been recorded yet', async () => {
+    client.getInvestmentTransactions.mockResolvedValue([])
+    client.getBudget.mockResolvedValue({
+      budgetid: 1,
+      budgetowner: 'Alex',
+      description: 'Home Budget',
+      budget_frequency: 'Monthly',
+      allow_cycle_lock: true,
+    })
+    client.getPeriodDetail.mockResolvedValue({
+      period: {
+        finperiodid: 180,
+        budgetid: 1,
+        startdate: '2027-02-01T00:00:00',
+        enddate: '2027-02-28T00:00:00',
+        islocked: false,
+        cycle_status: 'ACTIVE',
+      },
+      incomes: [],
+      expenses: [],
+      investments: [
+        {
+          finperiodid: 180,
+          budgetid: 1,
+          investmentdesc: 'Emergency Fund',
+          budgeted_amount: '500.00',
+          actualamount: '0.00',
+          remaining_amount: '500.00',
+          linked_account_desc: 'Savings',
+          opening_value: '1000.00',
+          closing_value: '1000.00',
+          status: 'Current',
+          revision_comment: null,
+        },
+      ],
+      balances: [],
+      closeout_snapshot: null,
+    })
+
+    renderWithProviders(<PeriodDetailPage />, {
+      route: '/periods/180',
+      path: '/periods/:periodId',
+    })
+
+    fireEvent.click(await screen.findByTitle('Add investment transaction'))
+
+    expect(screen.queryByRole('button', { name: /Remaining amount/i })).toBeNull()
+    expect(screen.getByRole('button', { name: /Full amount \(\$500\.00\)/ })).toBeTruthy()
+  })
+
+  it('shows fixed-day rollover guidance when creating a new expense line on day 31', async () => {
+    client.getExpenseItems.mockResolvedValue([])
+    client.getBudget.mockResolvedValue({
+      budgetid: 1,
+      budgetowner: 'Alex',
+      description: 'Home Budget',
+      budget_frequency: 'Monthly',
+      allow_cycle_lock: true,
+    })
+    client.getPeriodDetail.mockResolvedValue({
+      period: {
+        finperiodid: 71,
+        budgetid: 1,
+        startdate: '2027-03-01T00:00:00',
+        enddate: '2027-03-31T00:00:00',
+        islocked: false,
+        cycle_status: 'ACTIVE',
+      },
+      incomes: [],
+      expenses: [],
+      investments: [],
+      balances: [],
+      closeout_snapshot: null,
+    })
+
+    renderWithProviders(<PeriodDetailPage />, {
+      route: '/periods/71',
+      path: '/periods/:periodId',
+    })
+
+    fireEvent.click(await screen.findByText('Add New Expense Line Item'))
+    fireEvent.click(screen.getByRole('button', { name: 'New item' }))
+    fireEvent.change(screen.getByLabelText('Day of Month (1-31)'), { target: { value: '31' } })
+
+    expect(screen.getByText(/If a month does not include day 31, Dosh will move this expense to the next day after month end\./)).toBeTruthy()
+  })
+
+  it('hides effective date when creating an always-included expense line item', async () => {
+    client.getExpenseItems.mockResolvedValue([])
+    client.getBudget.mockResolvedValue({
+      budgetid: 1,
+      budgetowner: 'Alex',
+      description: 'Home Budget',
+      budget_frequency: 'Monthly',
+      allow_cycle_lock: true,
+    })
+    client.getPeriodDetail.mockResolvedValue({
+      period: {
+        finperiodid: 72,
+        budgetid: 1,
+        startdate: '2027-03-01T00:00:00',
+        enddate: '2027-03-31T00:00:00',
+        islocked: false,
+        cycle_status: 'ACTIVE',
+      },
+      incomes: [],
+      expenses: [],
+      investments: [],
+      balances: [],
+      closeout_snapshot: null,
+    })
+
+    renderWithProviders(<PeriodDetailPage />, {
+      route: '/periods/72',
+      path: '/periods/:periodId',
+    })
+
+    fireEvent.click(await screen.findByText('Add New Expense Line Item'))
+    fireEvent.click(screen.getByRole('button', { name: 'New item' }))
+    fireEvent.change(screen.getByLabelText('Frequency Type'), { target: { value: 'Always' } })
+
+    expect(screen.queryByLabelText(/Effective Date/i)).toBeNull()
+    expect(screen.queryByLabelText(/Comment \/ Note/i)).toBeTruthy()
+    expect(screen.queryByText('Include in')).toBeTruthy()
   })
 
   it('requires confirmation before marking an over-budget investment as paid', async () => {

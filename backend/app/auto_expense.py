@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from .cycle_constants import ACTIVE, CLOSED, PAID
 from .database import SessionLocal
 from .models import Budget, ExpenseItem, FinancialPeriod, PeriodExpense, PeriodTransaction
-from .period_logic import expense_occurs_in_period
+from .period_logic import expense_occurs_in_period, fixed_day_occurrence_for_month
 from .time_utils import app_now_naive
 from .transaction_ledger import build_expense_tx, get_primary_account_desc, sync_period_state
 
@@ -69,13 +69,9 @@ def scheduled_due_dates_for_period(item: ExpenseItem, period: FinancialPeriod) -
 
     due_dates: list[datetime] = []
     if item.freqtype == "Fixed Day of Month":
-        cursor = period.startdate.replace(day=1)
+        cursor = (period.startdate.replace(day=1) - timedelta(days=1)).replace(day=1)
         while cursor <= period.enddate:
-            try:
-                candidate = cursor.replace(day=item.frequency_value)
-            except ValueError:
-                cursor = (cursor.replace(day=28) + timedelta(days=4)).replace(day=1)
-                continue
+            candidate = fixed_day_occurrence_for_month(cursor, item.frequency_value)
             if period.startdate <= candidate <= period.enddate:
                 due_dates.append(candidate)
             cursor = (cursor.replace(day=28) + timedelta(days=4)).replace(day=1)

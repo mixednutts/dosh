@@ -106,3 +106,44 @@ def test_run_auto_expenses_endpoint_requires_budget_setting(client, db_session):
     response = client.post(f"/api/periods/{period_id}/run-auto-expenses")
     assert response.status_code == 422
     assert "disabled" in response.json()["detail"].lower()
+
+
+def test_auto_expense_run_uses_next_day_rollover_for_missing_fixed_day(client, db_session):
+    budget = create_budget(db_session)
+    budget.auto_expense_enabled = True
+    budget.auto_expense_offset_days = 0
+    create_income_type(db_session, budgetid=budget.budgetid)
+    create_balance_type(db_session, budgetid=budget.budgetid)
+    expense = ExpenseItem(
+        budgetid=budget.budgetid,
+        expensedesc="Month End Bill",
+        active=True,
+        freqtype="Fixed Day of Month",
+        frequency_value=31,
+        paytype="AUTO",
+        effectivedate=datetime(2026, 1, 1),
+        expenseamount=Decimal("85.00"),
+        sort_order=0,
+        revisionnum=0,
+    )
+    db_session.add(expense)
+    db_session.commit()
+
+    periods = generate_periods(client, budgetid=budget.budgetid, startdate=datetime(2026, 5, 1))
+    period_id = periods[0]["finperiodid"]
+
+    first = process_auto_expenses_for_period(period_id, db_session, run_date=datetime(2026, 5, 1, 8, 0, 0))
+    db_session.commit()
+    assert first.created_count == 1
+
+    tx = (
+        db_session.query(PeriodTransaction)
+        .filter(
+            PeriodTransaction.finperiodid == period_id,
+            PeriodTransaction.source == "expense",
+            PeriodTransaction.source_key == "Month End Bill",
+        )
+        .one()
+    )
+
+    assert tx.note == "Auto expense created for due date 2026-05-01"

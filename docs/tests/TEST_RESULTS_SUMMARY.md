@@ -4,6 +4,92 @@ This document records meaningful automated test results from major working sessi
 
 It exists separately from [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) so the strategy can stay stable while future sessions still have a record of what was actually run and verified.
 
+## Latest Session: Shared Expense Scheduling, Fixed-Day Rollover, Transaction-Modal Consistency, And Release-Notes Expansion
+
+Session outcomes verified in this run:
+
+- Budget Setup and Period Detail now share one expense-scheduling field set, with `Effective Date` as the consistent day-based label where fixed-day and every-x-days scheduling needs it
+- the touched expense date inputs now use a shared date-picker control with a clickable calendar icon, full-width layout normalization, dark-mode styling, and `DD MMM YYYY` display for day-based effective dates
+- fixed-day scheduling now rolls missing dates such as day `31` onto the next day after month end, with matching backend logic and frontend helper guidance
+- transaction-modal quick fill is now intentionally centralized across income, expense, and investment, with category differences reduced to direction rather than separate modal behaviors
+- transaction submit buttons in the shared modal are now neutral rather than red or category-colored, while category pills remain unchanged
+- the release-notes modal now supports expanding newer available versions for details
+- the stack was redeployed repeatedly through the override-aware Compose path after the frontend and scheduling refinements, and the final live health check passed
+
+### Frontend verification
+
+Commands run during this session:
+
+```bash
+cd /home/ubuntu/dosh/frontend
+npm test -- --runTestsByPath src/__tests__/PeriodDetailPage.test.jsx src/__tests__/ExpenseItemsTab.test.jsx
+npm test -- --runTestsByPath src/__tests__/Layout.test.jsx
+npm test -- --runTestsByPath src/__tests__/PeriodDetailPage.test.jsx
+npm run build
+```
+
+Result:
+
+- the focused period-detail regression suite passed repeatedly through the quick-fill, icon-color, neutral-button, and shared-modal consistency changes
+- the focused expense-setup regression suite passed after the shared scheduling-field and effective-date alignment work
+- the layout regression covering release-notes expansion passed
+- the production frontend build passed after the shared date-field and styling changes
+
+Files with meaningful frontend updates in this session:
+
+- [DateField.jsx](/home/ubuntu/dosh/frontend/src/components/DateField.jsx)
+- [ExpenseItemSchedulingFields.jsx](/home/ubuntu/dosh/frontend/src/components/ExpenseItemSchedulingFields.jsx)
+- [ReleaseNotesModal.jsx](/home/ubuntu/dosh/frontend/src/components/ReleaseNotesModal.jsx)
+- [SetupItemHistoryModal.jsx](/home/ubuntu/dosh/frontend/src/components/SetupItemHistoryModal.jsx)
+- [index.css](/home/ubuntu/dosh/frontend/src/index.css)
+- [BudgetsPage.jsx](/home/ubuntu/dosh/frontend/src/pages/BudgetsPage.jsx)
+- [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx)
+- [ExpenseItemsTab.jsx](/home/ubuntu/dosh/frontend/src/pages/tabs/ExpenseItemsTab.jsx)
+- [fixedDayScheduling.js](/home/ubuntu/dosh/frontend/src/utils/fixedDayScheduling.js)
+- [PeriodDetailPage.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/PeriodDetailPage.test.jsx)
+- [ExpenseItemsTab.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/ExpenseItemsTab.test.jsx)
+- [Layout.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/Layout.test.jsx)
+
+### Backend verification
+
+Commands run during this session:
+
+```bash
+cd /home/ubuntu/dosh/backend
+./.venv/bin/pytest tests/test_period_logic.py tests/test_auto_expense.py
+```
+
+Result:
+
+- the focused backend scheduling suites passed after the fixed-day rollover changes
+- shared fixed-day logic now has direct coverage at both the period-logic and Auto Expense layers
+
+Files with meaningful backend updates in this session:
+
+- [period_logic.py](/home/ubuntu/dosh/backend/app/period_logic.py)
+- [auto_expense.py](/home/ubuntu/dosh/backend/app/auto_expense.py)
+- [test_period_logic.py](/home/ubuntu/dosh/backend/tests/test_period_logic.py)
+- [test_auto_expense.py](/home/ubuntu/dosh/backend/tests/test_auto_expense.py)
+
+### Failures and resolutions
+
+Observed issues during the session:
+
+- one deploy initially used only the base Compose file, which omitted the environment-specific [docker-compose.override.yml](/home/ubuntu/dosh/docker-compose.override.yml) behavior needed by the shared deployment path
+- the first shared date-field pass left the calendar icon as a passive visual affordance, and layout differences between flows made the icon placement look inconsistent
+- transaction-modal inconsistencies persisted after the first shared-modal pass because some visual and quick-fill rules were still coming from per-category config rather than one shared policy
+
+Resolution:
+
+- standardized deployment and later redeploys on `docker compose -f docker-compose.yml -f docker-compose.override.yml up -d --build`
+- updated [DateField.jsx](/home/ubuntu/dosh/frontend/src/components/DateField.jsx) and [index.css](/home/ubuntu/dosh/frontend/src/index.css) so the icon is inside the field boundary, acts as a real calendar trigger, and the wrapper and input container stay full width
+- moved the touched quick-fill and submit-button behavior back onto centralized shared-modal rules in [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx), leaving only transaction direction as the intended category differentiator
+
+Final result:
+
+- the shared expense add modal, the accepted fixed-day `31` rollover behavior, and the transaction quick-fill and button-color changes all received user acceptance during the session
+- the final override-aware deploy completed successfully and the live health endpoint returned `{\"status\":\"ok\",\"app\":\"Dosh\"}`
+
 ## Latest Session: Auto Expense Implementation, Migration Harness Coverage, Runtime Baseline Repair, And Feedback-Modal Polish
 
 Session outcomes verified in this run:

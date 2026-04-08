@@ -22,6 +22,10 @@
     @apply btn bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 focus:ring-slate-400
            dark:bg-slate-800 dark:text-slate-200 dark:border-slate-600 dark:hover:bg-slate-700;
   }
+  .btn-neutral {
+    @apply btn bg-slate-700 text-white hover:bg-slate-800 focus:ring-slate-500
+           dark:bg-slate-600 dark:hover:bg-slate-500;
+  }
   .btn-danger {
     @apply btn bg-red-600 text-white hover:bg-red-700 focus:ring-red-500;
   }
@@ -36,6 +40,12 @@
            focus:border-dosh-500 focus:outline-none focus:ring-1 focus:ring-dosh-500
            dark:bg-slate-800 dark:border-slate-600 dark:text-slate-100
            dark:placeholder-slate-500 dark:focus:border-dosh-400 dark:focus:ring-dosh-400;
+  }
+  .react-datepicker-wrapper {
+    @apply block w-full;
+  }
+  .react-datepicker__input-container {
+    @apply block w-full;
   }
   .label {
     @apply block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300;
@@ -77,4 +87,85 @@
   .col-actual {
     @apply bg-dosh-50/60 dark:bg-dosh-900/20;
   }
+}
+
+.dosh-datepicker-popper {
+  z-index: 60;
+}
+
+.dosh-datepicker {
+  border: 1px solid rgb(226 232 240);
+  border-radius: 0.75rem;
+  background: rgb(255 255 255);
+  color: rgb(15 23 42);
+  box-shadow: 0 10px 35px rgba(15, 23, 42, 0.18);
+  font-family: inherit;
+}
+
+.dosh-datepicker .react-datepicker__header {
+  border-bottom: 1px solid rgb(226 232 240);
+  background: rgb(248 250 252);
+}
+
+.dosh-datepicker .react-datepicker__current-month,
+.dosh-datepicker .react-datepicker__day-name,
+.dosh-datepicker .react-datepicker__navigation-icon::before {
+  color: rgb(51 65 85);
+}
+
+.dosh-datepicker .react-datepicker__day {
+  border-radius: 9999px;
+  color: rgb(15 23 42);
+}
+
+.dosh-datepicker .react-datepicker__day:hover,
+.dosh-datepicker .react-datepicker__month-text:hover,
+.dosh-datepicker .react-datepicker__quarter-text:hover,
+.dosh-datepicker .react-datepicker__year-text:hover {
+  background: rgb(226 232 240);
+}
+
+.dosh-datepicker .react-datepicker__day--selected,
+.dosh-datepicker .react-datepicker__day--keyboard-selected {
+  background: rgb(13 148 136);
+  color: white;
+}
+
+.dosh-datepicker .react-datepicker__day--today {
+  font-weight: 700;
+  color: rgb(13 148 136);
+}
+
+.dark .dosh-datepicker {
+  border-color: rgb(51 65 85);
+  background: rgb(15 23 42);
+  color: rgb(226 232 240);
+  box-shadow: 0 10px 35px rgba(2, 6, 23, 0.45);
+}
+
+.dark .dosh-datepicker .react-datepicker__header {
+  border-bottom-color: rgb(51 65 85);
+  background: rgb(30 41 59);
+}
+
+.dark .dosh-datepicker .react-datepicker__current-month,
+.dark .dosh-datepicker .react-datepicker__day-name,
+.dark .dosh-datepicker .react-datepicker__navigation-icon::before,
+.dark .dosh-datepicker .react-datepicker__day {
+  color: rgb(226 232 240);
+}
+
+.dark .dosh-datepicker .react-datepicker__day:hover,
+.dark .dosh-datepicker .react-datepicker__month-text:hover,
+.dark .dosh-datepicker .react-datepicker__quarter-text:hover,
+.dark .dosh-datepicker .react-datepicker__year-text:hover {
+  background: rgb(51 65 85);
+}
+
+.dark .dosh-datepicker .react-datepicker__day--today {
+  color: rgb(45 212 191);
+}
+
+.dark .dosh-datepicker .react-datepicker__day--outside-month {
+  color: rgb(100 116 139);
 }

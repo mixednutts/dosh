@@ -24,6 +24,8 @@ import {
 import Modal from '../components/Modal'
 import Spinner from '../components/Spinner'
 import AmountExpressionInput from '../components/AmountExpressionInput'
+import ExpenseItemSchedulingFields from '../components/ExpenseItemSchedulingFields'
+import { getNextFixedDayOccurrence } from '../utils/fixedDayScheduling'
 
 const fmt = v => Number(v ?? 0).toLocaleString('en-AU', { style: 'currency', currency: 'AUD' })
 const SECONDARY_BUTTON_CLASSES = 'flex items-center justify-center w-7 h-7 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors'
@@ -119,6 +121,16 @@ function getTransactionModalConfig(kind) {
     },
   }
 
+  const buildDirectionalQuickFillPolicy = ({ positiveType, reverseType }) => ({
+    remainingType: positiveType,
+    shouldShowFull: ({ type, actualAmount }) => type === reverseType && Number(actualAmount ?? 0) > 0,
+    fullValue: ({ type, actualAmount, budgetAmount, remainingAmount }) => (
+      type === reverseType
+        ? Number(actualAmount ?? 0)
+        : (remainingAmount < 0 ? Number(actualAmount ?? 0) : Number(budgetAmount ?? 0))
+    ),
+  })
+
   const configs = {
     income: {
       ...shared,
@@ -133,9 +145,10 @@ function getTransactionModalConfig(kind) {
       },
       totalClassName: totalValue => (totalValue >= 0 ? 'text-success-700 dark:text-success-400' : 'text-red-700 dark:text-red-400'),
       typeOptions: [
-        { value: 'credit', label: 'Income (+)', activeClassName: 'bg-success-600', submitClassName: 'btn-primary' },
-        { value: 'debit', label: 'Correction (−)', activeClassName: 'bg-red-600', submitClassName: 'btn-danger' },
+        { value: 'credit', label: 'Income (+)', activeClassName: 'bg-success-600' },
+        { value: 'debit', label: 'Correction (−)', activeClassName: 'bg-red-600' },
       ],
+      quickFillPolicy: buildDirectionalQuickFillPolicy({ positiveType: 'credit', reverseType: 'debit' }),
       submitLabel: currentType => (currentType === 'credit' ? 'Add Income' : 'Add Correction'),
       toMutationAmount: (entryType, value) => (entryType === 'credit' ? value : -value),
     },
@@ -153,9 +166,10 @@ function getTransactionModalConfig(kind) {
       },
       totalClassName: totalValue => (totalValue >= 0 ? 'text-red-700 dark:text-red-400' : 'text-dosh-600 dark:text-dosh-400'),
       typeOptions: [
-        { value: 'debit', label: 'Expense (+)', activeClassName: 'bg-red-600', submitClassName: 'btn-danger' },
-        { value: 'credit', label: 'Refund (−)', activeClassName: 'bg-dosh-600', submitClassName: 'btn-primary' },
+        { value: 'debit', label: 'Expense (+)', activeClassName: 'bg-red-600' },
+        { value: 'credit', label: 'Refund (−)', activeClassName: 'bg-dosh-600' },
       ],
+      quickFillPolicy: buildDirectionalQuickFillPolicy({ positiveType: 'debit', reverseType: 'credit' }),
       submitLabel: currentType => `Add ${currentType === 'debit' ? 'Expense' : 'Refund'}`,
       toMutationAmount: (entryType, value) => (entryType === 'debit' ? value : -value),
     },
@@ -170,9 +184,10 @@ function getTransactionModalConfig(kind) {
         ]
       },
       typeOptions: [
-        { value: 'increase', label: 'Add (+)', activeClassName: 'bg-dosh-600', submitClassName: 'btn-primary' },
-        { value: 'decrease', label: 'Subtract (−)', activeClassName: 'bg-red-600', submitClassName: 'btn-danger' },
+        { value: 'increase', label: 'Add (+)', activeClassName: 'bg-dosh-600' },
+        { value: 'decrease', label: 'Subtract (−)', activeClassName: 'bg-red-600' },
       ],
+      quickFillPolicy: buildDirectionalQuickFillPolicy({ positiveType: 'increase', reverseType: 'decrease' }),
       submitLabel: currentType => (currentType === 'increase' ? 'Add' : 'Subtract'),
       toMutationAmount: (entryType, value) => (entryType === 'increase' ? value : -value),
     },
@@ -266,7 +281,7 @@ function getTransactionListContent({ isLoading, items, emptyLabel, maxHeightClas
         const amount = Number(getItemAmount(item))
         return (
           <div key={item.id} className="flex items-center gap-2 px-3 py-2">
-            <span className={`flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${getBadgeClassName(item)}`}>
+            <span className={`flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${getBadgeClassName(item, amount)}`}>
               {getBadgeLabel(item, amount)}
             </span>
             <div className="min-w-0 flex-1">
@@ -297,9 +312,7 @@ function calcNextDue(freqtype, frequencyValue, effectivedate) {
   if (!freqtype || freqtype === 'Always') return null
   if (freqtype === 'Fixed Day of Month') {
     const day = Number.parseInt(frequencyValue, 10); if (!day) return null
-    let c = new Date(today.getFullYear(), today.getMonth(), day)
-    if (c < today) c = new Date(today.getFullYear(), today.getMonth() + 1, day)
-    return c
+    return getNextFixedDayOccurrence(today, day)
   }
   if (freqtype === 'Every N Days') {
     const n = Number.parseInt(frequencyValue, 10); if (!n || !effectivedate) return null
@@ -492,13 +505,36 @@ function TransactionEntryForm({
 
   const selectedOption = typeOptions.find(option => option.value === type) ?? typeOptions[0]
   const noteInputId = `transaction-note-${selectedOption.value}`
-  const remainingAmount = Number(budgetAmount ?? 0) - Number(actualAmount ?? 0)
-  const usesRemainingQuickFill = (
-    (kind === 'expense' && type === 'debit') ||
-    (kind === 'investment' && type === 'increase')
-  ) && remainingAmount > 0
-  const quickFillValue = usesRemainingQuickFill ? remainingAmount : Number(budgetAmount)
-  const quickFillLabel = usesRemainingQuickFill ? 'Add Remaining' : 'Full'
+  const numericBudgetAmount = Number(budgetAmount ?? 0)
+  const numericActualAmount = Number(actualAmount ?? 0)
+  const remainingAmount = numericBudgetAmount - numericActualAmount
+  const config = getTransactionModalConfig(kind)
+  const quickFillPolicy = config.quickFillPolicy ?? {}
+  const isPositiveQuickFillContext = type === quickFillPolicy.remainingType && remainingAmount > 0
+  const isUntouchedBudget = numericBudgetAmount > 0 && numericActualAmount === 0 && remainingAmount === numericBudgetAmount
+  const usesExplicitFullQuickFill = typeof quickFillPolicy.shouldShowFull === 'function'
+    ? quickFillPolicy.shouldShowFull({
+        type,
+        actualAmount: numericActualAmount,
+        budgetAmount: numericBudgetAmount,
+        remainingAmount,
+        zeroFullType: quickFillPolicy.zeroFullType,
+        overFullType: quickFillPolicy.overFullType,
+      })
+    : false
+  const showQuickFill = numericBudgetAmount > 0 && (
+    isPositiveQuickFillContext ||
+    usesExplicitFullQuickFill ||
+    (type === quickFillPolicy.zeroFullType && remainingAmount === 0) ||
+    (type === quickFillPolicy.overFullType && remainingAmount < 0)
+  )
+  const usesRemainingQuickFill = isPositiveQuickFillContext && !isUntouchedBudget
+  const quickFillValue = usesRemainingQuickFill
+    ? remainingAmount
+    : (typeof quickFillPolicy.fullValue === 'function'
+        ? quickFillPolicy.fullValue({ type, actualAmount: numericActualAmount, budgetAmount: numericBudgetAmount, remainingAmount })
+        : numericBudgetAmount)
+  const quickFillLabel = usesRemainingQuickFill ? 'Remaining amount' : 'Full amount'
 
   return (
     <form onSubmit={onSubmit} className="space-y-3 border-t border-gray-200 pt-1 dark:border-gray-700">
@@ -533,7 +569,7 @@ function TransactionEntryForm({
             required
           />
         </div>
-        {Number(budgetAmount) > 0 && (
+        {showQuickFill && (
           <button
             type="button"
             onClick={() => {
@@ -541,7 +577,7 @@ function TransactionEntryForm({
               setError('')
             }}
             className="btn-secondary whitespace-nowrap text-xs"
-            title={usesRemainingQuickFill ? 'Allocate remaining budget amount' : 'Allocate full budget amount'}
+            title={usesRemainingQuickFill ? 'Allocate the remaining budget amount' : 'Allocate the full budget amount'}
           >
             {quickFillLabel} ({fmt(quickFillValue)})
           </button>
@@ -558,7 +594,7 @@ function TransactionEntryForm({
       </div>
       <div className="flex justify-end gap-2">
         <button type="button" className="btn-secondary" onClick={onClose}>Close</button>
-        <button type="submit" disabled={isPending} className={selectedOption.submitClassName}>
+        <button type="submit" disabled={isPending} className="btn-neutral">
           {isPending ? 'Saving…' : submitLabel(type)}
         </button>
       </div>
@@ -1429,7 +1465,6 @@ function AddExpenseModal({ periodId, budgetId, existingDescs, onClose }) {
   const [newFreqVal, setNewFreqVal] = useState('')
   const [newPaytype, setNewPaytype] = useState('AUTO')
   const [newEffDate, setNewEffDate] = useState('')
-  const newExpenseIsScheduled = newFreqtype !== 'Always' && !!newFreqVal && !!newEffDate
 
   const { data: expenseItems = [] } = useQuery({
     queryKey: ['expense-items', budgetId],
@@ -1452,7 +1487,15 @@ function AddExpenseModal({ periodId, budgetId, existingDescs, onClose }) {
       if (resolvedValue == null) { setError('Enter a valid budget amount'); return }
       if (mode === 'new') {
         if (!newDesc.trim()) { setError('Enter a description'); return }
-        await createItem.mutateAsync({ expensedesc: newDesc.trim(), active: true, freqtype: newFreqtype || null, frequency_value: newFreqVal ? Number.parseInt(newFreqVal, 10) : null, paytype: newFreqtype === 'Always' ? 'MANUAL' : (newPaytype || 'MANUAL'), effectivedate: newEffDate || null, expenseamount: resolvedValue })
+        await createItem.mutateAsync({
+          expensedesc: newDesc.trim(),
+          active: true,
+          freqtype: newFreqtype || null,
+          frequency_value: newFreqtype === 'Always' ? null : (newFreqVal ? Number.parseInt(newFreqVal, 10) : null),
+          paytype: newFreqtype === 'Always' ? 'MANUAL' : (newPaytype || 'MANUAL'),
+          effectivedate: newFreqtype === 'Always' ? null : (newEffDate || null),
+          expenseamount: resolvedValue,
+        })
         addToperiod.mutate({ budgetid: budgetId, expensedesc: newDesc.trim(), budgetamount: resolvedValue, scope, note: note || null })
       } else {
         if (!selected) { setError('Select an expense item'); return }
@@ -1482,26 +1525,19 @@ function AddExpenseModal({ periodId, budgetId, existingDescs, onClose }) {
               </select>}
         </div>
       ) : (
-        <div className="space-y-3">
-          <div><label className="label" htmlFor="add-expense-new-desc">Description <span className="text-red-500">*</span></label><input id="add-expense-new-desc" required className="input" value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="e.g. Netflix" /></div>
-          <div className="grid grid-cols-2 gap-2">
-            <div><label className="label" htmlFor="add-expense-freq-type">Freq Type</label><select id="add-expense-freq-type" className="input" value={newFreqtype} onChange={e => setNewFreqtype(e.target.value)}><option>Always</option><option>Fixed Day of Month</option><option>Every N Days</option></select></div>
-            <div><label className="label" htmlFor="add-expense-freq-value">{newFreqtype === 'Every N Days' ? 'Interval (days)' : 'Day of Month'}</label><input id="add-expense-freq-value" type="number" min="1" className="input" value={newFreqVal} onChange={e => setNewFreqVal(e.target.value)} disabled={newFreqtype === 'Always'} /></div>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="label" htmlFor="add-expense-pay-type">Pay Type</label>
-              <select id="add-expense-pay-type" className="input" value={newFreqtype === 'Always' ? 'MANUAL' : newPaytype} onChange={e => setNewPaytype(e.target.value)} disabled={newFreqtype === 'Always'}>
-                <option value="AUTO" disabled={!newExpenseIsScheduled}>AUTO</option>
-                <option value="MANUAL">MANUAL</option>
-              </select>
-              <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                AUTO is only available for scheduled expenses and only runs when Auto Expense is enabled in budget settings.
-              </p>
-            </div>
-            <div><label className="label" htmlFor="add-expense-effective-date">Eff. Date</label><input id="add-expense-effective-date" type="date" className="input" value={newEffDate} onChange={e => setNewEffDate(e.target.value)} /></div>
-          </div>
-        </div>
+        <ExpenseItemSchedulingFields
+          formIdPrefix="add-expense"
+          description={newDesc}
+          onDescriptionChange={setNewDesc}
+          freqtype={newFreqtype}
+          onFreqtypeChange={setNewFreqtype}
+          frequencyValue={newFreqVal}
+          onFrequencyValueChange={setNewFreqVal}
+          paytype={newPaytype}
+          onPaytypeChange={setNewPaytype}
+          effectivedate={newEffDate}
+          onEffectivedateChange={setNewEffDate}
+        />
       )}
       <div>
         <label className="label" htmlFor="add-expense-amount">Budget Amount ($)</label>
@@ -2487,7 +2523,6 @@ TransactionEntryForm.propTypes = {
     value: PropTypes.string.isRequired,
     label: PropTypes.string.isRequired,
     activeClassName: PropTypes.string.isRequired,
-    submitClassName: PropTypes.string.isRequired,
   })).isRequired,
   onSubmit: PropTypes.func.isRequired,
   submitLabel: PropTypes.func.isRequired,

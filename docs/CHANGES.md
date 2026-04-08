@@ -35,6 +35,73 @@ For the implemented export-shape plan that now defines budget-cycle export behav
 
 For the implemented Auto Expense workflow rules, scheduler behavior, migration expectations, and AUTO/MANUAL eligibility constraints introduced this session, read [AUTO_EXPENSE_PLAN.md](/home/ubuntu/dosh/docs/plans/AUTO_EXPENSE_PLAN.md).
 
+## Latest Session: Shared Expense Scheduling, Transaction-Modal Consistency, Fixed-Day Rollover, And Release-Notes Expansion
+
+This session focused on UX and workflow consistency around expense setup and transaction entry, then carried those changes through targeted backend scheduling fixes, shared frontend controls, focused regression coverage, repeated deployment verification, and user acceptance. The main outcomes were a shared expense-scheduling form between Budget Setup and Period Detail, a shared date-picker control that now behaves consistently in both flows, centralized quick-fill and neutral action-button rules in the shared transaction modal, fixed-day-of-month rollover support for day `31`, and expandable detail for newly available release-note versions.
+
+Important direction now in place:
+
+- Budget Setup and Period Detail now share one expense-scheduling field set rather than drifting as two parallel add-expense implementations
+- `Effective Date` is now the consistent expense scheduling term wherever the fixed-day and every-x-days setup flows need it
+- `Always` expenses no longer show an effective-date input in the shared expense form; backend behavior continues to treat them as period-start anchored
+- transaction-entry quick fill is now intentionally centralized in the shared modal, with category differences reduced to transaction direction rather than separate modal behavior branches
+- transaction submit buttons in the shared modal are now neutral rather than red or category-colored, while status pills remain category-specific
+- fixed-day-of-month scheduling now rolls a missing day such as the `31st` onto the next day after month end instead of producing inconsistent behavior across months
+- the release-notes modal now lets users expand newer available versions for details without having to leave the current-version context
+- future sessions should respect the stronger shared-surface decision gate now captured in [PROJECT_CONTEXT.md](/home/ubuntu/dosh/docs/PROJECT_CONTEXT.md): if a local fix starts to generalise through a shared component, shared logic, shared utility, or shared configuration, stop and seek explicit user confirmation first
+
+### 1. Expense scheduling now uses one shared form across Budget Setup and Period Detail
+
+Current behavior:
+
+- [ExpenseItemSchedulingFields.jsx](/home/ubuntu/dosh/frontend/src/components/ExpenseItemSchedulingFields.jsx) now owns the shared schedule-specific fields for add-expense flows
+- [ExpenseItemsTab.jsx](/home/ubuntu/dosh/frontend/src/pages/tabs/ExpenseItemsTab.jsx) and [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx) now reuse that shared field set instead of maintaining separate effective-date and recurrence UI
+- the setup history surface in [SetupItemHistoryModal.jsx](/home/ubuntu/dosh/frontend/src/components/SetupItemHistoryModal.jsx) now uses `Effective Date` wording to match the live add/edit flows
+- `Comment / Note` and `Include in` remain period-detail-only controls because they belong to cycle-scoped add-expense behavior, not setup-time configuration
+
+Important product meaning:
+
+- the expense scheduling UX should now be treated as one shared surface with period-only extensions layered on top
+- future effective-date or recurrence changes should start from the shared scheduling fields rather than being reimplemented independently in setup and period-detail screens
+
+### 2. Date entry and transaction actions now follow shared-control rules instead of drifting by page or category
+
+Current behavior:
+
+- [DateField.jsx](/home/ubuntu/dosh/frontend/src/components/DateField.jsx) now provides the shared calendar control used by the expense scheduling flows, replacing the native date input in the touched modals
+- [index.css](/home/ubuntu/dosh/frontend/src/index.css) now includes the shared date-picker width, dark-theme, and neutral transaction-button styling needed by the new controls
+- the shared transaction modal inside [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx) now owns the quick-fill and submit-button rules for income, expense, and investment transaction entry
+- quick fill is now intentionally based on shared direction rules rather than ad hoc per-category button text drift, while still allowing refund or correction views to use the full recorded actual amount where that is the appropriate upper bound
+
+Important engineering meaning:
+
+- the visual inconsistencies users saw were caused by per-category config attached to a shared modal shell, not by separate modal implementations
+- future transaction-entry fixes should first check whether the issue is in shared modal policy, per-category modal config, or both before changing behavior
+
+### 3. Fixed-day scheduling now has explicit rollover behavior for short months
+
+Current behavior:
+
+- [period_logic.py](/home/ubuntu/dosh/backend/app/period_logic.py) and [auto_expense.py](/home/ubuntu/dosh/backend/app/auto_expense.py) now support fixed-day rollover when a selected day does not exist in the target month
+- [fixedDayScheduling.js](/home/ubuntu/dosh/frontend/src/utils/fixedDayScheduling.js) now gives the frontend a shared helper for preview and guidance behavior around that rollover rule
+- Budget Setup and Period Detail expense flows now surface helper text when a fixed-day selection such as `31` will roll beyond a short month
+
+Important product meaning:
+
+- the fixed-day rule is now explicit, explainable, and consistent across backend scheduling, setup-time guidance, and period-detail behavior
+- the accepted rule for day `31` is to move the generated expense date to the next day after month end when the month does not contain that day
+
+### 4. Release-notes usability now includes expandable detail for newer available versions
+
+Current behavior:
+
+- [ReleaseNotesModal.jsx](/home/ubuntu/dosh/frontend/src/components/ReleaseNotesModal.jsx) now allows newly available versions to expand inline for details, similar to the existing progressive disclosure used elsewhere in the app
+- [Layout.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/Layout.test.jsx) now protects that expansion behavior
+
+Important product meaning:
+
+- users can now review what is new in a later released version without losing the current running-version context that the modal still prioritizes by default
+
 ## Latest Session: Auto Expense Automation, Migration Hardening, Runtime Baseline Alignment, And Period-Detail Feedback Polish
 
 This session implemented the first full Auto Expense workflow and carried it through migration, validation, UI refinement, test coverage, and repeated deployment verification. The main outcomes were budget-level Auto Expense settings, scheduled-expense AUTO/MANUAL enforcement, automated and manual trigger paths, a dedicated SQLite-safe migration, new migration-harness coverage, and period-detail feedback improvements that now surface blocked AUTO switching in an explicit warning modal.

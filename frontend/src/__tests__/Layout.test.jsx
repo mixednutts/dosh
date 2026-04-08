@@ -175,6 +175,48 @@ describe('Layout navigation', () => {
     expect(screen.getByRole('button', { name: /hide previous releases/i })).toBeTruthy()
   })
 
+  it('can expand newer released versions to show their details', async () => {
+    client.getReleaseNotes.mockResolvedValue({
+      current_version: '0.2.0-alpha',
+      update_available: true,
+      newer_release_count: 1,
+      previous_release_count: 0,
+      current_release: {
+        version: '0.2.0-alpha',
+        status: 'released',
+        release_date: '2026-04-08',
+        summary: 'Current version summary.',
+        sections: [
+          { title: 'Current', items: ['Current release item'] },
+        ],
+      },
+      newer_releases: [
+        {
+          version: '0.2.1-alpha',
+          status: 'released',
+          release_date: '2026-04-09',
+          summary: 'Update summary.',
+          sections: [
+            { title: 'Enhancements', items: ['Expanded release details are available on demand'] },
+          ],
+        },
+      ],
+      previous_releases: [],
+    })
+
+    renderLayout('/budgets')
+
+    fireEvent.click(await screen.findByRole('button', { name: /v0.2.0-alpha/i }))
+
+    expect(await screen.findByText('v0.2.1-alpha')).toBeTruthy()
+    expect(screen.queryByText('Expanded release details are available on demand')).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: /view details/i }))
+
+    expect(await screen.findByText('Expanded release details are available on demand')).toBeTruthy()
+    expect(screen.getByRole('button', { name: /hide details/i })).toBeTruthy()
+  })
+
   it('collapses the current budget cycle shortcuts when the budget list is collapsed', async () => {
     client.getBudgetSetupAssessment.mockResolvedValue({
       budgetid: 1,
