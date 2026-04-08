@@ -2,7 +2,7 @@
 
 Dosh is a workflow-driven personal finance application with a FastAPI backend and a Vite-powered React frontend.
 
-The current product supports guided budget setup, budget-cycle planning, income and expense tracking, transaction-backed balance movement, savings and investment planning, close-out workflows, a budget-overview calendar with bounded upcoming-cycle visibility, and a meaningful automated regression baseline.
+The current product supports guided budget setup, budget-cycle planning, income and expense tracking, optional scheduled Auto Expense automation, transaction-backed balance movement, savings and investment planning, close-out workflows, a budget-overview calendar with bounded upcoming-cycle visibility, and a meaningful automated regression baseline.
 
 ## Start Here
 
@@ -74,6 +74,7 @@ dosh/
 - [INLINE_EXPRESSION_AMOUNT_INPUT_PLAN.md](/home/ubuntu/dosh/docs/plans/INLINE_EXPRESSION_AMOUNT_INPUT_PLAN.md): implemented inline arithmetic amount-entry scope, parsing boundaries, and modal UX decisions
 - [AI_INSIGHT_ON_CLOSEOUT_PLAN.md](/home/ubuntu/dosh/docs/plans/AI_INSIGHT_ON_CLOSEOUT_PLAN.md): supporting close-out planning insight
 - [GITHUB_RELEASE_MANAGEMENT_WORKFLOW_PLAN.md](/home/ubuntu/dosh/docs/plans/GITHUB_RELEASE_MANAGEMENT_WORKFLOW_PLAN.md): GitHub-managed release-tagging, release publishing, and in-app release-info workflow
+- [AUTO_EXPENSE_PLAN.md](/home/ubuntu/dosh/docs/plans/AUTO_EXPENSE_PLAN.md): budget-level Auto Expense rules, AUTO/MANUAL eligibility, scheduler behavior, and migration expectations
 
 ### Testing
 
@@ -85,7 +86,7 @@ dosh/
 
 - `Budget Cycle` is the preferred user-facing wording where it improves clarity, while backend naming may still use `period` for stability.
 - The product direction is practical, supportive, and workflow-driven rather than accounting-heavy.
-- The current release baseline is `0.1.3-alpha`, displayed in the UI as `v0.1.3-alpha`.
+- The current release baseline is `0.2.0-alpha`, displayed in the UI as `v0.2.0-alpha`.
 - Versioning, migration naming, and release-step expectations are defined in [MIGRATION_AND_RELEASE_MANAGEMENT.md](/home/ubuntu/dosh/docs/MIGRATION_AND_RELEASE_MANAGEMENT.md).
 - Published GitHub Releases are now the app-facing source for in-app release information, while [RELEASE_NOTES.md](/home/ubuntu/dosh/docs/RELEASE_NOTES.md) remains the repo-managed source used to generate those release bodies.
 - Detailed roadmap, plan, and testing content should live in the next-layer documents above rather than growing this README.

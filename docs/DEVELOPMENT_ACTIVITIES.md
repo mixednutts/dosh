@@ -22,6 +22,7 @@ It complements:
 - [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_CYCLE_LIFECYCLE_PLAN.md) for the detailed cycle lifecycle and close-out plan that is now partially implemented
 - [BUDGET_ADJUSTMENT_REVISION_HISTORY_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_ADJUSTMENT_REVISION_HISTORY_PLAN.md) for the budget-adjustment, revision-history, and setup-history rules implemented this session
 - [SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md](/home/ubuntu/dosh/docs/plans/SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md) for the centralized setup-validity and downstream-protection model implemented this session
+- [AUTO_EXPENSE_PLAN.md](/home/ubuntu/dosh/docs/plans/AUTO_EXPENSE_PLAN.md) for the implemented Auto Expense rules, scheduler behavior, AUTO/MANUAL eligibility, and migration expectations
 - [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) for the current proposed testing approach, priorities, and case inventory
 - [TEST_EXPANSION_PLAN.md](/home/ubuntu/dosh/docs/tests/TEST_EXPANSION_PLAN.md) for the current testing follow-up plan and next coverage slices
 - [TEST_RESULTS_SUMMARY.md](/home/ubuntu/dosh/docs/tests/TEST_RESULTS_SUMMARY.md) for the latest recorded verification outcomes
@@ -49,6 +50,7 @@ Recent progress worth carrying forward:
 - period deletion now has guided continuity-aware options, including `Delete this and all upcoming cycles`
 - budget settings now include a dedicated manual cycle-lock control separate from lifecycle state
 - the repository now has a credible automated regression harness across backend, frontend, and initial Playwright end-to-end lifecycle smoke flows
+- budget settings and period-detail now include the first Auto Expense automation slice for scheduled expenses, including budget-level enablement, offset timing, AUTO/MANUAL controls, and manual run support
 - budget setup now has a centralized setup assessment model rather than scattered readiness assumptions
 - setup records now become explicitly protected when downstream cycles or transactions depend on them
 - the budget setup page now shows section-level assessment state and protected downstream usage
@@ -62,6 +64,7 @@ Recent progress worth carrying forward:
 - locked active cycles now preserve actual-entry and transaction flows while still guarding structural edits
 - `PeriodTransaction` is now the sole live transaction store after removal of obsolete legacy expense and investment transaction tables
 - backend startup schema patching has been removed in favor of an explicit cutover script for the current baseline
+- backend migration verification now includes a reusable Alembic harness for both clean upgrade and upgrade from a pre-feature SQLite snapshot
 - the frontend now uses Vite plus standalone Jest rather than Create React App
 - the frontend Docker image now uses Node 20 and the frontend dependency tree is currently clean on `npm audit`
 - a dev-only `Create Demo Budget` flow now exists from the budget-create modal and is controlled through shared Docker Compose `DEV_MODE` gating across frontend and backend
@@ -559,7 +562,7 @@ Status:
 - `Completed`: add a `View previous releases` option to the in-app release-notes modal by extending the backend payload and revealing older released versions on demand
 - provide an activation workflow for income lines in budget setup and align that workflow consistently across income, investment, and expense setup sections
 - `Completed`: change modal transaction quick-fill wording so `Add Remaining` appears only when expense or investment workflows have a true positive remaining amount, while credit or refund views continue using full-amount entry
-- define `AUTO` expense pay-type behavior so only explicitly automatic expenses deduct from the primary account, while keeping setup defaults at `AUTO` until that workflow is implemented
+- `Completed`: implement Auto Expense so eligible scheduled expenses can run as `AUTO` or `MANUAL`, budget settings now control automation and offset timing, the period-detail page can run Auto Expense manually and switch scheduled lines between `AUTO` and `MANUAL`, and the backend now blocks `MANUAL -> AUTO` once recorded expense activity exists; use [AUTO_EXPENSE_PLAN.md](/home/ubuntu/dosh/docs/plans/AUTO_EXPENSE_PLAN.md) as the canonical rules reference
 
 #### Activity Group: Test Coverage
 
@@ -576,6 +579,7 @@ Status:
 - deepen ledger and reconciliation coverage without treating one-off migration backfill as normal product behavior
 - continue broadening budget health coverage as scoring and reporting evolve
 - extend backend and frontend coverage around close-out, carry-forward, and delete continuity
+- `Completed`: add dedicated migration coverage for clean Alembic upgrade and upgrade from a pre-feature SQLite snapshot, alongside focused Auto Expense backend and period-detail frontend regression coverage
 - future setup and workflow testing should expand beyond the original `1 transaction + 1 savings` assumption
 - bookmark named scenarios such as `Single Account` and `Multi Transaction` so future sessions can deliberately test differing account shapes rather than relying on one default personal setup model
 - consider adding a richer demo-validation checklist or smoke flow once more reporting and reconciliation surfaces exist
@@ -601,6 +605,7 @@ Status:
 - make schema evolution safer and more observable than ad hoc one-time scripts
 - `Completed`: separate one-time migration work from normal app startup permanently for the current baseline
 - `Completed`: capture the unified-ledger baseline, close-out schema, and setup-assessment schema in the real migration path
+- `Completed`: align the backend container and GitHub workflow runtime baseline on Python 3.12 after deployment exposed that the current backend typing syntax is not Python 3.9-safe
 - `Completed`: harden the SonarQube workflow so failed quality-gate runs still upload sanitized artifacts with explicit failed-condition context and file-level measure hotspots
 - `Completed`: harden backend release-notes parsing by replacing the regex-based header parser with bounded string parsing and dedicated regression coverage after the regex DoS exposure was flagged
 - `Completed`: align Dosh to a GitHub-managed release-tagging and release-publishing workflow that creates official Git tags from validated version bumps on `main`, publishes GitHub Releases from validated repo release content, and feeds the in-app release-notes view through the backend GitHub Releases client; the repository workflows, protected `main` SonarQube gate, first remote `v0.1.3-alpha` tag, and first published GitHub Release are now in place, and the app now resolves `current_release` successfully from the published GitHub Release; use [GITHUB_RELEASE_MANAGEMENT_WORKFLOW_PLAN.md](/home/ubuntu/dosh/docs/plans/GITHUB_RELEASE_MANAGEMENT_WORKFLOW_PLAN.md) and [GITHUB_RELEASE_RUNBOOK.md](/home/ubuntu/dosh/docs/GITHUB_RELEASE_RUNBOOK.md) as the current references

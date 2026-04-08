@@ -22,6 +22,7 @@ from app import database as database
 from app import main as main
 from app.database import Base, get_db
 from app.models import PayType
+from .migration_helpers import build_pre_feature_database
 
 app = main.app
 
@@ -85,3 +86,12 @@ def client(isolated_database):
         yield test_client
 
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def build_pre_feature_db(tmp_path):
+    def _build(name: str = "dosh-pre-feature.sqlite3"):
+        db_path = tmp_path / name
+        return build_pre_feature_database(db_path)
+
+    return _build

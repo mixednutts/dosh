@@ -416,6 +416,37 @@ Maintenance notes:
 
 - should remain focused on GitHub release orchestration rather than absorb deployment-only operational detail
 
+### AUTO_EXPENSE_PLAN.md
+
+Document:
+
+- [AUTO_EXPENSE_PLAN.md](/home/ubuntu/dosh/docs/plans/AUTO_EXPENSE_PLAN.md)
+
+Document type:
+
+- domain or workflow plan
+
+Primary purpose:
+
+- define budget-level Auto Expense behavior and the hard rules around scheduled expense automation
+
+Primary source-of-truth scope:
+
+- Auto Expense settings behavior
+- AUTO or MANUAL eligibility rules
+- scheduler and manual-run expectations
+- legacy-data normalization and migration constraints for Auto Expense
+
+Key relationships:
+
+- informs current-state and handoff guidance in [PROJECT_CONTEXT.md](/home/ubuntu/dosh/docs/PROJECT_CONTEXT.md)
+- linked from [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md) as the canonical Auto Expense rules reference
+- paired with verification notes in [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) and [TEST_RESULTS_SUMMARY.md](/home/ubuntu/dosh/docs/tests/TEST_RESULTS_SUMMARY.md)
+
+Maintenance notes:
+
+- should remain the main design-boundary document for Auto Expense behavior rather than becoming a second change log
+
 ### GITHUB_RELEASE_RUNBOOK.md
 
 Document:

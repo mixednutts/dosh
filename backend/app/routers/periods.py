@@ -11,6 +11,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 from ..api_docs import DbSession, error_responses
+from ..auto_expense import process_auto_expenses_for_period
 from ..budget_health import _build_current_period_check, _current_period_totals
 from ..cycle_constants import (
     ACTIVE,
@@ -48,7 +49,8 @@ from ..schemas import (
     PeriodBalanceOut, PeriodExpenseReorderRequest, PeriodInvestmentOut,
     PeriodExpenseStatusUpdate, PeriodExpenseBudgetUpdate, PeriodLineBudgetAdjustRequest,
     PeriodCloseoutPreviewOut, PeriodCloseoutRequest, PeriodDeleteOptionsOut,
-    PeriodInvestmentStatusUpdate, PeriodTransactionOut,
+    PeriodInvestmentStatusUpdate, PeriodTransactionOut, PeriodExpensePayTypeUpdate,
+    AutoExpenseRunResultOut,
 )
 from ..period_logic import calc_period_end, periods_overlap, expense_occurs_in_period
 from ..setup_assessment import budget_setup_assessment
@@ -62,6 +64,7 @@ from ..transaction_ledger import (
     get_primary_account_desc,
     sync_period_state,
 )
+from .expense_items import update_expense_item as update_expense_item_setup
 
 router = APIRouter(prefix="/periods", tags=["periods"])
 
@@ -92,6 +95,20 @@ def _assert_budget_editable(period: FinancialPeriod, budget: Budget) -> None:
 def _assert_expense_not_paid(pe: PeriodExpense) -> None:
     if (getattr(pe, "status", WORKING) or WORKING) == PAID:
         raise HTTPException(423, "Expense is marked Paid — revise it before making changes")
+
+
+def _get_period_expense_or_404(finperiodid: int, expensedesc: str, db: Session) -> PeriodExpense:
+    pe = (
+        db.query(PeriodExpense)
+        .filter(
+            PeriodExpense.finperiodid == finperiodid,
+            PeriodExpense.expensedesc == expensedesc,
+        )
+        .first()
+    )
+    if not pe:
+        raise HTTPException(404, "Period expense entry not found")
+    return pe
 
 
 def _assert_investment_not_paid(pi: PeriodInvestment) -> None:
@@ -1362,6 +1379,46 @@ def set_expense_status(
     db.commit()
     db.refresh(pe)
     return _enrich_expenses([pe], db)[0]
+
+
+@router.patch("/{finperiodid}/expense/{expensedesc}/paytype", response_model=PeriodExpenseOut, responses=error_responses(404, 422, 423))
+def update_period_expense_paytype(
+    finperiodid: int,
+    expensedesc: str,
+    payload: PeriodExpensePayTypeUpdate,
+    db: DbSession,
+):
+    period = _get_period_or_404(finperiodid, db)
+    _assert_not_closed(period)
+    pe = _get_period_expense_or_404(finperiodid, expensedesc, db)
+    _assert_expense_not_paid(pe)
+    item = db.get(ExpenseItem, (period.budgetid, expensedesc))
+    if not item:
+        raise HTTPException(404, "Expense item not found")
+    update_expense_item_setup(
+        budgetid=period.budgetid,
+        expensedesc=expensedesc,
+        payload=payload,
+        db=db,
+    )
+    db.refresh(pe)
+    return _enrich_expenses([pe], db)[0]
+
+
+@router.post("/{finperiodid}/run-auto-expenses", response_model=AutoExpenseRunResultOut, responses=error_responses(404, 422))
+def run_auto_expenses_for_period(finperiodid: int, db: DbSession):
+    period = _get_period_or_404(finperiodid, db)
+    result = process_auto_expenses_for_period(finperiodid, db)
+    if result.skipped_reasons and result.created_count == 0 and result.skipped_reasons[0] == "Auto Expense is disabled for this budget":
+        raise HTTPException(422, "Auto Expense is disabled for this budget.")
+    db.commit()
+    assign_period_lifecycle_states(period.budgetid, db)
+    db.commit()
+    return AutoExpenseRunResultOut(
+        created_count=result.created_count,
+        skipped_count=result.skipped_count,
+        skipped_reasons=result.skipped_reasons,
+    )
 
 
 # ── Edit budget amount for period lines ──────────────────────────────────────

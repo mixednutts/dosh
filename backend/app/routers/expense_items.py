@@ -1,8 +1,10 @@
 from decimal import Decimal
+from typing import Optional
 from fastapi import APIRouter, HTTPException
 from sqlalchemy.orm import Session
+from ..auto_expense import normalize_expense_paytype
 from ..api_docs import DbSession, error_responses
-from ..models import Budget, ExpenseItem, FinancialPeriod, PeriodExpense
+from ..models import Budget, ExpenseItem, FinancialPeriod, PeriodExpense, PeriodTransaction
 from ..schemas import ExpenseItemCreate, ExpenseItemOut, ExpenseItemUpdate, ExpenseItemReorderRequest, SetupHistoryOut
 from ..period_logic import expense_occurs_in_period
 from ..setup_assessment import expense_assessment
@@ -43,6 +45,51 @@ def _assert_expense_deactivate_allowed(budgetid: int, expensedesc: str, db: Sess
         raise HTTPException(422, f'Expense item "{expensedesc}" is in use and cannot be deactivated. {"; ".join(assessment["reasons"])}.')
 
 
+def _expense_has_recorded_activity(budgetid: int, expensedesc: str, db: Session) -> bool:
+    return (
+        db.query(PeriodTransaction)
+        .filter(
+            PeriodTransaction.budgetid == budgetid,
+            PeriodTransaction.source == "expense",
+            PeriodTransaction.source_key == expensedesc,
+            PeriodTransaction.entry_kind == "movement",
+        )
+        .first()
+        is not None
+    )
+
+
+def _normalized_paytype_or_422(
+    *,
+    budgetid: int,
+    expensedesc: str,
+    current_item: Optional[ExpenseItem],
+    payload_data: dict,
+    db: Session,
+) -> Optional[str]:
+    if "paytype" not in payload_data and current_item is None:
+        return None
+    requested_paytype = payload_data.get("paytype", current_item.paytype if current_item else None)
+    freqtype = payload_data.get("freqtype", current_item.freqtype if current_item else None)
+    frequency_value = payload_data.get("frequency_value", current_item.frequency_value if current_item else None)
+    effectivedate = payload_data.get("effectivedate", current_item.effectivedate if current_item else None)
+
+    try:
+        normalized_paytype = normalize_expense_paytype(
+            paytype=requested_paytype,
+            freqtype=freqtype,
+            frequency_value=frequency_value,
+            effectivedate=effectivedate,
+        )
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+    current_paytype = current_item.paytype if current_item else None
+    if normalized_paytype == "AUTO" and current_paytype != "AUTO" and _expense_has_recorded_activity(budgetid, expensedesc, db):
+        raise HTTPException(422, f'Expense item "{expensedesc}" cannot be changed to AUTO because it already has recorded expense activity.')
+    return normalized_paytype
+
+
 @router.get("/", response_model=list[ExpenseItemOut], responses=error_responses(404))
 def list_expense_items(budgetid: int, db: DbSession, active_only: bool = False):
     _get_budget_or_404(budgetid, db)
@@ -72,7 +119,15 @@ def create_expense_item(budgetid: int, payload: ExpenseItemCreate, db: DbSession
     existing = db.get(ExpenseItem, (budgetid, payload.expensedesc))
     if existing:
         raise HTTPException(409, "Expense item with this description already exists")
-    ei = ExpenseItem(budgetid=budgetid, revisionnum=0, **payload.model_dump())
+    data = payload.model_dump()
+    data["paytype"] = _normalized_paytype_or_422(
+        budgetid=budgetid,
+        expensedesc=payload.expensedesc,
+        current_item=None,
+        payload_data=data,
+        db=db,
+    )
+    ei = ExpenseItem(budgetid=budgetid, revisionnum=0, **data)
     db.add(ei)
     db.commit()
     db.refresh(ei)
@@ -93,6 +148,14 @@ def update_expense_item(
 ):
     ei = _get_expense_or_404(budgetid, expensedesc, db)
     data = payload.model_dump(exclude_none=True)
+    if "paytype" in data or "freqtype" in data or "frequency_value" in data or "effectivedate" in data:
+        data["paytype"] = _normalized_paytype_or_422(
+            budgetid=budgetid,
+            expensedesc=expensedesc,
+            current_item=ei,
+            payload_data=data,
+            db=db,
+        )
     if data.get("active") is False:
         _assert_expense_deactivate_allowed(budgetid, expensedesc, db)
     bump = data.pop("bump_revision", False)

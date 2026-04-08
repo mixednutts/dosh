@@ -84,6 +84,8 @@ class BudgetUpdate(BaseModel):
     period_criticality_bias: Optional[int] = None
     allow_cycle_lock: Optional[bool] = None
     account_naming_preference: Optional[str] = None
+    auto_expense_enabled: Optional[bool] = None
+    auto_expense_offset_days: Optional[int] = None
 
     @field_validator(
         "acceptable_expense_overrun_pct",
@@ -96,6 +98,13 @@ class BudgetUpdate(BaseModel):
     def validate_percentage_preference(cls, v: Optional[int]) -> Optional[int]:
         if v is not None and (v < 0 or v > 100):
             raise ValueError("Personalisation values must be between 0 and 100")
+        return v
+
+    @field_validator("auto_expense_offset_days")
+    @classmethod
+    def validate_auto_expense_offset_days(cls, v: Optional[int]) -> Optional[int]:
+        if v is not None and v < 0:
+            raise ValueError("Auto expense offset days must be 0 or more")
         return v
 
     @field_validator("maximum_deficit_amount")
@@ -145,6 +154,8 @@ class BudgetOut(BudgetBase):
     period_criticality_bias: int = 50
     allow_cycle_lock: bool = True
     account_naming_preference: str = "Transaction"
+    auto_expense_enabled: bool = False
+    auto_expense_offset_days: int = 0
     model_config = {"from_attributes": True}
 
 
@@ -408,6 +419,17 @@ class PeriodExpenseOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class PeriodExpensePayTypeUpdate(BaseModel):
+    paytype: str
+
+    @field_validator("paytype")
+    @classmethod
+    def validate_paytype(cls, v: str) -> str:
+        if v not in {"AUTO", "MANUAL"}:
+            raise ValueError("paytype must be 'AUTO' or 'MANUAL'")
+        return v
+
+
 class PeriodExpenseStatusUpdate(BaseModel):
     status: str
     revision_comment: Optional[str] = None
@@ -642,6 +664,12 @@ class PeriodTransactionOut(BaseModel):
     budget_after_amount: Optional[Decimal] = None
     revisionnum: Optional[int] = None
     model_config = {"from_attributes": True}
+
+
+class AutoExpenseRunResultOut(BaseModel):
+    created_count: int = 0
+    skipped_count: int = 0
+    skipped_reasons: list[str] = []
 
 
 # ── PeriodExpenseEntry ────────────────────────────────────────────────────────

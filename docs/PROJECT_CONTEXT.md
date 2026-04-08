@@ -20,6 +20,7 @@ It is a synthesis of the current Markdown sources in this repository:
 - [INLINE_EXPRESSION_AMOUNT_INPUT_PLAN.md](/home/ubuntu/dosh/docs/plans/INLINE_EXPRESSION_AMOUNT_INPUT_PLAN.md)
 - [BUDGET_CYCLE_EXPORT_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_CYCLE_EXPORT_PLAN.md)
 - [GITHUB_RELEASE_MANAGEMENT_WORKFLOW_PLAN.md](/home/ubuntu/dosh/docs/plans/GITHUB_RELEASE_MANAGEMENT_WORKFLOW_PLAN.md)
+- [AUTO_EXPENSE_PLAN.md](/home/ubuntu/dosh/docs/plans/AUTO_EXPENSE_PLAN.md)
 
 Use this as the quick-start development handoff. Use the source documents above when deeper detail is needed.
 
@@ -149,14 +150,16 @@ Frontend:
 
 Operational note:
 
-- the current app-version baseline is `0.1.3-alpha`, displayed in the UI as `v0.1.3-alpha`
+- the current app-version baseline is `0.2.0-alpha`, displayed in the UI as `v0.2.0-alpha`
 - Alembic is the required path for normal schema evolution from the current aligned baseline, with migration and release rules defined in [MIGRATION_AND_RELEASE_MANAGEMENT.md](/home/ubuntu/dosh/docs/MIGRATION_AND_RELEASE_MANAGEMENT.md)
 - the repo now has an explicit transaction-ledger cutover script in [cutover_unified_transactions.py](/home/ubuntu/dosh/backend/scripts/cutover_unified_transactions.py) for the current schema baseline
 - backend tests now run against an isolated SQLite database per test case through [conftest.py](/home/ubuntu/dosh/backend/tests/conftest.py)
+- backend test maintenance now also includes a dedicated Alembic migration harness for clean upgrades and upgrade from a pre-feature SQLite snapshot through [migration_helpers.py](/home/ubuntu/dosh/backend/tests/migration_helpers.py) and [test_auto_expense_migration.py](/home/ubuntu/dosh/backend/tests/test_auto_expense_migration.py)
 - Docker Compose remains the active deployment path, with the frontend exposed on port `3080`
 - this repo also includes [docker-compose.override.yml](/home/ubuntu/dosh/docker-compose.override.yml), but that file represents optional environment-specific deployment wiring rather than the core repo release path
 - GitHub release alignment is now implemented through repo validation, auto-tagging, published GitHub Releases, and the runtime GitHub-backed release-notes endpoint; operator steps live in [GITHUB_RELEASE_RUNBOOK.md](/home/ubuntu/dosh/docs/GITHUB_RELEASE_RUNBOOK.md)
 - the frontend Docker build now uses Node 20 rather than the old Node 16 baseline
+- the backend Docker runtime and GitHub workflow Python baseline now align on Python 3.12, which should be treated as the supported baseline for backend container and CI execution
 - Docker Compose `DEV_MODE` is now the shared control point for dev-only demo-budget behavior across frontend build visibility and backend runtime enforcement
 - the backend router baseline now uses a shared [api_docs.py](/home/ubuntu/dosh/backend/app/api_docs.py) helper with `DbSession` and centralized `error_responses(...)` metadata for FastAPI endpoints
 - the SonarQube workflow now exports a sanitized artifact summary even when the quality gate fails, and the repo includes [fetch_latest_sonar_artifact.sh](/home/ubuntu/dosh/scripts/fetch_latest_sonar_artifact.sh) so future sessions can inspect the latest successful artifact quickly
@@ -240,6 +243,7 @@ The repository already supports:
 - period-detail expense and investment `View transactions` actions now open read-only details modals, while add-transaction actions remain explicit
 - period-detail remaining and budget-surplus summaries now roll up from line-level budget, actual, and positive-remaining logic so current mixed-actual periods and untouched future periods both behave consistently
 - period-detail now includes a direct `Export` action that downloads the viewed budget cycle as either flat `CSV` or grouped `JSON`, with flat export rows ordered so empty transaction dates appear first and dated transaction rows then sort ascending
+- budget settings now support optional Auto Expense automation with offset days, scheduled expense items can be marked `AUTO` or `MANUAL` under backend-enforced eligibility rules, the period-detail page can run Auto Expense manually, and blocked `MANUAL -> AUTO` attempts now explain themselves in a dedicated warning modal
 
 Current frontend wording trends toward `Budget Cycle` for user clarity while backend naming still uses `period` for stability.
 
@@ -400,6 +404,7 @@ For detailed product meaning:
 - use [SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md](/home/ubuntu/dosh/docs/plans/SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md) for the current setup-validity and downstream-protection model
 - use [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_CYCLE_LIFECYCLE_PLAN.md) for lifecycle, carry-forward, delete, and close-out rules
 - use [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/docs/plans/BUDGET_HEALTH_ADDENDUM.md) for health direction
+- use [AUTO_EXPENSE_PLAN.md](/home/ubuntu/dosh/docs/plans/AUTO_EXPENSE_PLAN.md) for Auto Expense rules, migration expectations, and AUTO/MANUAL eligibility behavior
 - use [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md) for roadmap and engineering priorities
 - use [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) and [TEST_EXPANSION_PLAN.md](/home/ubuntu/dosh/docs/tests/TEST_EXPANSION_PLAN.md) for testing expectations
 - use [TEST_RESULTS_SUMMARY.md](/home/ubuntu/dosh/docs/tests/TEST_RESULTS_SUMMARY.md) for recent verification outcomes

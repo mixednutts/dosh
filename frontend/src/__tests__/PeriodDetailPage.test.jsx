@@ -27,6 +27,8 @@ jest.mock('../api/client', () => ({
   addInvestmentTransaction: jest.fn(),
   deleteInvestmentTransaction: jest.fn(),
   setPeriodExpenseStatus: jest.fn(),
+  updatePeriodExpensePayType: jest.fn(),
+  runPeriodAutoExpenses: jest.fn(),
   updatePeriodIncomeBudget: jest.fn(),
   updatePeriodExpenseBudget: jest.fn(),
   removePeriodExpense: jest.fn(),
@@ -169,6 +171,185 @@ describe('PeriodDetailPage', () => {
     await waitFor(() => {
       expect(client.exportPeriod).toHaveBeenCalledWith(45, 'json')
     })
+  })
+
+  it('shows Auto Expense controls only when the budget setting is enabled', async () => {
+    client.getBudget.mockResolvedValue({
+      budgetid: 1,
+      budgetowner: 'Alex',
+      description: 'Home Budget',
+      budget_frequency: 'Monthly',
+      allow_cycle_lock: true,
+      auto_expense_enabled: true,
+    })
+    client.getPeriodDetail.mockResolvedValue({
+      period: {
+        finperiodid: 47,
+        budgetid: 1,
+        startdate: '2026-05-01T00:00:00',
+        enddate: '2026-05-31T00:00:00',
+        islocked: false,
+        cycle_status: 'ACTIVE',
+      },
+      incomes: [],
+      expenses: [
+        {
+          finperiodid: 47,
+          budgetid: 1,
+          expensedesc: 'Rent',
+          budgetamount: '1200.00',
+          actualamount: '0.00',
+          varianceamount: '0.00',
+          is_oneoff: false,
+          sort_order: 0,
+          status: 'Current',
+          remaining_amount: '1200.00',
+          freqtype: 'Fixed Day of Month',
+          frequency_value: 15,
+          paytype: 'MANUAL',
+          effectivedate: '2026-01-01T00:00:00',
+        },
+      ],
+      investments: [],
+      balances: [],
+      projected_savings: '0.00',
+      closeout_snapshot: null,
+    })
+    client.runPeriodAutoExpenses.mockResolvedValue({ created_count: 1, skipped_count: 0, skipped_reasons: [] })
+
+    renderWithProviders(<PeriodDetailPage />, {
+      route: '/periods/47',
+      path: '/periods/:periodId',
+    })
+
+    expect(await screen.findByText('Run Auto Expense')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'MANUAL' })).toBeTruthy()
+
+    fireEvent.click(screen.getByText('Run Auto Expense'))
+
+    await waitFor(() => {
+      expect(client.runPeriodAutoExpenses).toHaveBeenCalledWith(47)
+    })
+  })
+
+  it('shows the paytype switch rejection in a warning modal', async () => {
+    client.getBudget.mockResolvedValue({
+      budgetid: 1,
+      budgetowner: 'Alex',
+      description: 'Home Budget',
+      budget_frequency: 'Monthly',
+      allow_cycle_lock: true,
+      auto_expense_enabled: true,
+    })
+    client.getPeriodDetail.mockResolvedValue({
+      period: {
+        finperiodid: 49,
+        budgetid: 1,
+        startdate: '2026-05-01T00:00:00',
+        enddate: '2026-05-31T00:00:00',
+        islocked: false,
+        cycle_status: 'ACTIVE',
+      },
+      incomes: [],
+      expenses: [
+        {
+          finperiodid: 49,
+          budgetid: 1,
+          expensedesc: 'Rent',
+          budgetamount: '1200.00',
+          actualamount: '0.00',
+          varianceamount: '0.00',
+          is_oneoff: false,
+          sort_order: 0,
+          status: 'Current',
+          remaining_amount: '1200.00',
+          freqtype: 'Fixed Day of Month',
+          frequency_value: 15,
+          paytype: 'MANUAL',
+          effectivedate: '2026-01-01T00:00:00',
+        },
+      ],
+      investments: [],
+      balances: [],
+      projected_savings: '0.00',
+      closeout_snapshot: null,
+    })
+    client.updatePeriodExpensePayType.mockRejectedValue({
+      response: {
+        data: {
+          detail: 'Expense item "Rent" cannot be changed to AUTO because it already has recorded expense activity.',
+        },
+      },
+    })
+
+    renderWithProviders(<PeriodDetailPage />, {
+      route: '/periods/49',
+      path: '/periods/:periodId',
+    })
+
+    fireEvent.click(await screen.findByRole('button', { name: 'MANUAL' }))
+
+    expect(await screen.findByText('Unable to Change AUTO/MANUAL')).toBeTruthy()
+    expect(screen.getByText(/Expense item "Rent" cannot be changed to AUTO because it already has recorded expense activity\./i)).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'OK' }))
+
+    await waitFor(() => {
+      expect(screen.queryByText('Unable to Change AUTO/MANUAL')).toBeNull()
+    })
+  })
+
+  it('hides Auto Expense controls when the budget setting is disabled', async () => {
+    client.getBudget.mockResolvedValue({
+      budgetid: 1,
+      budgetowner: 'Alex',
+      description: 'Home Budget',
+      budget_frequency: 'Monthly',
+      allow_cycle_lock: true,
+      auto_expense_enabled: false,
+    })
+    client.getPeriodDetail.mockResolvedValue({
+      period: {
+        finperiodid: 48,
+        budgetid: 1,
+        startdate: '2026-05-01T00:00:00',
+        enddate: '2026-05-31T00:00:00',
+        islocked: false,
+        cycle_status: 'ACTIVE',
+      },
+      incomes: [],
+      expenses: [
+        {
+          finperiodid: 48,
+          budgetid: 1,
+          expensedesc: 'Rent',
+          budgetamount: '1200.00',
+          actualamount: '0.00',
+          varianceamount: '0.00',
+          is_oneoff: false,
+          sort_order: 0,
+          status: 'Current',
+          remaining_amount: '1200.00',
+          freqtype: 'Fixed Day of Month',
+          frequency_value: 15,
+          paytype: 'AUTO',
+          effectivedate: '2026-01-01T00:00:00',
+        },
+      ],
+      investments: [],
+      balances: [],
+      projected_savings: '0.00',
+      closeout_snapshot: null,
+    })
+
+    renderWithProviders(<PeriodDetailPage />, {
+      route: '/periods/48',
+      path: '/periods/:periodId',
+    })
+
+    expect(await screen.findByText('Rent')).toBeTruthy()
+    expect(screen.queryByText('Run Auto Expense')).toBeNull()
+    expect(screen.queryByText('AUTO')).toBeNull()
   })
 
   it('shows export for closed cycles without lifecycle action buttons', async () => {

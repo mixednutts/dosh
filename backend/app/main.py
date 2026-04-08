@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .api_docs import error_responses
+from .auto_expense import start_auto_expense_scheduler
 from .cycle_management import assign_period_lifecycle_states
 from .database import engine
 from . import models as _models  # noqa: F401 - ensure all models are registered
@@ -64,6 +65,8 @@ def seed_reference_data():
 
     finally:
         db.close()
+
+    start_auto_expense_scheduler()
 
 
 @app.get("/api/health")

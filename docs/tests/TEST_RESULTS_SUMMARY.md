@@ -4,6 +4,96 @@ This document records meaningful automated test results from major working sessi
 
 It exists separately from [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) so the strategy can stay stable while future sessions still have a record of what was actually run and verified.
 
+## Latest Session: Auto Expense Implementation, Migration Harness Coverage, Runtime Baseline Repair, And Feedback-Modal Polish
+
+Session outcomes verified in this run:
+
+- Auto Expense is now implemented as a budget-level optional automation for scheduled expenses
+- budget settings now include Auto Expense enablement and offset-day controls
+- scheduled expense AUTO/MANUAL switching is now backend-enforced and blocks `MANUAL -> AUTO` once recorded expense activity exists
+- the period-detail page now supports manual Auto Expense execution and shows blocked pay-type changes in a dedicated warning modal
+- the backend now has dedicated migration coverage for both clean Alembic upgrade and upgrade from a pre-feature SQLite snapshot
+- the backend deploy/runtime baseline was corrected from Python 3.9 to Python 3.12 after deployment exposed an incompatibility with the codebase's typing syntax
+- the Auto Expense migration was corrected to remain SQLite-safe after the initial deploy attempt exposed unsupported `ALTER COLUMN ... DROP DEFAULT` behavior
+- the stack was redeployed repeatedly through the override-aware Compose path after backend runtime, migration, and period-detail UI refinements
+
+### Backend verification
+
+Commands run during this session:
+
+```bash
+cd /home/ubuntu/dosh/backend
+../backend/.venv/bin/python -m pytest tests/test_auto_expense_migration.py -q
+../backend/.venv/bin/python -m pytest tests/test_auto_expense.py tests/test_budget_schema_validation.py -q
+../backend/.venv/bin/python -m pytest tests/test_budget_setup_workflows.py -k expense -q
+python3 -m py_compile app/main.py app/models.py app/schemas.py app/auto_expense.py app/routers/expense_items.py app/routers/periods.py
+```
+
+Result:
+
+- the dedicated migration harness passed for both clean upgrade and pre-feature upgrade coverage
+- the focused Auto Expense and schema-validation suites passed
+- the focused expense workflow slice in `test_budget_setup_workflows.py` passed
+- backend compile checks passed after the Python 3.9-incompatible annotation issue was removed from the deploy path
+
+Files with meaningful backend updates in this session:
+
+- [auto_expense.py](/home/ubuntu/dosh/backend/app/auto_expense.py)
+- [expense_items.py](/home/ubuntu/dosh/backend/app/routers/expense_items.py)
+- [periods.py](/home/ubuntu/dosh/backend/app/routers/periods.py)
+- [models.py](/home/ubuntu/dosh/backend/app/models.py)
+- [schemas.py](/home/ubuntu/dosh/backend/app/schemas.py)
+- [2ef0f1a2f1ba_add_auto_expense_settings.py](/home/ubuntu/dosh/backend/alembic/versions/2ef0f1a2f1ba_add_auto_expense_settings.py)
+- [migration_helpers.py](/home/ubuntu/dosh/backend/tests/migration_helpers.py)
+- [test_auto_expense.py](/home/ubuntu/dosh/backend/tests/test_auto_expense.py)
+- [test_auto_expense_migration.py](/home/ubuntu/dosh/backend/tests/test_auto_expense_migration.py)
+
+### Frontend verification
+
+Commands run during this session:
+
+```bash
+cd /home/ubuntu/dosh/frontend
+npm test -- --runTestsByPath src/__tests__/SettingsTab.test.jsx src/__tests__/ExpenseItemsTab.test.jsx src/__tests__/PeriodDetailPage.test.jsx --runInBand
+npm test -- --runTestsByPath src/__tests__/PeriodDetailPage.test.jsx --runInBand
+```
+
+Result:
+
+- the focused Auto Expense frontend batch passed with settings, setup, and period-detail coverage
+- the period-detail regression suite continued passing after the Auto Expense result banner restyle, inline row-feedback experiment, warning-modal change, and final minimal modal polish
+
+Files with meaningful frontend updates in this session:
+
+- [SettingsTab.jsx](/home/ubuntu/dosh/frontend/src/pages/tabs/SettingsTab.jsx)
+- [ExpenseItemsTab.jsx](/home/ubuntu/dosh/frontend/src/pages/tabs/ExpenseItemsTab.jsx)
+- [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx)
+- [client.js](/home/ubuntu/dosh/frontend/src/api/client.js)
+- [SettingsTab.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/SettingsTab.test.jsx)
+- [ExpenseItemsTab.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/ExpenseItemsTab.test.jsx)
+- [PeriodDetailPage.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/PeriodDetailPage.test.jsx)
+
+### Deployment failures and resolutions
+
+Initial failures:
+
+- the first backend deploy failed because the running backend image still used Python 3.9 while the codebase already relied on Python 3.10+ union-type syntax
+- after the backend image was corrected, the Auto Expense Alembic revision failed on SQLite because the migration attempted `ALTER COLUMN ... DROP DEFAULT`
+- one deployment pass initially used only the base compose file, which would have broken the public Traefik-facing route even though localhost access still worked
+
+Resolution:
+
+- updated [backend/Dockerfile](/home/ubuntu/dosh/backend/Dockerfile) to Python 3.12
+- aligned the GitHub workflow Python baselines to Python 3.12
+- removed the SQLite-incompatible default-dropping step from [2ef0f1a2f1ba_add_auto_expense_settings.py](/home/ubuntu/dosh/backend/alembic/versions/2ef0f1a2f1ba_add_auto_expense_settings.py)
+- redeployed through [release_with_migrations.sh](/home/ubuntu/dosh/scripts/release_with_migrations.sh) with `INCLUDE_OVERRIDE=true`
+
+Final result:
+
+- the app now deploys successfully through the override-aware release path
+- the live health endpoint continued returning `{"status":"ok","app":"Dosh"}`
+- the frontend remained attached to the Traefik-facing external `frontend` network with the expected labels
+
 ## Latest Session: Budget-Cycle Export, Export Ordering Validation, Playwright Harness Migration, And Repeated Deployment Verification
 
 Session outcomes verified in this run:

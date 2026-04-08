@@ -25,6 +25,8 @@ class Budget(Base):
     period_criticality_bias = Column(Integer, nullable=False, default=50)
     allow_cycle_lock = Column(Boolean, nullable=False, default=True)
     account_naming_preference = Column(String, nullable=False, default="Transaction")
+    auto_expense_enabled = Column(Boolean, nullable=False, default=False)
+    auto_expense_offset_days = Column(Integer, nullable=False, default=0)
 
     periods = relationship("FinancialPeriod", back_populates="budget", cascade="all, delete-orphan")
     income_types = relationship("IncomeType", back_populates="budget", cascade="all, delete-orphan")

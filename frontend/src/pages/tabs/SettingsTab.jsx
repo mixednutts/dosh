@@ -30,6 +30,11 @@ export default function SettingsTab({ budgetId, budget }) {
     saveSettings.mutate({ [field]: value })
   }
 
+  const handleOffsetChange = value => {
+    const parsed = Number.parseInt(value, 10)
+    saveSettings.mutate({ auto_expense_offset_days: Number.isNaN(parsed) ? 0 : parsed })
+  }
+
   return (
     <div className="space-y-6 max-w-lg">
       <div className="card p-5">
@@ -101,6 +106,42 @@ export default function SettingsTab({ budgetId, budget }) {
         </div>
 
         <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-800/50">
+          <div className="flex items-start gap-3">
+            <input
+              id="auto-expense-enabled"
+              type="checkbox"
+              checked={!!budget?.auto_expense_enabled}
+              disabled={saveSettings.isPending}
+              onChange={e => handleToggle('auto_expense_enabled', e.target.checked)}
+              className="mt-0.5 rounded border-gray-300 text-dosh-600 focus:ring-dosh-500 dark:border-gray-600"
+            />
+            <span className="flex-1 space-y-2">
+              <label htmlFor="auto-expense-enabled" className="block cursor-pointer font-medium text-gray-900 dark:text-gray-100">
+                Enable Auto Expense?
+              </label>
+              <span className="block text-gray-600 dark:text-gray-400">
+                When enabled, Dosh can automatically create due expense transactions for scheduled expense items marked AUTO.
+              </span>
+              <div>
+                <label htmlFor="auto-expense-offset-days" className="label">Offset Days</label>
+                <input
+                  id="auto-expense-offset-days"
+                  type="number"
+                  min="0"
+                  className="input max-w-32"
+                  value={budget?.auto_expense_offset_days ?? 0}
+                  disabled={saveSettings.isPending || !budget?.auto_expense_enabled}
+                  onChange={e => handleOffsetChange(e.target.value)}
+                />
+                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  Use `0` to create the transaction on the due date. Dosh will not push a last-day due expense past the end of the budget cycle.
+                </p>
+              </div>
+            </span>
+          </div>
+        </div>
+
+        <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-800/50">
           <label htmlFor="account-naming-preference" className="label">Preferred Primary Account Naming</label>
           <select
             id="account-naming-preference"
@@ -134,5 +175,7 @@ SettingsTab.propTypes = {
     auto_add_surplus_to_investment: PropTypes.bool,
     allow_cycle_lock: PropTypes.bool,
     account_naming_preference: PropTypes.string,
+    auto_expense_enabled: PropTypes.bool,
+    auto_expense_offset_days: PropTypes.number,
   }),
 }

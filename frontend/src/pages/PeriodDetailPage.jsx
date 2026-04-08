@@ -19,6 +19,7 @@ import {
   setPeriodExpenseStatus, updatePeriodExpenseBudget, removePeriodExpense,
   updatePeriodInvestmentBudget, getBalanceTypes, removePeriodIncome, updatePeriodIncomeBudget,
   setPeriodInvestmentStatus, getPeriodCloseoutPreview, closeOutPeriod, exportPeriod,
+  updatePeriodExpensePayType, runPeriodAutoExpenses,
 } from '../api/client'
 import Modal from '../components/Modal'
 import Spinner from '../components/Spinner'
@@ -318,6 +319,10 @@ function freqLabel(freqtype, frequencyValue) {
   if (freqtype === 'Fixed Day of Month') return `Recurring: Day ${frequencyValue}`
   if (freqtype === 'Every N Days') return `Recurring: Every ${frequencyValue}d`
   return freqtype
+}
+
+function isScheduledExpense(expense) {
+  return expense.freqtype && expense.freqtype !== 'Always' && expense.frequency_value && expense.effectivedate
 }
 
 function ActionIconButton({ disabled = false, title, onClick, tone = 'neutral', icon: Icon }) {
@@ -1424,6 +1429,7 @@ function AddExpenseModal({ periodId, budgetId, existingDescs, onClose }) {
   const [newFreqVal, setNewFreqVal] = useState('')
   const [newPaytype, setNewPaytype] = useState('AUTO')
   const [newEffDate, setNewEffDate] = useState('')
+  const newExpenseIsScheduled = newFreqtype !== 'Always' && !!newFreqVal && !!newEffDate
 
   const { data: expenseItems = [] } = useQuery({
     queryKey: ['expense-items', budgetId],
@@ -1446,7 +1452,7 @@ function AddExpenseModal({ periodId, budgetId, existingDescs, onClose }) {
       if (resolvedValue == null) { setError('Enter a valid budget amount'); return }
       if (mode === 'new') {
         if (!newDesc.trim()) { setError('Enter a description'); return }
-        await createItem.mutateAsync({ expensedesc: newDesc.trim(), active: true, freqtype: newFreqtype || null, frequency_value: newFreqVal ? Number.parseInt(newFreqVal, 10) : null, paytype: newPaytype || null, effectivedate: newEffDate || null, expenseamount: resolvedValue })
+        await createItem.mutateAsync({ expensedesc: newDesc.trim(), active: true, freqtype: newFreqtype || null, frequency_value: newFreqVal ? Number.parseInt(newFreqVal, 10) : null, paytype: newFreqtype === 'Always' ? 'MANUAL' : (newPaytype || 'MANUAL'), effectivedate: newEffDate || null, expenseamount: resolvedValue })
         addToperiod.mutate({ budgetid: budgetId, expensedesc: newDesc.trim(), budgetamount: resolvedValue, scope, note: note || null })
       } else {
         if (!selected) { setError('Select an expense item'); return }
@@ -1483,7 +1489,16 @@ function AddExpenseModal({ periodId, budgetId, existingDescs, onClose }) {
             <div><label className="label" htmlFor="add-expense-freq-value">{newFreqtype === 'Every N Days' ? 'Interval (days)' : 'Day of Month'}</label><input id="add-expense-freq-value" type="number" min="1" className="input" value={newFreqVal} onChange={e => setNewFreqVal(e.target.value)} disabled={newFreqtype === 'Always'} /></div>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <div><label className="label" htmlFor="add-expense-pay-type">Pay Type</label><select id="add-expense-pay-type" className="input" value={newPaytype} onChange={e => setNewPaytype(e.target.value)}><option>AUTO</option><option>MANUAL</option></select></div>
+            <div>
+              <label className="label" htmlFor="add-expense-pay-type">Pay Type</label>
+              <select id="add-expense-pay-type" className="input" value={newFreqtype === 'Always' ? 'MANUAL' : newPaytype} onChange={e => setNewPaytype(e.target.value)} disabled={newFreqtype === 'Always'}>
+                <option value="AUTO" disabled={!newExpenseIsScheduled}>AUTO</option>
+                <option value="MANUAL">MANUAL</option>
+              </select>
+              <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                AUTO is only available for scheduled expenses and only runs when Auto Expense is enabled in budget settings.
+              </p>
+            </div>
             <div><label className="label" htmlFor="add-expense-effective-date">Eff. Date</label><input id="add-expense-effective-date" type="date" className="input" value={newEffDate} onChange={e => setNewEffDate(e.target.value)} /></div>
           </div>
         </div>
@@ -1610,6 +1625,8 @@ export default function PeriodDetailPage() {
   const [showCloseout, setShowCloseout] = useState(false)
   const [showExport, setShowExport] = useState(false)
   const [expenseStatusFilter, setExpenseStatusFilter] = useState('all')
+  const [autoExpenseFeedback, setAutoExpenseFeedback] = useState(null)
+  const [expensePayTypeWarning, setExpensePayTypeWarning] = useState(null)
 
   const [investmentModal, setInvestmentModal] = useState(null)
 
@@ -1626,6 +1643,34 @@ export default function PeriodDetailPage() {
 
   const lock = useMutation({ mutationFn: islocked => setPeriodLock(id, islocked), onSuccess: () => qc.invalidateQueries({ queryKey: ['period', id] }) })
   const setExpenseStatus = useMutation({ mutationFn: ({ desc, status, revisionComment = null }) => setPeriodExpenseStatus(id, desc, status, revisionComment), onSuccess: () => qc.invalidateQueries({ queryKey: ['period', id] }) })
+  const updateExpensePayType = useMutation({
+    mutationFn: ({ desc, paytype }) => updatePeriodExpensePayType(id, desc, paytype),
+    onMutate: () => {
+      setExpensePayTypeWarning(null)
+    },
+    onSuccess: () => {
+      setAutoExpenseFeedback(null)
+      qc.invalidateQueries({ queryKey: ['period', id] })
+      qc.invalidateQueries({ queryKey: ['expense-items', data?.period?.budgetid] })
+    },
+    onError: (error, variables) => setExpensePayTypeWarning({
+      desc: variables.desc,
+      text: error?.response?.data?.detail || 'Unable to update AUTO/MANUAL right now.',
+    }),
+  })
+  const runAutoExpenses = useMutation({
+    mutationFn: () => runPeriodAutoExpenses(id),
+    onSuccess: result => {
+      qc.invalidateQueries({ queryKey: ['period', id] })
+      setAutoExpenseFeedback({
+        tone: 'success',
+        text: result.created_count > 0
+          ? `Created ${result.created_count} AUTO expense transaction${result.created_count === 1 ? '' : 's'}.`
+          : (result.skipped_reasons?.[0] || 'No AUTO expense transactions were due for this budget cycle.'),
+      })
+    },
+    onError: error => setAutoExpenseFeedback({ tone: 'error', text: error?.response?.data?.detail || 'Unable to run Auto Expense right now.' }),
+  })
   const setInvestmentStatus = useMutation({ mutationFn: ({ desc, status, revisionComment = null }) => setPeriodInvestmentStatus(id, desc, status, revisionComment), onSuccess: () => qc.invalidateQueries({ queryKey: ['period', id] }) })
   const editIncomeBudget = useMutation({ mutationFn: ({ desc, data }) => updatePeriodIncomeBudget(id, desc, data), onSuccess: () => qc.invalidateQueries({ queryKey: ['period', id] }) })
   const editExpenseBudget = useMutation({ mutationFn: ({ desc, data }) => updatePeriodExpenseBudget(id, desc, data), onSuccess: () => qc.invalidateQueries({ queryKey: ['period', id] }) })
@@ -1652,6 +1697,7 @@ export default function PeriodDetailPage() {
   const locked = budgetLockEnabled && period.islocked
   const closed = period.cycle_status === 'CLOSED'
   const activeCycle = period.cycle_status === 'ACTIVE'
+  const autoExpenseEnabled = !!budget?.auto_expense_enabled
 
   const handleDragStart = (desc) => { dragSrc.current = desc }
   const handleDragOver  = (e, desc) => { e.preventDefault(); setDragOver(desc) }
@@ -1745,6 +1791,11 @@ export default function PeriodDetailPage() {
           <button className="btn-secondary" onClick={() => setShowExport(true)} title="Export budget cycle">
             <ArrowDownTrayIcon className="w-4 h-4" /> Export
           </button>
+          {autoExpenseEnabled && !closed && (
+            <button className="btn-secondary" onClick={() => runAutoExpenses.mutate()} title="Run Auto Expense">
+              {runAutoExpenses.isPending ? 'Running…' : 'Run Auto Expense'}
+            </button>
+          )}
           {activeCycle && !closed && (
             <button className="btn-primary" onClick={() => setShowCloseout(true)}>
               Close Out
@@ -1767,6 +1818,23 @@ export default function PeriodDetailPage() {
       {locked && !closed && (
         <div className="rounded-md bg-amber-50 border border-amber-200 dark:bg-amber-900/20 dark:border-amber-700 px-4 py-2 text-sm text-amber-800 dark:text-amber-300">
           Budget cycle is locked. You can still record actuals and transactions, but budget amounts and cycle line structure are protected until you unlock it.
+        </div>
+      )}
+
+      {autoExpenseFeedback && (
+        <div className={`rounded-xl border px-4 py-3 ${
+          autoExpenseFeedback.tone === 'error'
+            ? 'border-red-200 bg-red-50 dark:border-red-900/60 dark:bg-red-950/20'
+            : 'border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800/50'
+        }`}>
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Auto Expense</p>
+          <p className={`mt-1 text-sm font-medium ${
+            autoExpenseFeedback.tone === 'error'
+              ? 'text-red-700 dark:text-red-300'
+              : 'text-gray-900 dark:text-gray-100'
+          }`}>
+            {autoExpenseFeedback.text}
+          </p>
         </div>
       )}
 
@@ -1954,6 +2022,7 @@ export default function PeriodDetailPage() {
                 const canDelete = !locked && !closed && Number(e.actualamount) === 0 && Number(e.budgetamount) === 0
                 const canEditBudget = !locked && !closed && !isPaid
                 const canReorder = expenseStatusFilter === 'all' && !locked && !closed && !isPaid
+                const canToggleAutoPaytype = autoExpenseEnabled && isScheduledExpense(e) && !locked && !closed && !isPaid
                 return (
                   <tr
                     key={e.expensedesc}
@@ -1995,7 +2064,19 @@ export default function PeriodDetailPage() {
                     <td className="table-cell">
                       <div className="flex flex-wrap gap-1">
                         {getExpenseScheduleBadge(e)}
-                        {e.paytype && <span className={e.paytype === 'AUTO' ? 'badge-green' : 'badge-gray'}>{e.paytype}</span>}
+                        {autoExpenseEnabled && e.paytype && (
+                          canToggleAutoPaytype ? (
+                            <button
+                              type="button"
+                              className={e.paytype === 'AUTO' ? 'badge-green' : 'badge-gray'}
+                              onClick={() => updateExpensePayType.mutate({ desc: e.expensedesc, paytype: e.paytype === 'AUTO' ? 'MANUAL' : 'AUTO' })}
+                            >
+                              {e.paytype}
+                            </button>
+                          ) : (
+                            <span className={e.paytype === 'AUTO' ? 'badge-green' : 'badge-gray'}>{e.paytype}</span>
+                          )
+                        )}
                       </div>
                     </td>
                     <td className="px-3 py-2">
@@ -2315,6 +2396,18 @@ export default function PeriodDetailPage() {
       {showExport && (
         <Modal title="Export Budget Cycle" onClose={() => setShowExport(false)}>
           <ExportCycleModal periodId={id} onClose={() => setShowExport(false)} />
+        </Modal>
+      )}
+      {expensePayTypeWarning && (
+        <Modal title="Unable to Change AUTO/MANUAL" onClose={() => setExpensePayTypeWarning(null)}>
+          <div className="space-y-3">
+            <p className="text-sm text-gray-700 dark:text-gray-300">
+              {expensePayTypeWarning.text}
+            </p>
+            <div className="flex justify-end">
+              <button type="button" className="btn-primary" onClick={() => setExpensePayTypeWarning(null)}>OK</button>
+            </div>
+          </div>
         </Modal>
       )}
     </div>

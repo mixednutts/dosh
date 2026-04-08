@@ -33,6 +33,68 @@ For the implemented amount-entry plan that now defines inline arithmetic scope, 
 
 For the implemented export-shape plan that now defines budget-cycle export behavior, read [BUDGET_CYCLE_EXPORT_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_CYCLE_EXPORT_PLAN.md).
 
+For the implemented Auto Expense workflow rules, scheduler behavior, migration expectations, and AUTO/MANUAL eligibility constraints introduced this session, read [AUTO_EXPENSE_PLAN.md](/home/ubuntu/dosh/docs/plans/AUTO_EXPENSE_PLAN.md).
+
+## Latest Session: Auto Expense Automation, Migration Hardening, Runtime Baseline Alignment, And Period-Detail Feedback Polish
+
+This session implemented the first full Auto Expense workflow and carried it through migration, validation, UI refinement, test coverage, and repeated deployment verification. The main outcomes were budget-level Auto Expense settings, scheduled-expense AUTO/MANUAL enforcement, automated and manual trigger paths, a dedicated SQLite-safe migration, new migration-harness coverage, and period-detail feedback improvements that now surface blocked AUTO switching in an explicit warning modal.
+
+Important direction now in place:
+
+- Auto Expense is now a budget-level optional feature rather than implicit schedule metadata
+- only scheduled expenses are eligible for `AUTO`; `Always` and invalid or incomplete schedules must remain `MANUAL`
+- MANUAL-to-AUTO switching is now blocked once recorded expense activity already exists for that expense item
+- the period-detail page now exposes both Auto Expense manual-run support and scheduled-line AUTO/MANUAL switching when the budget enables the feature
+- the backend now has a dedicated Auto Expense service plus a daily scheduler entry point instead of embedding automation logic in page handlers
+- the Auto Expense Alembic revision now performs targeted legacy AUTO normalization and remains SQLite-safe after removing unsupported `ALTER COLUMN ... DROP DEFAULT` behavior
+- backend migration verification now includes both clean-upgrade and pre-feature-upgrade coverage rather than relying only on metadata-created test databases
+- the backend deployment and CI baseline now expects Python 3.12 because the current codebase already uses typing syntax that is not Python 3.9-safe
+
+### 1. Auto Expense is now a concrete workflow, not just setup metadata
+
+Current behavior:
+
+- [models.py](/home/ubuntu/dosh/backend/app/models.py) and [schemas.py](/home/ubuntu/dosh/backend/app/schemas.py) now include `auto_expense_enabled` and `auto_expense_offset_days` on budgets
+- [auto_expense.py](/home/ubuntu/dosh/backend/app/auto_expense.py) now owns pay-type normalization, due-date processing, offset handling, idempotent transaction creation, and daily processing entry points
+- [expense_items.py](/home/ubuntu/dosh/backend/app/routers/expense_items.py) now enforces AUTO eligibility and blocks `MANUAL -> AUTO` when recorded expense movement already exists
+- [periods.py](/home/ubuntu/dosh/backend/app/routers/periods.py) now exposes manual period-scoped Auto Expense execution and scheduled-line pay-type switching
+- [SettingsTab.jsx](/home/ubuntu/dosh/frontend/src/pages/tabs/SettingsTab.jsx), [ExpenseItemsTab.jsx](/home/ubuntu/dosh/frontend/src/pages/tabs/ExpenseItemsTab.jsx), and [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx) now surface the settings, helper text, toggle behavior, and manual-run path
+
+Important product meaning:
+
+- Dosh now supports scheduled expense automation without weakening the ledger-backed model
+- the budget must explicitly opt in before AUTO behavior becomes active, which keeps the feature understandable and reversible
+- users now get a visible reason when AUTO cannot be enabled because real recorded expense activity already exists
+
+### 2. Migration and deployment hardening exposed and resolved real release risks
+
+Current behavior:
+
+- [2ef0f1a2f1ba_add_auto_expense_settings.py](/home/ubuntu/dosh/backend/alembic/versions/2ef0f1a2f1ba_add_auto_expense_settings.py) now adds the new budget settings and normalizes invalid legacy AUTO expense rows safely for SQLite
+- [backend/Dockerfile](/home/ubuntu/dosh/backend/Dockerfile) now uses Python 3.12 instead of Python 3.9
+- [.github/workflows/sonarqube.yml](/home/ubuntu/dosh/.github/workflows/sonarqube.yml), [.github/workflows/auto-tag-on-version-bump.yml](/home/ubuntu/dosh/.github/workflows/auto-tag-on-version-bump.yml), and [.github/workflows/release-on-tag.yml](/home/ubuntu/dosh/.github/workflows/release-on-tag.yml) now align on Python 3.12
+- deployment verification also reconfirmed that the public route depends on the override-aware Compose path, so release runs should continue using [release_with_migrations.sh](/home/ubuntu/dosh/scripts/release_with_migrations.sh) with `INCLUDE_OVERRIDE=true` when the Traefik-facing environment requires it
+
+Important operational meaning:
+
+- the release would have been unstable if shipped before fixing the backend runtime mismatch and the SQLite migration edge
+- those issues are now fixed in the repo state itself, not as one-off local workarounds
+- future release rehearsals should continue treating clean upgrade and pre-feature upgrade as first-class verification slices
+
+### 3. The testing baseline now covers Auto Expense migration and feedback behavior directly
+
+Current behavior:
+
+- [migration_helpers.py](/home/ubuntu/dosh/backend/tests/migration_helpers.py) now provides reusable Alembic-backed database setup helpers for migration tests
+- [test_auto_expense_migration.py](/home/ubuntu/dosh/backend/tests/test_auto_expense_migration.py) now covers clean `upgrade head` and upgrade from a pre-feature snapshot with legacy invalid AUTO rows
+- [test_auto_expense.py](/home/ubuntu/dosh/backend/tests/test_auto_expense.py) now protects Auto Expense behavior and the recorded-activity guard on pay-type changes
+- [PeriodDetailPage.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/PeriodDetailPage.test.jsx) now covers Auto Expense run feedback, blocked AUTO-switch warning behavior, and the final minimal modal styling path
+
+Important engineering meaning:
+
+- the project no longer relies only on metadata-created backend tests to infer migration safety for this feature
+- future sessions can expand migration and workflow protection from a concrete reusable harness rather than rebuilding that setup ad hoc
+
 ## Latest Session: Budget-Cycle Export, Export Ordering Refinement, And Playwright Harness Repair
 
 This session added the first user-facing export slice for budget cycles and then carried it through the surrounding validation and deployment work needed to make it trustworthy. The main outcomes were a new backend export endpoint, a period-detail export action for flat `CSV` and grouped `JSON`, explicit flat-row semantics built around `budget_only`, `transaction`, and `budget_adjustment`, ordering refinements for spreadsheet review, and a repaired Playwright harness that now migrates its SQLite test database before backend startup.

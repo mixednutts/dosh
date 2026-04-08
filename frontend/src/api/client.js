@@ -158,6 +158,10 @@ export const getBalanceTransactions = (periodId, balancedesc) =>
 
 export const setPeriodExpenseStatus = (periodId, desc, status, revision_comment = null) =>
   api.patch(`/periods/${periodId}/expense/${encodeURIComponent(desc)}/status`, { status, revision_comment }).then(r => r.data)
+export const updatePeriodExpensePayType = (periodId, desc, paytype) =>
+  api.patch(`/periods/${periodId}/expense/${encodeURIComponent(desc)}/paytype`, { paytype }).then(r => r.data)
+export const runPeriodAutoExpenses = periodId =>
+  api.post(`/periods/${periodId}/run-auto-expenses`).then(r => r.data)
 
 export const updatePeriodExpenseBudget = (periodId, desc, data) =>
   api.patch(`/periods/${periodId}/expense/${encodeURIComponent(desc)}/budget`, data).then(r => r.data)

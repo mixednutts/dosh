@@ -35,11 +35,13 @@ def test_budget_update_validates_optional_frequency_and_quantizes_maximum_defici
         budget_frequency="Every 30 Days",
         maximum_deficit_amount=Decimal("12.345"),
         account_naming_preference="Checking",
+        auto_expense_offset_days=3,
     )
 
     assert update.budget_frequency == "Every 30 Days"
     assert update.maximum_deficit_amount == Decimal("12.34")
     assert update.account_naming_preference == "Checking"
+    assert update.auto_expense_offset_days == 3
 
 
 @pytest.mark.parametrize("invalid_value", ["Current", "Spending"])
@@ -48,3 +50,10 @@ def test_budget_update_rejects_unknown_account_naming_preference(invalid_value):
         BudgetUpdate(account_naming_preference=invalid_value)
 
     assert "account_naming_preference" in str(exc_info.value)
+
+
+def test_budget_update_rejects_negative_auto_expense_offset_days():
+    with pytest.raises(ValidationError) as exc_info:
+        BudgetUpdate(auto_expense_offset_days=-1)
+
+    assert "auto_expense_offset_days" in str(exc_info.value)

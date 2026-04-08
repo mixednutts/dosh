@@ -12,11 +12,12 @@ Use it when:
 
 ## Current Baseline
 
-- current canonical app version: `0.1.3-alpha`
-- current UI display format: `v0.1.3-alpha`
+- current canonical app version: `0.2.0-alpha`
+- current UI display format: `v0.2.0-alpha`
 - current app state classification: `alpha`
 - current schema management authority: Alembic
 - current deployment path: Docker Compose
+- current backend runtime baseline: Python 3.12
 
 The current repository state and deployed state are treated as aligned for this migration baseline.
 

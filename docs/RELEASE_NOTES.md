@@ -2,10 +2,19 @@
 
 ## Unreleased
 
-Dosh now keeps GitHub Release publishing in the same workflow that creates the official version tag, while preserving a manual repair path for existing tags.
+Post-release changes will accumulate here until the next version is intentionally chosen.
+
+## 0.2.0-alpha | released | 2026-04-08
+
+Dosh now adds scheduled Auto Expense automation while also tightening the release and migration reliability needed to ship it safely.
 
 ### Highlights
 
+- Added optional Auto Expense automation for scheduled expenses, including budget-level enablement and offset-day controls
+- Added Auto Expense controls to the budget-cycle detail page, including manual run support and scheduled expense AUTO or MANUAL switching
+- Added backend enforcement so invalid or ineligible AUTO expense states fall back safely to MANUAL, including blocking MANUAL-to-AUTO after recorded expense activity exists
+- Added Auto Expense migration coverage for both clean database upgrade and upgrade from a pre-feature SQLite snapshot
+- Aligned the backend container and GitHub workflow Python baseline to 3.12 so the current backend runtime matches the deployed codebase
 - Moved GitHub Release creation into the `auto-tag-on-version-bump` workflow so the normal release path no longer depends on a second workflow being triggered by a `GITHUB_TOKEN` tag push
 - Converted the separate tag-based release workflow into a manual repair or backfill path for existing tags
 - Documented the confirmed remote release flow, including protected `main`, the SonarQube gate, and the successful manual backfill of the first `v0.1.3-alpha` GitHub Release

@@ -21,6 +21,8 @@ describe('SettingsTab', () => {
       auto_add_surplus_to_investment: true,
       allow_cycle_lock: true,
       account_naming_preference: 'Transaction',
+      auto_expense_enabled: false,
+      auto_expense_offset_days: 0,
     })
 
     renderWithProviders(
@@ -31,6 +33,8 @@ describe('SettingsTab', () => {
           auto_add_surplus_to_investment: false,
           allow_cycle_lock: true,
           account_naming_preference: 'Transaction',
+          auto_expense_enabled: false,
+          auto_expense_offset_days: 0,
         }}
       />
     )
@@ -53,6 +57,8 @@ describe('SettingsTab', () => {
       auto_add_surplus_to_investment: false,
       allow_cycle_lock: false,
       account_naming_preference: 'Transaction',
+      auto_expense_enabled: false,
+      auto_expense_offset_days: 0,
     })
 
     renderWithProviders(
@@ -63,12 +69,13 @@ describe('SettingsTab', () => {
           auto_add_surplus_to_investment: false,
           allow_cycle_lock: true,
           account_naming_preference: 'Transaction',
+          auto_expense_enabled: false,
+          auto_expense_offset_days: 0,
         }}
       />
     )
 
-    const toggles = screen.getAllByRole('checkbox')
-    fireEvent.click(toggles[1])
+    fireEvent.click(screen.getByLabelText('Allow manual lock/unlock on budget cycles?'))
 
     await waitFor(() => {
       expect(client.updateBudget).toHaveBeenCalledWith(1, { allow_cycle_lock: false })
@@ -81,6 +88,8 @@ describe('SettingsTab', () => {
       auto_add_surplus_to_investment: false,
       allow_cycle_lock: true,
       account_naming_preference: 'Checking',
+      auto_expense_enabled: false,
+      auto_expense_offset_days: 0,
     })
 
     renderWithProviders(
@@ -91,6 +100,8 @@ describe('SettingsTab', () => {
           auto_add_surplus_to_investment: false,
           allow_cycle_lock: true,
           account_naming_preference: 'Transaction',
+          auto_expense_enabled: false,
+          auto_expense_offset_days: 0,
         }}
       />
     )
@@ -101,6 +112,45 @@ describe('SettingsTab', () => {
 
     await waitFor(() => {
       expect(client.updateBudget).toHaveBeenCalledWith(1, { account_naming_preference: 'Checking' })
+    })
+  })
+
+  it('saves auto expense settings and offset days', async () => {
+    client.updateBudget.mockResolvedValue({
+      budgetid: 1,
+      auto_add_surplus_to_investment: false,
+      allow_cycle_lock: true,
+      account_naming_preference: 'Transaction',
+      auto_expense_enabled: true,
+      auto_expense_offset_days: 3,
+    })
+
+    renderWithProviders(
+      <SettingsTab
+        budgetId={1}
+        budget={{
+          budgetid: 1,
+          auto_add_surplus_to_investment: false,
+          allow_cycle_lock: true,
+          account_naming_preference: 'Transaction',
+          auto_expense_enabled: false,
+          auto_expense_offset_days: 0,
+        }}
+      />
+    )
+
+    fireEvent.click(screen.getByLabelText('Enable Auto Expense?'))
+
+    await waitFor(() => {
+      expect(client.updateBudget).toHaveBeenCalledWith(1, { auto_expense_enabled: true })
+    })
+
+    fireEvent.change(screen.getByLabelText('Offset Days'), {
+      target: { value: '3' },
+    })
+
+    await waitFor(() => {
+      expect(client.updateBudget).toHaveBeenCalledWith(1, { auto_expense_offset_days: 3 })
     })
   })
 })

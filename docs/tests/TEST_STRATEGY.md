@@ -28,6 +28,7 @@ Observed current state:
 
 - backend now includes a `pytest` harness under [backend/tests](/home/ubuntu/dosh/backend/tests)
 - backend harness now uses an isolated SQLite database per test case rather than a shared file-backed test database
+- backend maintenance coverage now also includes a dedicated Alembic migration harness for clean upgrades and upgrade from a pre-feature SQLite snapshot
 - backend test dependencies are listed in [backend/requirements-dev.txt](/home/ubuntu/dosh/backend/requirements-dev.txt)
 - backend test configuration is defined in [backend/pytest.ini](/home/ubuntu/dosh/backend/pytest.ini)
 - frontend now uses a Vite build with standalone Jest plus React Testing Library, and includes user-facing workflow coverage
@@ -38,6 +39,7 @@ Observed current state:
 - coverage is still selective rather than exhaustive, so new behavior should continue to be added together with tests
 - the latest recorded backend, frontend, and deployment verification outcomes live in [TEST_RESULTS_SUMMARY.md](/home/ubuntu/dosh/docs/tests/TEST_RESULTS_SUMMARY.md)
 - the latest frontend security baseline is now zero reported `npm audit` vulnerabilities after the Vite migration and dependency cleanup
+- the GitHub workflow and backend container baseline now align on Python 3.12, so backend CI and deploy verification should treat that as the supported runtime
 
 This matters because Dosh is no longer mostly CRUD. It now contains workflow rules where subtle regressions would reduce trust:
 
@@ -112,6 +114,7 @@ These areas deserve extra caution whenever product work touches them:
 - period-detail modal amount-expression behavior, including raw-expression visibility, valid-expression preview, incomplete-expression in-progress summary behavior, and resolved-value submission across income, expense, investment, add-line, and budget-adjustment flows
 - setup-revision history behavior, including field-level change capture, revision-number rebasing, and the distinction between setup-affecting future budget adjustments and current-only period adjustments
 - post-paid revise flows and read-only guards on closed cycles
+- budget-level Auto Expense automation, including scheduler-safe eligibility rules, AUTO/MANUAL protection, period-detail manual run behavior, and migration normalization of legacy invalid AUTO rows
 - transaction line-state capture and budget-health off-plan interpretation
 - health scoring, evidence payloads, and historical snapshot integrity
 - setup edits whose consequences show up only in later workflows

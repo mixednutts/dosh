@@ -60,6 +60,7 @@ function ExpenseItemForm({ initial = emptyForm, isEdit = false, onSubmit, onClos
 
   const isAlways = form.freqtype === 'Always'
   const isEveryNDays = form.freqtype === 'Every N Days'
+  const isScheduled = !isAlways && !!form.frequency_value && !!form.effectivedate
   const freqValueLabel = form.freqtype === 'Fixed Day of Month' ? 'Day of Month (1–31)' : 'Interval (days)'
   const commencementLabel = isEveryNDays ? 'Commencement Date' : 'Effective Date'
 
@@ -71,7 +72,7 @@ function ExpenseItemForm({ initial = emptyForm, isEdit = false, onSubmit, onClos
         active: form.active,
         freqtype: form.freqtype || null,
         frequency_value: (!isAlways && form.frequency_value) ? Number.parseInt(form.frequency_value, 10) : null,
-        paytype: form.paytype || null,
+        paytype: isAlways ? 'MANUAL' : (form.paytype || 'MANUAL'),
         effectivedate: form.effectivedate || null,
         expenseamount: Number.parseFloat(form.expenseamount) || 0,
       })
@@ -101,10 +102,22 @@ function ExpenseItemForm({ initial = emptyForm, isEdit = false, onSubmit, onClos
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label htmlFor={`${formIdPrefix}-paytype`} className="label">Pay Type</label>
-          <select id={`${formIdPrefix}-paytype`} className="input" value={form.paytype} onChange={e => set('paytype', e.target.value)}>
-            <option value="">— none —</option>
-            {PAYTYPES.map(p => <option key={p}>{p}</option>)}
+          <select
+            id={`${formIdPrefix}-paytype`}
+            className="input"
+            value={isAlways ? 'MANUAL' : form.paytype}
+            onChange={e => set('paytype', e.target.value)}
+            disabled={isAlways}
+          >
+            {PAYTYPES.map(p => (
+              <option key={p} value={p} disabled={p === 'AUTO' && !isScheduled}>
+                {p}
+              </option>
+            ))}
           </select>
+          <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+            AUTO is only available for scheduled expenses and only runs when Auto Expense is enabled in budget settings.
+          </p>
         </div>
         <div>
           <label htmlFor={`${formIdPrefix}-amount`} className="label">Amount ($) <span className="text-red-500">*</span></label>
@@ -119,7 +132,7 @@ function ExpenseItemForm({ initial = emptyForm, isEdit = false, onSubmit, onClos
       </div>
       {isAlways && (
         <p className="text-xs text-dosh-600 dark:text-dosh-400 bg-dosh-50 dark:bg-dosh-900/20 rounded px-3 py-2">
-          "Always" — this expense is included in every budget cycle at the set amount, regardless of dates.
+          "Always" — this expense is included in every budget cycle at the set amount, regardless of dates, so it must stay MANUAL.
         </p>
       )}
       <label htmlFor={`${formIdPrefix}-active`} className="flex items-start gap-3 text-sm cursor-pointer">
