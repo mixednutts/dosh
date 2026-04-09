@@ -4,6 +4,81 @@ This document records meaningful automated test results from major working sessi
 
 It exists separately from [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) so the strategy can stay stable while future sessions still have a record of what was actually run and verified.
 
+## Latest Session: Account Primary-Per-Type Fix, In-Use Account Edit Guard Repair, And Transfer-Balance Verification
+
+Session outcomes verified in this run:
+
+- account setup now scopes primary designation per balance type, so a primary `Savings` or `Cash` account no longer clears the required primary `Transaction` account
+- the transaction-ledger and setup-assessment paths now consistently treat the active primary `Transaction` account as the default expense-driven account without conflating it with other account-type primaries
+- in-use account editing now allows primary-flag changes when the submitted `balance_type` and `opening_balance` values are unchanged, avoiding false structure-lock failures during ordinary primary reassignment
+- the live transfer model remains intentionally single-line-per-savings-account per cycle, with additional transfer movement expected to be added through transactions on that existing line
+- focused transfer and balance tests confirmed that transfer activity still affects both the selected savings account and the receiving account through ledger-backed balance movement
+- the stack was redeployed twice through the override-aware Compose path after the account fixes, and the final frontend verification returned `200 OK`
+
+### Backend verification
+
+Commands run during this session:
+
+```bash
+cd /home/ubuntu/dosh/backend
+./.venv/bin/pytest tests/test_setup_assessment.py
+./.venv/bin/pytest tests/test_transactions_and_balances.py tests/test_budget_setup_workflows.py -k "transfer or balance"
+```
+
+Result:
+
+- the setup-assessment suite passed after adding coverage for per-type primary handling and in-use primary-flag edits
+- the focused transfer and balance batch passed, confirming that savings-transfer movement still reconciles through the ledger-backed account views
+
+### Frontend verification
+
+Commands run during this session:
+
+```bash
+cd /home/ubuntu/dosh/frontend
+npm test -- --runTestsByPath src/__tests__/BalanceTypesTab.test.jsx
+npm test -- --runTestsByPath src/__tests__/PeriodDetailPage.test.jsx -t "transfer|balance movement"
+```
+
+Result:
+
+- the account-setup regression suite passed after the primary-label and switching-flow updates
+- the focused period-detail transfer and balance-movement tests passed on the current UI
+
+### Deployment verification
+
+Commands run during this session:
+
+```bash
+cd /home/ubuntu/dosh
+docker compose -f docker-compose.yml -f docker-compose.override.yml up -d --build
+docker compose -f docker-compose.yml -f docker-compose.override.yml ps
+curl -I http://127.0.0.1:3080
+```
+
+Result:
+
+- both `dosh-backend` and `dosh-frontend` came up successfully after each redeploy
+- the first frontend probe after each recreate briefly landed during the nginx restart window, then the final check returned `HTTP/1.1 200 OK`
+
+### Failures and resolutions
+
+Observed issues during the session:
+
+- the original account-primary fix exposed a second guard bug: editing an in-use account’s primary flag still failed because the frontend submitted unchanged `balance_type` and `opening_balance` fields, which the backend interpreted as a structural edit
+- a later review of the `Transfer from Savings` modal looked like another savings-account selection bug, but the current behavior was confirmed to be intentional because one transfer line per savings account per cycle is the designed model
+
+Resolution:
+
+- updated [balance_types.py](/home/ubuntu/dosh/backend/app/routers/balance_types.py) so structure-lock enforcement only triggers when `balance_type` or `opening_balance` actually change value
+- retained the existing one-line-per-savings-account transfer model and verified the downstream balance movement path instead of widening the modal logic unnecessarily
+
+Final result:
+
+- the account primary-per-type fix is complete
+- in-use savings accounts can now be marked primary without displacing the transaction primary or tripping a false structure-lock error
+- transfer activity remains ledger-backed and balance-safe under the current modal and transaction model
+
 ## Latest Session: Budget-Cycle Stage Model, Pending-Closure Navigation, Demo Seed Expansion, And Follow-Up UI Polish
 
 Session outcomes verified in this run:

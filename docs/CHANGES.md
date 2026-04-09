@@ -35,6 +35,59 @@ For the implemented export-shape plan that now defines budget-cycle export behav
 
 For the implemented Auto Expense workflow rules, scheduler behavior, migration expectations, and AUTO/MANUAL eligibility constraints introduced this session, read [AUTO_EXPENSE_PLAN.md](/home/ubuntu/dosh/docs/plans/AUTO_EXPENSE_PLAN.md).
 
+## Latest Session: Account Primary-Per-Type Repair, In-Use Account Primary Editing, And Transfer-Balance Confirmation
+
+This post-checkpoint session tightened the budget-setup account model after a real-world bug surfaced while aligning live data. The main outcomes were scoping account primary designation by balance type instead of treating it as one global flag, fixing the in-use account edit path so ordinary primary-flag changes are still allowed, and verifying that the existing one-line-per-savings-account transfer model still produces correct balance movement.
+
+Important direction now in place:
+
+- `is_primary` on accounts is no longer treated as one global account switch; primary designation is now scoped per balance type
+- the active primary `Transaction` account remains the only setup requirement for expense-driven workflows and ledger-default movement
+- marking a `Savings` account as primary no longer displaces the primary `Transaction` account
+- protected in-use accounts still block true structural edits, but they now allow non-structural primary-flag changes when `balance_type` and `opening_balance` are unchanged
+- the `Transfer from Savings` modal continues to intentionally allow one transfer line per savings account per cycle, with later additions expected to happen through transactions on that line rather than duplicate transfer lines
+- focused backend and frontend transfer tests reconfirmed that those transfer transactions still decrease the selected savings account and increase the receiving account through ledger-backed balance movement
+
+### 1. Account primary behavior now matches the real domain model
+
+Current behavior:
+
+- [balance_types.py](/home/ubuntu/dosh/backend/app/routers/balance_types.py) now clears primary flags only within the same `balance_type`
+- [transaction_ledger.py](/home/ubuntu/dosh/backend/app/transaction_ledger.py) now resolves the default expense-driven account from the active primary `Transaction` account only
+- [setup_assessment.py](/home/ubuntu/dosh/backend/app/setup_assessment.py) now evaluates readiness against the active primary `Transaction` account rather than any account marked primary
+- [BalanceTypesTab.jsx](/home/ubuntu/dosh/frontend/src/pages/tabs/BalanceTypesTab.jsx) now uses type-specific primary wording such as `Primary savings account`
+
+Important product meaning:
+
+- Dosh now supports per-type account primaries without weakening the special role of the transaction account in expense and transfer workflows
+- future account-setup work should preserve the distinction between a per-type primary designation and the budget’s required transaction default
+
+### 2. Protected in-use accounts now allow non-structural primary reassignment
+
+Current behavior:
+
+- the backend account update path no longer treats unchanged `balance_type` and `opening_balance` values as structural edits
+- users can now update `is_primary` on an in-use account even when that account is linked to investments, generated cycles, or recorded movement, as long as its actual structure is unchanged
+- [test_setup_assessment.py](/home/ubuntu/dosh/backend/tests/test_setup_assessment.py) now includes explicit coverage for this locked-account primary-reassignment path
+
+Important product meaning:
+
+- protection now better reflects user intent by blocking real structural drift while still allowing safe workflow corrections
+- future setup-protection work should compare submitted values against stored values before escalating a change into a hard structural lock
+
+### 3. Savings-transfer behavior remains intentionally constrained but is balance-safe
+
+Current behavior:
+
+- the add-income modal in [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx) still allows one `Transfer from <Savings Account>` line per savings account per cycle
+- additional transfer movement is expected to be recorded as transactions on that existing line rather than by creating duplicate transfer lines
+- focused transfer and balance verification in [test_transactions_and_balances.py](/home/ubuntu/dosh/backend/tests/test_transactions_and_balances.py), [test_budget_setup_workflows.py](/home/ubuntu/dosh/backend/tests/test_budget_setup_workflows.py), and [PeriodDetailPage.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/PeriodDetailPage.test.jsx) confirmed that the resulting ledger entries still move value between the receiving account and the selected savings account correctly
+
+Important product meaning:
+
+- the current transfer model is deliberate and does not need broadening just because the modal can show an empty state after a transfer line already exists
+- future work in this area should improve empty-state wording only if users find the current message misleading, not by weakening the one-line-per-account transfer model
+
 ## Latest Session: Derived Budget-Cycle Stage Model, Pending-Closure UX, Demo Seed Expansion, And Override-Aware Redeploy
 
 This session finished the lifecycle-hardening pass for budget-cycle close-out by separating stored lifecycle state from user-facing stage, then carried that through navigation, summary surfaces, demo data, targeted regressions, and repeated deployment verification.

@@ -27,9 +27,10 @@ def list_balance_types(budgetid: int, db: DbSession):
     return db.query(BalanceType).filter(BalanceType.budgetid == budgetid).all()
 
 
-def _clear_primary(budgetid: int, db: Session) -> None:
+def _clear_primary(budgetid: int, balance_type: str | None, db: Session) -> None:
     db.query(BalanceType).filter(
         BalanceType.budgetid == budgetid,
+        BalanceType.balance_type == balance_type,
         BalanceType.is_primary == True,  # noqa: E712
     ).update({"is_primary": False})
 
@@ -86,6 +87,7 @@ def _assert_active_primary_will_remain(
             BalanceType.balancedesc != balancedesc,
             BalanceType.active == True,  # noqa: E712
             BalanceType.is_primary == True,  # noqa: E712
+            BalanceType.balance_type == "Transaction",
         )
         .first()
     )
@@ -121,6 +123,7 @@ def _assert_delete_wont_remove_required_primary(
             BalanceType.balancedesc != bt.balancedesc,
             BalanceType.active == True,  # noqa: E712
             BalanceType.is_primary == True,  # noqa: E712
+            BalanceType.balance_type == "Transaction",
         )
         .first()
     )
@@ -135,7 +138,7 @@ def create_balance_type(budgetid: int, payload: BalanceTypeCreate, db: DbSession
     if existing:
         raise HTTPException(409, "Balance type with this description already exists")
     if payload.is_primary:
-        _clear_primary(budgetid, db)
+        _clear_primary(budgetid, payload.balance_type, db)
     bt = BalanceType(budgetid=budgetid, **payload.model_dump())
     db.add(bt)
     db.commit()
@@ -153,10 +156,17 @@ def update_balance_type(
     updates = payload.model_dump(exclude_none=True)
     _assert_active_primary_will_remain(budgetid, balancedesc, bt, updates, db)
     if payload.is_primary:
-        _clear_primary(budgetid, db)
+        _clear_primary(budgetid, updates.get("balance_type", bt.balance_type), db)
     if "active" in updates and updates["active"] is False:
         _assert_balance_deactivate_allowed(budgetid, balancedesc, db)
-    if {"balance_type", "opening_balance"}.intersection(updates.keys()):
+
+    structural_changes = set()
+    if "balance_type" in updates and updates["balance_type"] != bt.balance_type:
+        structural_changes.add("balance_type")
+    if "opening_balance" in updates and updates["opening_balance"] != bt.opening_balance:
+        structural_changes.add("opening_balance")
+
+    if structural_changes:
         _assert_balance_edit_allowed(budgetid, balancedesc, db)
     for k, v in updates.items():
         setattr(bt, k, v)

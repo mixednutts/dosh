@@ -55,7 +55,12 @@ def _rounded(value: Decimal) -> Decimal:
 def get_primary_account_desc(budgetid: int, db: Session) -> str | None:
     primary = (
         db.query(BalanceType)
-        .filter(BalanceType.budgetid == budgetid, BalanceType.is_primary == True)  # noqa: E712
+        .filter(
+            BalanceType.budgetid == budgetid,
+            BalanceType.balance_type == "Transaction",
+            BalanceType.is_primary == True,  # noqa: E712
+            BalanceType.active == True,  # noqa: E712
+        )
         .first()
     )
     return primary.balancedesc if primary else None

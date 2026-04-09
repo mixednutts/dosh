@@ -194,7 +194,7 @@ These rules should be treated as current product invariants unless deliberately 
 - carry-forward recalculation and next-cycle opening rebasing must stay synchronized
 - guided delete continuity matters more than a simple one-click delete path
 - generation readiness is now determined through centralized setup assessment rather than scattered page-level assumptions
-- expense-driven setups require one active primary account before generation can proceed safely
+- expense-driven setups require one active primary transaction account before generation can proceed safely
 - deleting a non-trailing planned or active cycle may require `Delete this and all upcoming cycles`
 - balance movement is intended to be transaction-derived rather than freely edited
 - `ACTIVE` plus `islocked=true` protects structural edits but should still allow actual-entry and transaction-recording workflows
@@ -202,6 +202,8 @@ These rules should be treated as current product invariants unless deliberately 
 - paid lines are treated as finalized unless intentionally revised through the supported workflow, which now allows direct `Paid` to `Revised` reopening without a required revision-reason modal
 - setup records already used by generated cycles or downstream activity should be protected from destructive edits
 - the active primary transaction account is a hard setup requirement for expense-driven workflows and setup should not allow edits or deletes that leave the budget without one
+- account primaries are scoped per balance type, so `Savings` and `Cash` accounts may keep their own primary designation without replacing the primary `Transaction` account
+- protected in-use accounts may still allow non-structural changes such as primary-flag updates when `balance_type` and `opening_balance` are unchanged
 - income generation now uses the stored income-source amount directly; the retired `isfixed` concept should not be reintroduced casually
 - carry-forward should only be created from close-out of the prior cycle, not from simple future-cycle generation
 - budget adjustments for income, expense, and investment lines now live in `PeriodTransaction` as `BUDGETADJ` history and must stay excluded from actual and balance calculations
@@ -228,6 +230,7 @@ The repository already supports:
 - historical close-out snapshot review for closed cycles
 - seeded demo-budget creation with historical close-outs, a current cycle, upcoming cycles, and health-relevant activity
 - budget-level primary-account display naming with `Transaction`, `Everyday`, and `Checking` as user-facing options while the stored account type remains `Transaction`
+- account setup now supports primary designation per balance type while still reserving the active primary `Transaction` account as the default anchor for expense-driven movement
 - setup-page collapsible `Personalisation` and `Settings` sections with session-persisted expand or collapse state
 - budget-cycle grouping using `Current`, `Planned`, `Pending Closure`, and `Historic`, with the sidebar and budget cycles page aligned to the same ordering and session-persisted collapse behavior
 - period-detail summary cards that now include both `Projected Savings` and `Remaining Expenses`

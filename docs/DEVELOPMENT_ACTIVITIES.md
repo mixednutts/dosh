@@ -55,6 +55,7 @@ Recent progress worth carrying forward:
 - setup records now become explicitly protected when downstream cycles or transactions depend on them
 - the budget setup page now shows section-level assessment state and protected downstream usage
 - account terminology now has an initial budget-level display preference, allowing `Transaction`, `Everyday`, or `Checking` while preserving one internal model
+- account primary handling now distinguishes per-type primary designation from the budget’s required primary `Transaction` account, and in-use accounts can still update primary flags when their structure is unchanged
 - the budget setup page now uses in-card section headers, default-collapsed optional sections, and session-persisted expand or collapse state
 - the budget cycles list and sidebar now use the aligned stage order `Current`, `Planned`, `Pending Closure`, and `Historic`, with session-persisted expand or collapse state
 - budget-cycle lifecycle hardening now distinguishes explicit persisted lifecycle state from derived user-facing stage, allowing multiple overdue `Pending Closure` cycles while preserving one `Current` cycle
@@ -280,6 +281,9 @@ Status:
 
 - extend protection reasoning only when it improves downstream safety and user understanding
 - keep setup editable where safe while blocking destructive changes once downstream dependence exists
+- `Completed`: scope account primary designation per balance type so `Savings` and `Cash` primaries no longer replace the required primary `Transaction` account
+- `Completed`: allow in-use accounts to change non-structural flags such as `is_primary` without tripping structure-lock enforcement when `balance_type` and `opening_balance` are unchanged
+- `Completed`: confirm that the current one-line-per-savings-account transfer model remains balance-safe, with later additions expected through transactions on that existing line
 - add stronger explanation surfaces for why a setup item is protected
 
 #### Activity Group: Consequence Visibility

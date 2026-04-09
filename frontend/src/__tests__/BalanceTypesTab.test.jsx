@@ -69,6 +69,54 @@ describe('BalanceTypesTab', () => {
   it('warns before switching the primary account during setup edit', async () => {
     client.getBalanceTypes.mockResolvedValue([
       {
+        balancedesc: 'Savings Jar',
+        balance_type: 'Savings',
+        opening_balance: '250.00',
+        active: true,
+        is_primary: true,
+      },
+      {
+        balancedesc: 'Holiday Fund',
+        balance_type: 'Savings',
+        opening_balance: '100.00',
+        active: true,
+        is_primary: false,
+      },
+    ])
+    client.updateBalanceType.mockResolvedValue({})
+
+    renderWithProviders(<BalanceTypesTab budgetId={1} />)
+
+    fireEvent.click((await screen.findAllByRole('button'))[3])
+    expect(await screen.findByRole('heading', { name: 'Edit Account' })).toBeTruthy()
+
+    fireEvent.change(screen.getByPlaceholderText('e.g. Everyday Account'), {
+      target: { value: 'Holiday Reserve' },
+    })
+    fireEvent.change(screen.getByRole('spinbutton'), {
+      target: { value: '500' },
+    })
+
+    fireEvent.click(screen.getByLabelText(/Primary savings account/i))
+    fireEvent.click(screen.getByText('Save'))
+
+    expect(await screen.findByRole('heading', { name: 'Switch Primary Account?' })).toBeTruthy()
+    fireEvent.click(screen.getByText('Switch Primary Account'))
+
+    await waitFor(() => {
+      expect(client.updateBalanceType).toHaveBeenCalledWith(1, 'Holiday Fund', {
+        balancedesc: 'Holiday Reserve',
+        balance_type: 'Savings',
+        opening_balance: 500,
+        active: true,
+        is_primary: true,
+      })
+    })
+  })
+
+  it('uses account-type-specific primary wording for savings accounts', async () => {
+    client.getBalanceTypes.mockResolvedValue([
+      {
         balancedesc: 'Main Account',
         balance_type: 'Transaction',
         opening_balance: '1000.00',
@@ -83,35 +131,15 @@ describe('BalanceTypesTab', () => {
         is_primary: false,
       },
     ])
-    client.updateBalanceType.mockResolvedValue({})
 
     renderWithProviders(<BalanceTypesTab budgetId={1} />)
 
     fireEvent.click((await screen.findAllByRole('button'))[3])
     expect(await screen.findByRole('heading', { name: 'Edit Account' })).toBeTruthy()
 
-    fireEvent.change(screen.getByPlaceholderText('e.g. Everyday Account'), {
-      target: { value: 'Savings Hub' },
-    })
-    fireEvent.change(screen.getByRole('spinbutton'), {
-      target: { value: '500' },
-    })
-
-    fireEvent.click(screen.getByLabelText(/Primary transaction account/i))
-    fireEvent.click(screen.getByText('Save'))
-
-    expect(await screen.findByRole('heading', { name: 'Switch Primary Account?' })).toBeTruthy()
-    fireEvent.click(screen.getByText('Switch Primary Account'))
-
-    await waitFor(() => {
-      expect(client.updateBalanceType).toHaveBeenCalledWith(1, 'Savings Jar', {
-        balancedesc: 'Savings Hub',
-        balance_type: 'Savings',
-        opening_balance: 500,
-        active: true,
-        is_primary: true,
-      })
-    })
+    expect(screen.getByLabelText(/Primary savings account/i)).toBeTruthy()
+    expect(screen.getByText(/Use this as the primary account for this account type/i)).toBeTruthy()
+    expect(screen.queryByLabelText(/Primary transaction account/i)).toBeNull()
   })
 
   it('prevents saving when removing the only active primary account', async () => {

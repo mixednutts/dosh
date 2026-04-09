@@ -237,7 +237,14 @@ def budget_setup_assessment(budgetid: int, db: Session) -> dict | None:
     investment_items = db.query(InvestmentItem).filter(InvestmentItem.budgetid == budgetid).all()
     active_expense_items = [item for item in expense_items if item.active]
     active_accounts = [balance for balance in balances if balance.active]
-    primary_account = next((balance for balance in active_accounts if balance.is_primary), None)
+    primary_account = next(
+        (
+            balance
+            for balance in active_accounts
+            if balance.is_primary and balance.balance_type == "Transaction"
+        ),
+        None,
+    )
 
     blocking_issues: list[str] = []
     warnings: list[str] = []

@@ -6,6 +6,9 @@ Post-release changes will accumulate here until the next version is intentionall
 
 ### Highlights
 
+- Fixed account setup so primary designation is now scoped per account type, preventing `Savings` or `Cash` accounts from displacing the required primary transaction account
+- Fixed in-use account editing so primary-flag changes no longer fail when the account structure itself is unchanged
+- Reconfirmed through focused transfer-and-balance tests that savings-transfer activity is represented as ledger-backed movement affecting both the selected savings account and the receiving account
 - Refined budget-cycle lifecycle presentation so periods now surface as `Current`, `Planned`, `Pending Closure`, or `Closed`, with overdue open cycles staying explicitly outstanding until close-out is completed
 - Aligned the sidebar, budget cycles page, and budget summary shortcuts around the new stage order and added direct close-out links for pending-closure periods
 - Expanded the rolling demo budget seed to include multiple pending-closure scenarios, carry-forward continuity, transaction-direction edge cases, and budget-adjustment examples for walkthroughs
