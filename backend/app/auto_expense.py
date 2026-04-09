@@ -8,12 +8,13 @@ from time import sleep
 
 from sqlalchemy.orm import Session
 
-from .cycle_constants import ACTIVE, CLOSED, PAID
+from .cycle_constants import ACTIVE, CLOSED, CURRENT_STAGE, PAID
 from .database import SessionLocal
 from .models import Budget, ExpenseItem, FinancialPeriod, PeriodExpense, PeriodTransaction
 from .period_logic import expense_occurs_in_period, fixed_day_occurrence_for_month
 from .time_utils import app_now_naive
 from .transaction_ledger import build_expense_tx, get_primary_account_desc, sync_period_state
+from .cycle_management import cycle_stage
 
 _scheduler_lock = Lock()
 _scheduler_started = False
@@ -202,7 +203,9 @@ def process_daily_auto_expenses(*, run_date: datetime | None = None) -> None:
             )
         ]
         for finperiodid in active_period_ids:
-            process_auto_expenses_for_period(finperiodid, db, run_date=run_date)
+            period = db.get(FinancialPeriod, finperiodid)
+            if period and cycle_stage(period) == CURRENT_STAGE:
+                process_auto_expenses_for_period(finperiodid, db, run_date=run_date)
         db.commit()
 
 

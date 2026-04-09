@@ -8,6 +8,7 @@ import { deleteBudget, deletePeriod, getBudget, getBudgetSetupAssessment, getPer
 import clsx from 'clsx'
 import Modal from '../components/Modal'
 import Spinner from '../components/Spinner'
+import { getCycleStage, getCycleStageLabel } from '../utils/periodStage'
 
 const PERIOD_GROUP_SESSION_KEY_PREFIX = 'dosh-budget-periods-group-open'
 
@@ -89,23 +90,27 @@ function getGroupedPeriodSummaries(periodSummaries) {
   const ordered = periodSummaries.toSorted((a, b) => parseISO(a.period.startdate) - parseISO(b.period.startdate))
 
   return {
-    current: ordered.filter(({ period }) => period.cycle_status === 'ACTIVE'),
-    upcoming: ordered.filter(({ period }) => period.cycle_status === 'PLANNED'),
-    historical: ordered.filter(({ period }) => period.cycle_status === 'CLOSED'),
+    pendingClosure: ordered.filter(({ period }) => getCycleStage(period) === 'PENDING_CLOSURE'),
+    current: ordered.filter(({ period }) => getCycleStage(period) === 'CURRENT'),
+    upcoming: ordered.filter(({ period }) => getCycleStage(period) === 'PLANNED'),
+    historical: ordered.filter(({ period }) => getCycleStage(period) === 'CLOSED'),
   }
 }
 
 function PeriodSummaryRow({ summary, onDelete }) {
   const { period } = summary
+  const stage = getCycleStage(period)
   const surplusBudgetTone = Number(summary.surplus_budget) >= 0 ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'
   const surplusActualTone = Number(summary.surplus_actual) >= 0 ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'
   const projectedSavingsTone = Number(summary.projected_savings) >= 0 ? 'text-success-700 dark:text-success-400' : 'text-red-600 dark:text-red-400'
   const startLabel = format(parseISO(period.startdate), 'dd MMM yy')
   const endLabel = format(parseISO(period.enddate), 'dd MMM yy')
   let cycleBadgeClass = 'badge-green'
-  if (period.cycle_status === 'ACTIVE') {
+  if (stage === 'CURRENT') {
     cycleBadgeClass = 'badge-blue'
-  } else if (period.cycle_status === 'CLOSED') {
+  } else if (stage === 'PENDING_CLOSURE') {
+    cycleBadgeClass = 'inline-flex items-center justify-center rounded-full px-2.5 py-1 text-[11px] font-semibold leading-none text-center bg-slate-100 text-amber-700 dark:bg-slate-800 dark:text-amber-300'
+  } else if (stage === 'CLOSED') {
     cycleBadgeClass = 'badge-gray'
   }
 
@@ -122,7 +127,7 @@ function PeriodSummaryRow({ summary, onDelete }) {
         </Link>
         <div className="mt-1">
           <span className={clsx('mr-1.5', cycleBadgeClass)}>
-            {period.cycle_status}
+            {getCycleStageLabel(stage)}
           </span>
           {period.islocked && <span className="badge-amber">Locked</span>}
         </div>
@@ -442,7 +447,7 @@ export default function BudgetPeriodsPage() {
             />
             <PeriodSummaryGroup
               key={`upcoming-${id}`}
-              title="Upcoming"
+              title="Planned"
               summaries={groupedSummaries.upcoming}
               collapsed
               collapsible
@@ -452,8 +457,18 @@ export default function BudgetPeriodsPage() {
               onDelete={summary => { setDeleteMode(summary.delete_mode || 'single'); setDeleteTarget(summary) }}
             />
             <PeriodSummaryGroup
+              key={`pending-closure-${id}`}
+              title="Pending Closure"
+              summaries={groupedSummaries.pendingClosure}
+              collapsible
+              sessionStorageKey={`budget-${id}-pending-closure`}
+              groupId="pending-closure"
+              forceOpen={location.hash === '#pending-closure'}
+              onDelete={summary => { setDeleteMode(summary.delete_mode || 'single'); setDeleteTarget(summary) }}
+            />
+            <PeriodSummaryGroup
               key={`historical-${id}`}
-              title="Historical"
+              title="Historic"
               summaries={groupedSummaries.historical}
               collapsed
               collapsible

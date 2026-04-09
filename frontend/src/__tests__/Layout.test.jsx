@@ -318,12 +318,12 @@ describe('Layout navigation', () => {
 
     fireEvent.click(await screen.findByTitle('Show budget list'))
 
-    expect(await screen.findByText('Historical')).toBeTruthy()
+    expect(await screen.findByText('Historic')).toBeTruthy()
 
-    const upcomingMore = screen.getByRole('link', { name: 'View all 3 upcoming cycles (1 more)' })
+    const upcomingMore = screen.getByRole('link', { name: 'View all 3 planned cycles (1 more)' })
     expect(upcomingMore.getAttribute('href')).toBe('/budgets/1#upcoming')
 
-    const historicalMore = screen.getByRole('link', { name: 'View all 5 historical cycles (1 more)' })
+    const historicalMore = screen.getByRole('link', { name: 'View all 5 historic cycles (1 more)' })
     expect(historicalMore.getAttribute('href')).toBe('/budgets/1#historical')
   })
 })

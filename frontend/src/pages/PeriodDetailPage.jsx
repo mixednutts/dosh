@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import PropTypes from 'prop-types'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format, parseISO, addDays } from 'date-fns'
 import {
@@ -26,6 +26,7 @@ import Spinner from '../components/Spinner'
 import AmountExpressionInput from '../components/AmountExpressionInput'
 import ExpenseItemSchedulingFields from '../components/ExpenseItemSchedulingFields'
 import { getNextFixedDayOccurrence } from '../utils/fixedDayScheduling'
+import { getCycleStage, getCycleStageLabel } from '../utils/periodStage'
 
 const fmt = v => Number(v ?? 0).toLocaleString('en-AU', { style: 'currency', currency: 'AUD' })
 const SECONDARY_BUTTON_CLASSES = 'flex items-center justify-center w-7 h-7 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors'
@@ -1648,6 +1649,7 @@ function ExportCycleModal({ periodId, onClose }) {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function PeriodDetailPage() {
   const { periodId } = useParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const id = Number.parseInt(periodId, 10)
   const qc = useQueryClient()
   const [showAddExpense, setShowAddExpense] = useState(false)
@@ -1717,11 +1719,21 @@ export default function PeriodDetailPage() {
   // Reset local drag-reorder when server data refreshes
   useEffect(() => { setLocalExpenses(null) }, [data])
 
+  const period = data?.period ?? null
+  const cycleStage = getCycleStage(period)
+  const activeCycle = cycleStage === 'CURRENT' || cycleStage === 'PENDING_CLOSURE'
+
+  useEffect(() => {
+    if (activeCycle && searchParams.get('closeout') === '1' && !showCloseout) {
+      setShowCloseout(true)
+    }
+  }, [activeCycle, searchParams, showCloseout])
+
   if (isLoading) return <div className="flex justify-center pt-16"><Spinner /></div>
   if (isError) return <p className="text-red-500 p-4">Failed to load budget cycle. <Link to="/budgets" className="underline">Back to Budgets</Link></p>
   if (!data) return <p className="text-gray-500">Budget cycle not found.</p>
 
-  const { period, incomes, balances = [], investments = [] } = data
+  const { incomes, balances = [], investments = [] } = data
   const expenses = localExpenses ?? data.expenses
   let closeoutHealth = null
   try {
@@ -1731,9 +1743,21 @@ export default function PeriodDetailPage() {
   }
   const budgetLockEnabled = budget?.allow_cycle_lock !== false
   const locked = budgetLockEnabled && period.islocked
-  const closed = period.cycle_status === 'CLOSED'
-  const activeCycle = period.cycle_status === 'ACTIVE'
+  const closed = cycleStage === 'CLOSED'
   const autoExpenseEnabled = !!budget?.auto_expense_enabled
+
+  const openCloseoutModal = () => {
+    setShowCloseout(true)
+  }
+
+  const closeCloseoutModal = () => {
+    setShowCloseout(false)
+    if (searchParams.get('closeout') === '1') {
+      const nextSearchParams = new URLSearchParams(searchParams)
+      nextSearchParams.delete('closeout')
+      setSearchParams(nextSearchParams, { replace: true })
+    }
+  }
 
   const handleDragStart = (desc) => { dragSrc.current = desc }
   const handleDragOver  = (e, desc) => { e.preventDefault(); setDragOver(desc) }
@@ -1821,7 +1845,7 @@ export default function PeriodDetailPage() {
           <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
             {format(parseISO(period.startdate), 'dd MMM yyyy')} – {format(parseISO(period.enddate), 'dd MMM yyyy')}
           </h1>
-          {budget && <p className="text-sm text-gray-500 dark:text-gray-400">{budget.budget_frequency} · {budget.budgetowner} · {period.cycle_status}</p>}
+          {budget && <p className="text-sm text-gray-500 dark:text-gray-400">{budget.budget_frequency} · {budget.budgetowner} · {getCycleStageLabel(cycleStage)}</p>}
         </div>
         <div className="flex gap-2">
           <button className="btn-secondary" onClick={() => setShowExport(true)} title="Export budget cycle">
@@ -1833,7 +1857,7 @@ export default function PeriodDetailPage() {
             </button>
           )}
           {activeCycle && !closed && (
-            <button className="btn-primary" onClick={() => setShowCloseout(true)}>
+            <button className="btn-primary" onClick={openCloseoutModal}>
               Close Out
             </button>
           )}
@@ -2425,8 +2449,8 @@ export default function PeriodDetailPage() {
         </Modal>
       )}
       {showCloseout && (
-        <Modal title="Close Out Budget Cycle" onClose={() => setShowCloseout(false)} size="lg">
-          <CloseoutModal periodId={id} onClose={() => setShowCloseout(false)} />
+        <Modal title="Close Out Budget Cycle" onClose={closeCloseoutModal} size="lg">
+          <CloseoutModal periodId={id} onClose={closeCloseoutModal} />
         </Modal>
       )}
       {showExport && (

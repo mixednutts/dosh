@@ -56,7 +56,9 @@ Recent progress worth carrying forward:
 - the budget setup page now shows section-level assessment state and protected downstream usage
 - account terminology now has an initial budget-level display preference, allowing `Transaction`, `Everyday`, or `Checking` while preserving one internal model
 - the budget setup page now uses in-card section headers, default-collapsed optional sections, and session-persisted expand or collapse state
-- the budget cycles list now uses `Upcoming` group wording and remembers the historical section expand or collapse state for the browser session
+- the budget cycles list and sidebar now use the aligned stage order `Current`, `Planned`, `Pending Closure`, and `Historic`, with session-persisted expand or collapse state
+- budget-cycle lifecycle hardening now distinguishes explicit persisted lifecycle state from derived user-facing stage, allowing multiple overdue `Pending Closure` cycles while preserving one `Current` cycle
+- the demo seed now includes rolling-window `Closed`, `Pending Closure`, `Current`, and `Planned` scenarios plus transaction-direction and budget-adjustment examples for walkthroughs
 - the period-detail page now surfaces `Projected Savings` and `Remaining Expenses` in a single 8-card summary grid
 - backend tests now run against an isolated SQLite database per test case, making mixed-area sessions much safer
 - Docker Compose deployment was rebuilt and verified successfully from the current working tree
@@ -215,21 +217,24 @@ Reference:
 
 Status:
 
-- `Active`
+- `Completed`
 
 - validate and harden the explicit lifecycle rules
 - ensure carry-forward and opening rebasing stay aligned after delete and regenerate flows
 - strengthen the handoff from `ACTIVE` to `CLOSED` to next `ACTIVE`
+- `Completed`: distinguish stored lifecycle state from derived user-facing cycle stage so `Pending Closure` can exist without weakening close-out integrity
+- `Completed`: allow multiple overdue open cycles while preserving a single `Current` cycle and aligned carry-forward continuity
 
 #### Activity Group: Close-Out Experience
 
 Status:
 
-- `Next`
+- `Active`
 
 - finish the end-of-cycle review experience so it feels complete and trustworthy
 - refine the close-out modal and summary surfaces
 - decide which historical views should show close-out comments, goals, and snapshotted health data
+- keep the new `Pending Closure` affordances, direct close-out shortcuts, and compact budget-summary prompts aligned across the budgets page, sidebar, and cycle list
 
 #### Activity Group: Historical Integrity and Read-Only Behavior
 
@@ -343,6 +348,7 @@ Status:
 - `Completed`: update the demo seed to match the lighter revision workflow and the newer transaction-backed planning-history model
 - keep development and demo data realistic enough that health surfaces remain meaningful during walkthroughs and regression checks
 - keep the demo seed aligned with later budget-health scoring changes so walkthrough data does not become misleading or stale
+- `Completed`: update the rolling demo seed so new walkthroughs include `Closed`, multiple `Pending Closure`, `Current`, and `Planned` cycle stages together with transaction-direction and budget-adjustment examples
 - expand the demo seed to include expense items with varied types and recurrence patterns so calendar, timing, and workflow walkthroughs better reflect real use
 - consider whether more than one demo seed profile is needed later, such as `healthy`, `under pressure`, or `recovery`, without weakening the current additive-only demo import behavior
 
@@ -721,7 +727,7 @@ These project rules already emerge clearly from the existing docs and implementa
 - localisation should be explicit and centrally managed rather than emerging from scattered hard-coded formatting choices
 - cash management views should reflect trustworthy underlying money movement rather than introducing separate shadow balances
 - export and backup should preserve user trust by being understandable, complete enough to be useful, and compatible with ledger integrity
-- there should only ever be one active or current cycle for a budget
+- there should only ever be one `Current` cycle for a budget, while multiple overdue open cycles may remain visible as `Pending Closure`
 - closing a cycle should create a trustworthy point-in-time historical record, not a view that can drift later
 - carry-forward and next-cycle opening rebasing should be recalculated together so continuity does not drift or double count
 - deleting a cycle must not leave retained gaps; guided delete-and-regenerate is preferred over ambiguous continuity

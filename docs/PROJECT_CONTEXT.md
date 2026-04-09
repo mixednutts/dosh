@@ -33,6 +33,7 @@ These guidelines apply across the project as a whole and should continue guiding
 - follow [DOCUMENTATION_FRAMEWORK.md](/home/ubuntu/dosh/docs/DOCUMENTATION_FRAMEWORK.md)
 - use [README.md](/home/ubuntu/dosh/README.md) as the top-level entry point
 - use this document as the operational handoff for new AI sessions
+- when working on Docker-related deployment or runtime setup, always check for [docker-compose.override.yml](/home/ubuntu/dosh/docker-compose.override.yml) and apply it when present in the development environment
 - keep [RELEASE_NOTES.md](/home/ubuntu/dosh/docs/RELEASE_NOTES.md) as the repo-managed release-content source that feeds published GitHub Releases
 - keep post-release work in the top versionless `Unreleased` section of [RELEASE_NOTES.md](/home/ubuntu/dosh/docs/RELEASE_NOTES.md) until the next release version is intentionally chosen
 - maintain one primary source of truth per topic
@@ -61,7 +62,8 @@ These guidelines apply across the project as a whole and should continue guiding
 
 ### Lifecycle and Continuity
 
-- there should only ever be one active or current cycle per budget
+- there should only ever be one `Current` cycle per budget
+- multiple `Pending Closure` cycles may coexist when overdue cycles remain open
 - closed cycles should remain trustworthy historical records
 - carry-forward and next-cycle opening rebasing must stay synchronized
 - guided continuity should be preferred over ambiguous deletion behavior or retained gaps
@@ -180,9 +182,10 @@ Operational note:
 
 These rules should be treated as current product invariants unless deliberately revisited.
 
-- exactly one `ACTIVE` cycle should exist per budget
+- persisted lifecycle state remains `PLANNED`, `ACTIVE`, `CLOSED`
+- user-facing cycle stage is derived from lifecycle state plus dates: `Current`, `Pending Closure`, `Planned`, `Closed`
+- exactly one `Current` cycle should exist per budget, while multiple overdue open cycles may appear as `Pending Closure`
 - cycle chains should remain continuous without overlaps or silent retained gaps
-- lifecycle state is explicit persisted data: `PLANNED`, `ACTIVE`, `CLOSED`
 - `islocked` is a separate manual structure-protection control, not a lifecycle substitute
 - `CLOSED` cycles are historical and read-only through normal workflow paths
 - close-out is the event that freezes the cycle, snapshots historical data, and activates the next cycle
@@ -226,7 +229,7 @@ The repository already supports:
 - seeded demo-budget creation with historical close-outs, a current cycle, upcoming cycles, and health-relevant activity
 - budget-level primary-account display naming with `Transaction`, `Everyday`, and `Checking` as user-facing options while the stored account type remains `Transaction`
 - setup-page collapsible `Personalisation` and `Settings` sections with session-persisted expand or collapse state
-- budget-cycle grouping using `Current`, `Upcoming`, and `Historical`, with the budget cycles page now remembering both upcoming and historical section collapse state for the browser session
+- budget-cycle grouping using `Current`, `Planned`, `Pending Closure`, and `Historic`, with the sidebar and budget cycles page aligned to the same ordering and session-persisted collapse behavior
 - period-detail summary cards that now include both `Projected Savings` and `Remaining Expenses`
 - period-detail footer totals for investments and balances, while keeping balance movement read-only and intentionally not totaled
 - period-detail budget edit affordances for income, expense, and investment rows now live in the budget column as icon actions beside the budget amount, while transaction and line-item actions remain grouped separately
@@ -354,6 +357,7 @@ Before starting a new feature or refactor:
 4. check [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) and [TEST_EXPANSION_PLAN.md](/home/ubuntu/dosh/docs/tests/TEST_EXPANSION_PLAN.md) for the expected coverage boundary
 5. confirm whether the work touches lifecycle, close-out, carry-forward, ledger, or health rules before changing behavior
 6. if the work touches the expense scheduling or transaction-entry flows, inspect the current shared implementations in [ExpenseItemSchedulingFields.jsx](/home/ubuntu/dosh/frontend/src/components/ExpenseItemSchedulingFields.jsx), [DateField.jsx](/home/ubuntu/dosh/frontend/src/components/DateField.jsx), and [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx) before assuming the behavior is page-local
+7. if the work touches budget-cycle stage wording or grouping, preserve the aligned user-facing order `Current`, `Planned`, `Pending Closure`, `Historic` across sidebar, budgets summary, and budget-cycle list surfaces
 
 ## CI Operational Notes
 

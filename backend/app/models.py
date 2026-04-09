@@ -63,6 +63,12 @@ class FinancialPeriod(Base):
     period_transactions = relationship("PeriodTransaction", back_populates="period", cascade="all, delete-orphan")
     closeout_snapshot = relationship("PeriodCloseoutSnapshot", back_populates="period", uselist=False, cascade="all, delete-orphan")
 
+    @property
+    def cycle_stage(self) -> str:
+        from .cycle_management import cycle_stage
+
+        return cycle_stage(self)
+
 
 class IncomeType(Base):
     __tablename__ = "incometypes"

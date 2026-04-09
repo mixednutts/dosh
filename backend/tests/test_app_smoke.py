@@ -170,7 +170,7 @@ def test_demo_budget_endpoint_returns_not_found_when_dev_mode_is_disabled(client
     assert response.status_code == 404
 
 
-def test_demo_budget_endpoint_creates_seeded_budget_with_history_current_and_upcoming(client, db_session, monkeypatch):
+def test_demo_budget_endpoint_creates_seeded_budget_with_closed_pending_current_and_planned_cycles(client, db_session, monkeypatch):
     monkeypatch.setenv("DEV_MODE", "true")
     response = client.post("/api/budgets/demo")
 
@@ -185,8 +185,8 @@ def test_demo_budget_endpoint_creates_seeded_budget_with_history_current_and_upc
         .all()
     )
     assert len(periods) == 7
-    assert len([period for period in periods if period.cycle_status == "CLOSED"]) == 3
-    assert len([period for period in periods if period.cycle_status == "ACTIVE"]) == 1
+    assert len([period for period in periods if period.cycle_status == "CLOSED"]) == 1
+    assert len([period for period in periods if period.cycle_status == "ACTIVE"]) == 3
     assert len([period for period in periods if period.cycle_status == "PLANNED"]) == 3
 
     snapshots = (
@@ -195,7 +195,7 @@ def test_demo_budget_endpoint_creates_seeded_budget_with_history_current_and_upc
         .filter(FinancialPeriod.budgetid == budgetid)
         .all()
     )
-    assert len(snapshots) == 3
+    assert len(snapshots) == 1
     assert all(snapshot.comments for snapshot in snapshots)
     assert all(snapshot.goals for snapshot in snapshots)
 
@@ -203,10 +203,11 @@ def test_demo_budget_endpoint_creates_seeded_budget_with_history_current_and_upc
     assert investment is not None
     assert investment.linked_account_desc == "Rainy Day Savings"
 
-    detail_response = client.get(f"/api/periods/{periods[3].finperiodid}")
+    detail_response = client.get(f"/api/periods/{periods[1].finperiodid}")
     assert detail_response.status_code == 200, detail_response.text
     detail = detail_response.json()
     assert any(income["incomedesc"] == "Carried Forward" for income in detail["incomes"])
+    assert any(income["incomedesc"] == "Transfer from Rainy Day Savings" for income in detail["incomes"])
     assert any(balance["balancedesc"] == "Rainy Day Savings" for balance in detail["balances"])
     assert any(investment_row["investmentdesc"] == "Emergency Fund" for investment_row in detail["investments"])
 

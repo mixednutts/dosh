@@ -109,7 +109,7 @@ describe('BudgetPeriodsPage', () => {
     })
 
     expect(await screen.findByText('Budget Cycles')).toBeTruthy()
-    fireEvent.click(screen.getByTitle('Expand upcoming budget cycles'))
+    fireEvent.click(screen.getByTitle('Expand planned budget cycles'))
     fireEvent.click(screen.getByTitle('Delete budget cycle'))
 
     expect(await screen.findByText(/Delete this cycle and all upcoming cycles \(3\)/)).toBeTruthy()
@@ -238,7 +238,7 @@ describe('BudgetPeriodsPage', () => {
     expect(firstCycleButton.disabled).toBe(true)
   })
 
-  it('remembers the historical budget cycles section state for the browser session', async () => {
+  it('remembers the historic budget cycles section state for the browser session', async () => {
     client.getBudget.mockResolvedValue({
       budgetid: 1,
       budgetowner: 'Alex',
@@ -274,12 +274,12 @@ describe('BudgetPeriodsPage', () => {
     })
 
     expect(await screen.findByText('Budget Cycles')).toBeTruthy()
-    expect(screen.getByTitle('Expand historical budget cycles')).toBeTruthy()
+    expect(screen.getByTitle('Expand historic budget cycles')).toBeTruthy()
     expect(screen.queryByText('31 Mar 26')).toBeNull()
 
-    fireEvent.click(screen.getByTitle('Expand historical budget cycles'))
+    fireEvent.click(screen.getByTitle('Expand historic budget cycles'))
 
-    expect(await screen.findByTitle('Collapse historical budget cycles')).toBeTruthy()
+    expect(await screen.findByTitle('Collapse historic budget cycles')).toBeTruthy()
     expect(screen.getByText('31 Mar 26')).toBeTruthy()
 
     firstRender.unmount()
@@ -289,7 +289,7 @@ describe('BudgetPeriodsPage', () => {
       path: '/budgets/:budgetId',
     })
 
-    expect(await screen.findByTitle('Collapse historical budget cycles')).toBeTruthy()
+    expect(await screen.findByTitle('Collapse historic budget cycles')).toBeTruthy()
     expect(screen.getByText('31 Mar 26')).toBeTruthy()
   })
 
@@ -429,7 +429,7 @@ describe('BudgetPeriodsPage', () => {
       path: '/budgets/:budgetId',
     })
 
-    expect(await screen.findByTitle('Collapse upcoming budget cycles')).toBeTruthy()
+    expect(await screen.findByTitle('Collapse planned budget cycles')).toBeTruthy()
     expect(screen.getByText('30 Jun 26')).toBeTruthy()
 
     firstRender.unmount()
@@ -439,7 +439,7 @@ describe('BudgetPeriodsPage', () => {
       path: '/budgets/:budgetId',
     })
 
-    expect(await screen.findByTitle('Collapse upcoming budget cycles')).toBeTruthy()
+    expect(await screen.findByTitle('Collapse planned budget cycles')).toBeTruthy()
     expect(screen.getByText('30 Jun 26')).toBeTruthy()
   })
 
@@ -488,7 +488,7 @@ describe('BudgetPeriodsPage', () => {
     })
 
     expect(await screen.findByText('Budget Cycles')).toBeTruthy()
-    fireEvent.click(screen.getByTitle('Expand upcoming budget cycles'))
+    fireEvent.click(screen.getByTitle('Expand planned budget cycles'))
     fireEvent.click(screen.getByTitle('Delete budget cycle'))
     fireEvent.click(await screen.findByLabelText(/Delete this cycle and all upcoming cycles/i))
     fireEvent.click(screen.getByRole('button', { name: 'Delete Budget Cycle' }))

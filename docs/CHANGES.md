@@ -35,6 +35,62 @@ For the implemented export-shape plan that now defines budget-cycle export behav
 
 For the implemented Auto Expense workflow rules, scheduler behavior, migration expectations, and AUTO/MANUAL eligibility constraints introduced this session, read [AUTO_EXPENSE_PLAN.md](/home/ubuntu/dosh/docs/plans/AUTO_EXPENSE_PLAN.md).
 
+## Latest Session: Derived Budget-Cycle Stage Model, Pending-Closure UX, Demo Seed Expansion, And Override-Aware Redeploy
+
+This session finished the lifecycle-hardening pass for budget-cycle close-out by separating stored lifecycle state from user-facing stage, then carried that through navigation, summary surfaces, demo data, targeted regressions, and repeated deployment verification.
+
+Important direction now in place:
+
+- lifecycle status remains explicit persisted data as `PLANNED`, `ACTIVE`, and `CLOSED`, but user-facing stage is now derived as `Current`, `Pending Closure`, `Planned`, or `Closed`
+- overdue cycles are no longer treated as implicitly closed just because their end date has passed; close-out must still happen for a cycle to become historical
+- multiple overdue open cycles are now an intentional supported state when a user leaves close-out outstanding across more than one elapsed cycle
+- the sidebar, budget cycles page, and budgets summary now share the same stage order: `Current`, `Planned`, `Pending Closure`, `Historic`
+- pending-closure cycles now have direct close-out shortcuts from summary surfaces, and the period-detail page can open the close-out modal directly from a deep link
+- the rolling demo seed now includes one closed cycle, multiple pending-closure cycles, one current cycle, and planned cycles, while also covering transfers, negative transaction-direction cases, and budget-adjustment history examples
+- future close-out work should now focus on experience completeness, AI insight, reporting, health interpretation, and reconciliation follow-through rather than reworking the foundational stage model again
+
+### 1. Lifecycle now distinguishes persisted status from user-facing stage
+
+Current behavior:
+
+- [cycle_management.py](/home/ubuntu/dosh/backend/app/cycle_management.py) now derives `cycle_stage` separately from stored `cycle_status`
+- expired but still-open cycles are surfaced as `Pending Closure` rather than being auto-forced into `Closed`
+- multiple overdue open cycles may coexist, while the current active window still resolves to a single `Current` cycle
+- existing close-out behavior, carry-forward rebasing, and closed-cycle snapshot storage remain tied to explicit close-out rather than elapsed time
+
+Important product meaning:
+
+- `Closed` is now reserved for cycles the user has actually closed out
+- `Pending Closure` is a real review state rather than an accidental byproduct of date drift
+- future lifecycle work should preserve the distinction between persisted business events and date-derived presentation state
+
+### 2. Navigation and summary surfaces now treat pending closure as a first-class workflow bucket
+
+Current behavior:
+
+- [Layout.jsx](/home/ubuntu/dosh/frontend/src/components/Layout.jsx), [BudgetPeriodsPage.jsx](/home/ubuntu/dosh/frontend/src/pages/BudgetPeriodsPage.jsx), and [BudgetsPage.jsx](/home/ubuntu/dosh/frontend/src/pages/BudgetsPage.jsx) now align to the order `Current`, `Planned`, `Pending Closure`, `Historic`
+- pending-closure lists now mirror the planned-cycle affordance style, preserve collapse state on the budget-cycles page, and expose direct close-out navigation
+- [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx) now honors `?closeout=1` so those shortcuts open the close-out modal immediately
+- the pending-closure badge styling was refined after review so it uses the same neutral background family as the other status chips instead of a brown fill
+
+Important UX meaning:
+
+- stage wording should now stay aligned across sidebar, budgets summary, and budget-cycle list surfaces rather than drifting by page
+- pending-closure surfacing is intended to reduce hidden workflow debt by making outstanding close-outs visible wherever users naturally revisit a budget
+
+### 3. Demo walkthrough data now covers overdue close-out and transaction-direction edge cases
+
+Current behavior:
+
+- [demo_budget.py](/home/ubuntu/dosh/backend/app/demo_budget.py) now generates a rolling-window demo budget relative to current time rather than fixed calendar dates
+- new demo budgets include `Closed`, multiple `Pending Closure`, `Current`, and `Planned` stages in one seeded budget
+- the seed now includes transfer-style movement from savings, negative transaction-direction edge cases, and budget-adjustment examples across income, expense, and investment lines
+
+Important product meaning:
+
+- demo walkthroughs now exercise the new close-out stage model without requiring manual setup
+- future health, reporting, and AI close-out work can assume the demo seed already includes more realistic overdue-close-out and planning-adjustment scenarios
+
 ## Latest Session: Shared Expense Scheduling, Transaction-Modal Consistency, Fixed-Day Rollover, And Release-Notes Expansion
 
 This session focused on UX and workflow consistency around expense setup and transaction entry, then carried those changes through targeted backend scheduling fixes, shared frontend controls, focused regression coverage, repeated deployment verification, and user acceptance. The main outcomes were a shared expense-scheduling form between Budget Setup and Period Detail, a shared date-picker control that now behaves consistently in both flows, centralized quick-fill and neutral action-button rules in the shared transaction modal, fixed-day-of-month rollover support for day `31`, and expandable detail for newly available release-note versions.

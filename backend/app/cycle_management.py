@@ -12,7 +12,9 @@ from .cycle_constants import (
     CARRIED_FORWARD_DESC,
     CARRIED_FORWARD_SYSTEM_KEY,
     CLOSED,
+    CURRENT_STAGE,
     PAID,
+    PENDING_CLOSURE_STAGE,
     PLANNED,
     REVISED,
     WORKING,
@@ -40,6 +42,18 @@ def cycle_status(period: FinancialPeriod) -> str:
     return getattr(period, "cycle_status", None) or PLANNED
 
 
+def cycle_stage(period: FinancialPeriod) -> str:
+    if getattr(period, "closed_at", None) is not None or cycle_status(period) == CLOSED:
+        return CLOSED
+    if cycle_status(period) == PLANNED:
+        return PLANNED
+
+    now = app_now_naive()
+    if period.enddate < now:
+        return PENDING_CLOSURE_STAGE
+    return CURRENT_STAGE
+
+
 def ordered_budget_periods(budgetid: int, db: Session) -> list[FinancialPeriod]:
     return (
         db.query(FinancialPeriod)
@@ -50,9 +64,9 @@ def ordered_budget_periods(budgetid: int, db: Session) -> list[FinancialPeriod]:
 
 
 def lifecycle_groups(periods: list[FinancialPeriod]) -> tuple[list[FinancialPeriod], list[FinancialPeriod], list[FinancialPeriod]]:
-    current = [period for period in periods if cycle_status(period) == ACTIVE]
-    future = [period for period in periods if cycle_status(period) == PLANNED]
-    historical = [period for period in periods if cycle_status(period) == CLOSED]
+    current = [period for period in periods if cycle_stage(period) in {CURRENT_STAGE, PENDING_CLOSURE_STAGE}]
+    future = [period for period in periods if cycle_stage(period) == PLANNED]
+    historical = [period for period in periods if cycle_stage(period) == CLOSED]
     return current, future, historical
 
 
@@ -167,22 +181,14 @@ def next_period_for(period: FinancialPeriod, db: Session) -> FinancialPeriod | N
 def assign_period_lifecycle_states(budgetid: int, db: Session) -> None:
     periods = ordered_budget_periods(budgetid, db)
     now = app_now_naive()
-    active_assigned = False
     for period in periods:
         status = cycle_status(period)
         if status == CLOSED:
             continue
-        if not active_assigned and period.startdate <= now <= period.enddate:
+        if period.startdate <= now:
             period.cycle_status = ACTIVE
-            active_assigned = True
         else:
-            period.cycle_status = PLANNED if period.startdate > now else CLOSED
-
-    active_periods = [period for period in periods if cycle_status(period) == ACTIVE]
-    if len(active_periods) > 1:
-        keep = active_periods[0]
-        for period in active_periods[1:]:
-            period.cycle_status = PLANNED if period.startdate > keep.enddate else CLOSED
+            period.cycle_status = PLANNED
 
 
 def create_next_cycle(period: FinancialPeriod, budget: Budget, db: Session) -> FinancialPeriod:

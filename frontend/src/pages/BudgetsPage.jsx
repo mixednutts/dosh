@@ -8,6 +8,7 @@ import { getBudgets, createBudget, createDemoBudget, deleteBudget, getPeriodsFor
 import Modal from '../components/Modal'
 import Spinner from '../components/Spinner'
 import { listFixedDayOccurrencesInRange } from '../utils/fixedDayScheduling'
+import { getCycleStage } from '../utils/periodStage'
 
 const FREQUENCIES = ['Weekly', 'Fortnightly', 'Monthly']
 const CUSTOM_DAY_CYCLE_VALUE = '__custom_day_cycle__'
@@ -65,11 +66,12 @@ function healthStatusLabel(status) {
 function groupPeriods(periods) {
   const ordered = [...periods].sort((a, b) => parseISO(a.startdate) - parseISO(b.startdate))
 
-  const current = ordered.filter(period => period.cycle_status === 'ACTIVE')
-  const future = ordered.filter(period => period.cycle_status === 'PLANNED')
-  const historical = ordered.filter(period => period.cycle_status === 'CLOSED')
+  const pendingClosure = ordered.filter(period => getCycleStage(period) === 'PENDING_CLOSURE')
+  const current = ordered.filter(period => getCycleStage(period) === 'CURRENT')
+  const future = ordered.filter(period => getCycleStage(period) === 'PLANNED')
+  const historical = ordered.filter(period => getCycleStage(period) === 'CLOSED')
 
-  return { current, future, historical }
+  return { pendingClosure, current, future, historical }
 }
 
 function formatPeriodRange(period) {
@@ -295,11 +297,53 @@ function getCalendarEventPillClass(kind) {
   return 'bg-amber-100 text-amber-900 dark:bg-amber-900/30 dark:text-amber-100'
 }
 
-function getCurrentPeriodDetailText(daysRemaining) {
+function getCurrentPeriodDetailText(daysRemaining, cycleStage = null) {
+  if (cycleStage === 'PENDING_CLOSURE') {
+    return 'Cycle end has passed and close-out is still outstanding'
+  }
   if (daysRemaining == null) {
     return 'Generate a budget cycle to begin tracking'
   }
   return `${daysRemaining} day${daysRemaining === 1 ? '' : 's'} remaining`
+}
+
+function PendingClosureList({ periods, budgetId }) {
+  if (periods.length === 0) return null
+
+  const visiblePeriods = periods.slice(0, 3)
+  const hiddenCount = Math.max(0, periods.length - visiblePeriods.length)
+
+  return (
+    <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 dark:border-amber-800/70 dark:bg-amber-950/20">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-300">Pending Closure</p>
+        <span className="text-[11px] text-amber-700 dark:text-amber-400">{periods.length}</span>
+      </div>
+      <div className="mt-2 space-y-2">
+        {visiblePeriods.map(period => (
+          <div key={period.finperiodid} className="flex items-center justify-between gap-2 rounded-lg border border-amber-200/80 bg-white px-2.5 py-2 dark:border-amber-900/60 dark:bg-slate-900/70">
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[12px] font-medium text-gray-900 dark:text-gray-100">{formatPeriodRange(period)}</p>
+            </div>
+            <Link
+              to={`/periods/${period.finperiodid}?closeout=1`}
+              className="inline-flex h-8 shrink-0 items-center rounded-md border border-slate-300 px-2.5 text-[12px] font-medium text-slate-700 transition-colors hover:border-dosh-400 hover:text-dosh-800 dark:border-slate-600 dark:text-slate-200 dark:hover:border-dosh-500 dark:hover:text-white"
+            >
+              Close Out
+            </Link>
+          </div>
+        ))}
+        {hiddenCount > 0 ? (
+          <Link
+            to={`/budgets/${budgetId}#pending-closure`}
+            className="inline-block text-xs font-medium text-amber-800 hover:underline dark:text-amber-300"
+          >
+            View {hiddenCount} more pending closure cycle{hiddenCount === 1 ? '' : 's'}
+          </Link>
+        ) : null}
+      </div>
+    </div>
+  )
 }
 
 function CalendarDayEventsModal({ date, events, onClose }) {
@@ -339,7 +383,7 @@ function getCalendarRelevantPeriods(periods, today) {
   const lookaheadEnd = endOfMonth(addMonths(today, 2))
 
   return periods.filter(period => {
-    if (!['ACTIVE', 'PLANNED'].includes(period.cycle_status)) return false
+    if (!['CURRENT', 'PENDING_CLOSURE', 'PLANNED'].includes(getCycleStage(period))) return false
     const periodStart = startOfDay(parseISO(period.startdate))
     const periodEnd = startOfDay(parseISO(period.enddate))
     return periodStart <= lookaheadEnd && periodEnd >= today
@@ -548,7 +592,7 @@ function BalanceSummaryCard({ currentPeriod, currentPeriodDetail, isLoading }) {
     return (
       <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 dark:border-gray-700 dark:bg-gray-800/50">
         <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Current Balance</p>
-        <p className="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">No active budget cycle</p>
+        <p className="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">No current budget cycle</p>
         <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Generate a budget cycle to start tracking balances</p>
       </div>
     )
@@ -617,7 +661,7 @@ function CalendarSummaryCard({ currentPeriod, calendarPeriods, calendarPeriodDet
     return (
       <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 dark:border-gray-700 dark:bg-gray-800/50">
         <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Calendar</p>
-        <p className="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">No active budget cycle</p>
+        <p className="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">No current budget cycle</p>
         <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Generate a budget cycle to map income timing and due dates</p>
       </div>
     )
@@ -685,14 +729,15 @@ function CalendarSummaryCard({ currentPeriod, calendarPeriods, calendarPeriodDet
   )
 }
 
-function BudgetStats({ budgetName, periods = [], currentPeriodDetail, calendarPeriods = [], calendarPeriodDetails = [], currentPeriodDetailLoading, health, onOpenHealth, onOpenCurrentPeriodCheck }) {
+function BudgetStats({ budgetId, budgetName, periods = [], currentPeriodDetail, calendarPeriods = [], calendarPeriodDetails = [], currentPeriodDetailLoading, health, onOpenHealth, onOpenCurrentPeriodCheck }) {
   const grouped = useMemo(() => groupPeriods(periods), [periods])
   const currentPeriod = grouped.current[0] ?? null
+  const currentPeriodStage = currentPeriod ? getCycleStage(currentPeriod) : null
   const daysRemaining = currentPeriod
     ? Math.max(0, differenceInCalendarDays(parseISO(currentPeriod.enddate), new Date()) + 1)
     : null
-  const currentPeriodValue = currentPeriod ? formatPeriodRange(currentPeriod) : 'No active budget cycle'
-  const currentPeriodDetailText = getCurrentPeriodDetailText(daysRemaining)
+  const currentPeriodValue = currentPeriod ? formatPeriodRange(currentPeriod) : 'No current budget cycle'
+  const currentPeriodDetailText = getCurrentPeriodDetailText(daysRemaining, currentPeriodStage)
 
   return (
     <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -725,11 +770,12 @@ function BudgetStats({ budgetName, periods = [], currentPeriodDetail, calendarPe
             </p>
           </div>
         ) : (
-          <div className="mt-3 space-y-2">
-            <div className="h-10 w-36 rounded-full bg-gray-200 dark:bg-gray-700" />
-            <div className="h-3 w-full rounded bg-gray-200 dark:bg-gray-700" />
-          </div>
+            <div className="mt-3 space-y-2">
+              <div className="h-10 w-36 rounded-full bg-gray-200 dark:bg-gray-700" />
+              <div className="h-3 w-full rounded bg-gray-200 dark:bg-gray-700" />
+            </div>
         )}
+        <PendingClosureList periods={grouped.pendingClosure} budgetId={budgetId} />
       </div>
       <BalanceSummaryCard
         currentPeriod={currentPeriod}
@@ -1192,10 +1238,12 @@ export default function BudgetsPage() {
                 </div>
               ) : (
                 <BudgetStats
+                  budgetId={b.budgetid}
                   budgetName={b.description || 'Untitled Budget'}
                   periods={periodQueries[index]?.data ?? []}
                   currentPeriodDetail={(() => {
-                    const currentPeriod = groupPeriods(periodQueries[index]?.data ?? []).current[0]
+                    const groupedPeriods = groupPeriods(periodQueries[index]?.data ?? [])
+                    const currentPeriod = groupedPeriods.current[0]
                     return currentPeriod ? calendarPeriodDetailsById[currentPeriod.finperiodid] ?? null : null
                   })()}
                   calendarPeriods={getCalendarRelevantPeriods(periodQueries[index]?.data ?? [], today)}
@@ -1297,7 +1345,13 @@ CalendarSummaryCard.propTypes = {
   budgetName: PropTypes.string.isRequired,
 }
 
+PendingClosureList.propTypes = {
+  periods: PropTypes.arrayOf(PropTypes.object).isRequired,
+  budgetId: PropTypes.number.isRequired,
+}
+
 BudgetStats.propTypes = {
+  budgetId: PropTypes.number.isRequired,
   budgetName: PropTypes.string.isRequired,
   periods: PropTypes.arrayOf(PropTypes.object),
   currentPeriodDetail: PropTypes.object,

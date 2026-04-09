@@ -344,6 +344,7 @@ class PeriodOut(BaseModel):
     budgetowner: Optional[str] = None
     islocked: bool
     cycle_status: str = "PLANNED"
+    cycle_stage: str = "PLANNED"
     closed_at: Optional[datetime] = None
     model_config = {"from_attributes": True}
 
@@ -375,6 +376,7 @@ class PeriodDeleteOptionsOut(BaseModel):
     future_chain_count: int = 0
     delete_reason: Optional[str] = None
     cycle_status: str
+    cycle_stage: str = "PLANNED"
 
 
 # ── PeriodIncome ──────────────────────────────────────────────────────────────

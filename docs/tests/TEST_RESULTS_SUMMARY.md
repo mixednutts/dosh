@@ -4,6 +4,85 @@ This document records meaningful automated test results from major working sessi
 
 It exists separately from [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) so the strategy can stay stable while future sessions still have a record of what was actually run and verified.
 
+## Latest Session: Budget-Cycle Stage Model, Pending-Closure Navigation, Demo Seed Expansion, And Follow-Up UI Polish
+
+Session outcomes verified in this run:
+
+- budget-cycle lifecycle presentation now distinguishes explicit stored lifecycle status from derived user-facing stage, allowing `Pending Closure` to remain visible when a cycle has expired but close-out is still outstanding
+- the sidebar, budget cycles page, and budget summary now use the aligned order `Current`, `Planned`, `Pending Closure`, `Historic`
+- pending-closure periods now have direct close-out shortcuts from the summary surfaces, and the period-detail page supports deep-link opening of the close-out modal
+- the demo budget seed now behaves as a rolling window with `Closed`, two `Pending Closure`, one `Current`, and multiple `Planned` cycles, alongside transfer-style movement, transaction-direction edge cases, and budget-adjustment examples
+- the stack was redeployed repeatedly through the override-aware Compose path after the lifecycle, demo, and UI changes, and the final live verification returned `200 OK` from the frontend
+
+### Backend verification
+
+Commands run during this session:
+
+```bash
+cd /home/ubuntu/dosh/backend
+./.venv/bin/pytest tests/test_lifecycle_and_health.py tests/test_closeout_flow.py tests/test_closed_cycle_guards.py
+./.venv/bin/pytest tests/test_app_smoke.py tests/test_lifecycle_and_health.py tests/test_closeout_flow.py
+```
+
+Result:
+
+- the focused lifecycle, close-out, and closed-cycle guard suites passed after the stage-model refactor
+- the smoke and lifecycle batch passed after the rolling demo-seed updates and pending-closure support
+
+### Frontend verification
+
+Commands run during this session:
+
+```bash
+cd /home/ubuntu/dosh/frontend
+npm test -- --runTestsByPath src/__tests__/Dashboard.test.jsx src/__tests__/BudgetPeriodsPage.test.jsx src/__tests__/BudgetsPage.test.jsx src/__tests__/Layout.test.jsx src/__tests__/PeriodDetailPage.test.jsx
+npm test -- --runTestsByPath src/__tests__/BudgetPeriodsPage.test.jsx src/__tests__/Layout.test.jsx
+npm test -- --runTestsByPath src/__tests__/BudgetsPage.test.jsx src/__tests__/Dashboard.test.jsx
+npm test -- --runTestsByPath src/__tests__/BudgetPeriodsPage.test.jsx
+```
+
+Result:
+
+- the touched stage-grouping, navigation, budget-summary, and close-out deep-link suites passed after the wording and layout changes
+- the focused budget-cycles suite continued to pass through the pending-closure badge color and alignment refinements
+
+### Deployment verification
+
+Commands run during this session:
+
+```bash
+cd /home/ubuntu/dosh
+docker compose -f docker-compose.yml -f docker-compose.override.yml up -d --build
+docker compose -f docker-compose.yml -f docker-compose.override.yml ps
+curl -I http://127.0.0.1:3080
+```
+
+Result:
+
+- both `dosh-backend` and `dosh-frontend` came up successfully
+- frontend verification returned `HTTP/1.1 200 OK`
+- brief frontend `502` responses were observed during backend recreation, then cleared once the new backend finished starting
+
+### Failures and resolutions
+
+Observed issues during the session:
+
+- the first backend test attempt used a shell environment without the backend virtual environment, which failed because `sqlalchemy` was not available on the default `pytest` path
+- the original lifecycle assumptions and user-facing wording no longer matched the desired `Pending Closure` concept, because expired open cycles had previously been normalized away
+- the first pending-closure status pill style used a brown background that did not fit the surrounding section styling
+
+Resolution:
+
+- standardized backend verification on the repository virtual environment at [backend/.venv](/home/ubuntu/dosh/backend/.venv)
+- updated lifecycle handling so stored status and displayed stage are now distinct concerns, allowing multiple overdue open cycles while preserving close-out semantics
+- refined the pending-closure badge styling to use the same neutral background family as the other status chips
+
+Final result:
+
+- lifecycle hardening for the new stage model is complete
+- close-out-related roadmap work remains active in experience, reporting, health, and reconciliation follow-through
+- the final override-aware deployment is live and the updated stage model is visible in the app
+
 ## Latest Session: Shared Expense Scheduling, Fixed-Day Rollover, Transaction-Modal Consistency, And Release-Notes Expansion
 
 Session outcomes verified in this run:

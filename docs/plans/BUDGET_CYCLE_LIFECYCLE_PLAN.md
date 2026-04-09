@@ -21,6 +21,11 @@ Current implementation note:
 - the core lifecycle, close-out snapshot, carry-forward, delete continuity, and next-cycle activation behavior described here are now implemented
 - these areas now also have backend workflow coverage and initial Playwright end-to-end lifecycle smoke coverage
 - future work should focus less on introducing the model and more on hardening correction, reconciliation, and consequence visibility after close-out
+- lifecycle hardening is now complete enough that stored lifecycle status and user-facing stage should be treated as separate concerns:
+  - persisted state remains `PLANNED`, `ACTIVE`, `CLOSED`
+  - displayed stage is derived as `Current`, `Pending Closure`, `Planned`, or `Closed`
+  - overdue open cycles are now intentionally shown as `Pending Closure` rather than being auto-forced into `Closed`
+  - multiple `Pending Closure` cycles are allowed when a user leaves close-out outstanding across multiple elapsed cycles
 
 Latest decisions locked in:
 
@@ -36,8 +41,10 @@ Latest decisions locked in:
 ### Lifecycle and state model
 
 - Add persisted cycle status on `FinancialPeriod`: `PLANNED`, `ACTIVE`, `CLOSED`.
+- Derive user-facing cycle stage separately as `Current`, `Pending Closure`, `Planned`, `Closed`.
 - Keep `islocked` as a separate manual budget-edit lock, not lifecycle state.
-- Enforce exactly one `ACTIVE` cycle per budget.
+- Enforce exactly one derived `Current` cycle per budget.
+- Allow multiple overdue open cycles to appear as `Pending Closure`.
 - Enforce no overlaps.
 - Enforce no retained gaps.
 - Enforce that `PLANNED` cycles form a continuous chain after the prior cycle.

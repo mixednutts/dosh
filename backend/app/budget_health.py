@@ -4,7 +4,7 @@ from decimal import Decimal, ROUND_HALF_UP
 
 from sqlalchemy.orm import Session, selectinload
 
-from .cycle_constants import ACTIVE, CLOSED, PLANNED
+from .cycle_constants import CLOSED, CURRENT_STAGE, PENDING_CLOSURE_STAGE, PLANNED
 from .models import Budget, ExpenseItem, FinancialPeriod, IncomeType, PeriodTransaction
 from .time_utils import app_now, app_now_naive
 
@@ -81,9 +81,9 @@ def _timing_factor(progress_ratio: float, criticality_anchor: float) -> float:
 
 
 def _current_future_historical(periods: list[FinancialPeriod]) -> tuple[list[FinancialPeriod], list[FinancialPeriod], list[FinancialPeriod]]:
-    current = [period for period in periods if getattr(period, "cycle_status", None) == ACTIVE]
-    future = [period for period in periods if getattr(period, "cycle_status", None) == PLANNED]
-    historical = [period for period in periods if getattr(period, "cycle_status", None) == CLOSED]
+    current = [period for period in periods if getattr(period, "cycle_stage", None) in {CURRENT_STAGE, PENDING_CLOSURE_STAGE}]
+    future = [period for period in periods if getattr(period, "cycle_stage", None) == PLANNED]
+    historical = [period for period in periods if getattr(period, "cycle_stage", None) == CLOSED]
     return current, future, historical
 
 

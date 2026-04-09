@@ -77,9 +77,9 @@ def test_assign_period_lifecycle_states_normalizes_multiple_active_periods(db_se
     db_session.refresh(third)
 
     statuses = [first.cycle_status, second.cycle_status, third.cycle_status]
-    assert statuses.count("ACTIVE") == 1
+    assert statuses.count("ACTIVE") == 2
     assert first.cycle_status == "ACTIVE"
-    assert second.cycle_status == "CLOSED"
+    assert second.cycle_status == "ACTIVE"
     assert third.cycle_status == "PLANNED"
 
 
@@ -142,3 +142,68 @@ def test_closeout_health_snapshot_stays_historical_after_budget_preference_chang
     historical_snapshot = json.loads(period_detail.json()["closeout_snapshot"]["health_snapshot_json"])
     assert historical_snapshot == stored_snapshot
     assert Decimal(period_detail.json()["closeout_snapshot"]["carry_forward_amount"]) == Decimal("500.00")
+
+
+def test_expired_open_cycle_is_reported_as_pending_closure_and_can_still_be_closed(client, db_session):
+    setup = create_minimum_budget_setup(db_session)
+    budget = setup["budget"]
+    past_start = app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=40)
+
+    periods = generate_periods(
+        client,
+        budgetid=budget.budgetid,
+        startdate=past_start,
+        count=2,
+    )
+    pending_period = next(period for period in periods if period["cycle_stage"] == "PENDING_CLOSURE")
+    next_period = next(
+        period
+        for period in periods
+        if period["finperiodid"] != pending_period["finperiodid"] and period["startdate"] > pending_period["startdate"]
+    )
+
+    assert pending_period["cycle_status"] == "ACTIVE"
+    assert pending_period["closed_at"] is None
+
+    summaries_response = client.get(f"/api/periods/budget/{budget.budgetid}/summary")
+    assert summaries_response.status_code == 200, summaries_response.text
+    summaries = summaries_response.json()
+    pending_summary = next(summary for summary in summaries if summary["period"]["finperiodid"] == pending_period["finperiodid"])
+    assert pending_summary["period_status"] == "Pending Closure"
+
+    preview_response = client.get(f"/api/periods/{pending_period['finperiodid']}/closeout-preview")
+    assert preview_response.status_code == 200, preview_response.text
+
+    closeout_response = client.post(
+        f"/api/periods/{pending_period['finperiodid']}/closeout",
+        json={"create_next_cycle": False, "comments": "Closed after cycle end"},
+    )
+    assert closeout_response.status_code == 200, closeout_response.text
+    payload = closeout_response.json()
+    assert payload["period"]["cycle_stage"] == "CLOSED"
+
+    periods_after = client.get(f"/api/periods/budget/{budget.budgetid}")
+    assert periods_after.status_code == 200, periods_after.text
+    refreshed = periods_after.json()
+    activated_next = next(period for period in refreshed if period["finperiodid"] == next_period["finperiodid"])
+    assert activated_next["cycle_status"] == "ACTIVE"
+
+
+def test_multiple_overdue_open_cycles_can_all_present_as_pending_closure(client, db_session):
+    setup = create_minimum_budget_setup(db_session)
+    budget = setup["budget"]
+    far_past_start = app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=80)
+
+    periods = generate_periods(
+        client,
+        budgetid=budget.budgetid,
+        startdate=far_past_start,
+        count=3,
+    )
+
+    pending_periods = [period for period in periods if period["cycle_stage"] == "PENDING_CLOSURE"]
+    planned_periods = [period for period in periods if period["cycle_stage"] == "PLANNED"]
+
+    assert len(pending_periods) == 3
+    assert len(planned_periods) == 0
+    assert all(period["cycle_status"] == "ACTIVE" for period in pending_periods)

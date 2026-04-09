@@ -18,7 +18,9 @@ from ..cycle_constants import (
     CARRIED_FORWARD_DESC,
     CARRIED_FORWARD_SYSTEM_KEY,
     CLOSED,
+    CURRENT_STAGE,
     PAID,
+    PENDING_CLOSURE_STAGE,
     PLANNED,
     REVISED,
     WORKING,
@@ -27,6 +29,7 @@ from ..cycle_management import (
     assign_period_lifecycle_states,
     build_closeout_preview,
     close_cycle,
+    cycle_stage,
     cycle_status,
     has_cycle_actuals,
     has_cycle_transactions,
@@ -228,18 +231,20 @@ def _enrich_investments(investments: list, db) -> list[PeriodInvestmentOut]:
 
 
 def _period_status(period: FinancialPeriod) -> str:
-    status = cycle_status(period)
-    if status == ACTIVE:
+    stage = cycle_stage(period)
+    if stage == CURRENT_STAGE:
         return "Current"
-    if status == PLANNED:
-        return "Upcoming"
-    return "Historical"
+    if stage == PENDING_CLOSURE_STAGE:
+        return "Pending Closure"
+    if stage == PLANNED:
+        return "Planned"
+    return "Closed"
 
 
 def _projected_savings(period_status: str, savings_budget: Decimal, savings_actual: Decimal) -> Decimal:
-    if period_status == "Historical":
+    if period_status == "Closed":
         return savings_actual
-    if period_status == "Current":
+    if period_status in {"Current", "Pending Closure"}:
         if savings_actual <= Decimal("0"):
             return savings_budget
         if savings_actual < savings_budget:
@@ -1310,6 +1315,7 @@ def get_period_delete_options(finperiodid: int, db: DbSession):
         future_chain_count=len(later_periods) + 1,
         delete_reason=reason,
         cycle_status=cycle_status(period),
+        cycle_stage=cycle_stage(period),
     )
 
 
@@ -1760,8 +1766,8 @@ def set_investment_status(
 def get_closeout_preview(finperiodid: int, db: DbSession):
     period = _get_period_or_404(finperiodid, db)
     budget = db.get(Budget, period.budgetid)
-    if cycle_status(period) != ACTIVE:
-        raise HTTPException(409, "Only the active cycle can be closed")
+    if cycle_stage(period) not in {CURRENT_STAGE, PENDING_CLOSURE_STAGE}:
+        raise HTTPException(409, "Only the current or pending-closure cycle can be closed")
     preview = build_closeout_preview(period, budget, db)
     return PeriodCloseoutPreviewOut(**preview)
 
@@ -1774,8 +1780,8 @@ def close_out_period(
 ):
     period = _get_period_or_404(finperiodid, db)
     budget = db.get(Budget, period.budgetid)
-    if cycle_status(period) != ACTIVE:
-        raise HTTPException(409, "Only the active cycle can be closed")
+    if cycle_stage(period) not in {CURRENT_STAGE, PENDING_CLOSURE_STAGE}:
+        raise HTTPException(409, "Only the current or pending-closure cycle can be closed")
     try:
         close_cycle(period, budget, payload.comments, payload.goals, payload.create_next_cycle, db)
     except ValueError as exc:

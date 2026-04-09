@@ -270,7 +270,7 @@ describe('BudgetsPage', () => {
     })
 
     expect(await screen.findByText('Calendar')).not.toBeNull()
-    expect(screen.queryByText('Historical')).toBeNull()
+    expect(screen.queryByText('Historic')).toBeNull()
     expect(screen.queryByText('Today 10 Apr')).toBeNull()
     expect(screen.getByText('April 2026')).not.toBeNull()
     expect(screen.queryByText('Month view around today')).toBeNull()

@@ -6,8 +6,8 @@ from decimal import Decimal
 from sqlalchemy.orm import Session
 
 from .cycle_constants import ACTIVE, CLOSED, PLANNED
-from .cycle_management import close_cycle, ordered_budget_periods
-from .models import BalanceType, Budget, ExpenseItem, IncomeType, InvestmentItem
+from .cycle_management import assign_period_lifecycle_states, close_cycle, ordered_budget_periods
+from .models import BalanceType, Budget, ExpenseItem, IncomeType, InvestmentItem, PeriodIncome
 from .routers.periods import generate_period
 from .schemas import PeriodGenerateRequest
 from .time_utils import app_now_naive
@@ -277,6 +277,109 @@ def _add_demo_budget_adjustments(period, db: Session) -> None:
         )
 
 
+def _add_demo_transfer_line(period, db: Session, *, amount: Decimal, note: str, day_offset: int) -> None:
+    transfer_desc = "Transfer from Rainy Day Savings"
+    transfer_line = db.get(PeriodIncome, (period.finperiodid, transfer_desc))
+    if transfer_line is None:
+        transfer_line = PeriodIncome(
+            finperiodid=period.finperiodid,
+            budgetid=period.budgetid,
+            incomedesc=transfer_desc,
+            budgetamount=amount,
+            actualamount=Decimal("0.00"),
+            varianceamount=Decimal("0.00") - amount,
+            revision_snapshot=0,
+        )
+        db.add(transfer_line)
+    else:
+        transfer_line.budgetamount = amount
+
+    build_income_tx(
+        period.finperiodid,
+        period.budgetid,
+        transfer_desc,
+        amount,
+        db,
+        note=note,
+        entrydate=period.startdate + timedelta(days=day_offset),
+    )
+
+
+def _add_demo_transaction_edge_cases(period, db: Session) -> None:
+    build_expense_tx(
+        period.finperiodid,
+        period.budgetid,
+        "Groceries",
+        Decimal("-42.00"),
+        db,
+        note="Refund for overcharged grocery items",
+        entrydate=period.startdate + timedelta(days=12),
+    )
+    build_income_tx(
+        period.finperiodid,
+        period.budgetid,
+        "Side Hustle",
+        Decimal("-60.00"),
+        db,
+        note="Client correction on an earlier invoice",
+        entrydate=period.startdate + timedelta(days=16),
+    )
+    build_investment_tx(
+        period.finperiodid,
+        period.budgetid,
+        "Emergency Fund",
+        Decimal("-75.00"),
+        db,
+        note="Brokerage fee and valuation correction",
+        entrydate=period.startdate + timedelta(days=24),
+    )
+
+
+def _add_pending_closure_adjustments(period, db: Session) -> None:
+    expenses_by_desc = {expense.expensedesc: expense for expense in period.period_expenses}
+    investments_by_desc = {investment.investmentdesc: investment for investment in period.period_investments}
+
+    groceries = expenses_by_desc.get("Groceries")
+    if groceries:
+        before_amount = Decimal(str(groceries.budgetamount))
+        after_amount = Decimal("845.00")
+        groceries.budgetamount = after_amount
+        build_budget_adjustment_tx(
+            db,
+            PeriodTransactionContext(
+                finperiodid=period.finperiodid,
+                budgetid=period.budgetid,
+                source="expense",
+                tx_type="BUDGETADJ",
+                source_key="Groceries",
+                budget_scope="current",
+            ),
+            note="Food costs were reforecast after a late-month reset.",
+            budget_before_amount=before_amount,
+            budget_after_amount=after_amount,
+        )
+
+    emergency_fund = investments_by_desc.get("Emergency Fund")
+    if emergency_fund:
+        before_amount = Decimal(str(emergency_fund.budgeted_amount))
+        after_amount = Decimal("700.00")
+        emergency_fund.budgeted_amount = after_amount
+        build_budget_adjustment_tx(
+            db,
+            PeriodTransactionContext(
+                finperiodid=period.finperiodid,
+                budgetid=period.budgetid,
+                source="investment",
+                tx_type="BUDGETADJ",
+                source_key="Emergency Fund",
+                budget_scope="current",
+            ),
+            note="Savings target was eased after catching up overdue spending.",
+            budget_before_amount=before_amount,
+            budget_after_amount=after_amount,
+        )
+
+
 def create_standard_demo_budget(db: Session) -> Budget:
     budget = _create_demo_setup(db)
 
@@ -295,19 +398,19 @@ def create_standard_demo_budget(db: Session) -> Budget:
     )
 
     periods = ordered_budget_periods(budget.budgetid, db)
-    historical_patterns = [
-        {
-            "salary_amount": Decimal("4200.00"),
-            "side_hustle_amount": Decimal("320.00"),
-            "interest_amount": Decimal("23.00"),
-            "groceries_amount": Decimal("980.00"),
-            "utilities_amount": Decimal("355.00"),
-            "transport_amount": Decimal("295.00"),
-            "subscriptions_amount": Decimal("95.00"),
-            "investment_amount": Decimal("540.00"),
-            "comments": "A pressured close-out. Groceries, utilities, and transport all ran high, which squeezed the month more than expected.",
-            "goals": "Rebuild discipline on day-to-day spending and reduce avoidable cost drift next cycle.",
-        },
+    closed_pattern = {
+        "salary_amount": Decimal("4200.00"),
+        "side_hustle_amount": Decimal("320.00"),
+        "interest_amount": Decimal("23.00"),
+        "groceries_amount": Decimal("980.00"),
+        "utilities_amount": Decimal("355.00"),
+        "transport_amount": Decimal("295.00"),
+        "subscriptions_amount": Decimal("95.00"),
+        "investment_amount": Decimal("540.00"),
+        "comments": "A pressured close-out. Groceries, utilities, and transport all ran high, which squeezed the month more than expected.",
+        "goals": "Rebuild discipline on day-to-day spending and reduce avoidable cost drift next cycle.",
+    }
+    pending_patterns = [
         {
             "salary_amount": Decimal("4200.00"),
             "side_hustle_amount": Decimal("510.00"),
@@ -344,25 +447,55 @@ def create_standard_demo_budget(db: Session) -> Budget:
         "investment_amount": Decimal("1200.00"),
     }
 
-    for period, pattern in zip(periods[:3], historical_patterns):
+    _seed_period_activity(periods[0], db=db, **{k: v for k, v in closed_pattern.items() if k not in {"comments", "goals"}})
+    for period, pattern in zip(periods[1:3], pending_patterns):
         _seed_period_activity(period, db=db, **{k: v for k, v in pattern.items() if k not in {"comments", "goals"}})
-
     _seed_period_activity(periods[3], db=db, **current_pattern)
+
+    _add_demo_transfer_line(
+        periods[1],
+        db,
+        amount=Decimal("250.00"),
+        note="Buffer top-up from savings after a tighter month.",
+        day_offset=5,
+    )
+    _add_pending_closure_adjustments(periods[1], db)
+    _add_demo_transaction_edge_cases(periods[1], db)
+    sync_period_state(periods[1].finperiodid, db)
+
+    _add_demo_transfer_line(
+        periods[2],
+        db,
+        amount=Decimal("180.00"),
+        note="Short-term transfer while close-out is still outstanding.",
+        day_offset=6,
+    )
+    _add_demo_transaction_edge_cases(periods[2], db)
+    sync_period_state(periods[2].finperiodid, db)
+
     _apply_current_period_health_pressure(periods[3])
     _add_demo_budget_adjustments(periods[3], db)
+    _add_demo_transfer_line(
+        periods[3],
+        db,
+        amount=Decimal("120.00"),
+        note="Transfer from savings to smooth a high-spend week.",
+        day_offset=9,
+    )
+    _add_demo_transaction_edge_cases(periods[3], db)
     sync_period_state(periods[3].finperiodid, db)
 
-    for target_index, pattern in enumerate(historical_patterns):
-        _prepare_closeout_target(periods, target_index)
-        close_cycle(
-            periods[target_index],
-            budget,
-            pattern["comments"],
-            pattern["goals"],
-            False,
-            db,
-        )
-        db.flush()
+    _prepare_closeout_target(periods, 0)
+    close_cycle(
+        periods[0],
+        budget,
+        closed_pattern["comments"],
+        closed_pattern["goals"],
+        False,
+        db,
+    )
+    assign_period_lifecycle_states(budget.budgetid, db)
+    db.flush()
 
     db.commit()
     db.refresh(budget)

@@ -13,6 +13,7 @@ import ReleaseNotesModal from './ReleaseNotesModal'
 import Spinner from './Spinner'
 import { useDarkMode } from '../hooks/useDarkMode'
 import { getAppInfo, getBudgets, getBudgetSetupAssessment, getPeriodDetail, getPeriodsForBudget, getReleaseNotes } from '../api/client'
+import { getCycleStage } from '../utils/periodStage'
 
 function displayVersion(version) {
   return `v${version || '0.2.0-alpha'}`
@@ -157,14 +158,18 @@ function CurrentBudgetPanel({ budget, activePeriodId, onNav, shortcutsExpanded =
   })
 
   const orderedPeriods = [...periods].sort((a, b) => parseISO(a.startdate) - parseISO(b.startdate))
-  const currentPeriods = orderedPeriods.filter(period => period.cycle_status === 'ACTIVE')
-  const allFuturePeriods = orderedPeriods.filter(period => period.cycle_status === 'PLANNED')
+  const currentPeriods = orderedPeriods.filter(period => getCycleStage(period) === 'CURRENT')
+  const allFuturePeriods = orderedPeriods.filter(period => getCycleStage(period) === 'PLANNED')
   const futurePeriods = allFuturePeriods.slice(0, 2)
-  const allHistoricalPeriods = orderedPeriods.filter(period => period.cycle_status === 'CLOSED')
+  const pendingClosurePeriods = orderedPeriods.filter(period => getCycleStage(period) === 'PENDING_CLOSURE')
+  const visiblePendingClosurePeriods = pendingClosurePeriods.slice(0, 2)
+  const allHistoricalPeriods = orderedPeriods.filter(period => getCycleStage(period) === 'CLOSED')
   const historicalPeriods = allHistoricalPeriods.slice(-4).reverse()
   const hasMoreFuturePeriods = allFuturePeriods.length > futurePeriods.length
+  const hasMorePendingClosurePeriods = pendingClosurePeriods.length > visiblePendingClosurePeriods.length
   const hasMoreHistoricalPeriods = allHistoricalPeriods.length > historicalPeriods.length
   const hiddenFutureCount = Math.max(0, allFuturePeriods.length - futurePeriods.length)
+  const hiddenPendingClosureCount = Math.max(0, pendingClosurePeriods.length - visiblePendingClosurePeriods.length)
   const hiddenHistoricalCount = Math.max(0, allHistoricalPeriods.length - historicalPeriods.length)
   const needsSetupAttention = setupAssessment ? !setupAssessment.can_generate : false
 
@@ -233,23 +238,32 @@ function CurrentBudgetPanel({ budget, activePeriodId, onNav, shortcutsExpanded =
                 periods={currentPeriods}
                 activePeriodId={activePeriodId}
                 onNav={onNav}
-                emptyMessage="No active budget cycle right now."
+                emptyMessage="No current budget cycle right now."
               />
               <PeriodShortcutGroup
-                title="Upcoming"
+                title="Planned"
                 periods={futurePeriods}
                 activePeriodId={activePeriodId}
                 onNav={onNav}
-                moreText={hasMoreFuturePeriods ? `View all ${allFuturePeriods.length} upcoming cycles (${hiddenFutureCount} more)` : null}
+                moreText={hasMoreFuturePeriods ? `View all ${allFuturePeriods.length} planned cycles (${hiddenFutureCount} more)` : null}
                 moreTo={hasMoreFuturePeriods ? `/budgets/${budget.budgetid}#upcoming` : null}
                 moreSubtle={hasMoreFuturePeriods && viewingBudgetContext}
               />
               <PeriodShortcutGroup
-                title="Historical"
+                title="Pending Closure"
+                periods={visiblePendingClosurePeriods}
+                activePeriodId={activePeriodId}
+                onNav={onNav}
+                moreText={hasMorePendingClosurePeriods ? `View all ${pendingClosurePeriods.length} pending closure cycles (${hiddenPendingClosureCount} more)` : null}
+                moreTo={hasMorePendingClosurePeriods ? `/budgets/${budget.budgetid}#pending-closure` : null}
+                moreSubtle={hasMorePendingClosurePeriods && viewingBudgetContext}
+              />
+              <PeriodShortcutGroup
+                title="Historic"
                 periods={historicalPeriods}
                 activePeriodId={activePeriodId}
                 onNav={onNav}
-                moreText={hasMoreHistoricalPeriods ? `View all ${allHistoricalPeriods.length} historical cycles (${hiddenHistoricalCount} more)` : null}
+                moreText={hasMoreHistoricalPeriods ? `View all ${allHistoricalPeriods.length} historic cycles (${hiddenHistoricalCount} more)` : null}
                 moreTo={hasMoreHistoricalPeriods ? `/budgets/${budget.budgetid}#historical` : null}
                 moreSubtle={hasMoreHistoricalPeriods && viewingBudgetContext}
               />

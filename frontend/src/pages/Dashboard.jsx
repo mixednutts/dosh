@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { getBudgets, getPeriodsForBudget, getPeriodDetail } from '../api/client'
 import { format, parseISO } from 'date-fns'
 import Spinner from '../components/Spinner'
+import { getCycleStage, getCycleStageLabel } from '../utils/periodStage'
 
 const fmt = v => Number(v ?? 0).toLocaleString('en-AU', { style: 'currency', currency: 'AUD' })
 
@@ -42,6 +43,7 @@ function PeriodRow({ budget, period }) {
       <td className="table-cell">
         <div className="text-xs">
           <p className="text-gray-700 dark:text-gray-200">{format(parseISO(period.startdate), 'dd MMM')} – {format(parseISO(period.enddate), 'dd MMM yyyy')}</p>
+          <span className="badge-gray mt-0.5 mr-1">{getCycleStageLabel(getCycleStage(period))}</span>
           {period.islocked && <span className="badge-amber mt-0.5">Locked</span>}
         </div>
       </td>
@@ -68,7 +70,8 @@ function BudgetTableRows({ budget }) {
     queryFn: () => getPeriodsForBudget(budget.budgetid),
   })
 
-  const current = periods.find(p => p.cycle_status === 'ACTIVE')
+  const current = periods.find(p => getCycleStage(p) === 'CURRENT')
+  const pendingClosure = periods.find(p => getCycleStage(p) === 'PENDING_CLOSURE')
 
   if (periods.length === 0) {
     return (
@@ -85,8 +88,8 @@ function BudgetTableRows({ budget }) {
     )
   }
 
-  if (!current) {
-    const upcoming = [...periods].filter(p => p.cycle_status === 'PLANNED').sort((a, b) => parseISO(a.startdate) - parseISO(b.startdate))[0]
+  if (!current && !pendingClosure) {
+    const upcoming = [...periods].filter(p => getCycleStage(p) === 'PLANNED').sort((a, b) => parseISO(a.startdate) - parseISO(b.startdate))[0]
     return (
       <tr className="table-row">
         <td className="table-cell">
@@ -104,7 +107,7 @@ function BudgetTableRows({ budget }) {
     )
   }
 
-  return <PeriodRow budget={budget} period={current} />
+  return <PeriodRow budget={budget} period={current ?? pendingClosure} />
 }
 
 PeriodRow.propTypes = {
@@ -155,7 +158,7 @@ export default function Dashboard() {
               <tr className="border-b border-gray-200 dark:border-gray-700">
                 <th className="table-header-cell text-left">Budget</th>
                 <th className="table-header-cell text-left">Frequency</th>
-                <th className="table-header-cell text-left">Current Budget Cycle</th>
+                <th className="table-header-cell text-left">Current Cycle</th>
                 <th className="table-header-cell text-right col-budget">Inc Budget</th>
                 <th className="table-header-cell text-right col-actual">Inc Actual</th>
                 <th className="table-header-cell text-right col-budget">Exp Budget</th>
