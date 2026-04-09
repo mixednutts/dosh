@@ -5,6 +5,7 @@ This document initializes a practical working context for new Dosh development.
 It is a synthesis of the current Markdown sources in this repository:
 
 - [README.md](/home/ubuntu/dosh/README.md)
+- [ROADMAP.md](/home/ubuntu/dosh/docs/ROADMAP.md)
 - [MIGRATION_AND_RELEASE_MANAGEMENT.md](/home/ubuntu/dosh/docs/MIGRATION_AND_RELEASE_MANAGEMENT.md)
 - [GITHUB_RELEASE_RUNBOOK.md](/home/ubuntu/dosh/docs/GITHUB_RELEASE_RUNBOOK.md)
 - [RELEASE_NOTES.md](/home/ubuntu/dosh/docs/RELEASE_NOTES.md)
@@ -32,6 +33,7 @@ These guidelines apply across the project as a whole and should continue guiding
 
 - follow [DOCUMENTATION_FRAMEWORK.md](/home/ubuntu/dosh/docs/DOCUMENTATION_FRAMEWORK.md)
 - use [README.md](/home/ubuntu/dosh/README.md) as the top-level entry point
+- use [ROADMAP.md](/home/ubuntu/dosh/docs/ROADMAP.md) to identify whether a task belongs to beta scope, Phase 2, or longer-view opportunity scope before diving into detailed activity planning
 - use this document as the operational handoff for new AI sessions
 - when working on Docker-related deployment or runtime setup, always check for [docker-compose.override.yml](/home/ubuntu/dosh/docker-compose.override.yml) and apply it when present in the development environment
 - keep [RELEASE_NOTES.md](/home/ubuntu/dosh/docs/RELEASE_NOTES.md) as the repo-managed release-content source that feeds published GitHub Releases
@@ -355,12 +357,13 @@ When making changes, preserve these working assumptions from the docs:
 Before starting a new feature or refactor:
 
 1. read this file
-2. check [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md) for active stream priority
-3. check [CHANGES.md](/home/ubuntu/dosh/docs/CHANGES.md) for product decisions that should not be accidentally undone
-4. check [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) and [TEST_EXPANSION_PLAN.md](/home/ubuntu/dosh/docs/tests/TEST_EXPANSION_PLAN.md) for the expected coverage boundary
-5. confirm whether the work touches lifecycle, close-out, carry-forward, ledger, or health rules before changing behavior
-6. if the work touches the expense scheduling or transaction-entry flows, inspect the current shared implementations in [ExpenseItemSchedulingFields.jsx](/home/ubuntu/dosh/frontend/src/components/ExpenseItemSchedulingFields.jsx), [DateField.jsx](/home/ubuntu/dosh/frontend/src/components/DateField.jsx), and [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx) before assuming the behavior is page-local
-7. if the work touches budget-cycle stage wording or grouping, preserve the aligned user-facing order `Current`, `Planned`, `Pending Closure`, `Historic` across sidebar, budgets summary, and budget-cycle list surfaces
+2. check [ROADMAP.md](/home/ubuntu/dosh/docs/ROADMAP.md) for release-stage scope and priority framing
+3. check [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md) for active stream priority
+4. check [CHANGES.md](/home/ubuntu/dosh/docs/CHANGES.md) for product decisions that should not be accidentally undone
+5. check [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) and [TEST_EXPANSION_PLAN.md](/home/ubuntu/dosh/docs/tests/TEST_EXPANSION_PLAN.md) for the expected coverage boundary
+6. confirm whether the work touches lifecycle, close-out, carry-forward, ledger, or health rules before changing behavior
+7. if the work touches the expense scheduling or transaction-entry flows, inspect the current shared implementations in [ExpenseItemSchedulingFields.jsx](/home/ubuntu/dosh/frontend/src/components/ExpenseItemSchedulingFields.jsx), [DateField.jsx](/home/ubuntu/dosh/frontend/src/components/DateField.jsx), and [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx) before assuming the behavior is page-local
+8. if the work touches budget-cycle stage wording or grouping, preserve the aligned user-facing order `Current`, `Planned`, `Pending Closure`, `Historic` across sidebar, budgets summary, and budget-cycle list surfaces
 
 ## CI Operational Notes
 
@@ -413,6 +416,7 @@ This file is intentionally concise.
 For detailed product meaning:
 
 - use [README.md](/home/ubuntu/dosh/README.md) for current-state overview
+- use [ROADMAP.md](/home/ubuntu/dosh/docs/ROADMAP.md) for release-stage roadmap scope
 - use [CHANGES.md](/home/ubuntu/dosh/docs/CHANGES.md) for product decisions and implementation history
 - use [SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md](/home/ubuntu/dosh/docs/plans/SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md) for the current setup-validity and downstream-protection model
 - use [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_CYCLE_LIFECYCLE_PLAN.md) for lifecycle, carry-forward, delete, and close-out rules

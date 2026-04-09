@@ -116,6 +116,37 @@ Maintenance notes:
 
 ## Roadmap and Activity Documents
 
+### ROADMAP.md
+
+Document:
+
+- [ROADMAP.md](/home/ubuntu/dosh/docs/ROADMAP.md)
+
+Document type:
+
+- roadmap and activity document
+
+Primary purpose:
+
+- define the overall release-shaped delivery path for Dosh
+- separate beta scope, Phase 2 scope, and longer-view opportunities
+
+Primary source-of-truth scope:
+
+- overall roadmap stages
+- release-boundary scope for beta versus post-beta work
+- long-range opportunity visibility
+
+Key relationships:
+
+- links to [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md) for detailed implementation streams
+- complements [MIGRATION_AND_RELEASE_MANAGEMENT.md](/home/ubuntu/dosh/docs/MIGRATION_AND_RELEASE_MANAGEMENT.md) for beta-readiness and upgrade-path expectations
+
+Maintenance notes:
+
+- should remain concise and release-shaped rather than becoming a second detailed backlog
+- should stay aligned with [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md) when scope moves between beta and later phases
+
 ### DEVELOPMENT_ACTIVITIES.md
 
 Document:

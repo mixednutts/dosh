@@ -18,7 +18,8 @@ For new AI or agent sessions:
 
 1. read this file first
 2. then read [PROJECT_CONTEXT.md](/home/ubuntu/dosh/docs/PROJECT_CONTEXT.md)
-3. then follow the links from there into the relevant roadmap, plan, history, or testing documents
+3. then read [ROADMAP.md](/home/ubuntu/dosh/docs/ROADMAP.md) to identify the release-stage scope
+4. then follow the links from there into the relevant activity, plan, history, or testing documents
 
 ## Project Snapshot
 
@@ -60,6 +61,7 @@ dosh/
 
 ### Roadmap and Active Work
 
+- [ROADMAP.md](/home/ubuntu/dosh/docs/ROADMAP.md): the release-shaped roadmap across beta, Phase 2, and longer-view opportunities
 - [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md): roadmap areas, activity groups, active work, and near-term backlog
 
 ### History and Decisions

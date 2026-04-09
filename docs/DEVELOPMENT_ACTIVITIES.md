@@ -16,6 +16,7 @@ Its purpose is to help future sessions quickly identify:
 
 It complements:
 
+- [ROADMAP.md](/home/ubuntu/dosh/docs/ROADMAP.md) for the release-shaped overall delivery path across beta, Phase 2, and longer-view opportunities
 - [README.md](/home/ubuntu/dosh/README.md) for current-state product and technical overview
 - [CHANGES.md](/home/ubuntu/dosh/docs/CHANGES.md) for recorded product decisions and recent implementation history
 - [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/docs/plans/BUDGET_HEALTH_ADDENDUM.md) for staged budget health direction
@@ -96,9 +97,38 @@ Status convention used in this document:
 - `Later`: worth tracking, but not a current near-term priority
 - `Completed`: finished and intentionally retained here until the roadmap is next regrouped
 
+## Relationship To The Roadmap
+
+[ROADMAP.md](/home/ubuntu/dosh/docs/ROADMAP.md) is now the release-shaped roadmap for Dosh.
+
+This document remains the detailed implementation and activity backlog that supports that roadmap.
+
+Interpretation rules:
+
+- use [ROADMAP.md](/home/ubuntu/dosh/docs/ROADMAP.md) to decide whether work belongs to `Beta Release`, `Phase 2`, or `Future Opportunities`
+- use this document to identify the actual implementation streams, activity groups, and likely next tasks inside those roadmap stages
+- when an activity here appears broader than the current beta scope, treat the roadmap as the release-boundary authority
+- when a roadmap item does not yet have a stable implementation breakdown here, keep it defined in [ROADMAP.md](/home/ubuntu/dosh/docs/ROADMAP.md) until the activity stream is ready to be managed in this document
+
+Roadmap-to-activity mapping:
+
+- `Beta Release > Close Out Process` is currently implemented through `Period Close Out`, plus supporting `Setup Assessment And Protected Configuration` and `Quality > Test Coverage`
+- `Beta Release > Cash Management` is currently implemented through `Cash Management`, with supporting work expected from `Quality > UX/UI` and `Quality > Test Coverage`
+- `Beta Release > Localisation` is currently implemented through `Localisation and Regional Fit`, with supporting work from `Quality > Consistency` and `Quality > Test Coverage`
+- `Beta Release > Budget Health Engine` is currently implemented through `Budget Health`, with supporting work from `Quality > Test Coverage` and demo-data maintenance
+- `Beta Release > Maintainability` is currently implemented primarily through `Quality > Reliability`, `Quality > Consistency`, and the release and migration policy documents
+- `Phase 2 > Reconciliation Module` is currently implemented through `Reconciliation`
+- `Phase 2 > Reporting Module` is currently implemented through `Reporting and Analysis`
+- `Phase 2 > Full Budget File Export` and `Phase 2 > Backup And Restore` are currently implemented through `Export and Backup`
+- `Future Opportunities > Bank Integration` is roadmap-only for now and does not yet have a stable activity home in this document
+
 ## Roadmap Areas
 
 ### 1. Reporting and Analysis
+
+Roadmap alignment:
+
+- `Phase 2 > Reporting Module`
 
 This remains the clearest next feature stream.
 
@@ -146,6 +176,10 @@ Cross-links:
 - Quality > UX/UI
 
 ### 2. Reconciliation
+
+Roadmap alignment:
+
+- `Phase 2 > Reconciliation Module`
 
 The centralized transaction ledger is already in place, so the next step is turning that foundation into a user-facing reconciliation workflow.
 
@@ -208,6 +242,10 @@ Cross-links:
 
 ### 3. Period Close Out
 
+Roadmap alignment:
+
+- `Beta Release > Close Out Process`
+
 This is now an active implementation stream rather than just a future milestone.
 
 Reference:
@@ -257,6 +295,11 @@ Cross-links:
 
 ### 4. Setup Assessment And Protected Configuration
 
+Roadmap alignment:
+
+- supports `Beta Release > Close Out Process`
+- supports `Phase 2 > Reconciliation Module`
+
 This is an implemented foundation and should be treated as an active maintenance area rather than a speculative idea.
 
 Reference:
@@ -300,6 +343,10 @@ Cross-links:
 - Quality > Consistency
 
 ### 5. Budget Health
+
+Roadmap alignment:
+
+- `Beta Release > Budget Health Engine`
 
 Budget health exists today, but it is intentionally an early slice rather than a finished scoring system.
 
@@ -364,6 +411,10 @@ Cross-links:
 
 ### 6. Localisation and Regional Fit
 
+Roadmap alignment:
+
+- `Beta Release > Localisation`
+
 Dosh already shows signs of regional fit, but localisation is not yet being treated as a deliberate product capability.
 
 Current implemented slice:
@@ -415,6 +466,10 @@ Cross-links:
 
 ### 7. Cash Management
 
+Roadmap alignment:
+
+- `Beta Release > Cash Management`
+
 Dosh tracks balances and transactions already, but the product still needs an explicit cash management workflow that helps users decide what cash is available, what is committed, and what needs attention next.
 
 #### Activity Group: Cash Model Definition
@@ -460,6 +515,11 @@ Cross-links:
 
 ### 8. Export and Backup
 
+Roadmap alignment:
+
+- `Phase 2 > Full Budget File Export`
+- `Phase 2 > Backup And Restore`
+
 As Dosh becomes more trustworthy for day-to-day finance use, users will eventually expect straightforward ways to export their data and keep independent backups.
 
 Reference:
@@ -503,6 +563,11 @@ Status:
 - continue expanding validation around export completeness now that the first flat CSV and JSON slice exists
 
 ### 9. Quality
+
+Roadmap alignment:
+
+- primarily supports `Beta Release > Maintainability`
+- also supports `Beta Release > Close Out Process`, `Beta Release > Cash Management`, `Beta Release > Localisation`, and `Beta Release > Budget Health Engine`
 
 This roadmap area exists for work that improves trust, usability, consistency, and delivery quality across multiple feature areas.
 
@@ -673,7 +738,7 @@ If we want a practical order of work rather than just a thematic roadmap, this i
 
 ## Canonical Near-Term References
 
-To avoid duplicating the canonical roadmap entries above, use these sections as the main near-term reference points:
+To avoid duplicating the canonical roadmap entries above, use these sections as the main near-term reference points after first checking [ROADMAP.md](/home/ubuntu/dosh/docs/ROADMAP.md) for release-stage scope:
 
 - `Reconciliation > Closed-Cycle Reconciliation Handoff`
 - `Reporting and Analysis > Reporting Foundations`
@@ -745,11 +810,13 @@ These project rules already emerge clearly from the existing docs and implementa
 Before proposing major changes, review:
 
 - [README.md](/home/ubuntu/dosh/README.md)
+- [ROADMAP.md](/home/ubuntu/dosh/docs/ROADMAP.md)
 - [CHANGES.md](/home/ubuntu/dosh/docs/CHANGES.md)
 - [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md)
 
 That combination should be enough to understand:
 
+- which release stage the work belongs to
 - where the product is today
 - what decisions are already intentional
 - what the next sensible development activities are
