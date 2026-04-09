@@ -38,6 +38,14 @@ Rules for incrementing versions:
 - increase `MAJOR` for intentionally breaking changes or a major compatibility reset
 - remove the suffix only when Dosh is ready for a production-grade release
 
+Backlog management rule for future bumps:
+
+- version bumps should happen before the unreleased backlog becomes too broad to review confidently as one release
+- treat roughly `5` to `10` distinct user-facing or operationally meaningful change items in `Unreleased` as the soft upper limit for one future release candidate
+- if the `Unreleased` section grows past that range, stop defaulting to “wait longer” and intentionally choose the next semver or pre-release bump
+- the goal is not a rigid numeric gate; the goal is to keep each release small enough that reviewers can still identify, verify, and explain its individual changes without spanning a large backlog
+- if one theme dominates, a release may still reasonably exceed the soft item count; if the changes are diverse, choose a version sooner even if the raw count is lower
+
 Storage and display rules:
 
 - store the canonical version as plain semver text, for example `0.1.2-alpha`
@@ -122,6 +130,12 @@ Recommended release-notes flow:
 1. keep in-progress release content under `## Unreleased`
 2. when the release version is intentionally chosen, convert that content into a new top `## <version> | released | <date>` entry
 3. leave `## Unreleased` in place above it for future work
+
+Backlog-limit guidance:
+
+1. review the top `Unreleased` section before deciding to defer a version bump again
+2. if the section now represents more than about `5` to `10` distinct release-worthy items, prefer cutting the next release rather than letting the backlog sprawl further
+3. use release coherence, testing confidence, and user-facing explainability as the deciding factors, not item count alone
 
 The repository includes [release_with_migrations.sh](/home/ubuntu/dosh/scripts/release_with_migrations.sh) to run the expected Compose-based build, backup, migration, and restart flow.
 
