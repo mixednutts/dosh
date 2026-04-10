@@ -4,7 +4,17 @@ from ..api_docs import DbSession, error_responses
 from ..demo_budget import create_standard_demo_budget
 from ..models import Budget
 from ..runtime_settings import dev_mode_enabled
-from ..schemas import BudgetCreate, BudgetHealthOut, BudgetOut, BudgetSetupAssessmentOut, BudgetUpdate
+from ..schemas import (
+    BudgetCreate,
+    BudgetHealthOut,
+    BudgetOut,
+    BudgetSetupAssessmentOut,
+    BudgetUpdate,
+    DATE_FORMAT_OPTIONS,
+    SUPPORTED_CURRENCIES,
+    SUPPORTED_LOCALES,
+    SUPPORTED_TIMEZONES,
+)
 from ..setup_assessment import budget_setup_assessment
 
 router = APIRouter(prefix="/budgets", tags=["budgets"])
@@ -29,6 +39,16 @@ def create_demo_budget(db: DbSession):
     if not dev_mode_enabled():
         raise HTTPException(404, "Not found")
     return create_standard_demo_budget(db)
+
+
+@router.get("/localisation-options")
+def get_localisation_options():
+    return {
+        "locales": list(SUPPORTED_LOCALES),
+        "currencies": list(SUPPORTED_CURRENCIES),
+        "timezones": list(SUPPORTED_TIMEZONES),
+        "date_formats": list(DATE_FORMAT_OPTIONS),
+    }
 
 
 @router.get("/{budgetid}", response_model=BudgetOut, responses=error_responses(404))

@@ -31,11 +31,51 @@ For the dedicated workflow plan that now owns budget-adjustment, revision-histor
 
 For the implemented amount-entry plan that now defines inline arithmetic scope, preview behavior, and parser boundaries for period-detail modals, read [INLINE_EXPRESSION_AMOUNT_INPUT_PLAN.md](/home/ubuntu/dosh/docs/plans/INLINE_EXPRESSION_AMOUNT_INPUT_PLAN.md).
 
-For the implemented localisation support plan that now defines regional formatting, numeric masked amount input, formula-mode, and preference-resolution boundaries, read [LOCALISATION_SUPPORT_PLAN.md](/home/ubuntu/dosh/docs/plans/LOCALISATION_SUPPORT_PLAN.md).
+For the implemented localisation support plan that now defines regional formatting, numeric masked amount input, operator-triggered calculator behavior, and preference-resolution boundaries, read [LOCALISATION_SUPPORT_PLAN.md](/home/ubuntu/dosh/docs/plans/LOCALISATION_SUPPORT_PLAN.md).
 
 For the implemented export-shape plan that now defines budget-cycle export behavior, read [BUDGET_CYCLE_EXPORT_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_CYCLE_EXPORT_PLAN.md).
 
 For the implemented Auto Expense workflow rules, scheduler behavior, migration expectations, and AUTO/MANUAL eligibility constraints introduced this session, read [AUTO_EXPENSE_PLAN.md](/home/ubuntu/dosh/docs/plans/AUTO_EXPENSE_PLAN.md).
+
+## Latest Session: Localisation Beta Hardening, Operator-Triggered Calculator Entry, And Date-Format Cleanup
+
+This session finalized the beta non-translation localisation hardening work and deployed it through the migration-aware Compose path.
+
+Important direction now in place:
+
+- supported locale, currency, timezone, and date-format options are centrally exposed by the backend and consumed by Settings
+- backend validation now uses supported sets for locale, currency, and timezone, while `date_format: null` resolves to `medium`
+- date-format selection is back to a normal dropdown and includes the supported custom patterns `MM-dd-yy` and `MMM-dd-yyyy`
+- date picker chrome now follows the active budget locale, and date-range formatting uses `Intl.DateTimeFormat.prototype.formatRange` where available
+- normal amount input now uses string-based decimal normalization at the money-entry boundary instead of relying on `Number(...).toFixed(2)` as the main contract
+- non-Latin digit locales are explicitly out of scope for Dosh beta
+- negative amount entry remains blocked in the current amount fields; transaction reversal behavior continues through the existing credit/refund direction model
+- AutoNumeric was removed because the active implementation is a custom numeric input after earlier caret and keyboard-lock issues
+- calculator mode is driven by user input: simple operators such as `+`, `-`, `*`, `/`, `(`, or `)` trigger the calculator, while leading `=` remains supported but is no longer required
+- the proposed `Adjust` button was not implemented; users can append arithmetic to an existing value, such as `100+20`
+- user-facing export labels and affordances were reviewed and do not promise localized or human-readable export in beta
+- the shared add-transaction modal now focuses the amount field by default
+
+### Verification and deployment
+
+Focused verification passed:
+
+- frontend targeted localisation and amount-entry tests passed with `35 passed` during the main hardening pass
+- backend targeted localisation and smoke tests passed with `27 passed` during the main hardening pass
+- follow-up null-date-format/dropdown regression tests passed with frontend `14 passed` and backend `28 passed`
+- `git diff --check` passed cleanly
+
+Deployment verification:
+
+- the stack was redeployed repeatedly with `INCLUDE_OVERRIDE=true ./scripts/release_with_migrations.sh`
+- `/api/health` returned `{"status":"ok","app":"Dosh"}`
+- `/api/info` returned version `0.3.0-alpha` and schema revision `c4d8e6f1a2b3`
+- `/api/budgets/localisation-options` returned the supported options, including `MM-dd-yy` and `MMM-dd-yyyy`
+- the frontend root returned `HTTP 200`
+
+Versioning note:
+
+- no version bump was made in this session; the work is documented under `Unreleased` until a future release version is intentionally selected
 
 ## Latest Session: Full Localisation Support, Numeric Masked Amount Entry, Formula Mode, And Migration-Backed Deployment
 
@@ -45,7 +85,7 @@ Important direction now in place:
 
 - budgets now carry `locale`, `currency`, `timezone`, and `date_format` preferences, defaulting to `en-AU`, `AUD`, `Australia/Sydney`, and `medium`
 - display formatting now flows through shared frontend localisation helpers built on `Intl.NumberFormat` and `Intl.DateTimeFormat`
-- normal money entry uses localized numeric masks without currency symbols or codes inside editable fields, while arithmetic entry is explicit with leading `=`
+- normal money entry uses localized numeric masks without currency symbols or codes inside editable fields, while arithmetic entry is explicit through simple arithmetic operators or the still-supported leading `=`
 - formula previews are localized for display, but submitted values remain normalized decimals
 - backend storage, API payloads, ledger calculations, migrations, and machine-readable exports remain locale-neutral
 - broader text translation and country-specific terminology work remain out of scope for this pass
@@ -70,7 +110,7 @@ Important product meaning:
 
 Current behavior:
 
-- [localisation.js](/home/ubuntu/dosh/frontend/src/utils/localisation.js) owns shared currency, number, percent, date, time, date-time, date-range, storage-date, timezone-aware today, localized amount parsing, and AutoNumeric option behavior
+- [localisation.js](/home/ubuntu/dosh/frontend/src/utils/localisation.js) owns shared currency, number, percent, date, time, date-time, date-range, storage-date, timezone-aware today, localized amount parsing, and custom numeric input option behavior
 - [LocalisationContext.jsx](/home/ubuntu/dosh/frontend/src/components/LocalisationContext.jsx) resolves the active budget preferences for app surfaces
 - [LocalizedAmountInput.jsx](/home/ubuntu/dosh/frontend/src/components/LocalizedAmountInput.jsx) wraps localized numeric masked input without currency symbols or codes inside editable fields and emits normalized decimal values
 - high-traffic surfaces now use shared helpers instead of hard-coded `en-AU`, `AUD`, raw percent strings, or browser-local timestamp assumptions
@@ -85,14 +125,14 @@ Important product meaning:
 Current behavior:
 
 - [AmountExpressionInput.jsx](/home/ubuntu/dosh/frontend/src/components/AmountExpressionInput.jsx) now treats normal amount entry as plain typed text while focused, with localized grouping and fixed decimals applied only when unfocused and without currency symbols or currency codes inside editable fields
-- arithmetic formulas are entered deliberately with a leading `=`
+- arithmetic formulas are entered deliberately with simple arithmetic operators or the still-supported leading `=`
 - previews use localized currency formatting while the submitted value remains a normalized decimal
 - existing supported formula scope remains narrow and arithmetic-only
 
 Important product meaning:
 
 - normal masked amount fields no longer need to parse localized arithmetic
-- formula behavior stays explicit and reviewable instead of surprising users while they type ordinary money values
+- calculator behavior stays explicit and reviewable by requiring arithmetic syntax rather than a separate button or implicit plain-number calculation
 
 ### 4. Deployment exposed and resolved a budgets-page refresh crash
 

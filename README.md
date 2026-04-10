@@ -2,7 +2,7 @@
 
 Dosh is a workflow-driven personal finance application with a FastAPI backend and a Vite-powered React frontend.
 
-The current product supports guided budget setup, budget-cycle planning, income and expense tracking, optional scheduled Auto Expense automation, transaction-backed balance movement, savings and investment planning, close-out workflows, app-wide regional formatting and masked amount entry, a budget-overview calendar with bounded upcoming-cycle visibility, and a meaningful automated regression baseline.
+The current product supports guided budget setup, budget-cycle planning, income and expense tracking, optional scheduled Auto Expense automation, transaction-backed balance movement, savings and investment planning, close-out workflows, app-wide regional formatting with localized amount entry and operator-triggered calculator input, a budget-overview calendar with bounded upcoming-cycle visibility, and a meaningful automated regression baseline.
 
 ## Start Here
 
@@ -28,7 +28,7 @@ For new AI or agent sessions:
 - Testing: `pytest`, Jest with React Testing Library, Playwright
 - Deployment path: Docker Compose
 - Docker Compose note: when working on Docker-related deployment or runtime setup, always check for [docker-compose.override.yml](/home/ubuntu/dosh/docker-compose.override.yml) and apply it when present in the development environment
-- Core product shape: guided budgeting, explicit budget-cycle lifecycle, ledger-backed transaction movement, close-out flow, setup assessment, budget health, app-wide localisation for regional display and amount input, and calendar-based timing visibility on the budget overview
+- Core product shape: guided budgeting, explicit budget-cycle lifecycle, ledger-backed transaction movement, close-out flow, setup assessment, budget health, app-wide localisation for regional display, date handling, amount input, and calendar-based timing visibility on the budget overview
 
 ## Repository Layout
 
@@ -75,7 +75,7 @@ dosh/
 - [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/docs/plans/BUDGET_HEALTH_ADDENDUM.md): budget health direction and staged health design
 - [INCOME_TRANSACTIONS_UNIFICATION_AND_LEGACY_LEDGER_CLEANUP_PLAN.md](/home/ubuntu/dosh/docs/plans/INCOME_TRANSACTIONS_UNIFICATION_AND_LEGACY_LEDGER_CLEANUP_PLAN.md): transaction unification and ledger cleanup planning
 - [INLINE_EXPRESSION_AMOUNT_INPUT_PLAN.md](/home/ubuntu/dosh/docs/plans/INLINE_EXPRESSION_AMOUNT_INPUT_PLAN.md): implemented inline arithmetic amount-entry scope, parsing boundaries, and modal UX decisions
-- [LOCALISATION_SUPPORT_PLAN.md](/home/ubuntu/dosh/docs/plans/LOCALISATION_SUPPORT_PLAN.md): implemented regional formatting, numeric masked amount input, formula-mode, and budget preference resolution boundaries
+- [LOCALISATION_SUPPORT_PLAN.md](/home/ubuntu/dosh/docs/plans/LOCALISATION_SUPPORT_PLAN.md): implemented regional formatting, numeric masked amount input, operator-triggered calculator behavior, and budget preference resolution boundaries
 - [AI_INSIGHT_ON_CLOSEOUT_PLAN.md](/home/ubuntu/dosh/docs/plans/AI_INSIGHT_ON_CLOSEOUT_PLAN.md): supporting close-out planning insight
 - [GITHUB_RELEASE_MANAGEMENT_WORKFLOW_PLAN.md](/home/ubuntu/dosh/docs/plans/GITHUB_RELEASE_MANAGEMENT_WORKFLOW_PLAN.md): GitHub-managed release-tagging, release publishing, and in-app release-info workflow
 - [AUTO_EXPENSE_PLAN.md](/home/ubuntu/dosh/docs/plans/AUTO_EXPENSE_PLAN.md): budget-level Auto Expense rules, AUTO/MANUAL eligibility, scheduler behavior, and migration expectations

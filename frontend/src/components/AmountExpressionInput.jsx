@@ -27,6 +27,12 @@ function isIncompleteExpression(value) {
   return TRAILING_OPERATOR_PATTERN.test(value) || hasUnclosedParenthesis(value)
 }
 
+function isArithmeticExpression(value) {
+  const trimmed = (value ?? '').trim()
+  if (trimmed.startsWith(FORMULA_PREFIX)) return true
+  return EXPRESSION_PREVIEW_PATTERN.test(trimmed)
+}
+
 function evaluateArithmeticAst(node) {
   switch (node.type) {
     case 'Literal':
@@ -74,13 +80,13 @@ export function evaluateAmountExpression(rawValue, localisation = DEFAULT_LOCALI
     }
   }
 
-  if (!trimmed.startsWith(FORMULA_PREFIX)) {
+  if (!isArithmeticExpression(trimmed)) {
     const resolvedValue = parseLocalizedAmountInput(trimmed, localisation)
     if (resolvedValue === null) {
       return {
         state: 'invalid',
         resolvedValue: null,
-        error: 'Enter a valid amount, or start a calculation with =',
+        error: 'Enter a valid amount',
         shouldShowPreview: false,
         previewText: '',
       }
@@ -95,7 +101,7 @@ export function evaluateAmountExpression(rawValue, localisation = DEFAULT_LOCALI
     }
   }
 
-  const expression = trimmed.slice(1).trim()
+  const expression = trimmed.startsWith(FORMULA_PREFIX) ? trimmed.slice(1).trim() : trimmed
 
   if (!expression) {
     return {
@@ -103,7 +109,7 @@ export function evaluateAmountExpression(rawValue, localisation = DEFAULT_LOCALI
       resolvedValue: null,
       error: '',
       shouldShowPreview: true,
-      previewText: '=',
+      previewText: trimmed.startsWith(FORMULA_PREFIX) ? '=' : '',
     }
   }
 
@@ -153,6 +159,26 @@ export function evaluateAmountExpression(rawValue, localisation = DEFAULT_LOCALI
   }
 }
 
+function applyMinimum(evaluation, min) {
+  if (
+    evaluation.state !== 'valid'
+    || min === undefined
+    || min === null
+    || evaluation.resolvedValue === null
+    || evaluation.resolvedValue >= min
+  ) {
+    return evaluation
+  }
+
+  return {
+    state: 'invalid',
+    resolvedValue: null,
+    error: `Enter an amount of ${min} or more`,
+    shouldShowPreview: false,
+    previewText: '',
+  }
+}
+
 export default function AmountExpressionInput({
   value,
   onChange,
@@ -165,11 +191,11 @@ export default function AmountExpressionInput({
   className = '',
 }) {
   const localisation = useLocalisation()
-  const evaluation = evaluateAmountExpression(value, localisation)
+  const evaluation = applyMinimum(evaluateAmountExpression(value, localisation), min)
   const previousNotificationRef = useRef()
-  const previousIsFormulaRef = useRef(false)
+  const previousIsExpressionRef = useRef(false)
   const formulaInputRef = useRef(null)
-  const isFormula = String(value ?? '').trim().startsWith(FORMULA_PREFIX)
+  const isExpression = isArithmeticExpression(value)
 
   useEffect(() => {
     const nextNotification = `${evaluation.state}:${evaluation.resolvedValue ?? 'null'}`
@@ -179,20 +205,20 @@ export default function AmountExpressionInput({
   }, [evaluation.resolvedValue, evaluation.state, onResolvedChange])
 
   useEffect(() => {
-    const justEnteredFormulaMode = isFormula && !previousIsFormulaRef.current
-    previousIsFormulaRef.current = isFormula
+    const justEnteredExpressionMode = isExpression && !previousIsExpressionRef.current
+    previousIsExpressionRef.current = isExpression
 
-    if (!justEnteredFormulaMode) return
+    if (!justEnteredExpressionMode) return
 
     const input = formulaInputRef.current
     if (!input) return
     input.focus()
     input.setSelectionRange(input.value.length, input.value.length)
-  }, [isFormula])
+  }, [isExpression])
 
   return (
     <div className="space-y-1">
-      {isFormula ? (
+      {isExpression ? (
         <input
           ref={formulaInputRef}
           id={id}

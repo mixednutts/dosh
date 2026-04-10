@@ -1,11 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import PropTypes from 'prop-types'
 import { useLocalisation } from './LocalisationContext'
-import { formatLocalizedAmountForEdit, getAutoNumericOptions, parseLocalizedAmountInput } from '../utils/localisation'
-
-function normalizeParsedValue(parsedValue) {
-  return Number(parsedValue.toFixed(2))
-}
+import { formatLocalizedAmountForEdit, getNumericInputOptions, normalizeLocalizedAmountInput, parseLocalizedAmountInput } from '../utils/localisation'
 
 export default function LocalizedAmountInput({
   id,
@@ -27,7 +23,7 @@ export default function LocalizedAmountInput({
   const [isFocused, setIsFocused] = useState(false)
   const localisation = useLocalisation()
   const options = useMemo(
-    () => getAutoNumericOptions(localisation, { minimumValue: min === undefined ? null : min }),
+    () => getNumericInputOptions(localisation, { minimumValue: min === undefined ? null : min }),
     [localisation, min]
   )
 
@@ -42,11 +38,9 @@ export default function LocalizedAmountInput({
   }
   const [draftValue, setDraftValue] = useState(() => formatDisplayValue(value))
 
-  const emitParsedValue = (parsedValue, nextDraftValue) => {
-    const normalizedNumber = normalizeParsedValue(parsedValue)
-    const normalizedValue = String(normalizedNumber)
+  const emitNormalizedValue = (normalizedValue, nextDraftValue) => {
     onChange(normalizedValue)
-    onValueChange?.(normalizedNumber)
+    onValueChange?.(Number(normalizedValue))
     if (nextDraftValue !== undefined) {
       setDraftValue(nextDraftValue)
     }
@@ -66,9 +60,9 @@ export default function LocalizedAmountInput({
       return
     }
 
-    const parsedValue = parseLocalizedAmountInput(nextValue, localisation)
-    if (parsedValue !== null) {
-      emitParsedValue(parsedValue)
+    const normalizedValue = normalizeLocalizedAmountInput(nextValue, localisation)
+    if (normalizedValue !== null) {
+      emitNormalizedValue(normalizedValue)
     } else {
       onChange(nextValue)
       onValueChange?.(null)
@@ -76,12 +70,11 @@ export default function LocalizedAmountInput({
   }
 
   const handleBlur = event => {
-    const parsedValue = parseLocalizedAmountInput(draftValue, localisation)
-    if (parsedValue !== null) {
-      const normalizedNumber = normalizeParsedValue(parsedValue)
-      setDraftValue(formatDisplayValue(normalizedNumber))
-      onChange(String(normalizedNumber))
-      onValueChange?.(normalizedNumber)
+    const normalizedValue = normalizeLocalizedAmountInput(draftValue, localisation)
+    if (normalizedValue !== null) {
+      setDraftValue(formatDisplayValue(normalizedValue))
+      onChange(normalizedValue)
+      onValueChange?.(Number(normalizedValue))
     }
     setIsFocused(false)
     onBlur?.(event)

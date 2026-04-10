@@ -396,13 +396,13 @@ Document type:
 
 Primary purpose:
 
-- preserve the implemented localisation-support decisions for regional formatting, amount masking, formula mode, and budget preference resolution
+- preserve the implemented localisation-support decisions for regional formatting, amount masking, operator-triggered calculator behavior, and budget preference resolution
 
 Primary source-of-truth scope:
 
-- budget-level `locale`, `currency`, and `timezone` preference behavior
+- budget-level `locale`, `currency`, `timezone`, and `date_format` preference behavior
 - `Intl`-based currency, number, percent, date, time, and date-range display boundaries
-- numeric masked amount-entry behavior and explicit leading-`=` formula-mode boundary
+- numeric masked amount-entry behavior and operator-triggered calculator boundary
 - locale-neutral backend storage, API, ledger, migration, and machine-readable export expectations
 
 Key relationships:

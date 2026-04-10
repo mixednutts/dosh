@@ -2,7 +2,20 @@
 
 ## Unreleased
 
-Post-release changes will accumulate here until the next version is ready to be selected.
+### Improvements
+
+- Hardened beta localisation settings so supported locale, currency, timezone, and date-format options now come from the backend and stay aligned with API validation
+- Restored the Settings date format control to a standard dropdown while adding supported custom formats such as `MM-dd-yy` and `MMM-dd-yyyy`
+- Improved date handling so the shared calendar control follows the active budget locale and date ranges use standard platform range formatting where available
+- Improved money entry normalization with string-based decimal handling, current negative-value rejection, and clearer beta scope that non-Latin digit locales are out of scope
+- Removed the unused AutoNumeric dependency and kept the active custom numeric input contract
+- Updated calculator amount fields so simple operators trigger calculation directly, with leading `=` still supported but no separate `Adjust` button required
+- Focused the shared add-transaction modal on the amount field by default
+
+### Notes
+
+- Machine-readable CSV and JSON export remain locale-neutral for beta and are not presented as localized or human-readable export modes
+- No version has been selected for these unreleased changes yet
 
 ## 0.3.0-alpha | released | 2026-04-10
 

@@ -34,7 +34,7 @@ Observed current state:
 - frontend now uses a Vite build with standalone Jest plus React Testing Library, and includes user-facing workflow coverage
 - frontend Jest coverage now also includes a dedicated layout-navigation baseline for current sidebar hierarchy, setup-link visibility, and cycle-shortcut affordances
 - frontend Jest coverage now also includes Budgets page calendar behavior, including compact summary rendering, full-calendar interaction, bounded 3-month lookahead, and day-event modal behavior
-- frontend Jest coverage now includes localisation utility, masked amount input, and explicit formula-mode regressions across representative regional preferences
+- frontend Jest coverage now includes localisation utility, masked amount input, and operator-triggered calculator regressions across representative regional preferences
 - frontend also now has a Playwright end-to-end harness under [frontend/e2e](/home/ubuntu/dosh/frontend/e2e)
 - the project now has a credible regression foundation for controlled enhancement work
 - coverage is still selective rather than exhaustive, so new behavior should continue to be added together with tests
@@ -113,7 +113,7 @@ These areas deserve extra caution whenever product work touches them:
 - transaction-backed income behavior, including dedicated income transaction history rather than inline actual overrides
 - modal-driven budget adjustment behavior across income, expense, and investment, including setup-history readback through the shared transaction model
 - period-detail modal amount-expression behavior, including raw-expression visibility, valid-expression preview, incomplete-expression in-progress summary behavior, and resolved-value submission across income, expense, investment, add-line, and budget-adjustment flows
-- localisation behavior, including budget-level locale/currency/timezone preference validation, shared `Intl` display helpers, masked amount input normalization, explicit leading-`=` formula mode, and timezone-aware labels
+- localisation behavior, including budget-level locale/currency/timezone/date-format preference validation, shared `Intl` display helpers, masked amount input normalization, operator-triggered calculator mode, timezone-aware labels, and date-picker locale behavior
 - setup-revision history behavior, including field-level change capture, revision-number rebasing, and the distinction between setup-affecting future budget adjustments and current-only period adjustments
 - post-paid revise flows and read-only guards on closed cycles
 - budget-level Auto Expense automation, including scheduler-safe eligibility rules, AUTO/MANUAL protection, period-detail manual run behavior, and migration normalization of legacy invalid AUTO rows

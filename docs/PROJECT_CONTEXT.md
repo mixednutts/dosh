@@ -93,7 +93,7 @@ These guidelines apply across the project as a whole and should continue guiding
 - prefer display-layer regional variation over unnecessary internal domain renaming
 - use the shared frontend localisation helpers for currency, number, percent, date, time, date-range, and timezone-aware today behavior rather than adding page-local `Intl` calls or hard-coded `en-AU`/`AUD` formatting
 - keep normalized backend/API values locale-neutral; financial values should remain numeric/decimal and dates should remain normalized ISO-style values unless a separate human-readable export mode is deliberately designed
-- normal amount entry should use localized numeric masks without currency symbols or currency codes inside editable fields, while arithmetic should remain explicit through leading-`=` formula mode
+- normal amount entry should use localized numeric masks without currency symbols or currency codes inside editable fields, while arithmetic should be triggered only by explicit arithmetic syntax such as `+`, `-`, `*`, `/`, `(`, `)`, or the still-supported leading `=`
 - setup guidance and readiness messaging should respect the budget-level account naming preference rather than hard-coding `transaction` wording when a localized label such as `Everyday` or `Checking` is active
 
 ### Testing and Change Safety
@@ -129,7 +129,7 @@ It is now a workflow-driven personal finance application with:
 
 The product direction is practical, personal, and supportive rather than corporate or accounting-heavy. Functional clarity is preferred over decorative redesign.
 
-Localisation and regional-fit work now includes app-wide regional formatting, budget-level `locale`/`currency`/`timezone`/`date_format` preferences, localized numeric masked amount entry without currency symbols or codes inside editable fields, explicit formula-mode arithmetic entry, and budget-level account naming preferences, while the core domain model still stays terminology-stable underneath.
+Localisation and regional-fit work now includes app-wide regional formatting, centrally governed supported `locale`/`currency`/`timezone`/`date_format` preferences, localized numeric masked amount entry without currency symbols or codes inside editable fields, operator-triggered arithmetic amount entry, custom supported date formats such as `MM-dd-yy` and `MMM-dd-yyyy`, and budget-level account naming preferences, while the core domain model still stays terminology-stable underneath.
 
 ## Current Technical Shape
 
@@ -154,10 +154,10 @@ Frontend:
 - React Query
 - Tailwind CSS
 - `prop-types` is now part of the frontend baseline so shared and page-level React components can carry explicit prop contracts for SonarQube-backed maintainability
-- period-detail modal amount expressions now use explicit leading-`=` formula mode with a small `jsep`-based parser plus a narrow arithmetic-only evaluator rather than a broader general-purpose math dependency
+- period-detail modal amount expressions now use operator-triggered calculator mode with a small `jsep`-based parser plus a narrow arithmetic-only evaluator rather than a broader general-purpose math dependency; leading `=` still works but is no longer required
 - regional display and amount-input behavior is centralized in [localisation.js](/home/ubuntu/dosh/frontend/src/utils/localisation.js), [LocalisationContext.jsx](/home/ubuntu/dosh/frontend/src/components/LocalisationContext.jsx), and [LocalizedAmountInput.jsx](/home/ubuntu/dosh/frontend/src/components/LocalizedAmountInput.jsx)
-- [AmountExpressionInput.jsx](/home/ubuntu/dosh/frontend/src/components/AmountExpressionInput.jsx) now combines localized numeric masked entry for normal amounts with explicit formula-mode previews and normalized decimal submission
-- localisation is not yet mature best-practice infrastructure: beta-scope follow-up work is tracked in [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md) under `Localisation Best-Practice Hardening`, covering supported-option governance, currency/locale validation, date picker locale behavior, `formatRange`, formatter caching, robust amount parsing, decimal precision, and the AutoNumeric/custom-input dependency decision; full text translation remains outside beta scope
+- [AmountExpressionInput.jsx](/home/ubuntu/dosh/frontend/src/components/AmountExpressionInput.jsx) now combines localized numeric masked entry for normal amounts with operator-triggered arithmetic previews and normalized decimal submission
+- localisation beta hardening is now implemented for supported-option governance, currency/locale/timezone validation, date picker locale behavior, `formatRange` fallback, formatter caching, robust string-based amount normalization, decimal rounding at the money-entry boundary, and the custom-input dependency decision; full text translation remains outside beta scope
 - current route flow defined in [App.jsx](/home/ubuntu/dosh/frontend/src/App.jsx)
 
 Operational note:
@@ -243,7 +243,7 @@ The repository already supports:
 - account setup now supports primary designation per balance type while still reserving the active primary `Transaction` account as the default anchor for expense-driven movement
 - budget settings now expose locale, currency, timezone, and date-format preferences used by shared frontend localisation helpers
 - currency, number, percent, date, time, date-range, and timezone-aware today display now resolve from the active budget instead of hard-coded regional assumptions
-- plain amount fields now keep plain typed text while focused, apply localized grouping and fixed decimals only when unfocused, avoid currency symbols and currency codes inside editable fields, and submit normalized decimal values; formula entry is explicit with a leading `=` and submits normalized decimal values after localized preview
+- plain amount fields now keep plain typed text while focused, apply localized grouping and fixed decimals only when unfocused, avoid currency symbols and currency codes inside editable fields, and submit normalized decimal values; arithmetic entry is triggered by simple operators or the still-supported leading `=`, with localized previews and normalized decimal submission
 - setup-page collapsible `Personalisation` and `Settings` sections with session-persisted expand or collapse state
 - budget-cycle grouping using `Current`, `Planned`, `Pending Closure`, and `Historic`, with the sidebar and budget cycles page aligned to the same ordering and session-persisted collapse behavior
 - period-detail summary cards that now include both `Projected Savings` and `Remaining Expenses`

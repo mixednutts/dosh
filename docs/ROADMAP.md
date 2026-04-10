@@ -73,8 +73,8 @@ Goal:
 
 Status:
 
-- completed for app-wide regional formatting, budget-level locale/currency/timezone preferences, numeric masked amount entry without currency symbols or codes inside editable fields, and explicit formula-mode amount entry
-- remaining beta work should harden the non-translation localisation foundation so it is closer to common React/FastAPI finance-app best practice
+- completed for app-wide regional formatting, centrally governed budget-level locale/currency/timezone/date-format preferences, numeric masked amount entry without currency symbols or codes inside editable fields, operator-triggered calculator entry, calendar locale alignment, custom supported date formats, and string-based amount normalization
+- remaining localisation work is outside the beta non-translation hardening scope unless new real-world issues appear
 - broader text translation remains a future opportunity rather than beta scope
 
 Includes:
@@ -84,10 +84,10 @@ Includes:
 - preference storage and resolution
 - terminology variation where appropriate
 - supporting regression coverage around locale-sensitive behavior
-- backend/frontend supported-option governance for locale, currency, timezone, and date-format choices
-- robust localized amount parsing, decimal precision, paste, negative-value, comma-decimal, and non-Latin digit behavior
+- supported-option governance for locale, currency, timezone, and date-format choices
+- robust localized amount parsing, decimal precision, paste, negative-value policy, comma-decimal behavior, and invalid mixed separator handling
 - date picker locale alignment and date-range formatting that use standard platform APIs where practical
-- cleanup of the AutoNumeric dependency mismatch: either fully adopt the library for masked inputs or remove it and document the custom input contract
+- custom numeric input contract after removing the unused AutoNumeric dependency
 - formatter performance and consistency hardening, including avoiding needless per-call formatter construction where it matters
 
 ### 4. Budget Health Engine
@@ -209,7 +209,7 @@ Known gaps in the current documentation set:
 
 - `Cash Management` is now explicitly beta-critical and should be interpreted as supporting cash balances through a budget-cycle workflow.
 - `Budget Health` exists as a first release, but the roadmap now expects it to become robust, user-driven, and version-aware.
-- `Localisation` now has app-wide regional formatting and budget preference storage/resolution in place; remaining beta work is best-practice hardening for non-translation localisation, while full text translation stays outside beta scope.
+- `Localisation` now has app-wide regional formatting, budget preference storage/resolution, supported-option governance, string-based amount normalization, calendar locale alignment, custom supported date formats, and the custom numeric input contract in place; full text translation stays outside beta scope.
 - `Maintainability` work is spread across migration, release, reliability, and Sonar follow-through documents rather than being framed as one beta-critical stream.
 - `Phase 2` items may remain intentionally underdefined here until they are ready to become concrete activity streams in [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md).
 - `Bank Integration` is intentionally roadmap-only for now and does not need detailed activity breakdown yet.

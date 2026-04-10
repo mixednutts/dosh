@@ -2,8 +2,10 @@ import { useRef } from 'react'
 import PropTypes from 'prop-types'
 import DatePicker from 'react-datepicker'
 import { format, parseISO } from 'date-fns'
+import { de, enAU, enGB, enNZ, enUS } from 'date-fns/locale'
 import { CalendarDaysIcon } from '@heroicons/react/24/outline'
 import { useLocalisation } from './LocalisationContext'
+import { normalizeDateFormatPattern } from '../utils/localisation'
 
 import 'react-datepicker/dist/react-datepicker.css'
 
@@ -30,6 +32,14 @@ const DATE_FIELD_FORMATS = {
   },
 }
 
+const DATE_PICKER_LOCALES = {
+  'en-AU': enAU,
+  'en-US': enUS,
+  'en-GB': enGB,
+  'en-NZ': enNZ,
+  'de-DE': de,
+}
+
 function toDate(value) {
   if (!value) return null
   if (value instanceof Date) return value
@@ -37,6 +47,10 @@ function toDate(value) {
 }
 
 function getDateFieldFormat(locale, dateFormat) {
+  const customFormat = normalizeDateFormatPattern(dateFormat)
+  if (customFormat && !DATE_FIELD_FORMATS[customFormat]) {
+    return { pattern: customFormat, placeholder: customFormat.toUpperCase() }
+  }
   const configuredFormat = DATE_FIELD_FORMATS[dateFormat] || DATE_FIELD_FORMATS.medium
   return configuredFormat[locale] || configuredFormat.default
 }
@@ -53,6 +67,7 @@ export default function DateField({
   const datePickerRef = useRef(null)
   const fieldFormat = getDateFieldFormat(locale, dateFormat)
   const resolvedPlaceholder = placeholder === 'DD MMM YYYY' ? fieldFormat.placeholder : placeholder
+  const datePickerLocale = DATE_PICKER_LOCALES[locale] || enAU
 
   return (
     <div className="relative w-full">
@@ -65,6 +80,7 @@ export default function DateField({
         required={required}
         placeholderText={resolvedPlaceholder}
         dateFormat={fieldFormat.pattern}
+        locale={datePickerLocale}
         className="input w-full pr-12"
         calendarClassName="dosh-datepicker"
         popperClassName="dosh-datepicker-popper"

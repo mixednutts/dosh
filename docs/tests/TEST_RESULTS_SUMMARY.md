@@ -4,6 +4,74 @@ This document records meaningful automated test results from major working sessi
 
 It exists separately from [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) so the strategy can stay stable while future sessions still have a record of what was actually run and verified.
 
+## Latest Session: Localisation Beta Hardening, Operator-Triggered Calculator Entry, Date-Format Cleanup, And Redeploy
+
+Session outcomes verified in this run:
+
+- backend-supported localisation options now feed Settings for locale, currency, timezone, and date-format choices
+- backend localisation validation now rejects unsupported locale/currency/timezone values and resolves explicit `date_format: null` to `medium`
+- Settings date format selection is a normal dropdown again and includes `MM-dd-yy` and `MMM-dd-yyyy`
+- date picker display and calendar chrome now use the active budget locale
+- date-range formatting uses `Intl.DateTimeFormat.prototype.formatRange` where available, with fallback coverage
+- localized amount normalization now uses string-based decimal handling for the money-entry boundary
+- non-Latin digit locales are out of scope for beta, and current amount fields continue rejecting negative values
+- AutoNumeric was removed in favor of the implemented custom numeric input contract
+- calculator mode is triggered by simple arithmetic operators or the still-supported leading `=`, without adding an `Adjust` button
+- add-transaction shared modal now focuses the amount input
+- export labels and affordances were reviewed and did not imply localized or human-readable export for beta
+
+### Verification
+
+Commands run during this session:
+
+```bash
+cd /home/ubuntu/dosh/frontend
+npm test -- --runInBand SettingsTab.test.jsx DateField.test.jsx localisation.test.jsx AmountExpressionInput.test.jsx
+npm test -- --runInBand SettingsTab.test.jsx DateField.test.jsx localisation.test.jsx
+
+cd /home/ubuntu/dosh
+backend/.venv/bin/pytest backend/tests/test_budget_schema_validation.py backend/tests/test_app_smoke.py -q
+git diff --check
+```
+
+Result:
+
+- frontend targeted localisation and amount-entry batch passed with `35 passed`
+- backend targeted localisation and smoke batch passed with `27 passed`
+- follow-up frontend date-format dropdown batch passed with `14 passed`
+- follow-up backend null-date-format/default batch passed with `28 passed`
+- `git diff --check` passed cleanly
+
+Failures and resolutions:
+
+- the first backend follow-up run showed that `BudgetUpdate(date_format=None)` still remained `None` because the optional field validator was not running before optional handling
+- the validator was changed to run in `mode="before"`, and the backend batch then passed with `28 passed`
+- an earlier screenshot showed an alert for an unknown `mod_date` column, but no current code or live SQLite schema references to `mod_date` were found; the user should capture fresh logs if it appears after the latest redeploy
+
+Deployment verification:
+
+```bash
+cd /home/ubuntu/dosh
+INCLUDE_OVERRIDE=true ./scripts/release_with_migrations.sh
+docker compose -f docker-compose.yml -f docker-compose.override.yml ps
+curl -sS http://127.0.0.1:3080/api/health
+curl -sS http://127.0.0.1:3080/api/info
+curl -sS http://127.0.0.1:3080/api/budgets/localisation-options
+curl -sS -I http://127.0.0.1:3080/
+```
+
+Result:
+
+- `dosh-backend` and `dosh-frontend` were running
+- `/api/health` returned `{"status":"ok","app":"Dosh"}`
+- `/api/info` returned `{"app":"Dosh","version":"0.3.0-alpha","schema_revision":"c4d8e6f1a2b3"}`
+- `/api/budgets/localisation-options` returned the supported options including `MM-dd-yy` and `MMM-dd-yyyy`
+- frontend root returned `HTTP/1.1 200 OK`
+
+Versioning:
+
+- no version bump was made; this is recorded as unreleased follow-up work after `0.3.0-alpha`
+
 ## Latest Session: Localisation Date Format, Version-Bump Reassessment, And Regression Sweep
 
 Session outcomes verified in this run:
@@ -72,8 +140,8 @@ Result:
 Session outcomes verified in this run:
 
 - budget-level `locale`, `currency`, and `timezone` preferences were added with backend validation and Alembic migration coverage
-- shared frontend localisation helpers now cover currency, number, percent, date, time, date-time, date-range, storage date keys, timezone-aware today, localized amount parsing, and AutoNumeric options
-- normal amount entry now uses localized numeric masked inputs without currency symbols or codes inside editable fields, while formula mode activates only with a leading `=`
+- shared frontend localisation helpers now cover currency, number, percent, date, time, date-time, date-range, storage date keys, timezone-aware today, localized amount parsing, and custom numeric input options
+- normal amount entry now uses localized numeric masked inputs without currency symbols or codes inside editable fields, while calculator mode activates only with simple arithmetic operators or the still-supported leading `=`
 - touched high-traffic surfaces now use shared localisation helpers rather than hard-coded `en-AU`, `AUD`, raw percent strings, or browser-local timestamp assumptions
 - the migration-aware deployment upgraded the live schema to `9b7f3c2d1a4e`
 - a post-deploy `/budgets` refresh crash was reproduced, fixed, rebuilt, redeployed, and verified with Playwright

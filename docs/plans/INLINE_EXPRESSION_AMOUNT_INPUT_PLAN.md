@@ -39,7 +39,20 @@ This plan does not currently extend inline arithmetic to setup-tab edit or creat
 
 ## Final Product Decisions
 
-### Expression syntax
+### Expression Trigger And Syntax
+
+Calculator mode is driven by user input, not by a separate `Adjust` button.
+
+The field enters calculator mode when the user types any simple arithmetic operator:
+
+- `+`
+- `-`
+- `*`
+- `/`
+- `(`
+- `)`
+
+The older leading `=` trigger still works for existing user muscle memory, but it is no longer required.
 
 Supported syntax is intentionally narrow:
 
@@ -67,6 +80,7 @@ The input should keep the raw typed expression visible.
 Preview behavior:
 
 - plain numeric literals behave like normal amount entry and do not show a preview line
+- a user can append an operator expression to an existing field value, such as changing `100` to `100+20`, without adding a leading `=`
 - valid arithmetic expressions show a muted resolved preview such as `= $275.00`
 - incomplete expressions such as `100+` or `(100+20` should not flash a hard validation error while the user is still typing
 - incomplete expressions should instead show a muted in-progress summary line such as `= 100+`
@@ -78,6 +92,7 @@ Preview behavior:
 - backend contracts remain unchanged and still receive numeric `amount` or `budgetamount` values
 - values are rounded to 2 decimal places before submit-facing use
 - minimum-amount rules are enforced after evaluation, not by the parser itself
+- negative calculated results are rejected wherever the current amount field passes a non-negative minimum
 - quick-fill buttons should continue to write simple literal values into the field and should not trigger the expression preview
 
 ## Technical Direction

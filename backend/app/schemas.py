@@ -7,27 +7,46 @@ from pydantic import BaseModel, field_validator, model_validator
 
 from .period_logic import parse_budget_frequency_days
 
-LOCALE_PATTERN = re.compile(r"^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$")
-CURRENCY_PATTERN = re.compile(r"^[A-Z]{3}$")
-DATE_FORMAT_OPTIONS = {"compact", "short", "medium", "long", "numeric"}
+SUPPORTED_LOCALES = ("en-AU", "en-US", "en-GB", "en-NZ", "de-DE")
+SUPPORTED_CURRENCIES = ("AUD", "USD", "GBP", "NZD", "EUR", "CAD")
+SUPPORTED_TIMEZONES = (
+    "Australia/Sydney",
+    "Australia/Perth",
+    "Pacific/Auckland",
+    "America/New_York",
+    "America/Los_Angeles",
+    "Europe/London",
+    "Europe/Berlin",
+    "UTC",
+)
+DATE_FORMAT_OPTIONS = ("compact", "short", "medium", "long", "numeric", "MM-dd-yy", "MMM-dd-yyyy")
+SUPPORTED_CURRENCY_VALUES = set(SUPPORTED_CURRENCIES)
+SUPPORTED_TIMEZONE_VALUES = set(SUPPORTED_TIMEZONES)
+DATE_FORMAT_VALUES = set(DATE_FORMAT_OPTIONS)
+LOCALE_CANONICAL = {locale.lower(): locale for locale in SUPPORTED_LOCALES}
+DATE_FORMAT_TOKEN_PATTERN = re.compile(r"(yyyy|yy|MMMM|MMM|MM|M|dd|d|[\s.,/-]+)")
+DATE_FORMAT_TOKEN_VALUES = {"yyyy", "yy", "MMMM", "MMM", "MM", "M", "dd", "d"}
 
 
 def _validate_locale(value: str) -> str:
     normalized = value.strip()
-    if not LOCALE_PATTERN.fullmatch(normalized):
-        raise ValueError("locale must be a valid BCP 47-style language tag")
-    return normalized
+    canonical = LOCALE_CANONICAL.get(normalized.lower())
+    if not canonical:
+        raise ValueError(f"locale must be one of {SUPPORTED_LOCALES}")
+    return canonical
 
 
 def _validate_currency(value: str) -> str:
     normalized = value.strip().upper()
-    if not CURRENCY_PATTERN.fullmatch(normalized):
-        raise ValueError("currency must be a 3-letter ISO 4217 code")
+    if normalized not in SUPPORTED_CURRENCY_VALUES:
+        raise ValueError(f"currency must be one of {SUPPORTED_CURRENCIES}")
     return normalized
 
 
 def _validate_timezone(value: str) -> str:
     normalized = value.strip()
+    if normalized not in SUPPORTED_TIMEZONE_VALUES:
+        raise ValueError(f"timezone must be one of {SUPPORTED_TIMEZONES}")
     try:
         ZoneInfo(normalized)
     except ZoneInfoNotFoundError as exc:
@@ -35,10 +54,25 @@ def _validate_timezone(value: str) -> str:
     return normalized
 
 
-def _validate_date_format(value: str) -> str:
-    normalized = value.strip()
-    if normalized not in DATE_FORMAT_OPTIONS:
-        raise ValueError(f"date_format must be one of {DATE_FORMAT_OPTIONS}")
+def _validate_date_format(value: str | None) -> str:
+    if value is None:
+        return "medium"
+
+    normalized = value.strip().replace("Y", "y").replace("D", "d")
+    if normalized in DATE_FORMAT_VALUES:
+        return normalized
+
+    tokens = DATE_FORMAT_TOKEN_PATTERN.findall(normalized)
+    if "".join(tokens) != normalized:
+        raise ValueError("date_format must use day, month, and year tokens with standard separators")
+
+    token_values = {token for token in tokens if token in DATE_FORMAT_TOKEN_VALUES}
+    has_day = bool(token_values & {"d", "dd"})
+    has_month = bool(token_values & {"M", "MM", "MMM", "MMMM"})
+    has_year = bool(token_values & {"yy", "yyyy"})
+    if not (has_day and has_month and has_year):
+        raise ValueError("date_format must include day, month, and year tokens")
+
     return normalized
 
 
@@ -211,11 +245,9 @@ class BudgetUpdate(BaseModel):
             return v
         return _validate_timezone(v)
 
-    @field_validator("date_format")
+    @field_validator("date_format", mode="before")
     @classmethod
-    def validate_optional_date_format(cls, v: Optional[str]) -> Optional[str]:
-        if v is None:
-            return v
+    def validate_optional_date_format(cls, v: Optional[str]) -> str:
         return _validate_date_format(v)
 
     @field_validator("budget_frequency")

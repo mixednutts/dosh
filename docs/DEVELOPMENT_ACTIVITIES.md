@@ -21,7 +21,7 @@ It complements:
 - [CHANGES.md](/home/ubuntu/dosh/docs/CHANGES.md) for recorded product decisions and recent implementation history
 - [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/docs/plans/BUDGET_HEALTH_ADDENDUM.md) for staged budget health direction
 - [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_CYCLE_LIFECYCLE_PLAN.md) for the detailed cycle lifecycle and close-out plan that is now partially implemented
-- [LOCALISATION_SUPPORT_PLAN.md](/home/ubuntu/dosh/docs/plans/LOCALISATION_SUPPORT_PLAN.md) for the implemented regional formatting, numeric masked amount input, formula-mode, and preference-resolution boundaries
+- [LOCALISATION_SUPPORT_PLAN.md](/home/ubuntu/dosh/docs/plans/LOCALISATION_SUPPORT_PLAN.md) for the implemented regional formatting, numeric masked amount input, operator-triggered calculator behavior, and preference-resolution boundaries
 - [BUDGET_ADJUSTMENT_REVISION_HISTORY_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_ADJUSTMENT_REVISION_HISTORY_PLAN.md) for the budget-adjustment, revision-history, and setup-history rules implemented this session
 - [SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md](/home/ubuntu/dosh/docs/plans/SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md) for the centralized setup-validity and downstream-protection model implemented this session
 - [AUTO_EXPENSE_PLAN.md](/home/ubuntu/dosh/docs/plans/AUTO_EXPENSE_PLAN.md) for the implemented Auto Expense rules, scheduler behavior, AUTO/MANUAL eligibility, and migration expectations
@@ -115,7 +115,7 @@ Roadmap-to-activity mapping:
 
 - `Beta Release > Close Out Process` is currently implemented through `Period Close Out`, plus supporting `Setup Assessment And Protected Configuration` and `Quality > Test Coverage`
 - `Beta Release > Cash Management` is currently implemented through `Cash Management`, with supporting work expected from `Quality > UX/UI` and `Quality > Test Coverage`
-- `Beta Release > Localisation` is implemented for app-wide regional formatting and amount input through `Localisation and Regional Fit`; non-translation best-practice hardening is beta scope, while full text translation remains outside beta scope
+- `Beta Release > Localisation` is implemented for app-wide regional formatting, amount input, supported-option governance, and non-translation best-practice hardening through `Localisation and Regional Fit`; full text translation remains outside beta scope
 - `Beta Release > Budget Health Engine` is currently implemented through `Budget Health`, with supporting work from `Quality > Test Coverage` and demo-data maintenance
 - `Beta Release > Maintainability` is currently implemented primarily through `Quality > Reliability`, `Quality > Consistency`, and the release and migration policy documents
 - `Phase 2 > Reconciliation Module` is currently implemented through `Reconciliation`
@@ -425,10 +425,10 @@ Current implemented slice:
 - the data model should stay stable underneath unless a deeper domain reason appears
 - budget records now carry `locale`, `currency`, `timezone`, and `date_format` preferences, defaulting to `en-AU`, `AUD`, `Australia/Sydney`, and `medium`
 - frontend display formatting now flows through shared localisation helpers built on `Intl.NumberFormat` and `Intl.DateTimeFormat`
-- normal money entry now uses localized numeric masks without currency symbols or codes inside editable fields, while deliberate arithmetic uses explicit leading-`=` formula mode and still submits normalized decimal values
+- normal money entry now uses localized numeric masks without currency symbols or codes inside editable fields, while deliberate arithmetic is triggered by simple operators or the still-supported leading `=` and still submits normalized decimal values
 - backend storage, API payloads, ledger calculations, migrations, and machine-readable exports remain locale-neutral
 - the implemented rules and boundaries are captured in [LOCALISATION_SUPPORT_PLAN.md](/home/ubuntu/dosh/docs/plans/LOCALISATION_SUPPORT_PLAN.md)
-- the current implementation is a solid first slice, but it should not be treated as mature localisation infrastructure until the beta hardening activities below are completed
+- the beta non-translation hardening slice is now complete; full text translation and broader country-specific behavior remain outside beta scope
 
 #### Activity Group: Formatting Foundations
 
@@ -439,7 +439,7 @@ Status:
 - `Completed`: introduce a shared expense-flow date field with consistent day-only `DD MMM YYYY` display for effective dates, while keeping stored values normalized and leaving broader locale and currency preference work for a later dedicated localisation pass
 - `Completed`: move locale, currency, percent, number, date, time, date-range, and timezone-aware today formatting out of hard-coded UI assumptions and into shared frontend localisation utilities
 - `Completed`: replace app-surface hard-coded regional display strings across dashboard, budget overview, budget cycles, period detail, setup tabs, history modals, amount previews, and settings while preserving normalized backend/API values
-- `Completed`: add regression coverage around locale-sensitive display, masked amount input, formula-mode previews, and budget preference validation
+- `Completed`: add regression coverage around locale-sensitive display, masked amount input, calculator previews, and budget preference validation
 
 #### Activity Group: Preferences and Resolution
 
@@ -454,7 +454,7 @@ Status:
 
 Status:
 
-- `Next`
+- `Completed`
 
 Roadmap assignment:
 
@@ -462,41 +462,37 @@ Roadmap assignment:
 
 Purpose:
 
-- close the non-translation best-practice gaps identified after the `0.3.0-alpha` localisation release
-- keep the current “regional formatting, not translation” scope, but make the implementation more robust for real-world use
+- preserve the non-translation best-practice hardening completed after the `0.3.0-alpha` localisation release
+- keep the current “regional formatting, not translation” scope explicit for future sessions
 - preserve normalized backend/API values and numeric-only editable amount fields unless a future product decision explicitly changes that contract
 
-Known gaps to close:
+Completed hardening:
 
-- supported-option governance: frontend currently owns curated `LOCALE_OPTIONS`, `CURRENCY_OPTIONS`, `TIMEZONE_OPTIONS`, and `DATE_FORMAT_OPTIONS`, while backend validation is broader and shape-based; define one authoritative supported-options contract or expose supported options from the backend so the UI and API cannot drift
-- currency validation: backend currently accepts any three uppercase letters; validate against supported ISO 4217 values or the agreed supported set
-- locale validation: backend currently accepts BCP 47-shaped tags but does not confirm runtime support; use `Intl`-compatible support checks on the frontend and an agreed supported set or library-backed validation on the backend
-- timezone validation: backend uses `ZoneInfo`, which is good, but frontend options are curated manually; decide whether settings should remain curated or become searchable from a backend-provided supported list
-- date-format naming: current `date_format` is preset-based rather than arbitrary token-based custom formatting; keep this safer model unless free-form custom formats are deliberately designed, but make the UI copy clear that these are presets
-- date-range formatting: replace manual `" - "` joins with `Intl.DateTimeFormat.prototype.formatRange` where available, with a tested fallback for browsers that do not support it
-- date picker locale handling: [DateField.jsx](/home/ubuntu/dosh/frontend/src/components/DateField.jsx) maps display patterns manually and only special-cases `en-US`; align `react-datepicker` locale behavior with the selected budget locale or deliberately document why picker chrome remains English-only
-- formatter performance and consistency: avoid creating new `Intl.NumberFormat`/`Intl.DateTimeFormat` objects on hot paths where options repeat; introduce small formatter caches or memoized helpers without over-abstracting
-- localized amount parsing robustness: expand tests and behavior for pasted values, negative values, accounting-style negatives if supported, incomplete decimals, comma-decimal locales, non-breaking spaces, non-Latin digits, and invalid mixed separators
-- decimal precision: [LocalizedAmountInput.jsx](/home/ubuntu/dosh/frontend/src/components/LocalizedAmountInput.jsx) currently normalizes through JavaScript `Number` and `toFixed(2)`; evaluate decimal-string preservation or a decimal library for money-entry boundaries so future calculations do not accumulate binary floating-point surprises
-- AutoNumeric dependency mismatch: AutoNumeric is installed and helper options exist, but active amount input is now custom after keyboard-lock issues; either remove AutoNumeric and rename helper/contracts to reflect custom masking, or fully adopt AutoNumeric only if it can satisfy the numeric-only focused-entry behavior without caret locking
-- formula mode scope: keep explicit leading-`=` formula entry, but document that formula parsing intentionally remains non-localized arithmetic and only the preview/result display is localized
-- export boundary: retain machine-readable CSV/JSON as locale-neutral; if human-readable localized export is ever added, make it a separate explicit export mode
+- `Completed`: backend-provided supported-option governance now covers locales, currencies, timezones, and date formats through `/api/budgets/localisation-options`
+- `Completed`: backend validation now uses supported sets for locale, currency, and timezone rather than broad shape-only acceptance
+- `Completed`: `date_format` treats explicit `null` as `medium` and supports the selected custom token formats `MM-dd-yy` and `MMM-dd-yyyy` through the normal dropdown list
+- `Completed`: date-range formatting uses `Intl.DateTimeFormat.prototype.formatRange` where available, with a tested fallback
+- `Completed`: [DateField.jsx](/home/ubuntu/dosh/frontend/src/components/DateField.jsx) passes the active budget locale into `react-datepicker`
+- `Completed`: formatter caching now avoids repeated `Intl.NumberFormat` and `Intl.DateTimeFormat` construction on shared helper paths
+- `Completed`: localized amount parsing now uses string-based decimal normalization for pasted/grouped values, comma-decimal locales, non-breaking spaces, invalid mixed separators, and current negative-value rejection
+- `Completed`: AutoNumeric was removed and the custom numeric input helper contract was renamed to match the implemented component behavior
+- `Completed`: formula/calculator scope is documented as non-localized arithmetic; calculator mode is now triggered by simple arithmetic operators or the still-supported leading `=`
+- `Completed`: reviewed export labels and affordances; beta export remains machine-readable CSV/JSON and does not promise localized or human-readable output
 
-Suggested implementation sequence:
+Remaining explicit constraints:
 
-- first resolve the AutoNumeric/custom-input decision, because it affects component contracts, dependencies, and tests
-- next centralize supported localisation option governance between backend and frontend
-- then harden date picker/date range behavior
-- then harden amount parsing and decimal precision with focused regression tests
-- finish with documentation updates in [LOCALISATION_SUPPORT_PLAN.md](/home/ubuntu/dosh/docs/plans/LOCALISATION_SUPPORT_PLAN.md), [PROJECT_CONTEXT.md](/home/ubuntu/dosh/docs/PROJECT_CONTEXT.md), and [TEST_RESULTS_SUMMARY.md](/home/ubuntu/dosh/docs/tests/TEST_RESULTS_SUMMARY.md)
+- full text translation remains outside beta scope
+- non-Latin digit locales are out of scope for Dosh beta
+- localized or human-readable export should be introduced only as a separate explicit export mode
+- negative amount entry remains blocked in current amount fields; transaction reversals continue through the existing credit/refund direction model
 
 Suggested regression coverage:
 
-- utility tests for `en-AU/AUD`, `en-US/USD`, `en-GB/GBP`, `de-DE/EUR`, and at least one non-Latin digit locale if enabled
-- amount input tests for focus/unfocus formatting, paste, backspace, partial decimal entry, negative-value policy, grouped values, comma-decimal values, and invalid mixed separators
-- formula tests confirming `=` focus retention, numeric-only normal entry, localized preview display, and normalized decimal submission
-- date tests for selected date-format presets, timezone boundary dates around midnight, date-range formatting fallback, and date-picker display behavior
-- backend tests for supported locale/currency/timezone/date-format acceptance and rejection, plus migration coverage for preference defaults
+- keep representative utility tests for `en-AU/AUD`, `en-US/USD`, `en-GB/GBP`, and `de-DE/EUR`
+- keep amount input tests for focus/unfocus formatting, paste, partial decimal entry, negative-value policy, grouped values, comma-decimal values, and invalid mixed separators
+- keep formula tests confirming operator-triggered calculator mode, numeric-only normal entry, localized preview display, and normalized decimal submission
+- keep date tests for selected date-format presets, custom date formats, timezone boundary behavior, date-range formatting fallback, and date-picker display behavior
+- keep backend tests for supported locale/currency/timezone/date-format acceptance and rejection, explicit null-to-`medium` date-format behavior, and migration coverage for preference defaults
 
 Out of beta scope:
 
@@ -699,7 +695,7 @@ Status:
 - `Completed`: extend setup-item history so revision-number increases can show the actual changed setup fields, not only `BUDGETADJ` entries
 - `Completed`: align setup revision numbers with real stored history records and link setup-affecting future budget adjustments into that revision sequence
 - `Completed`: add inline arithmetic amount entry to period-detail transaction, budget-adjustment, add-income, and add-expense modals, with resolved previews for valid calculations and in-progress summaries for incomplete arithmetic input
-- `Completed`: revise amount entry so normal money fields use localized masking and arithmetic is entered deliberately through leading-`=` formula mode with localized result previews and normalized decimal submission
+- `Completed`: revise amount entry so normal money fields use localized masking and arithmetic is entered deliberately through simple operators or the still-supported leading `=` trigger, with localized result previews and normalized decimal submission
 - `Completed`: add an expense status filter to the period-detail expenses table and align the control with the existing status column rather than introducing a separate toolbar
 - `Completed`: add a `View previous releases` option to the in-app release-notes modal by extending the backend payload and revealing older released versions on demand
 - provide an activation workflow for income lines in budget setup and align that workflow consistently across income, investment, and expense setup sections
@@ -722,7 +718,7 @@ Status:
 - continue broadening budget health coverage as scoring and reporting evolve
 - extend backend and frontend coverage around close-out, carry-forward, and delete continuity
 - `Completed`: add dedicated migration coverage for clean Alembic upgrade and upgrade from a pre-feature SQLite snapshot, alongside focused Auto Expense backend and period-detail frontend regression coverage
-- `Completed`: add localisation regression coverage for budget preference validation, `Intl`-based formatting across representative locales, masked amount input, explicit formula mode, and touched high-traffic surfaces
+- `Completed`: add localisation regression coverage for budget preference validation, `Intl`-based formatting across representative locales, masked amount input, calculator behavior, and touched high-traffic surfaces
 - future setup and workflow testing should expand beyond the original `1 transaction + 1 savings` assumption
 - bookmark named scenarios such as `Single Account` and `Multi Transaction` so future sessions can deliberately test differing account shapes rather than relying on one default personal setup model
 - consider adding a richer demo-validation checklist or smoke flow once more reporting and reconciliation surfaces exist
@@ -789,10 +785,9 @@ If we want a practical order of work rather than just a thematic roadmap, this i
 3. Reporting and Analysis > Reporting Foundations: surface a budget-level reporting card set in the frontend.
 4. Cash Management > Cash Model Definition and Cash Summary And Review Surfaces: define the workflow and first summary model for available, committed, and reserved cash.
 5. Budget Health > Personalisation and Evidence Language plus Quality > Test Coverage: refine health personalisation and add supporting tests.
-6. Localisation and Regional Fit > Localisation Best-Practice Hardening: resolve the AutoNumeric/custom-input decision, centralize supported localisation options, and harden date and amount behavior without adding full text translation.
-7. Quality > Reliability: clean up deployment or deprecation warnings and address the outstanding `axios` audit advisory.
-8. Quality > UX/UI and Bugs: review period-detail, sidebar, and budget-summary polish after real use and close the small remaining UI defects.
-9. Export and Backup > Export Scope and Format plus Backup and Restore Design: define the first export and backup scope, including format and restore expectations.
+6. Quality > Reliability: clean up deployment or deprecation warnings and address the outstanding `axios` audit advisory.
+7. Quality > UX/UI and Bugs: review period-detail, sidebar, and budget-summary polish after real use and close the small remaining UI defects.
+8. Export and Backup > Export Scope and Format plus Backup and Restore Design: define the first export and backup scope, including format and restore expectations.
 
 ## Implementation Notes To Preserve
 
@@ -807,7 +802,6 @@ To avoid duplicating the canonical roadmap entries above, use these sections as 
 
 - `Reconciliation > Closed-Cycle Reconciliation Handoff`
 - `Reporting and Analysis > Reporting Foundations`
-- `Localisation and Regional Fit > Localisation Best-Practice Hardening`
 - `Localisation and Regional Fit > Terminology and Regional Behavior`
 - `Cash Management > Cash Model Definition`
 - `Cash Management > Cash Summary and Review Surfaces`
@@ -835,12 +829,11 @@ If we want a practical order of work rather than just a thematic roadmap, this i
 3. Surface a budget-level reporting card set in the frontend.
 4. Define the cash management workflow and the first summary model for available, committed, and reserved cash.
 5. Add tests and cleanup around health personalisation and current-period threshold behavior.
-6. Harden localisation best-practice gaps except full text translation: resolve AutoNumeric/custom input, centralize supported options, improve date-range/date-picker locale behavior, and harden amount parsing/decimal precision.
-7. Clean up remaining deployment and backend deprecation warnings from startup hooks and timestamp usage.
-8. Address the outstanding `axios` audit advisory deliberately rather than bundling it into unrelated feature work.
-9. Review sidebar and budget-summary polish after real use, especially around future first-class sections.
-10. Define the first export and backup scope, including format and restore expectations.
-11. Revisit summary-card customization only after the current period-detail card set feels stable in real use.
+6. Clean up remaining deployment and backend deprecation warnings from startup hooks and timestamp usage.
+7. Address the outstanding `axios` audit advisory deliberately rather than bundling it into unrelated feature work.
+8. Review sidebar and budget-summary polish after real use, especially around future first-class sections.
+9. Define the first export and backup scope, including format and restore expectations.
+10. Revisit summary-card customization only after the current period-detail card set feels stable in real use.
 
 ## Guardrails For Future Work
 

@@ -565,6 +565,7 @@ function TransactionEntryForm({
       <div className="flex items-center gap-2">
         <div className="flex-1">
           <AmountExpressionInput
+            autoFocus
             value={amount}
             onChange={nextValue => {
               setAmount(nextValue)

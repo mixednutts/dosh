@@ -35,10 +35,10 @@ def test_budget_update_validates_optional_frequency_and_quantizes_maximum_defici
         budget_frequency="Every 30 Days",
         maximum_deficit_amount=Decimal("12.345"),
         account_naming_preference="Checking",
-        locale="en-US",
+        locale="en-us",
         currency="usd",
         timezone="America/New_York",
-        date_format="short",
+        date_format="MM-DD-YY",
         auto_expense_offset_days=3,
     )
 
@@ -48,7 +48,7 @@ def test_budget_update_validates_optional_frequency_and_quantizes_maximum_defici
     assert update.locale == "en-US"
     assert update.currency == "USD"
     assert update.timezone == "America/New_York"
-    assert update.date_format == "short"
+    assert update.date_format == "MM-dd-yy"
     assert update.auto_expense_offset_days == 3
 
 
@@ -69,12 +69,27 @@ def test_budget_update_rejects_negative_auto_expense_offset_days():
 
 @pytest.mark.parametrize("field,value", [
     ("locale", "not a locale"),
+    ("locale", "fr-FR"),
     ("currency", "US"),
+    ("currency", "ZZZ"),
     ("timezone", "Mars/Colony"),
-    ("date_format", "YYYY-MM-DD"),
+    ("timezone", "Europe/Paris"),
+    ("date_format", "yyyy-QQ-dd"),
 ])
 def test_budget_update_rejects_invalid_localisation_preferences(field, value):
     with pytest.raises(ValidationError) as exc_info:
         BudgetUpdate(**{field: value})
 
     assert field in str(exc_info.value)
+
+
+def test_budget_update_accepts_custom_date_format_patterns():
+    update = BudgetUpdate(date_format="MMM-DD-YYYY")
+
+    assert update.date_format == "MMM-dd-yyyy"
+
+
+def test_budget_update_defaults_null_date_format_to_medium():
+    update = BudgetUpdate(date_format=None)
+
+    assert update.date_format == "medium"

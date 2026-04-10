@@ -240,7 +240,7 @@ describe('AmountExpressionInput', () => {
     render(<Wrapper />)
 
     const input = screen.getByRole('textbox')
-    input.focus()
+    fireEvent.focus(input)
     fireEvent.change(input, { target: { value: '1' } })
     expect(input.value).toBe('1')
 
@@ -272,11 +272,69 @@ describe('AmountExpressionInput', () => {
     render(<Wrapper />)
 
     const input = screen.getByRole('textbox')
-    input.focus()
+    fireEvent.focus(input)
     fireEvent.change(input, { target: { value: '1200' } })
     fireEvent.blur(input)
 
     expect(input.value).toBe('1,200.00')
+  })
+
+  it('submits normalized decimal strings from normal amount entry', () => {
+    function Wrapper() {
+      const [value, setValue] = React.useState('')
+
+      return (
+        <AmountExpressionInput
+          value={value}
+          onChange={setValue}
+          onResolvedChange={() => {}}
+          className="input"
+        />
+      )
+    }
+
+    render(<Wrapper />)
+
+    const input = screen.getByRole('textbox')
+    fireEvent.focus(input)
+    fireEvent.change(input, { target: { value: '1.235' } })
+    fireEvent.blur(input)
+
+    expect(input.value).toBe('1.24')
+  })
+
+  it('does not accept negative values in normal amount entry', () => {
+    const onResolvedChange = jest.fn()
+
+    render(
+      <AmountExpressionInput
+        value="-5"
+        onChange={() => {}}
+        onResolvedChange={onResolvedChange}
+        min={0}
+        className="input"
+      />
+    )
+
+    expect(screen.getByText('Enter an amount of 0 or more')).toBeTruthy()
+    expect(onResolvedChange).toHaveBeenCalledWith(null, 'invalid')
+  })
+
+  it('does not resolve a formula below the field minimum', () => {
+    const onResolvedChange = jest.fn()
+
+    render(
+      <AmountExpressionInput
+        value="=10-20"
+        onChange={() => {}}
+        onResolvedChange={onResolvedChange}
+        min={0}
+        className="input"
+      />
+    )
+
+    expect(screen.getByText('Enter an amount of 0 or more')).toBeTruthy()
+    expect(onResolvedChange).toHaveBeenCalledWith(null, 'invalid')
   })
 
   it('shows grouped display on initial render and editable text on focus', () => {
@@ -316,11 +374,75 @@ describe('AmountExpressionInput', () => {
     render(<Wrapper />)
 
     const input = screen.getByRole('textbox')
-    input.focus()
+    fireEvent.focus(input)
     fireEvent.keyDown(input, { key: '=' })
 
     const formulaInput = screen.getByRole('textbox')
     expect(formulaInput.value).toBe('=')
     expect(document.activeElement).toBe(formulaInput)
+  })
+
+  it('uses operator input as the calculator trigger while keeping the current value visible', () => {
+    function Wrapper() {
+      const [value, setValue] = React.useState('100.00')
+
+      return (
+        <AmountExpressionInput
+          value={value}
+          onChange={setValue}
+          onResolvedChange={() => {}}
+          className="input"
+        />
+      )
+    }
+
+    render(<Wrapper />)
+
+    const input = screen.getByRole('textbox')
+    fireEvent.focus(input)
+    fireEvent.change(input, { target: { value: '100+20' } })
+
+    const calculatorInput = screen.getByRole('textbox')
+    expect(calculatorInput.value).toBe('100+20')
+    expect(screen.getByText('= $120.00')).toBeTruthy()
+    expect(document.activeElement).toBe(calculatorInput)
+  })
+
+  it('treats unfinished operator input as an in-progress calculation', () => {
+    function Wrapper() {
+      const [value, setValue] = React.useState('100.00')
+
+      return (
+        <AmountExpressionInput
+          value={value}
+          onChange={setValue}
+          onResolvedChange={() => {}}
+          className="input"
+        />
+      )
+    }
+
+    render(<Wrapper />)
+
+    const input = screen.getByRole('textbox')
+    fireEvent.focus(input)
+    fireEvent.change(input, { target: { value: '100+' } })
+
+    const calculatorInput = screen.getByRole('textbox')
+    expect(screen.getByText('= 100+')).toBeTruthy()
+    expect(document.activeElement).toBe(calculatorInput)
+  })
+
+  it('does not render a separate adjust button', () => {
+    render(
+      <AmountExpressionInput
+        value="100.00"
+        onChange={() => {}}
+        onResolvedChange={() => {}}
+        className="input"
+      />
+    )
+
+    expect(screen.queryByRole('button', { name: 'Adjust' })).toBeNull()
   })
 })

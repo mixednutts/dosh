@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import PropTypes from 'prop-types'
 import { QuestionMarkCircleIcon } from '@heroicons/react/24/outline'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { updateBudget } from '../../api/client'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { getLocalisationOptions, updateBudget } from '../../api/client'
 import { ACCOUNT_NAMING_OPTIONS } from '../../utils/accountNaming'
 import { CURRENCY_OPTIONS, DATE_FORMAT_OPTIONS, LOCALE_OPTIONS, TIMEZONE_OPTIONS } from '../../utils/localisation'
 
@@ -10,9 +10,31 @@ function formatApiError(error, fallback) {
   return error?.response?.data?.detail || fallback
 }
 
+function resolveValueOptions(serverValues, fallbackValues) {
+  return serverValues?.length ? serverValues : fallbackValues
+}
+
+function resolveLabelledOptions(serverValues, fallbackOptions) {
+  if (!serverValues?.length) return fallbackOptions
+  return serverValues.map(value => fallbackOptions.find(option => option.value === value) || { value, label: value })
+}
+
 export default function SettingsTab({ budgetId, budget }) {
   const qc = useQueryClient()
   const [showPrimaryHelp, setShowPrimaryHelp] = useState(false)
+  const { data: localisationOptions } = useQuery({
+    queryKey: ['localisation-options'],
+    queryFn: getLocalisationOptions,
+    staleTime: Infinity,
+  })
+  const localeOptions = resolveLabelledOptions(localisationOptions?.locales, LOCALE_OPTIONS)
+  const currencyOptions = resolveValueOptions(localisationOptions?.currencies, CURRENCY_OPTIONS)
+  const timezoneOptions = resolveValueOptions(localisationOptions?.timezones, TIMEZONE_OPTIONS)
+  const dateFormatOptions = resolveLabelledOptions(localisationOptions?.date_formats, DATE_FORMAT_OPTIONS)
+  const currentDateFormat = budget?.date_format || 'medium'
+  const selectableDateFormatOptions = dateFormatOptions.some(option => option.value === currentDateFormat)
+    ? dateFormatOptions
+    : [...dateFormatOptions, { value: currentDateFormat, label: currentDateFormat, sample: currentDateFormat }]
 
   const saveSettings = useMutation({
     mutationFn: data => updateBudget(budgetId, data),
@@ -151,7 +173,7 @@ export default function SettingsTab({ budgetId, budget }) {
             disabled={saveSettings.isPending}
             onChange={e => handleSelectChange('locale', e.target.value)}
           >
-            {LOCALE_OPTIONS.map(option => (
+            {localeOptions.map(option => (
               <option key={option.value} value={option.value}>{option.label}</option>
             ))}
           </select>
@@ -169,7 +191,7 @@ export default function SettingsTab({ budgetId, budget }) {
             disabled={saveSettings.isPending}
             onChange={e => handleSelectChange('currency', e.target.value)}
           >
-            {CURRENCY_OPTIONS.map(option => (
+            {currencyOptions.map(option => (
               <option key={option} value={option}>{option}</option>
             ))}
           </select>
@@ -187,7 +209,7 @@ export default function SettingsTab({ budgetId, budget }) {
             disabled={saveSettings.isPending}
             onChange={e => handleSelectChange('timezone', e.target.value)}
           >
-            {TIMEZONE_OPTIONS.map(option => (
+            {timezoneOptions.map(option => (
               <option key={option} value={option}>{option}</option>
             ))}
           </select>
@@ -201,11 +223,11 @@ export default function SettingsTab({ budgetId, budget }) {
           <select
             id="date-format-preference"
             className="input"
-            value={budget?.date_format || 'medium'}
+            value={currentDateFormat}
             disabled={saveSettings.isPending}
             onChange={e => handleSelectChange('date_format', e.target.value)}
           >
-            {DATE_FORMAT_OPTIONS.map(option => (
+            {selectableDateFormatOptions.map(option => (
               <option key={option.value} value={option.value}>{option.label} - {option.sample}</option>
             ))}
           </select>

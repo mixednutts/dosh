@@ -121,6 +121,17 @@ def test_budget_account_naming_preference_can_be_saved(client):
     assert response.json()["account_naming_preference"] == "Checking"
 
 
+def test_localisation_options_are_exposed_before_budget_id_routes(client):
+    response = client.get("/api/budgets/localisation-options")
+
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["locales"] == ["en-AU", "en-US", "en-GB", "en-NZ", "de-DE"]
+    assert "AUD" in payload["currencies"]
+    assert "Australia/Sydney" in payload["timezones"]
+    assert payload["date_formats"] == ["compact", "short", "medium", "long", "numeric", "MM-dd-yy", "MMM-dd-yyyy"]
+
+
 def test_budget_can_be_created_with_a_custom_day_cycle(client):
     response = client.post(
         "/api/budgets/",
