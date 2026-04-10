@@ -12,7 +12,8 @@ from .cycle_constants import ACTIVE, CLOSED, CURRENT_STAGE, PAID
 from .database import SessionLocal
 from .models import Budget, ExpenseItem, FinancialPeriod, PeriodExpense, PeriodTransaction
 from .period_logic import expense_occurs_in_period, fixed_day_occurrence_for_month
-from .time_utils import app_now_naive
+from datetime import timezone
+from .time_utils import app_now
 from .transaction_ledger import build_expense_tx, get_primary_account_desc, sync_period_state
 from .cycle_management import cycle_stage
 
@@ -119,7 +120,10 @@ def process_auto_expenses_for_period(finperiodid: int, db: Session, *, run_date:
         result.skipped_reasons.append("No primary account is configured")
         return result
 
-    today = (run_date or app_now_naive()).replace(hour=0, minute=0, second=0, microsecond=0)
+    run_date_aware = run_date
+    if run_date_aware is not None and run_date_aware.tzinfo is None:
+        run_date_aware = run_date_aware.replace(tzinfo=timezone.utc)
+    today = (run_date_aware or app_now()).replace(hour=0, minute=0, second=0, microsecond=0)
     expenses = (
         db.query(PeriodExpense)
         .filter(PeriodExpense.finperiodid == finperiodid)
@@ -212,7 +216,7 @@ def process_daily_auto_expenses(*, run_date: datetime | None = None) -> None:
 def _auto_expense_scheduler_loop() -> None:
     last_run_date = None
     while not _scheduler_stop.is_set():
-        now = app_now_naive()
+        now = app_now()
         today = now.date()
         if last_run_date != today:
             try:

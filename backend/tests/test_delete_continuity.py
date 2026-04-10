@@ -6,7 +6,7 @@ from decimal import Decimal
 from app.cycle_constants import CARRIED_FORWARD_DESC
 from app.models import FinancialPeriod, PeriodIncome
 from app.transaction_ledger import PeriodTransactionContext, build_budget_adjustment_tx
-from app.time_utils import app_now_naive
+from app.time_utils import utc_now
 
 from .factories import create_minimum_budget_setup, generate_periods, iso_date
 
@@ -17,7 +17,7 @@ def test_middle_cycle_requires_future_chain_delete(client, db_session):
     periods = generate_periods(
         client,
         budgetid=budget.budgetid,
-        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
         count=3,
     )
     middle_period = periods[1]
@@ -49,7 +49,7 @@ def test_delete_and_regenerate_trailing_cycle_recomputes_carried_forward(client,
     periods = generate_periods(
         client,
         budgetid=budget.budgetid,
-        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
         count=2,
     )
     active_period = next(period for period in periods if period["cycle_status"] == "ACTIVE")
@@ -117,7 +117,7 @@ def test_planned_cycle_delete_ignores_budget_adjustment_history(client, db_sessi
     periods = generate_periods(
         client,
         budgetid=budget.budgetid,
-        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
         count=3,
     )
     first_planned_period = next(period for period in periods if period["cycle_status"] == "PLANNED")

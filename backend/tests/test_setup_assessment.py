@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from app.setup_assessment import budget_setup_assessment
 from app.models import FinancialPeriod, PeriodBalance, PeriodTransaction
-from app.time_utils import app_now_naive
+from app.time_utils import utc_now
 
 from .factories import create_balance_type, create_budget, create_expense_item, create_income_type, create_investment_item, generate_periods
 
@@ -82,7 +82,7 @@ def test_setup_assessment_marks_generated_primary_account_as_in_use(client, db_s
     create_income_type(db_session, budgetid=budget.budgetid)
     create_expense_item(db_session, budgetid=budget.budgetid)
     create_balance_type(db_session, budgetid=budget.budgetid, balancedesc="Main Account", is_primary=True)
-    startdate = app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0)
+    startdate = utc_now().replace(hour=0, minute=0, second=0, microsecond=0)
     period = FinancialPeriod(
         budgetid=budget.budgetid,
         startdate=startdate,
@@ -119,7 +119,7 @@ def test_setup_assessment_marks_account_with_recorded_movement_as_in_use(client,
     create_income_type(db_session, budgetid=budget.budgetid)
     create_expense_item(db_session, budgetid=budget.budgetid)
     create_balance_type(db_session, budgetid=budget.budgetid, balancedesc="Main Account", is_primary=True)
-    startdate = app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0)
+    startdate = utc_now().replace(hour=0, minute=0, second=0, microsecond=0)
     period = FinancialPeriod(
         budgetid=budget.budgetid,
         startdate=startdate,
@@ -161,7 +161,7 @@ def test_setup_assessment_marks_generated_income_type_as_in_use(client, db_sessi
     generate_periods(
         client,
         budgetid=budget.budgetid,
-        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
         count=1,
     )
 
@@ -222,7 +222,7 @@ def test_delete_rejects_account_that_is_already_in_use(client, db_session):
     generate_periods(
         client,
         budgetid=budget.budgetid,
-        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
         count=1,
     )
 
@@ -241,7 +241,7 @@ def test_deactivation_rejects_account_that_is_already_in_use(client, db_session)
     generate_periods(
         client,
         budgetid=budget.budgetid,
-        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
         count=1,
     )
 
@@ -271,7 +271,7 @@ def test_in_use_account_allows_primary_flag_change_when_structure_is_unchanged(c
     generate_periods(
         client,
         budgetid=budget.budgetid,
-        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
         count=1,
     )
 
@@ -300,7 +300,7 @@ def test_delete_rejects_income_type_that_is_already_in_use(client, db_session):
     generate_periods(
         client,
         budgetid=budget.budgetid,
-        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
         count=1,
     )
 
@@ -319,7 +319,7 @@ def test_delete_rejects_expense_item_that_is_already_in_use(client, db_session):
     generate_periods(
         client,
         budgetid=budget.budgetid,
-        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
         count=1,
     )
 
@@ -339,7 +339,7 @@ def test_deactivation_allows_expense_item_that_is_already_in_use(client, db_sess
     generate_periods(
         client,
         budgetid=budget.budgetid,
-        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
         count=1,
     )
 
@@ -376,7 +376,7 @@ def test_edit_rejects_investment_line_that_is_already_in_use(client, db_session)
     generate_periods(
         client,
         budgetid=budget.budgetid,
-        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
         count=1,
     )
 

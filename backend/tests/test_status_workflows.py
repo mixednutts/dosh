@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.time_utils import app_now_naive
+from app.time_utils import utc_now
 
 from .factories import create_minimum_budget_setup, generate_periods
 
@@ -11,7 +11,7 @@ def test_paid_expense_requires_revision_before_more_changes(client, db_session):
     active_period = generate_periods(
         client,
         budgetid=budget.budgetid,
-        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
         count=1,
     )[0]
 
@@ -54,7 +54,7 @@ def test_paid_investment_requires_revision_before_more_changes(client, db_sessio
     active_period = generate_periods(
         client,
         budgetid=budget.budgetid,
-        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
         count=1,
     )[0]
 
@@ -98,7 +98,7 @@ def test_paid_income_requires_revision_before_more_changes(client, db_session):
     active_period = generate_periods(
         client,
         budgetid=budget.budgetid,
-        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
         count=1,
     )[0]
 

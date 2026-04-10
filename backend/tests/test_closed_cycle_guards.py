@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.time_utils import app_now_naive
+from app.time_utils import utc_now
 
 from .factories import create_minimum_budget_setup, generate_periods
 
@@ -11,7 +11,7 @@ def test_closed_cycle_rejects_common_write_paths(client, db_session):
     periods = generate_periods(
         client,
         budgetid=budget.budgetid,
-        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
         count=2,
     )
     active_period = next(period for period in periods if period["cycle_status"] == "ACTIVE")

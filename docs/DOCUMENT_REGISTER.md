@@ -547,6 +547,36 @@ Maintenance notes:
 
 - should remain the main design-boundary document for Auto Expense behavior rather than becoming a second change log
 
+### STATUS_CHANGE_HISTORY_PLAN.md
+
+Document:
+
+- [STATUS_CHANGE_HISTORY_PLAN.md](/home/ubuntu/dosh/docs/plans/STATUS_CHANGE_HISTORY_PLAN.md)
+
+Document type:
+
+- domain or workflow plan
+
+Primary purpose:
+
+- define the implementation approach for recording Paid/Revised status changes as non-financial transactions
+
+Primary source-of-truth scope:
+
+- status change history record structure and behavior
+- budget-level feature gating for status change tracking
+- alignment with budget adjustment pattern for non-financial transaction recording
+
+Key relationships:
+
+- informs status workflow implementation in [periods.py](/home/ubuntu/dosh/backend/app/routers/periods.py)
+- complements budget adjustment workflow in [BUDGET_ADJUSTMENT_REVISION_HISTORY_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_ADJUSTMENT_REVISION_HISTORY_PLAN.md)
+- paired with verification notes in [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md)
+
+Maintenance notes:
+
+- should remain focused on status change history behavior rather than becoming a general transaction ledger document
+
 ### GITHUB_RELEASE_RUNBOOK.md
 
 Document:

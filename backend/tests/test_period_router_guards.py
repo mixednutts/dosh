@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from app.cycle_constants import CARRIED_FORWARD_DESC
-from app.time_utils import app_now_naive
+from app.time_utils import utc_now
 
 from .factories import create_minimum_budget_setup, generate_periods
 
@@ -12,7 +12,7 @@ def test_cannot_remove_system_managed_carried_forward_income(client, db_session)
     periods = generate_periods(
         client,
         budgetid=budget.budgetid,
-        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
         count=2,
     )
     active_period = next(period for period in periods if period["cycle_status"] == "ACTIVE")
@@ -38,7 +38,7 @@ def test_cannot_remove_income_line_with_recorded_transactions(client, db_session
     active_period = generate_periods(
         client,
         budgetid=budget.budgetid,
-        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
         count=1,
     )[0]
 
@@ -60,7 +60,7 @@ def test_cannot_remove_expense_line_with_recorded_actuals(client, db_session):
     active_period = generate_periods(
         client,
         budgetid=budget.budgetid,
-        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
         count=1,
     )[0]
 
@@ -82,7 +82,7 @@ def test_expense_and_investment_status_routes_reject_invalid_transitions(client,
     active_period = generate_periods(
         client,
         budgetid=budget.budgetid,
-        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
         count=1,
     )[0]
 

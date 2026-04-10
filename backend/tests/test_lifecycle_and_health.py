@@ -6,7 +6,7 @@ import json
 
 from app.cycle_management import assign_period_lifecycle_states
 from app.models import FinancialPeriod
-from app.time_utils import app_now_naive
+from app.time_utils import utc_now
 
 from .factories import create_minimum_budget_setup, generate_periods
 
@@ -17,7 +17,7 @@ def test_trailing_active_cycle_with_recorded_activity_cannot_be_deleted(client, 
     active_period = generate_periods(
         client,
         budgetid=budget.budgetid,
-        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
         count=1,
     )[0]
 
@@ -41,7 +41,7 @@ def test_trailing_active_cycle_with_recorded_activity_cannot_be_deleted(client, 
 def test_assign_period_lifecycle_states_normalizes_multiple_active_periods(db_session):
     setup = create_minimum_budget_setup(db_session)
     budget = setup["budget"]
-    now = app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0)
+    now = utc_now().replace(hour=0, minute=0, second=0, microsecond=0)
 
     first = FinancialPeriod(
         budgetid=budget.budgetid,
@@ -89,7 +89,7 @@ def test_closeout_health_snapshot_stays_historical_after_budget_preference_chang
     periods = generate_periods(
         client,
         budgetid=budget.budgetid,
-        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
         count=2,
     )
     active_period = next(period for period in periods if period["cycle_status"] == "ACTIVE")
@@ -147,7 +147,7 @@ def test_closeout_health_snapshot_stays_historical_after_budget_preference_chang
 def test_expired_open_cycle_is_reported_as_pending_closure_and_can_still_be_closed(client, db_session):
     setup = create_minimum_budget_setup(db_session)
     budget = setup["budget"]
-    past_start = app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=40)
+    past_start = utc_now().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=40)
 
     periods = generate_periods(
         client,
@@ -192,7 +192,7 @@ def test_expired_open_cycle_is_reported_as_pending_closure_and_can_still_be_clos
 def test_multiple_overdue_open_cycles_can_all_present_as_pending_closure(client, db_session):
     setup = create_minimum_budget_setup(db_session)
     budget = setup["budget"]
-    far_past_start = app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=80)
+    far_past_start = utc_now().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=80)
 
     periods = generate_periods(
         client,

@@ -1,10 +1,22 @@
-from datetime import datetime as dt
+from datetime import datetime as dt, timezone
 from sqlalchemy import (
-    Boolean, Column, DateTime, ForeignKey, ForeignKeyConstraint, Integer,
-    Numeric, String, Text, UniqueConstraint, func,
+    Boolean, Column, DateTime as _DateTime, ForeignKey, ForeignKeyConstraint, Integer,
+    Numeric, String, Text, UniqueConstraint, func, TypeDecorator,
 )
 from sqlalchemy.orm import relationship
 from .database import Base
+
+
+class UTCDateTime(TypeDecorator):
+    """DateTime type that ensures UTC timezone on load (for SQLite compatibility)."""
+    impl = _DateTime
+    cache_ok = True
+
+    def process_result_value(self, value, dialect):
+        # SQLite strips timezone - add it back
+        if value is not None and value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
+        return value
 
 class Budget(Base):
     __tablename__ = "budgets"
@@ -31,6 +43,7 @@ class Budget(Base):
     date_format = Column(String, nullable=False, default="medium")
     auto_expense_enabled = Column(Boolean, nullable=False, default=False)
     auto_expense_offset_days = Column(Integer, nullable=False, default=0)
+    record_line_status_changes = Column(Boolean, nullable=False, default=False)
 
     periods = relationship("FinancialPeriod", back_populates="budget", cascade="all, delete-orphan")
     income_types = relationship("IncomeType", back_populates="budget", cascade="all, delete-orphan")
@@ -52,12 +65,12 @@ class FinancialPeriod(Base):
 
     finperiodid = Column(Integer, primary_key=True, autoincrement=True)
     budgetid = Column(Integer, ForeignKey("budgets.budgetid"), nullable=False)
-    startdate = Column(DateTime, nullable=False)
-    enddate = Column(DateTime, nullable=False)
+    startdate = Column(UTCDateTime, nullable=False)
+    enddate = Column(UTCDateTime, nullable=False)
     budgetowner = Column(String)
     islocked = Column(Boolean, default=False, nullable=False)
     cycle_status = Column(String, nullable=False, default="PLANNED")
-    closed_at = Column(DateTime, nullable=True)
+    closed_at = Column(UTCDateTime, nullable=True)
 
     budget = relationship("Budget", back_populates="periods")
     period_incomes = relationship("PeriodIncome", back_populates="period", cascade="all, delete-orphan")
@@ -117,7 +130,7 @@ class ExpenseItem(Base):
     frequency_value = Column(Integer)
     paytype = Column(String, ForeignKey("paytypes.paytype"))
     revisionnum = Column(Integer, default=0, nullable=False)
-    effectivedate = Column(DateTime)
+    effectivedate = Column(UTCDateTime)
     expenseamount = Column(Numeric(10, 2), default=0)
     sort_order = Column(Integer, default=0, nullable=False)
 
@@ -210,7 +223,7 @@ class InvestmentItem(Base):
     budgetid = Column(Integer, ForeignKey("budgets.budgetid"), primary_key=True)
     investmentdesc = Column(String, primary_key=True)
     active = Column(Boolean, default=True, nullable=False)
-    effectivedate = Column(DateTime)
+    effectivedate = Column(UTCDateTime)
     initial_value = Column(Numeric(10, 2), default=0)
     planned_amount = Column(Numeric(10, 2), default=0)
     # optional link to an account balance (contributions credited to that account)
@@ -266,7 +279,7 @@ class PeriodTransaction(Base):
     type = Column(String, nullable=False)
     amount = Column(Numeric(10, 2), nullable=False)
     note = Column(String, nullable=True)
-    entrydate = Column(DateTime, default=dt.utcnow, nullable=False)
+    entrydate = Column(UTCDateTime, default=lambda: dt.now(timezone.utc), nullable=False)
     is_system = Column(Boolean, default=False, nullable=False)
     system_reason = Column(String, nullable=True)
     source_key = Column(String, nullable=True)
@@ -301,7 +314,7 @@ class PeriodCloseoutSnapshot(Base):
     carry_forward_amount = Column(Numeric(10, 2), nullable=False, default=0)
     health_snapshot_json = Column(Text, nullable=False, default="{}")
     totals_snapshot_json = Column(Text, nullable=False, default="{}")
-    created_at = Column(DateTime, default=dt.utcnow, nullable=False)
+    created_at = Column(UTCDateTime, default=lambda: dt.now(timezone.utc), nullable=False)
 
     period = relationship("FinancialPeriod", back_populates="closeout_snapshot")
 
@@ -315,6 +328,8 @@ class SetupRevisionEvent(Base):
     item_desc = Column(String, nullable=False)
     revisionnum = Column(Integer, nullable=False)
     changed_fields_json = Column(Text, nullable=False, default="[]")
-    created_at = Column(DateTime, default=dt.utcnow, nullable=False)
+    created_at = Column(UTCDateTime, default=lambda: dt.now(timezone.utc), nullable=False)
 
     budget = relationship("Budget", back_populates="setup_revision_events")
+
+

@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from .cycle_constants import CLOSED, CURRENT_STAGE, PENDING_CLOSURE_STAGE, PLANNED
 from .models import Budget, ExpenseItem, FinancialPeriod, IncomeType, PeriodTransaction
-from .time_utils import app_now, app_now_naive
+from .time_utils import app_now_naive, utc_now
 
 
 PHASE1_HEALTH_VERSION = "phase1-v2"
@@ -127,8 +127,13 @@ def _current_period_totals(period: FinancialPeriod) -> dict[str, Decimal]:
 
 
 def _period_progress_ratio(period: FinancialPeriod) -> float:
-    total_seconds = max((period.enddate - period.startdate).total_seconds(), 1)
-    elapsed_seconds = min(max((app_now_naive() - period.startdate).total_seconds(), 0), total_seconds)
+    from datetime import timezone
+    # Ensure all datetimes have timezone for comparison
+    startdate = period.startdate if period.startdate.tzinfo else period.startdate.replace(tzinfo=timezone.utc)
+    enddate = period.enddate if period.enddate.tzinfo else period.enddate.replace(tzinfo=timezone.utc)
+    now = utc_now()
+    total_seconds = max((enddate - startdate).total_seconds(), 1)
+    elapsed_seconds = min(max((now - startdate).total_seconds(), 0), total_seconds)
     return elapsed_seconds / total_seconds
 
 
@@ -647,7 +652,7 @@ def build_budget_health_payload(db: Session, budgetid: int) -> dict | None:
     return {
         "budgetid": budgetid,
         "score_version": PHASE1_HEALTH_VERSION,
-        "evaluated_at": app_now(),
+        "evaluated_at": utc_now(),
         "overall_score": overall_score,
         "overall_status": overall_status,
         "overall_summary": overall_summary,

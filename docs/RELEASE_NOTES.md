@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+### Fixed
+
+- Fixed remaining backend test failures from UTC datetime migration: all datetime comparisons now properly handle timezone-aware objects
+- Cleaned up redundant timezone handling code in models (now handled by `UTCDateTime` type decorator)
+
+### Engineering
+
+- Database datetime storage now consistently uses UTC format with `+00:00` suffix
+- All backend tests passing (121/121)
+
+## 0.3.1-alpha | released | 2026-04-10
+
 ## 0.3.1-alpha | released | 2026-04-10
 
 Dosh now adds Income status workflow and improves date format consistency.

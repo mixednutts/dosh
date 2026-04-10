@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from app.models import PeriodTransaction
-from app.time_utils import app_now_naive
+from app.time_utils import utc_now
 
 from .factories import create_minimum_budget_setup, generate_periods
 
@@ -12,7 +12,7 @@ def test_direct_actual_updates_create_system_ledger_rows_and_source_filters(clie
     active_period = generate_periods(
         client,
         budgetid=budget.budgetid,
-        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
         count=1,
     )[0]
     finperiodid = active_period["finperiodid"]

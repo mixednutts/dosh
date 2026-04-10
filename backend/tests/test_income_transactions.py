@@ -4,7 +4,7 @@ from decimal import Decimal
 
 from app.cycle_constants import CARRIED_FORWARD_DESC
 from app.models import PeriodIncome, PeriodTransaction
-from app.time_utils import app_now_naive
+from app.time_utils import utc_now
 
 from .factories import create_balance_type, create_minimum_budget_setup, generate_periods
 
@@ -15,7 +15,7 @@ def test_income_transactions_drive_actuals_and_support_corrections_and_delete(cl
     active_period = generate_periods(
         client,
         budgetid=budget.budgetid,
-        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
         count=1,
     )[0]
     finperiodid = active_period["finperiodid"]
@@ -68,7 +68,7 @@ def test_transfer_backed_income_transactions_preserve_transfer_ledger_behavior(c
     active_period = generate_periods(
         client,
         budgetid=budget.budgetid,
-        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
         count=1,
     )[0]
     finperiodid = active_period["finperiodid"]
@@ -99,7 +99,7 @@ def test_carried_forward_uses_income_transactions_but_stays_structurally_protect
     periods = generate_periods(
         client,
         budgetid=budget.budgetid,
-        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
         count=2,
     )
     active_period = next(period for period in periods if period["cycle_status"] == "ACTIVE")
@@ -142,7 +142,7 @@ def test_income_transactions_respect_locked_active_and_closed_cycle_rules_and_bl
     periods = generate_periods(
         client,
         budgetid=budget.budgetid,
-        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
         count=2,
     )
     active_period = next(period for period in periods if period["cycle_status"] == "ACTIVE")

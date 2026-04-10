@@ -128,6 +128,33 @@ export default function SettingsTab({ budgetId, budget }) {
           </span>
         </div>
 
+        <div className="mt-4 flex items-start gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-800/50">
+          <input
+            id="record-line-status-changes"
+            type="checkbox"
+            checked={!!budget?.record_line_status_changes}
+            disabled={saveSettings.isPending}
+            onChange={e => handleToggle('record_line_status_changes', e.target.checked)}
+            className="mt-0.5 rounded border-gray-300 text-dosh-600 focus:ring-dosh-500 dark:border-gray-600"
+          />
+          <span className="space-y-1">
+            <span className="flex items-center gap-2 font-medium text-gray-900 dark:text-gray-100">
+              <label htmlFor="record-line-status-changes" className="cursor-pointer">
+                Record budget line Paid/Revised status changes as non-financial transactions?
+              </label>
+              <span
+                className="text-gray-400 hover:text-gray-600 cursor-help dark:text-gray-500 dark:hover:text-gray-300"
+                title="When enabled, marking items as Paid or Revised will create a history record visible in the transaction details. This helps track planning changes over time and feeds into budget health analysis."
+              >
+                <QuestionMarkCircleIcon className="h-4 w-4" />
+              </span>
+            </span>
+            <span className="block text-gray-600 dark:text-gray-400">
+              Creates an audit trail when you mark income, expense, or investment lines as Paid or Revised.
+            </span>
+          </span>
+        </div>
+
         <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-800/50">
           <div className="flex items-start gap-3">
             <input

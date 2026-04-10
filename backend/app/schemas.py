@@ -184,6 +184,7 @@ class BudgetUpdate(BaseModel):
     date_format: Optional[str] = None
     auto_expense_enabled: Optional[bool] = None
     auto_expense_offset_days: Optional[int] = None
+    record_line_status_changes: Optional[bool] = None
 
     @field_validator(
         "acceptable_expense_overrun_pct",
@@ -284,6 +285,7 @@ class BudgetOut(BudgetBase):
     date_format: str = "medium"
     auto_expense_enabled: bool = False
     auto_expense_offset_days: int = 0
+    record_line_status_changes: bool = False
     model_config = {"from_attributes": True}
 
 

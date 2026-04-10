@@ -3,7 +3,7 @@ from __future__ import annotations
 from decimal import Decimal
 
 from app.models import IncomeType, InvestmentItem
-from app.time_utils import app_now_naive
+from app.time_utils import utc_now
 
 from .factories import create_balance_type, create_minimum_budget_setup, generate_periods
 
@@ -28,7 +28,7 @@ def test_period_transactions_drive_balance_movement_and_balance_transaction_view
     active_period = generate_periods(
         client,
         budgetid=budget.budgetid,
-        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
         count=1,
     )[0]
 
@@ -116,7 +116,7 @@ def test_locked_active_cycle_still_allows_actuals_and_transactions(client, db_se
     active_period = generate_periods(
         client,
         budgetid=budget.budgetid,
-        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
         count=1,
     )[0]
 

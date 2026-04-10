@@ -3,7 +3,7 @@ from __future__ import annotations
 from decimal import Decimal
 
 from app.models import ExpenseItem, IncomeType, InvestmentItem, PeriodExpense, PeriodIncome, PeriodInvestment
-from app.time_utils import app_now_naive
+from app.time_utils import utc_now
 
 from .factories import create_minimum_budget_setup, generate_periods
 
@@ -19,7 +19,7 @@ def test_income_budget_adjustment_updates_current_and_future_unlocked_periods_an
     periods = generate_periods(
         client,
         budgetid=budget.budgetid,
-        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
         count=3,
     )
     active_period = next(period for period in periods if period["cycle_status"] == "ACTIVE")
@@ -80,7 +80,7 @@ def test_expense_budget_adjustment_stays_out_of_actuals_and_balance_movement(cli
     periods = generate_periods(
         client,
         budgetid=budget.budgetid,
-        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
         count=1,
     )
     active_period = periods[0]
@@ -130,7 +130,7 @@ def test_investment_budget_adjustment_updates_setup_and_future_unlocked_periods_
     periods = generate_periods(
         client,
         budgetid=budget.budgetid,
-        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
         count=3,
     )
     active_period = next(period for period in periods if period["cycle_status"] == "ACTIVE")
@@ -195,7 +195,7 @@ def test_expense_setup_history_merges_setup_revision_events_with_budget_adjustme
     periods = generate_periods(
         client,
         budgetid=budget.budgetid,
-        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
         count=1,
     )
     active_period = periods[0]
@@ -306,7 +306,7 @@ def test_future_budget_adjustment_uses_next_supported_revision_after_direct_setu
     periods = generate_periods(
         client,
         budgetid=budget.budgetid,
-        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
         count=2,
     )
     active_period = next(period for period in periods if period["cycle_status"] == "ACTIVE")

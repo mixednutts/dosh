@@ -64,6 +64,7 @@ from ..transaction_ledger import (
     build_budget_adjustment_tx,
     build_expense_tx,
     build_income_tx,
+    build_status_change_tx,
     get_primary_account_desc,
     sync_period_state,
 )
@@ -539,8 +540,10 @@ def _pick_auto_surplus_investment(investment_items: list[InvestmentItem]) -> Opt
 
 
 def _normalize_period_datetime(value: datetime) -> datetime:
-    if value.tzinfo is not None:
-        value = value.replace(tzinfo=None)
+    from datetime import timezone
+    # Normalize to midnight, ensuring UTC timezone for consistency
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
     return value.replace(hour=0, minute=0, second=0, microsecond=0)
 
 
@@ -1395,6 +1398,22 @@ def set_expense_status(
         pe.revision_comment = (payload.revision_comment or "").strip() or None
     else:
         pe.revision_comment = None
+
+    # Conditionally create status change history record
+    budget = db.get(Budget, period.budgetid)
+    if budget and budget.record_line_status_changes:
+        build_status_change_tx(
+            db,
+            finperiodid=finperiodid,
+            budgetid=period.budgetid,
+            source="expense",
+            source_key=expensedesc,
+            old_status=current_status,
+            new_status=payload.status,
+            note=payload.revision_comment if payload.status == REVISED else None,
+            line_status=pe.revision_comment if payload.status == REVISED else None,
+        )
+
     db.commit()
     db.refresh(pe)
     return _enrich_expenses([pe], db)[0]
@@ -1544,6 +1563,22 @@ def set_income_status(
         pi.revision_comment = (payload.revision_comment or "").strip() or None
     else:
         pi.revision_comment = None
+
+    # Conditionally create status change history record
+    budget = db.get(Budget, period.budgetid)
+    if budget and budget.record_line_status_changes:
+        build_status_change_tx(
+            db,
+            finperiodid=finperiodid,
+            budgetid=period.budgetid,
+            source="income",
+            source_key=incomedesc,
+            old_status=current_status,
+            new_status=payload.status,
+            note=payload.revision_comment if payload.status == REVISED else None,
+            line_status=pi.revision_comment if payload.status == REVISED else None,
+        )
+
     db.commit()
     db.refresh(pi)
     return pi
@@ -1809,6 +1844,21 @@ def set_investment_status(
         pi.revision_comment = (payload.revision_comment or "").strip() or None
     elif payload.status == WORKING:
         pi.revision_comment = None
+
+    # Conditionally create status change history record
+    budget = db.get(Budget, period.budgetid)
+    if budget and budget.record_line_status_changes:
+        build_status_change_tx(
+            db,
+            finperiodid=finperiodid,
+            budgetid=period.budgetid,
+            source="investment",
+            source_key=investmentdesc,
+            old_status=current_status,
+            new_status=payload.status,
+            note=payload.revision_comment if payload.status == REVISED else None,
+            line_status=pi.revision_comment if payload.status == REVISED else None,
+        )
 
     db.commit()
     db.refresh(pi)

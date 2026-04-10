@@ -4,7 +4,7 @@ from decimal import Decimal
 
 from app.cycle_constants import CARRIED_FORWARD_DESC
 from app.models import FinancialPeriod, PeriodCloseoutSnapshot, PeriodIncome
-from app.time_utils import app_now_naive
+from app.time_utils import utc_now
 
 from .factories import create_minimum_budget_setup, generate_periods
 
@@ -15,7 +15,7 @@ def test_closeout_preview_and_closeout_persist_snapshot_and_carry_forward(client
     periods = generate_periods(
         client,
         budgetid=budget.budgetid,
-        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
         count=2,
     )
     active_period = next(period for period in periods if period["cycle_status"] == "ACTIVE")
@@ -89,7 +89,7 @@ def test_generating_upcoming_cycle_does_not_create_carried_forward_before_closeo
     periods = generate_periods(
         client,
         budgetid=budget.budgetid,
-        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
         count=2,
     )
     next_period = next(period for period in periods if period["cycle_status"] == "PLANNED")
@@ -104,7 +104,7 @@ def test_closeout_can_create_missing_next_cycle_when_requested(client, db_sessio
     periods = generate_periods(
         client,
         budgetid=budget.budgetid,
-        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
         count=1,
     )
     active_period = periods[0]

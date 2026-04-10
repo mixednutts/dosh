@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from app.time_utils import app_now_naive
+from app.time_utils import utc_now
 
 from .factories import create_balance_type, create_budget, create_expense_item, create_income_type, create_investment_item, generate_periods
 
@@ -42,7 +42,7 @@ def test_generated_periods_use_income_source_amount_for_auto_included_income(cli
         "/api/periods/generate",
         json={
             "budgetid": budget.budgetid,
-            "startdate": app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0).isoformat(),
+            "startdate": utc_now().replace(hour=0, minute=0, second=0, microsecond=0).isoformat(),
             "count": 1,
         },
     )
@@ -62,7 +62,7 @@ def test_adding_existing_income_to_current_and_future_updates_source_amount(clie
     periods = generate_periods(
         client,
         budgetid=budget.budgetid,
-        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
         count=2,
     )
     current_period = periods[0]
@@ -203,7 +203,7 @@ def test_generation_succeeds_without_investment_lines_even_when_auto_surplus_is_
     generated = generate_periods(
         client,
         budgetid=budget.budgetid,
-        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
         count=1,
     )
     period = generated[0]
@@ -236,7 +236,7 @@ def test_single_account_scenario_rejects_savings_transfer_without_savings_accoun
     active_period = generate_periods(
         client,
         budgetid=budget.budgetid,
-        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
         count=1,
     )[0]
 
@@ -281,7 +281,7 @@ def test_generation_requires_a_primary_account_when_expense_tracking_is_configur
         "/api/periods/generate",
         json={
             "budgetid": budget.budgetid,
-            "startdate": app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0).isoformat(),
+            "startdate": utc_now().replace(hour=0, minute=0, second=0, microsecond=0).isoformat(),
             "count": 1,
         },
     )
@@ -321,7 +321,7 @@ def test_multi_transaction_setup_uses_primary_account_for_expense_activity(clien
     active_period = generate_periods(
         client,
         budgetid=budget.budgetid,
-        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
         count=1,
     )[0]
 
@@ -358,7 +358,7 @@ def test_primary_account_cannot_be_removed_when_it_is_the_only_active_primary(cl
     active_period = generate_periods(
         client,
         budgetid=budget.budgetid,
-        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
         count=1,
     )[0]
 
@@ -448,7 +448,7 @@ def test_multi_transaction_setup_routes_linked_income_to_non_primary_account(cli
     active_period = generate_periods(
         client,
         budgetid=budget.budgetid,
-        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
         count=1,
     )[0]
 
@@ -497,7 +497,7 @@ def test_reassigning_primary_account_changes_future_expense_activity_home(client
     active_period = generate_periods(
         client,
         budgetid=budget.budgetid,
-        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
         count=1,
     )[0]
 
@@ -576,7 +576,7 @@ def test_auto_surplus_allocation_targets_only_primary_investment_line(client, db
     active_period = generate_periods(
         client,
         budgetid=budget.budgetid,
-        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
         count=1,
     )[0]
 
@@ -650,7 +650,7 @@ def test_reassigning_primary_investment_changes_future_auto_surplus_target(clien
     active_period = generate_periods(
         client,
         budgetid=budget.budgetid,
-        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
         count=1,
     )[0]
 
@@ -717,7 +717,7 @@ def test_mixed_accounts_scenario_routes_movements_to_linked_accounts(client, db_
     active_period = generate_periods(
         client,
         budgetid=budget.budgetid,
-        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
         count=1,
     )[0]
 
@@ -773,7 +773,7 @@ def test_missing_period_investment_reference_fails_clearly_for_downstream_activi
     active_period = generate_periods(
         client,
         budgetid=budget.budgetid,
-        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
         count=1,
     )[0]
 
@@ -805,7 +805,7 @@ def test_setup_history_endpoints_return_budget_adjustment_details(client, db_ses
     active_period = generate_periods(
         client,
         budgetid=budget.budgetid,
-        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
         count=1,
     )[0]
 

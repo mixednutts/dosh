@@ -3,7 +3,7 @@ from __future__ import annotations
 from decimal import Decimal
 
 from app.models import PeriodExpense, PeriodIncome
-from app.time_utils import app_now_naive
+from app.time_utils import utc_now
 
 from .factories import create_balance_type, create_budget, create_expense_item, create_income_type, create_minimum_budget_setup, generate_periods
 
@@ -42,7 +42,7 @@ def test_budget_health_revision_sensitivity_penalizes_revised_lines_more_when_hi
     high_update = client.patch(f"/api/budgets/{high_budgetid}", json={"revision_sensitivity": 100})
     assert high_update.status_code == 200, high_update.text
 
-    startdate = app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0)
+    startdate = utc_now().replace(hour=0, minute=0, second=0, microsecond=0)
     low_period = generate_periods(client, budgetid=low_budgetid, startdate=startdate, count=1)[0]
     high_period = generate_periods(client, budgetid=high_budgetid, startdate=startdate, count=1)[0]
 
@@ -83,7 +83,7 @@ def test_budget_health_detects_off_plan_lines_from_budget_adjustment_history_eve
     active_period = generate_periods(
         client,
         budgetid=budget.budgetid,
-        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
         count=1,
     )[0]
 
@@ -127,7 +127,7 @@ def test_budget_health_current_period_weighting_can_shift_overall_score_without_
         create_expense_item(db_session, budgetid=budget.budgetid, expenseamount=Decimal("900.00"))
         create_balance_type(db_session, budgetid=budget.budgetid, balancedesc="Main Account", is_primary=True)
 
-    startdate = app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0)
+    startdate = utc_now().replace(hour=0, minute=0, second=0, microsecond=0)
     healthy_period = generate_periods(client, budgetid=healthy_budget.budgetid, startdate=startdate, count=1)[0]
     pressured_period = generate_periods(client, budgetid=pressured_budget.budgetid, startdate=startdate, count=1)[0]
 

@@ -26,16 +26,10 @@ import Spinner from '../components/Spinner'
 import AmountExpressionInput from '../components/AmountExpressionInput'
 import ExpenseItemSchedulingFields from '../components/ExpenseItemSchedulingFields'
 import { useLocalisation } from '../components/LocalisationContext'
-import { makeLocalisation } from '../utils/localisation'
+import { useFormatters } from '../components/useFormatters'
 import { getNextFixedDayOccurrence } from '../utils/fixedDayScheduling'
 import { getCycleStage, getCycleStageLabel } from '../utils/periodStage'
 
-let activeLocalisation = makeLocalisation()
-const fmt = v => activeLocalisation.formatCurrency(v)
-const fmtDate = (v, preset = 'medium') => activeLocalisation.formatDate(v, preset)
-const fmtDateTime = (v, preset = 'medium') => activeLocalisation.formatDateTime(v, preset)
-const fmtDateRange = (start, end, preset = 'medium') => activeLocalisation.formatDateRange(start, end, preset)
-const fmtPercent = v => activeLocalisation.formatPercent(v)
 const SECONDARY_BUTTON_CLASSES = 'flex items-center justify-center w-7 h-7 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors'
 const DELETE_BUTTON_CLASSES = 'flex items-center justify-center w-7 h-7 rounded-full text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors'
 const DISABLED_ICON_BUTTON_CLASSES = 'opacity-30 cursor-not-allowed bg-gray-100 text-gray-400'
@@ -87,18 +81,24 @@ function balanceTransactionLabel(tx, balancedesc) {
   return tx.source_label || tx.source_key || tx.source
 }
 
-function getBudgetAdjustmentText(item) {
-  return `Budget ${fmt(item.budget_before_amount)} -> ${fmt(item.budget_after_amount)}`
-}
 
-function buildTransactionDisplayResolver(config) {
+function buildTransactionDisplayResolver(config, formatters) {
   return (item, itemAmount) => {
     if (item.entry_kind === 'budget_adjustment') {
       return {
         amountClassName: 'text-dosh-700 dark:text-dosh-300',
         badgeClassName: 'bg-dosh-100 text-dosh-700 dark:bg-dosh-900/40 dark:text-dosh-300',
         badgeLabel: 'Adj',
-        primaryText: getBudgetAdjustmentText(item),
+        primaryText: `Budget ${formatters.fmt(item.budget_before_amount)} -> ${formatters.fmt(item.budget_after_amount)}`,
+      }
+    }
+
+    if (item.entry_kind === 'status_change') {
+      return {
+        amountClassName: 'text-gray-600 dark:text-gray-400',
+        badgeClassName: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
+        badgeLabel: 'Status',
+        primaryText: item.note || `Status changed to ${item.line_status || 'Paid'}`,
       }
     }
 
@@ -108,7 +108,7 @@ function buildTransactionDisplayResolver(config) {
       amountClassName: config.amountClassNames[tone],
       badgeClassName: config.badgeClassNames[tone],
       badgeLabel: isPositive ? '+' : '−',
-      primaryText: fmt(Math.abs(item.amount)),
+      primaryText: formatters.fmt(Math.abs(item.amount)),
     }
   }
 }
@@ -268,13 +268,13 @@ function getExpenseScheduleBadge(expense) {
 
   const nextDue = calcNextDue(expense.freqtype, expense.frequency_value, expense.effectivedate)
   return (
-    <span className="badge-blue" title={nextDue ? `Next: ${fmtDate(nextDue, 'medium')}` : undefined}>
+    <span className="badge-blue" title={nextDue ? `Next: ${nextDue.toLocaleDateString()}` : undefined}>
       {label}
     </span>
   )
 }
 
-function getTransactionListContent({ isLoading, items, emptyLabel, maxHeightClass, locked, onDelete, getItemAmount, getBadgeClassName, getBadgeLabel, getAmountClassName, getPrimaryText }) {
+function getTransactionListContent({ isLoading, items, emptyLabel, maxHeightClass, locked, onDelete, getItemAmount, getBadgeClassName, getBadgeLabel, getAmountClassName, getPrimaryText, formatters }) {
   if (isLoading) {
     return <div className="flex justify-center py-4"><Spinner className="h-4 w-4" /></div>
   }
@@ -297,9 +297,9 @@ function getTransactionListContent({ isLoading, items, emptyLabel, maxHeightClas
                 {getPrimaryText(item, amount)}
               </p>
               {item.note && <p className="truncate text-xs text-gray-500 dark:text-gray-400">{item.note}</p>}
-              <p className="text-xs text-gray-400">{fmtDateTime(item.entrydate, 'medium')}</p>
+              <p className="text-xs text-gray-400">{formatters.fmtDateTime(item.entrydate, 'medium')}</p>
             </div>
-            {!locked && item.entry_kind !== 'budget_adjustment' && (
+            {!locked && item.entry_kind !== 'budget_adjustment' && item.entry_kind !== 'status_change' && (
               <button
                 type="button"
                 onClick={() => onDelete(item.id)}
@@ -381,7 +381,7 @@ function DeleteActionButton({ onClick, title }) {
   )
 }
 
-function BudgetAmountCell({ amount, canEdit, onEdit, label }) {
+function BudgetAmountCell({ amount, canEdit, onEdit, label, formatters }) {
   return (
     <div className="flex w-full items-center justify-end gap-1.5">
       {canEdit && (
@@ -395,18 +395,18 @@ function BudgetAmountCell({ amount, canEdit, onEdit, label }) {
           <PencilSquareIcon className="w-4 h-4" />
         </button>
       )}
-      <span>{fmt(amount)}</span>
+      <span>{formatters.fmt(amount)}</span>
     </div>
   )
 }
 
-function AmountSummaryGrid({ items, columns = 3 }) {
+function AmountSummaryGrid({ items, columns = 3, formatters }) {
   return (
     <div className={`grid gap-2 text-center text-xs ${columns === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
       {items.map(({ label, value, cls }) => (
         <div key={label} className="card p-2">
           <p className="text-gray-400">{label}</p>
-          <p className={`font-semibold ${cls}`}>{fmt(value)}</p>
+          <p className={`font-semibold ${cls}`}>{formatters.fmt(value)}</p>
         </div>
       ))}
     </div>
@@ -453,6 +453,7 @@ function TransactionListPanel({
   getBadgeLabel,
   getPrimaryText,
   onDelete,
+  formatters,
 }) {
   return (
     <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
@@ -472,11 +473,12 @@ function TransactionListPanel({
         getBadgeLabel,
         getAmountClassName,
         getPrimaryText,
+        formatters,
       })}
       {items.length > 0 && totalValue != null && (
         <div className="flex justify-between border-t border-gray-200 bg-gray-50 px-3 py-2 text-sm font-semibold dark:border-gray-700 dark:bg-gray-800">
           <span className="text-gray-600 dark:text-gray-400">Total</span>
-          <span className={totalClassName}>{fmt(totalValue)}</span>
+          <span className={totalClassName}>{formatters.fmt(totalValue)}</span>
         </div>
       )}
     </div>
@@ -503,6 +505,7 @@ function TransactionEntryForm({
   onClose,
   actualAmount,
 }) {
+  const formatters = useFormatters()
   if (locked) {
     return (
       <div className="flex justify-end">
@@ -588,7 +591,7 @@ function TransactionEntryForm({
             className="btn-secondary whitespace-nowrap text-xs"
             title={usesRemainingQuickFill ? 'Allocate the remaining budget amount' : 'Allocate the full budget amount'}
           >
-            {quickFillLabel} ({fmt(quickFillValue)})
+            {quickFillLabel} ({formatters.fmt(quickFillValue)})
           </button>
         )}
         <label htmlFor={noteInputId} className="sr-only">Transaction note</label>
@@ -635,13 +638,14 @@ function TransactionWorkflowModal({
   onClose,
   totalValue = null,
 }) {
+  const formatters = useFormatters()
   const config = getTransactionModalConfig(kind)
-  const resolveDisplay = buildTransactionDisplayResolver(config)
+  const resolveDisplay = buildTransactionDisplayResolver(config, formatters)
   const interactionLocked = locked || readOnly
 
   return (
     <div className="space-y-4">
-      <AmountSummaryGrid items={config.summaryItems({ budgetAmount, actualAmount })} />
+      <AmountSummaryGrid items={config.summaryItems({ budgetAmount, actualAmount })} formatters={formatters} />
       <TransactionListPanel
         items={items}
         isLoading={isLoading}
@@ -656,6 +660,7 @@ function TransactionWorkflowModal({
         getBadgeLabel={(item, itemAmount) => resolveDisplay(item, itemAmount).badgeLabel}
         getPrimaryText={(item, itemAmount) => resolveDisplay(item, itemAmount).primaryText}
         onDelete={onDelete}
+        formatters={formatters}
       />
       {readOnly ? (
         <div className="flex justify-end">
@@ -687,7 +692,7 @@ function TransactionWorkflowModal({
   )
 }
 
-function IncomeStatusPill({ income, onMarkPaid, onRevise }) {
+function IncomeStatusPill({ income, onMarkPaid, onRevise, formatters }) {
   return (
     <ProgressStatusPill
       item={income}
@@ -697,11 +702,12 @@ function IncomeStatusPill({ income, onMarkPaid, onRevise }) {
       status={income.status}
       onMarkPaid={onMarkPaid}
       onRevise={onRevise}
+      formatters={formatters}
     />
   )
 }
 
-function ProgressStatusPill({ item, budgetAmount, actualAmount, remainingAmount, status, onMarkPaid, onRevise }) {
+function ProgressStatusPill({ item, budgetAmount, actualAmount, remainingAmount, status, onMarkPaid, onRevise, formatters }) {
   const budget = Number(budgetAmount ?? 0)
   const actual = Number(actualAmount ?? 0)
   const remaining = Number(remainingAmount ?? 0)
@@ -711,8 +717,8 @@ function ProgressStatusPill({ item, budgetAmount, actualAmount, remainingAmount,
   const isNearLimit = rawPercent >= 90 && rawPercent <= 100
   const revisionComment = item.revision_comment?.trim()
   const title = budget > 0
-    ? `${fmtPercent(Math.round(rawPercent))} spent • ${fmt(actual)} of ${fmt(budget)} • Remaining ${fmt(remaining)}`
-    : `No budget set • Actual ${fmt(actual)}`
+    ? `${formatters.fmtPercent(Math.round(rawPercent))} spent • ${formatters.fmt(actual)} of ${formatters.fmt(budget)} • Remaining ${formatters.fmt(remaining)}`
+    : `No budget set • Actual ${formatters.fmt(actual)}`
 
   if (status === 'Paid') {
     const paidCls = isOver
@@ -752,10 +758,10 @@ function ProgressStatusPill({ item, budgetAmount, actualAmount, remainingAmount,
   )
 }
 
-function ConfirmPaidModal({ noun, item, remainingAmount, onConfirm, onClose }) {
+function ConfirmPaidModal({ noun, item, remainingAmount, onConfirm, onClose, formatters }) {
   const remaining = Number(remainingAmount ?? 0)
   const isOver = remaining < 0
-  const delta = fmt(Math.abs(remaining))
+  const delta = formatters.fmt(Math.abs(remaining))
 
   return (
     <div className="space-y-3">
@@ -773,7 +779,7 @@ function ConfirmPaidModal({ noun, item, remainingAmount, onConfirm, onClose }) {
   )
 }
 
-function IncomeTransactionsModal({ periodId, incomedesc, budgetamount, actualamount, locked, onClose, defaultType = 'credit' }) {
+function IncomeTransactionsModal({ periodId, incomedesc, budgetamount, actualamount, locked, readOnly = false, onClose, defaultType = 'credit' }) {
   const config = getTransactionModalConfig('income')
   const qc = useQueryClient()
   const [amount, setAmount] = useState('')
@@ -818,7 +824,7 @@ function IncomeTransactionsModal({ periodId, incomedesc, budgetamount, actualamo
   })
 
   const runningTotal = transactions
-    .filter(tx => tx.entry_kind !== 'budget_adjustment')
+    .filter(tx => tx.entry_kind !== 'budget_adjustment' && tx.entry_kind !== 'status_change')
     .reduce((s, tx) => s + Number(tx.amount), 0)
   return (
     <TransactionWorkflowModal
@@ -826,6 +832,7 @@ function IncomeTransactionsModal({ periodId, incomedesc, budgetamount, actualamo
       items={transactions}
       isLoading={isLoading}
       locked={locked}
+      readOnly={readOnly}
       amount={amount}
       setAmount={setAmount}
       note={note}
@@ -847,6 +854,7 @@ function IncomeTransactionsModal({ periodId, incomedesc, budgetamount, actualamo
 }
 
 function BalanceTransactionsModal({ periodId, balancedesc, movementAmount }) {
+  const formatters = useFormatters()
   const { data: transactions = [], isLoading } = useQuery({
     queryKey: ['balance-transactions', periodId, balancedesc],
     queryFn: () => getBalanceTransactions(periodId, balancedesc),
@@ -863,7 +871,7 @@ function BalanceTransactionsModal({ periodId, balancedesc, movementAmount }) {
         ].map(({ label, value, cls }) => (
           <div key={label} className="card p-2">
             <p className="text-gray-400">{label}</p>
-            <p className={`font-semibold ${cls}`}>{fmt(value)}</p>
+            <p className={`font-semibold ${cls}`}>{formatters.fmt(value)}</p>
           </div>
         ))}
       </div>
@@ -899,10 +907,10 @@ function BalanceTransactionsModal({ periodId, balancedesc, movementAmount }) {
                     </div>
                     {tx.system_reason && <p className="text-xs text-amber-700 dark:text-amber-400">{tx.system_reason}</p>}
                     {tx.note && <p className="text-xs text-gray-500 dark:text-gray-400">{tx.note}</p>}
-                    <p className="text-xs text-gray-400">{fmtDateTime(tx.entrydate, 'medium')}</p>
+                    <p className="text-xs text-gray-400">{formatters.fmtDateTime(tx.entrydate, 'medium')}</p>
                   </div>
                   <div className={`text-sm font-semibold ${isPositive ? 'text-dosh-700 dark:text-dosh-400' : 'text-red-700 dark:text-red-400'}`}>
-                    {fmt(delta)}
+                    {formatters.fmt(delta)}
                   </div>
                 </div>
               )
@@ -1046,7 +1054,7 @@ function InvestmentTxModal({ periodId, investmentdesc, openingValue, closingValu
   })
 
   // Derive actual from transactions total for live display
-  const txTotal = transactions.filter(tx => tx.entry_kind !== 'budget_adjustment').reduce((s, t) => s + Number(t.amount), 0)
+  const txTotal = transactions.filter(tx => tx.entry_kind !== 'budget_adjustment' && tx.entry_kind !== 'status_change').reduce((s, t) => s + Number(t.amount), 0)
   return (
     <TransactionWorkflowModal
       kind="investment"
@@ -1161,7 +1169,7 @@ function BudgetAdjustmentModal({ title, currentAmount, onSubmit, onClose }) {
   )
 }
 
-function ExpenseStatusPill({ expense, onMarkPaid, onRevise }) {
+function ExpenseStatusPill({ expense, onMarkPaid, onRevise, formatters }) {
   return (
     <ProgressStatusPill
       item={expense}
@@ -1171,11 +1179,12 @@ function ExpenseStatusPill({ expense, onMarkPaid, onRevise }) {
       status={expense.status}
       onMarkPaid={onMarkPaid}
       onRevise={onRevise}
+      formatters={formatters}
     />
   )
 }
 
-function ConfirmPaidExpenseModal({ expense, onConfirm, onClose }) {
+function ConfirmPaidExpenseModal({ expense, onConfirm, onClose, formatters }) {
   return (
     <ConfirmPaidModal
       noun="expense"
@@ -1183,11 +1192,12 @@ function ConfirmPaidExpenseModal({ expense, onConfirm, onClose }) {
       remainingAmount={expense.remaining_amount}
       onConfirm={onConfirm}
       onClose={onClose}
+      formatters={formatters}
     />
   )
 }
 
-function InvestmentStatusPill({ investment, onMarkPaid, onRevise }) {
+function InvestmentStatusPill({ investment, onMarkPaid, onRevise, formatters }) {
   return (
     <ProgressStatusPill
       item={investment}
@@ -1197,11 +1207,12 @@ function InvestmentStatusPill({ investment, onMarkPaid, onRevise }) {
       status={investment.status}
       onMarkPaid={onMarkPaid}
       onRevise={onRevise}
+      formatters={formatters}
     />
   )
 }
 
-function ConfirmPaidInvestmentModal({ investment, onConfirm, onClose }) {
+function ConfirmPaidInvestmentModal({ investment, onConfirm, onClose, formatters }) {
   return (
     <ConfirmPaidModal
       noun="investment"
@@ -1209,18 +1220,20 @@ function ConfirmPaidInvestmentModal({ investment, onConfirm, onClose }) {
       remainingAmount={investment.remaining_amount}
       onConfirm={onConfirm}
       onClose={onClose}
+      formatters={formatters}
     />
   )
 }
 
 function ConfirmPaidIncomeModal({ income, onConfirm, onClose }) {
+  const formatters = useFormatters()
   const received = Number(income.actualamount ?? 0)
   const budget = Number(income.budgetamount ?? 0)
   const shortfall = budget - received
   const surplus = received - budget
   const hasShortfall = received < budget
   const hasSurplus = received > budget
-  const delta = fmt(Math.abs(hasShortfall ? shortfall : surplus))
+  const delta = formatters.fmt(Math.abs(hasShortfall ? shortfall : surplus))
 
   return (
     <div className="space-y-3">
@@ -1245,6 +1258,7 @@ function CloseoutModal({ periodId, onClose }) {
   const [comments, setComments] = useState('')
   const [goals, setGoals] = useState('')
   const [createNextCycle, setCreateNextCycle] = useState(false)
+  const formatters = useFormatters()
   const { data: preview, isLoading } = useQuery({
     queryKey: ['period-closeout-preview', periodId],
     queryFn: () => getPeriodCloseoutPreview(periodId),
@@ -1271,13 +1285,13 @@ function CloseoutModal({ periodId, onClose }) {
         {Object.entries(preview.totals).map(([label, value]) => (
           <div key={label} className="card p-3">
             <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">{label.replaceAll('_', ' ')}</p>
-            <p className="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">{fmt(value)}</p>
+            <p className="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">{formatters.fmt(value)}</p>
           </div>
         ))}
       </div>
       <div className="rounded-xl border border-dosh-200 bg-dosh-50 px-4 py-3 text-sm text-dosh-900 dark:border-dosh-800 dark:bg-dosh-900/20 dark:text-dosh-100">
         <p className="font-semibold">Carry Forward</p>
-        <p className="mt-1">{fmt(preview.carry_forward_amount)} will be placed into the next cycle as a `Carried Forward` income budget line.</p>
+        <p className="mt-1">{formatters.fmt(preview.carry_forward_amount)} will be placed into the next cycle as a `Carried Forward` income budget line.</p>
       </div>
       <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/50">
         <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{preview.health.summary}</p>
@@ -1697,7 +1711,7 @@ function ExportCycleModal({ periodId, onClose }) {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function PeriodDetailPage() {
-  activeLocalisation = useLocalisation()
+  const localisation = useLocalisation()
   const { periodId } = useParams()
   const [searchParams, setSearchParams] = useSearchParams()
   const id = Number.parseInt(periodId, 10)
@@ -1722,6 +1736,10 @@ export default function PeriodDetailPage() {
   const [localExpenses, setLocalExpenses] = useState(null)
   const [dragOver, setDragOver] = useState(null)
   const dragSrc = useRef(null)
+
+  // Localised formatters (use localisation context from budget)
+  const formatters = useFormatters()
+  const { fmt, fmtDate, fmtDateTime, fmtDateRange, fmtPercent } = formatters
 
   const { data, isLoading, isError } = useQuery({ queryKey: ['period', id], queryFn: () => getPeriodDetail(id) })
   const { data: budget } = useQuery({
@@ -2070,6 +2088,7 @@ export default function PeriodDetailPage() {
                       <BudgetAmountCell
                         amount={i.budgetamount}
                         canEdit={!locked && !closed && i.system_key !== 'carry_forward'}
+                        formatters={formatters}
                         onEdit={() => setBudgetAdjustModal({ category: 'income', desc: i.incomedesc, budgetamount: i.budgetamount, title: i.incomedesc })}
                         label={i.incomedesc}
                       />
@@ -2092,6 +2111,7 @@ export default function PeriodDetailPage() {
                         <IncomeStatusPill
                           income={i}
                           onMarkPaid={() => handleMarkIncomePaid(i)}
+                          formatters={formatters}
                           onRevise={() => setIncomeStatus.mutate({ desc: i.incomedesc, status: 'Revised' })}
                         />
                         <ActionIconButton
@@ -2109,7 +2129,7 @@ export default function PeriodDetailPage() {
                           icon={MinusIcon}
                         />
                         <ActionIconButton
-                          onClick={() => setIncomeModal({ incomedesc: i.incomedesc, budgetamount: i.budgetamount, actualamount: i.actualamount, defaultType: 'credit', readOnly: closed })}
+                          onClick={() => setIncomeModal({ incomedesc: i.incomedesc, budgetamount: i.budgetamount, actualamount: i.actualamount, defaultType: 'credit', readOnly: true })}
                           title="View transactions"
                           icon={ListBulletIcon}
                         />
@@ -2217,6 +2237,7 @@ export default function PeriodDetailPage() {
                       <BudgetAmountCell
                         amount={e.budgetamount}
                         canEdit={canEditBudget}
+                        formatters={formatters}
                         onEdit={() => setBudgetAdjustModal({ category: 'expense', desc: e.expensedesc, budgetamount: e.budgetamount, title: e.expensedesc })}
                         label={e.expensedesc}
                       />
@@ -2257,6 +2278,7 @@ export default function PeriodDetailPage() {
                             expense={e}
                             onMarkPaid={() => handleMarkPaid(e)}
                             onRevise={() => setExpenseStatus.mutate({ desc: e.expensedesc, status: 'Revised' })}
+                            formatters={formatters}
                           />
                         <ActionIconButton
                           disabled={closed || isPaid}
@@ -2339,6 +2361,7 @@ export default function PeriodDetailPage() {
                           canEdit={!locked && !closed && inv.status !== 'Paid'}
                           onEdit={() => setBudgetAdjustModal({ category: 'investment', desc: inv.investmentdesc, budgetamount: inv.budgeted_amount, title: inv.investmentdesc })}
                           label={inv.investmentdesc}
+                          formatters={formatters}
                         />
                       </td>
                       <td className="table-cell text-right col-actual font-semibold text-gray-800 dark:text-gray-200">{fmt(inv.actualamount)}</td>
@@ -2354,6 +2377,7 @@ export default function PeriodDetailPage() {
                             investment={inv}
                             onMarkPaid={() => handleMarkInvestmentPaid(inv)}
                             onRevise={() => setInvestmentStatus.mutate({ desc: inv.investmentdesc, status: 'Revised' })}
+                            formatters={formatters}
                           />
                           <ActionIconButton
                             disabled={closed || inv.status === 'Paid'}
@@ -2472,6 +2496,7 @@ export default function PeriodDetailPage() {
             budgetamount={incomeModal.budgetamount}
             actualamount={incomeModal.actualamount}
             locked={!!(closed || incomeModal.readOnly)}
+            readOnly={!!incomeModal.readOnly}
             defaultType={incomeModal.defaultType ?? 'credit'}
             onClose={() => setIncomeModal(null)}
           />
@@ -2537,6 +2562,7 @@ export default function PeriodDetailPage() {
               setExpenseStatus.mutate({ desc: confirmPaidModal.expense.expensedesc, status: 'Paid' })
               setConfirmPaidModal(null)
             }}
+            formatters={formatters}
           />
         </Modal>
       )}
@@ -2549,6 +2575,7 @@ export default function PeriodDetailPage() {
               setInvestmentStatus.mutate({ desc: confirmPaidInvestmentModal.investment.investmentdesc, status: 'Paid' })
               setConfirmPaidInvestmentModal(null)
             }}
+            formatters={formatters}
           />
         </Modal>
       )}
@@ -2561,6 +2588,7 @@ export default function PeriodDetailPage() {
               setIncomeStatus.mutate({ desc: confirmPaidIncomeModal.income.incomedesc, status: 'Paid' })
               setConfirmPaidIncomeModal(null)
             }}
+            formatters={formatters}
           />
         </Modal>
       )}
@@ -2743,6 +2771,7 @@ IncomeTransactionsModal.propTypes = {
   budgetamount: PropTypes.oneOfType([PropTypes.number, PropTypes.string]).isRequired,
   actualamount: PropTypes.oneOfType([PropTypes.number, PropTypes.string]).isRequired,
   locked: PropTypes.bool.isRequired,
+  readOnly: PropTypes.bool,
   onClose: PropTypes.func.isRequired,
   defaultType: PropTypes.oneOf(['credit', 'debit']),
 }

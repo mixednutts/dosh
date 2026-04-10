@@ -37,6 +37,55 @@ For the implemented export-shape plan that now defines budget-cycle export behav
 
 For the implemented Auto Expense workflow rules, scheduler behavior, migration expectations, and AUTO/MANUAL eligibility constraints introduced this session, read [AUTO_EXPENSE_PLAN.md](/home/ubuntu/dosh/docs/plans/AUTO_EXPENSE_PLAN.md).
 
+## Latest Session: UTC Datetime Migration Test Fixes And Status Change History Plan
+
+This session fixed the remaining 14 backend test failures caused by datetime comparison issues after the UTC timezone migration, and created a plan for implementing Status Change History as non-financial transactions.
+
+### Plan Created: Status Change History
+
+Created [STATUS_CHANGE_HISTORY_PLAN.md](/home/ubuntu/dosh/docs/plans/STATUS_CHANGE_HISTORY_PLAN.md) documenting the approach for recording Paid/Revised status changes as non-financial transactions:
+
+- Budget-level feature setting (`record_line_status_changes`, default: false)
+- Follows same pattern as budget adjustments (entry_kind = "status_change", amount = 0)
+- Creates audit trail visible in transaction details
+- Enables future budget health analysis (revision frequency, planning accuracy)
+- Gated by user-controllable setting in Settings tab
+
+### UTC Datetime Migration Test Fixes
+
+### Key Changes
+
+- Fixed datetime comparisons across backend modules to use timezone-aware objects consistently
+- Updated `cycle_management.py`: Changed `utc_now_naive()` → `utc_now()` for `period.closed_at`
+- Updated `auto_expense.py`: Changed `app_now_naive()` → `app_now()`; added naive→aware conversion for `run_date` parameter
+- Updated `period_logic.py`: Added `_ensure_utc()` helper; normalize all datetime inputs for comparison
+- Cleaned up `models.py`: Removed redundant `_ensure_utc()` function and SQLAlchemy event listeners (now handled by `UTCDateTime` type decorator)
+
+### Architecture Decision
+
+SQLite stores datetimes as text without timezone info. The `UTCDateTime` SQLAlchemy type decorator now handles adding UTC timezone on load via `process_result_value()`. This removes the need for separate `@event.listens_for` handlers that were duplicating this functionality.
+
+### Files Changed
+
+Backend:
+- [models.py](/home/ubuntu/dosh/backend/app/models.py): Removed `_ensure_utc()` and event listeners; cleaned up unused `event` import
+- [cycle_management.py](/home/ubuntu/dosh/backend/app/cycle_management.py): Fixed `period.closed_at` to use `utc_now()`
+- [auto_expense.py](/home/ubuntu/dosh/backend/app/auto_expense.py): Fixed scheduler and `run_date` timezone handling
+- [period_logic.py](/home/ubuntu/dosh/backend/app/period_logic.py): Added `_ensure_utc()` helper for datetime normalization
+
+### Verification
+
+Backend tests (121 passed):
+- Full backend suite: 121 passed (previously 107 passed, 14 failed)
+- All datetime comparison failures resolved
+
+Deployment:
+- Created production database backup: `backups/dosh_backup_pre_utc_fix_20260411_084801.db`
+- Successfully rebuilt and redeployed backend container
+- Health endpoint responding correctly
+
+---
+
 ## Latest Session: Income Status Workflow, Date Format Consistency, And Agent Documentation (0.3.1-alpha)
 
 This session added status tracking to Income (matching Expense/Investment behavior), fixed date format consistency across the application, and created agent-specific documentation and workflows.

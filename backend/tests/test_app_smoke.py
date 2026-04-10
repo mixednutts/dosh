@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.time_utils import app_now_naive
+from app.time_utils import utc_now
 from app.models import Budget, FinancialPeriod, InvestmentItem, PeriodCloseoutSnapshot, SetupRevisionEvent
 
 from .factories import create_minimum_budget_setup, iso_date
@@ -52,7 +52,7 @@ def test_release_notes_endpoint_returns_current_release(client, monkeypatch):
 def test_generate_period_creates_expected_core_rows(client, db_session):
     setup = create_minimum_budget_setup(db_session)
     budget = setup["budget"]
-    startdate = app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0)
+    startdate = utc_now().replace(hour=0, minute=0, second=0, microsecond=0)
 
     response = client.post(
         "/api/periods/generate",
@@ -86,7 +86,7 @@ def test_generate_period_requires_income_and_expense_prerequisites(client):
         },
     )
     budgetid = create_budget_response.json()["budgetid"]
-    startdate = app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0)
+    startdate = utc_now().replace(hour=0, minute=0, second=0, microsecond=0)
 
     response = client.post(
         "/api/periods/generate",

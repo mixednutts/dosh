@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime as dt
+from datetime import datetime as dt, timezone
 from decimal import Decimal
 
 from sqlalchemy.orm import Session
@@ -23,9 +23,11 @@ TX_TYPE_DEBIT = "DEBIT"
 TX_TYPE_ADJUST = "ADJUST"
 TX_TYPE_TRANSFER = "TRANSFER"
 TX_TYPE_BUDGET_ADJ = "BUDGETADJ"
+TX_TYPE_STATUS_CHANGE = "STATUS"
 TRANSFER_PREFIX = "Transfer from "
 ENTRY_KIND_MOVEMENT = "movement"
 ENTRY_KIND_BUDGET_ADJUSTMENT = "budget_adjustment"
+ENTRY_KIND_STATUS_CHANGE = "status_change"
 
 
 @dataclass
@@ -83,7 +85,9 @@ def add_period_transaction(
     budget_after_amount=None,
 ):
     amount = _rounded(_as_decimal(amount))
-    if amount == Decimal("0.00"):
+    # Skip zero-amount movement transactions, but allow zero-amount for
+    # budget_adjustment and status_change (non-financial history records)
+    if amount == Decimal("0.00") and entry_kind == ENTRY_KIND_MOVEMENT:
         return None
 
     if dedupe_key:
@@ -114,7 +118,7 @@ def add_period_transaction(
         type=context.tx_type,
         amount=amount,
         note=note,
-        entrydate=entrydate or dt.utcnow(),
+        entrydate=entrydate or dt.now(timezone.utc),
         is_system=is_system,
         system_reason=system_reason,
         source_key=context.source_key,
@@ -360,6 +364,42 @@ def build_budget_adjustment_tx(
     )
 
 
+def build_status_change_tx(
+    db: Session,
+    finperiodid: int,
+    budgetid: int,
+    source: str,
+    source_key: str,
+    old_status: str,
+    new_status: str,
+    note: str | None,
+    line_status: str | None = None,
+):
+    """Create a non-financial transaction record for status changes (Paid/Revised).
+
+    This follows the same pattern as budget adjustments:
+    - entry_kind = "status_change"
+    - amount = 0 (non-financial)
+    - is_system = True (not user-deletable)
+    """
+    return add_period_transaction(
+        db,
+        PeriodTransactionContext(
+            finperiodid=finperiodid,
+            budgetid=budgetid,
+            source=source,
+            tx_type=TX_TYPE_STATUS_CHANGE,
+            source_key=source_key,
+            line_status=line_status,
+        ),
+        amount=Decimal("0.00"),
+        note=f"Status: {old_status} → {new_status}" + (f" | {note}" if note else ""),
+        entry_kind=ENTRY_KIND_STATUS_CHANGE,
+        is_system=True,
+        system_reason=f"Line marked {new_status}",
+    )
+
+
 def _sum_amount(query_result) -> Decimal:
     return _rounded(sum((_as_decimal(row.amount) for row in query_result), Decimal("0.00")))
 
@@ -462,6 +502,6 @@ def sync_period_state(finperiodid: int, db: Session) -> None:
 
 
 def _is_active_period(period: FinancialPeriod) -> bool:
-    now = dt.utcnow()
+    now = dt.now(timezone.utc)
     in_range = period.startdate <= now <= period.enddate
     return (not period.islocked) or in_range

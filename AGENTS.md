@@ -85,6 +85,135 @@ Read this alongside:
 
 **Exceptions:** NONE. Even if you're certain the document is needed, ask first.
 
+### 5. ALWAYS Use Virtual Environment for Backend Tests
+
+**Rule:** Backend tests MUST be run using the repository's virtual environment at `backend/.venv/`.
+
+**Rationale:**
+- The base shell does not have `pytest` or dependencies like `sqlalchemy` installed
+- The project maintains an isolated Python environment with all test dependencies
+- Prevents false-negative test failures due to missing dependencies
+
+**Correct commands:**
+```bash
+cd /home/ubuntu/dosh/backend
+source .venv/bin/activate
+python -m pytest tests/ -q
+```
+
+**OR (without activating):**
+```bash
+cd /home/ubuntu/dosh/backend
+.venv/bin/python -m pytest tests/ -q
+```
+
+**Incorrect (will fail):**
+```bash
+# These will fail with "No module named 'sqlalchemy'" or similar
+cd /home/ubuntu/dosh/backend
+pytest tests/
+python3 -m pytest tests/
+```
+
+**See also:** [docs/tests/TEST_STRATEGY.md](./docs/tests/TEST_STRATEGY.md) for full testing documentation.
+
+### 6. NEVER Implement Workarounds or Band-Aid Solutions
+
+**Rule:** You are strictly prohibited from suggesting or implementing "workarounds," "quick fixes," or "band-aid" solutions if a root cause can be identified.
+
+**Rationale:**
+- Workarounds accumulate technical debt and create maintenance burdens
+- They often mask underlying issues that resurface later in different forms
+- Long-term system stability and architectural integrity take priority over short-term speed
+- Proper fixes prevent similar issues in related areas
+
+**What this means:**
+- When a bug is reported, investigate and fix the **root cause**
+- Do NOT patch symptoms in one place while leaving the underlying problem intact
+- If the fix requires a data migration, schema change, or architectural adjustment, implement it properly
+- Do NOT add frontend code to compensate for backend data inconsistencies (fix the data instead)
+- Do NOT add special-case handling when a general solution is possible
+
+**Examples of prohibited shortcuts:**
+- Adding client-side date parsing to handle malformed backend timestamps (fix the backend storage/format)
+- Adding special flags to skip validation for specific records (fix the validation logic)
+- Adding conditional UI rendering to hide data corruption (fix the data integrity)
+- Creating parallel code paths to handle legacy vs new data (migrate the data)
+
+**When you identify a root cause:**
+1. Explain the root cause to the user
+2. Propose the proper fix (even if it requires more effort)
+3. Implement the proper fix with appropriate migrations/schema changes
+4. Verify the fix with tests
+
+**Exceptions:** NONE. Even if the user suggests a workaround, explain why a proper fix is better and implement the root cause solution.
+
+### 7. NEVER TOUCH PRODUCTION DATA WITHOUT EXPLICIT USER APPROVAL
+
+**Rule:** You are strictly prohibited from modifying, migrating, or overwriting production databases without explicit user confirmation.
+
+**Rationale:**
+- Production data loss is catastrophic and potentially irrecoverable
+- Users must be fully aware and approve any data-modifying operations
+- "Fixing" data issues can destroy legitimate user data
+- Backups may be incomplete or outdated (as demonstrated by 6-day data loss incident)
+
+**ABSOLUTELY PROHIBITED actions:**
+- ❌ Running database migrations on production without user approval
+- ❌ Copying local/development database files to production environments
+- ❌ Using `cp`, `mv`, `rsync`, or any file operations on production database files
+- ❌ Executing SQL UPDATE/DELETE statements on production data
+- ❌ Modifying Docker volumes containing production data
+- ❌ Assuming local files are the "source of truth" for production
+
+**REQUIRED before any data operation:**
+1. **EXPLAIN** exactly what data will be modified and why
+2. **VERIFY** you understand the deployment architecture (Docker volumes vs local files)
+3. **CONFIRM** user explicitly approves the operation
+4. **BACKUP** current state before any changes
+5. **VERIFY** the backup is valid and complete
+
+**If you suspect a data issue:**
+- Report it to the user with evidence
+- Propose a fix but DO NOT execute it
+- Let the user decide whether to proceed and how
+
+**When in doubt:** STOP and ask. Do not proceed with data operations.
+
+**Exceptions:** NONE. Data loss is unacceptable under any circumstances.
+
+### 8. NEVER SUGGEST WORKAROUNDS - ALWAYS FIX ROOT CAUSE
+
+**Rule:** You are strictly prohibited from suggesting or implementing "workarounds," "quick fixes," or "band-aid" solutions if a root cause can be identified. Your priority is the long-term stability and architectural integrity of the system.
+
+**Rationale:**
+- Workarounds accumulate technical debt and create maintenance burdens
+- They often mask underlying issues that resurface later in different forms  
+- Long-term system stability and architectural integrity take priority over short-term convenience
+- Proper fixes prevent similar issues in related areas
+
+**What this means:**
+- When a problem is identified, you MUST fix the **root cause**
+- Do NOT suggest alternative approaches that avoid fixing the actual problem
+- Do NOT implement temporary patches when proper fixes are possible
+- The phrase "for now" or "as a workaround" is a red flag - stop and fix properly
+- "Significant change" is not a valid reason to avoid proper fixes
+
+**Examples of prohibited shortcuts:**
+- Adding special-case handling instead of fixing the underlying data model
+- Creating parallel code paths for "legacy" vs "new" data instead of migrating
+- Suggesting users "just avoid" certain actions instead of fixing the bug
+- Implementing client-side fixes for server-side data problems
+- Using type coercion or casting instead of ensuring data consistency
+
+**When you identify a root cause:**
+1. Explain the root cause to the user
+2. Implement the proper fix regardless of complexity
+3. Update tests, data, and documentation to match
+4. Verify the fix with comprehensive testing
+
+**Exceptions:** NONE. Technical debt from workarounds is never acceptable.
+
 ---
 
 ## Initialization Path
@@ -105,13 +234,15 @@ For document changes, follow [DOCUMENTATION_FRAMEWORK.md](./docs/DOCUMENTATION_F
 **Schema Revision:** 32e38f31a3bd (adds income status columns)
 
 **Recent Work:**
+- UTC datetime migration completed: all backend datetime storage now uses UTC with proper timezone handling
+- Fixed 14 backend test failures from datetime comparison issues after UTC migration
 - Income status workflow (Paid/Revised matching Expense/Investment behavior)
 - Date format consistency across frontend (user preference driven)
 - Release management automation (recovery workflows, version bump script)
 - Migration safety validation (prevents version-dependent migrations)
 
 **Active Focus Areas:**
-- Testing infrastructure hardening
+- Testing infrastructure hardening (all 121 backend tests passing)
 - Documentation framework compliance
 - Release process reliability
 
@@ -123,15 +254,56 @@ For document changes, follow [DOCUMENTATION_FRAMEWORK.md](./docs/DOCUMENTATION_F
 
 ---
 
+## Incident Log: Data Loss 2026-04-11
+
+**Severity:** CRITICAL - 6 days of production data lost
+
+**What happened:**
+1. User reported timezone display issue in transaction dates
+2. Agent created a database migration to add timezone info to datetime columns
+3. **CRITICAL ERROR:** Agent ran migration on local `dosh.db` instead of Docker volume
+4. **CRITICAL ERROR:** Agent used `sudo cp` to copy local database over Docker volume, overwriting production data
+5. Only April 5 backup was available, resulting in 6 days of data loss (April 5-11)
+
+**Root causes:**
+1. **Architecture misunderstanding:** Did not verify where production data actually lived
+2. **Destructive operation without approval:** Modified production data without user confirmation
+3. **Inadequate verification:** Did not check what data was in local file before copying
+4. **Backup inadequacy:** Available backups were 6 days old
+
+**Lessons learned:**
+- ALWAYS verify deployment architecture before touching data
+- NEVER copy files over production Docker volumes
+- ALWAYS get explicit user approval for data-modifying operations
+- ALWAYS verify backup recency before destructive operations
+
+**New hard controls added:**
+- Hard Control #7: NEVER TOUCH PRODUCTION DATA WITHOUT EXPLICIT USER APPROVAL
+- Deployment architecture verification in Phase 1 workflow
+
+---
+
 ## Agent Workflow Guidelines
 
 ### Phase 1: Active Work (No Overhead)
 
-**Just work normally:**
-1. Read relevant existing documents
-2. Make file modifications (WriteFile, StrReplaceFile)
-3. Run tests if applicable (pytest, npm test)
-4. Iterate freely
+**Before making ANY changes that could affect data or infrastructure:**
+1. **Understand the deployment architecture:**
+   - Docker containers vs local files?
+   - Volume mounts vs bind mounts?
+   - Where is the production database actually stored?
+   - Is there a separate staging/production environment?
+   
+2. **Read relevant existing documents**
+3. **Make file modifications (WriteFile, StrReplaceFile)**
+4. **Run tests if applicable (pytest, npm test)**
+5. **Iterate freely**
+
+**CRITICAL: When working with Docker deployments:**
+- Production data lives in Docker volumes, NOT in the local filesystem
+- The local `dosh.db` file is NOT the production database
+- Migrations must run INSIDE the container: `docker exec dosh-backend alembic ...`
+- Never copy local files to Docker volumes: `sudo cp ... /var/lib/docker/volumes/...`
 
 **The only rule during work:** NEVER commit (hard control #1)
 
@@ -181,5 +353,5 @@ git push origin main --force-with-lease  # if needed
 
 ---
 
-**Last Updated:** 2026-04-10
+**Last Updated:** 2026-04-11 (added Hard Controls #6, #7, deployment awareness; documented data loss incident)
 **Framework Version:** 1.0 (per DOCUMENTATION_FRAMEWORK.md)

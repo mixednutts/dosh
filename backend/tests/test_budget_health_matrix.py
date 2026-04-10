@@ -5,7 +5,7 @@ from decimal import Decimal
 
 from app.budget_health import build_budget_health_payload
 from app.models import Budget, FinancialPeriod, PeriodExpense, PeriodIncome
-from app.time_utils import app_now_naive
+from app.time_utils import utc_now
 
 from .factories import create_budget, create_expense_item, create_income_type
 from .factories import create_balance_type
@@ -70,7 +70,7 @@ def test_budget_health_uses_tighter_of_percent_and_dollar_deficit_thresholds(cli
         "/api/periods/generate",
         json={
             "budgetid": budget.budgetid,
-            "startdate": app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0).isoformat(),
+            "startdate": utc_now().replace(hour=0, minute=0, second=0, microsecond=0).isoformat(),
             "count": 1,
         },
     )
@@ -113,7 +113,7 @@ def test_budget_health_momentum_improves_when_recent_closed_periods_overspend_le
     budget = create_budget(db_session)
     create_income_type(db_session, budgetid=budget.budgetid)
     create_expense_item(db_session, budgetid=budget.budgetid)
-    now = app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0)
+    now = utc_now().replace(hour=0, minute=0, second=0, microsecond=0)
 
     _seed_historical_period(
         db_session,

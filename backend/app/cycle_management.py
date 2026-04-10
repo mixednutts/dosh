@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import timedelta
+from datetime import timedelta, timezone
 from decimal import Decimal
 
 from sqlalchemy.orm import Session
@@ -34,7 +34,7 @@ from .models import (
     PeriodTransaction,
 )
 from .period_logic import calc_period_end, expense_occurs_in_period
-from .time_utils import app_now_naive
+from .time_utils import app_now_naive, utc_now
 from .transaction_ledger import sync_period_state
 
 
@@ -48,8 +48,10 @@ def cycle_stage(period: FinancialPeriod) -> str:
     if cycle_status(period) == PLANNED:
         return PLANNED
 
-    now = app_now_naive()
-    if period.enddate < now:
+    now = utc_now()
+    # Ensure period.enddate has timezone info for comparison
+    enddate = period.enddate if period.enddate.tzinfo else period.enddate.replace(tzinfo=timezone.utc)
+    if enddate < now:
         return PENDING_CLOSURE_STAGE
     return CURRENT_STAGE
 
@@ -179,13 +181,16 @@ def next_period_for(period: FinancialPeriod, db: Session) -> FinancialPeriod | N
 
 
 def assign_period_lifecycle_states(budgetid: int, db: Session) -> None:
+    from datetime import timezone
     periods = ordered_budget_periods(budgetid, db)
-    now = app_now_naive()
+    now = utc_now()
     for period in periods:
         status = cycle_status(period)
         if status == CLOSED:
             continue
-        if period.startdate <= now:
+        # Ensure period.startdate has timezone info for comparison
+        startdate = period.startdate if period.startdate.tzinfo else period.startdate.replace(tzinfo=timezone.utc)
+        if startdate <= now:
             period.cycle_status = ACTIVE
         else:
             period.cycle_status = PLANNED
@@ -300,7 +305,7 @@ def build_closeout_preview(period: FinancialPeriod, budget: Budget, db: Session)
         "totals": {key: str(value) for key, value in totals.items()},
         "health": health,
         "next_cycle_exists": next_period is not None,
-        "can_close_early": app_now_naive() <= period.enddate,
+        "can_close_early": utc_now() <= (period.enddate if period.enddate.tzinfo else period.enddate.replace(tzinfo=timezone.utc)),
     }
 
 
@@ -323,7 +328,7 @@ def close_cycle(period: FinancialPeriod, budget: Budget, comments: str | None, g
 
     sync_period_state(period.finperiodid, db)
     period.cycle_status = CLOSED
-    period.closed_at = app_now_naive()
+    period.closed_at = utc_now()
     period.islocked = True
 
     next_period.cycle_status = ACTIVE

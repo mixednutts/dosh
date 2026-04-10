@@ -1895,6 +1895,69 @@ describe('PeriodDetailPage', () => {
     expect(screen.queryByPlaceholderText('Amount')).toBeNull()
   })
 
+  it('shows income details modal as read-only when opened from view transactions', async () => {
+    client.getIncomeTransactions.mockResolvedValue([
+      {
+        id: 1,
+        amount: '1000.00',
+        note: 'Salary payment',
+        entrydate: '2026-11-01T09:00:00',
+        entry_kind: 'manual',
+      },
+    ])
+    client.getBudget.mockResolvedValue({
+      budgetid: 1,
+      budgetowner: 'Alex',
+      description: 'Home Budget',
+      budget_frequency: 'Monthly',
+      allow_cycle_lock: true,
+    })
+    client.getPeriodDetail.mockResolvedValue({
+      period: {
+        finperiodid: 167,
+        budgetid: 1,
+        startdate: '2026-11-01T00:00:00',
+        enddate: '2026-11-30T00:00:00',
+        islocked: false,
+        cycle_status: 'ACTIVE',
+      },
+      incomes: [
+        {
+          finperiodid: 167,
+          budgetid: 1,
+          incomedesc: 'Salary',
+          budgetamount: '2000.00',
+          actualamount: '1000.00',
+          varianceamount: '-1000.00',
+          is_system: false,
+          system_key: null,
+          linked_account: 'Checking',
+          status: 'Current',
+          revision_comment: null,
+        },
+      ],
+      expenses: [],
+      investments: [],
+      balances: [],
+      closeout_snapshot: null,
+    })
+
+    renderWithProviders(<PeriodDetailPage />, {
+      route: '/periods/167',
+      path: '/periods/:periodId',
+    })
+
+    const viewButton = await screen.findByTitle('View transactions')
+
+    fireEvent.click(viewButton)
+    expect(await screen.findByText('Transactions — Salary')).toBeTruthy()
+    // In read-only mode, the Add Income button should not be present
+    expect(screen.queryByRole('button', { name: 'Add Income' })).toBeNull()
+    expect(screen.queryByPlaceholderText('Amount')).toBeNull()
+    // Should show a Close button instead
+    expect(screen.getByRole('button', { name: 'Close' })).toBeTruthy()
+  })
+
   it('submits resolved expressions for budget adjustments', async () => {
     client.updatePeriodIncomeBudget.mockResolvedValue({})
     client.getBudget.mockResolvedValue({

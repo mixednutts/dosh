@@ -2,11 +2,18 @@
 Period generation and expense scheduling logic.
 """
 from calendar import monthrange
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 import re
 from typing import Optional
 from dateutil.relativedelta import relativedelta
+
+
+def _ensure_utc(value: datetime) -> datetime:
+    """Ensure a datetime has UTC timezone."""
+    if value is not None and value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value
 
 
 FREQ_DAYS = {
@@ -66,6 +73,10 @@ def expense_occurs_in_period(
     Every N Days: frequency_value = interval in days.
         Starting from effectivedate, find all occurrences within the period.
     """
+    # Normalize all datetime inputs to UTC for consistent comparison
+    period_start = _ensure_utc(period_start)
+    period_end = _ensure_utc(period_end)
+    
     if freqtype == "Always":
         return expense_amount
 
@@ -87,6 +98,8 @@ def expense_occurs_in_period(
     elif freqtype == "Every N Days":
         if frequency_value <= 0:
             return None
+        # Normalize effectivedate to UTC for comparison with period dates
+        effectivedate = _ensure_utc(effectivedate)
         if effectivedate > period_end:
             return None
         if effectivedate < period_start:
