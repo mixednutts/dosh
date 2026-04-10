@@ -1452,13 +1452,16 @@ def update_income_budget(
     period = _get_period_or_404(finperiodid, db)
     budget = db.get(Budget, period.budgetid)
     _assert_budget_editable(period, budget)
-    pi = db.get(PeriodIncome, (finperiodid, incomedesc))
+    pi = (
+        db.query(PeriodIncome)
+        .filter(PeriodIncome.finperiodid == finperiodid, PeriodIncome.incomedesc == incomedesc)
+        .first()
+    )
     if not pi:
         raise HTTPException(404, "Period income entry not found")
     if pi.system_key == CARRIED_FORWARD_SYSTEM_KEY:
         raise HTTPException(409, "System-managed carried forward income cannot be budget-adjusted")
-    current_status = getattr(pi, "status", WORKING) or WORKING
-    if current_status == PAID:
+    if (getattr(pi, "status", WORKING) or WORKING) == PAID:
         raise HTTPException(423, "Paid income must be revised before editing")
 
     targets = [period] if payload.scope == "current" else [period, *_future_unlocked_periods(period, db)]

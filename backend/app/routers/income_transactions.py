@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException
 from sqlalchemy.orm import Session
 from ..api_docs import DbSession, error_responses
 
-from ..cycle_constants import CLOSED
+from ..cycle_constants import CLOSED, PAID, WORKING
 from ..models import FinancialPeriod, PeriodIncome, PeriodTransaction
 from ..schemas import IncomeTxCreate, IncomeTxOut
 from ..transaction_ledger import TRANSFER_PREFIX, build_income_tx, sync_period_state
@@ -79,6 +79,8 @@ def add_transaction(
         raise HTTPException(423, "Budget cycle is closed")
 
     pi = _get_period_income(finperiodid, incomedesc, db)
+    if (getattr(pi, "status", WORKING) or WORKING) == PAID:
+        raise HTTPException(423, "Paid income must be revised before adding transactions")
     tx = build_income_tx(
         finperiodid,
         pi.budgetid,

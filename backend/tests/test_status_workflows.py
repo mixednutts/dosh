@@ -119,7 +119,7 @@ def test_paid_income_requires_revision_before_more_changes(client, db_session):
 
     # Transactions should be blocked while Paid
     add_transaction = client.post(
-        f"/api/periods/{active_period['finperiodid']}/incomes/Salary/transactions/",
+        f"/api/periods/{active_period['finperiodid']}/income/Salary/transactions/",
         json={"amount": "100.00", "note": "Bonus"},
     )
     assert add_transaction.status_code == 423
