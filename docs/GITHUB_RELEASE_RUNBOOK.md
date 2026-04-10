@@ -38,6 +38,28 @@ Required version touchpoints:
 - [package.json](/home/ubuntu/dosh/frontend/package.json)
 - [package-lock.json](/home/ubuntu/dosh/frontend/package-lock.json)
 - [Layout.jsx](/home/ubuntu/dosh/frontend/src/components/Layout.jsx)
+- [Layout.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/Layout.test.jsx)
+
+**Automated version bump:**
+
+Instead of manually editing each file, use the bump script:
+
+```bash
+python scripts/bump_version.py 0.3.2-alpha
+```
+
+This updates all touchpoints and runs validation. Then commit:
+
+```bash
+git add -A
+git commit -m "release: bump version to 0.3.2-alpha"
+```
+
+The script handles:
+- All version touchpoint files
+- npm install to sync package-lock.json
+- Test expectation updates in Layout.test.jsx
+- Post-bump validation
 
 ## What GitHub Does
 
@@ -112,6 +134,30 @@ That repository setting is the release gate for code quality. The release-taggin
 - duplicate tag: GitHub skips tag creation rather than creating a second tag
 - missing token for private repo: runtime release info degrades safely instead of breaking the app
 - GitHub API failure: runtime release info degrades safely and should be retried later
+
+### Recovery Workflow
+
+If the auto-tag workflow fails (e.g., due to SonarQube failure at merge time), use the **Manual Tag and Release** workflow:
+
+1. Go to **Actions** → **Manual Tag and Release**
+2. Click **Run workflow**
+3. Parameters:
+   - **version**: The version to release (e.g., `0.3.1-alpha`)
+   - **commit_sha**: (Optional) The specific commit to tag. Leave empty for HEAD.
+   - **force**: Check this to recreate the tag if it already exists (use with caution)
+4. Click **Run workflow**
+
+This workflow will:
+- Validate all version touchpoints at the target commit
+- Create the annotated tag `v<version>`
+- Create or update the GitHub Release
+
+Use this for:
+- Recovery when auto-tag failed during merge
+- Re-tagging a different commit after fixes
+- Backfilling releases for historical tags
+
+**Note:** The `Publish Release From Tag` workflow is for republishing GitHub Releases for existing tags only. For new tags or retagging, use `Manual Tag and Release`.
 
 ## Future Extension
 

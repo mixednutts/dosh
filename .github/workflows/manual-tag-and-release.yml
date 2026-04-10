@@ -1,0 +1,160 @@
+name: Manual Tag and Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to release (e.g., 0.3.1-alpha)
+        required: true
+        type: string
+      commit_sha:
+        description: Commit SHA to tag (defaults to HEAD)
+        required: false
+        type: string
+        default: ""
+      force:
+        description: Force recreate tag if it exists
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  tag-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Determine target commit
+        id: target
+        env:
+          INPUT_SHA: ${{ inputs.commit_sha }}
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          if [[ -n "$INPUT_SHA" ]]; then
+            # Verify the commit exists
+            if ! git cat-file -e "$INPUT_SHA" 2>/dev/null; then
+              echo "Error: Commit SHA $INPUT_SHA not found"
+              exit 1
+            fi
+            echo "sha=$INPUT_SHA" >> "$GITHUB_OUTPUT"
+            echo "Using provided commit: $INPUT_SHA"
+          else
+            echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+            echo "Using HEAD commit"
+          fi
+
+      - name: Validate version touchpoints at target commit
+        env:
+          TARGET_SHA: ${{ steps.target.outputs.sha }}
+        run: |
+          echo "Validating version touchpoints at commit $TARGET_SHA..."
+          python scripts/release_management.py validate --ref "$TARGET_SHA" --require-release-entry
+
+      - name: Check for existing tag
+        id: tag_check
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          TAG_NAME="v${VERSION}"
+          if git ls-remote --exit-code --tags origin "refs/tags/${TAG_NAME}" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Tag ${TAG_NAME} already exists remotely"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "Tag ${TAG_NAME} does not exist"
+          fi
+
+      - name: Delete existing tag (if force enabled)
+        if: steps.tag_check.outputs.exists == 'true' && inputs.force
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          TAG_NAME="v${VERSION}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git push --delete origin "refs/tags/${TAG_NAME}" || true
+          git tag -d "${TAG_NAME}" 2>/dev/null || true
+          echo "Deleted existing tag ${TAG_NAME}"
+
+      - name: Create annotated release tag
+        if: steps.tag_check.outputs.exists != 'true' || inputs.force
+        env:
+          VERSION: ${{ inputs.version }}
+          TARGET_SHA: ${{ steps.target.outputs.sha }}
+        run: |
+          TAG_NAME="v${VERSION}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "${TAG_NAME}" "$TARGET_SHA" -m "Release ${TAG_NAME}"
+          git push origin "refs/tags/${TAG_NAME}"
+          echo "Created tag ${TAG_NAME} at commit $TARGET_SHA"
+
+      - name: Render release body
+        id: body
+        env:
+          VERSION: ${{ inputs.version }}
+          TARGET_SHA: ${{ steps.target.outputs.sha }}
+        run: |
+          python scripts/release_management.py release-body --ref "$TARGET_SHA" --version "$VERSION" > "$RUNNER_TEMP/release-body.md"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "body_path=$RUNNER_TEMP/release-body.md" >> "$GITHUB_OUTPUT"
+
+      - name: Create or update GitHub Release
+        uses: actions/github-script@v7
+        env:
+          BODY_PATH: ${{ steps.body.outputs.body_path }}
+          VERSION: ${{ steps.body.outputs.version }}
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync(process.env.BODY_PATH, 'utf8');
+            const version = process.env.VERSION;
+            const tag = `v${version}`;
+            const prerelease = version.includes('-');
+
+            let release;
+            try {
+              release = await github.rest.repos.getReleaseByTag({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag,
+              });
+            } catch (error) {
+              if (error.status !== 404) {
+                throw error;
+              }
+            }
+
+            const payload = {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: tag,
+              name: tag,
+              body,
+              draft: false,
+              prerelease,
+            };
+
+            if (release) {
+              await github.rest.repos.updateRelease({
+                ...payload,
+                release_id: release.data.id,
+              });
+              core.info(`Updated GitHub Release for ${tag}.`);
+            } else {
+              await github.rest.repos.createRelease(payload);
+              core.info(`Created GitHub Release for ${tag}.`);
+            }

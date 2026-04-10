@@ -1,0 +1,65 @@
+name: Validate Version Consistency
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "backend/app/version.py"
+      - "docker-compose.yml"
+      - "**/Dockerfile"
+      - "frontend/package.json"
+      - "frontend/package-lock.json"
+      - "frontend/src/components/Layout.jsx"
+      - "frontend/src/__tests__/Layout.test.jsx"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-versions:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Validate version touchpoint consistency
+        run: |
+          echo "Validating all version touchpoints are consistent..."
+          python scripts/release_management.py validate --ref WORKTREE
+          echo "All version touchpoints are consistent!"
+
+      - name: Check for unreleased changes
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "Checking if RELEASE_NOTES.md needs updating..."
+          # Get changed files
+          git fetch origin ${{ github.base_ref }} --depth=1
+          CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+          
+          # Check if any non-test, non-doc files changed
+          SIGNIFICANT_CHANGES=$(echo "$CHANGED_FILES" | grep -v \
+            -e "^docs/" \
+            -e "\.md$" \
+            -e "\.test\.(js|jsx|ts|tsx|py)$" \
+            -e "^frontend/e2e/" \
+            -e "^scripts/" \
+            -e "\.github/" || true)
+          
+          if [[ -n "$SIGNIFICANT_CHANGES" ]]; then
+            echo "Significant code changes detected."
+            echo "If this PR represents a release, ensure:"
+            echo "  1. Version touchpoints are bumped"
+            echo "  2. RELEASE_NOTES.md has an entry for the new version"
+            echo ""
+            echo "To bump version: python scripts/bump_version.py <version>"
+          fi
