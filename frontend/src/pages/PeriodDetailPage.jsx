@@ -4,12 +4,12 @@ import { useParams, Link, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { parseISO, addDays } from 'date-fns'
 import {
-  LockClosedIcon, LockOpenIcon, ChevronRightIcon, PlusIcon,
+  LockClosedIcon, LockOpenIcon, ChevronRightIcon, ChevronLeftIcon, PlusIcon,
   MinusIcon, TrashIcon, ListBulletIcon, Bars2Icon, PencilSquareIcon,
   ArrowDownTrayIcon,
 } from '@heroicons/react/24/outline'
 import {
-  getPeriodDetail, getBudget, setPeriodLock,
+  getPeriodDetail, getBudget, setPeriodLock, getPeriodsForBudget,
   getIncomeTransactions, addIncomeTransaction, deleteIncomeTransaction,
   addExpenseToPeriod, addIncomeToPeriod, savingsTransfer,
   getExpenseItems, getIncomeTypes, createExpenseItem, createIncomeType,
@@ -17,7 +17,7 @@ import {
   reorderPeriodExpenses, getBalanceTransactions,
   getInvestmentTransactions, addInvestmentTransaction, deleteInvestmentTransaction,
   setPeriodExpenseStatus, updatePeriodExpenseBudget, removePeriodExpense,
-  updatePeriodInvestmentBudget, getBalanceTypes, removePeriodIncome, updatePeriodIncomeBudget,
+  updatePeriodInvestmentBudget, getBalanceTypes, removePeriodIncome, updatePeriodIncomeBudget, setPeriodIncomeStatus,
   setPeriodInvestmentStatus, getPeriodCloseoutPreview, closeOutPeriod, exportPeriod,
   updatePeriodExpensePayType, runPeriodAutoExpenses,
 } from '../api/client'
@@ -687,6 +687,20 @@ function TransactionWorkflowModal({
   )
 }
 
+function IncomeStatusPill({ income, onMarkPaid, onRevise }) {
+  return (
+    <ProgressStatusPill
+      item={income}
+      budgetAmount={income.budgetamount}
+      actualAmount={income.actualamount}
+      remainingAmount={income.actualamount - income.budgetamount}
+      status={income.status}
+      onMarkPaid={onMarkPaid}
+      onRevise={onRevise}
+    />
+  )
+}
+
 function ProgressStatusPill({ item, budgetAmount, actualAmount, remainingAmount, status, onMarkPaid, onRevise }) {
   const budget = Number(budgetAmount ?? 0)
   const actual = Number(actualAmount ?? 0)
@@ -1199,6 +1213,33 @@ function ConfirmPaidInvestmentModal({ investment, onConfirm, onClose }) {
   )
 }
 
+function ConfirmPaidIncomeModal({ income, onConfirm, onClose }) {
+  const received = Number(income.actualamount ?? 0)
+  const budget = Number(income.budgetamount ?? 0)
+  const shortfall = budget - received
+  const surplus = received - budget
+  const hasShortfall = received < budget
+  const hasSurplus = received > budget
+  const delta = fmt(Math.abs(hasShortfall ? shortfall : surplus))
+
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-gray-700 dark:text-gray-200">
+        {hasShortfall
+          ? `This income has a shortfall of ${delta}. Mark it as paid anyway?`
+          : hasSurplus
+          ? `This income has a surplus of ${delta} over budget. Mark it as paid anyway?`
+          : `This income matches the budget exactly. Mark it as paid?`}
+      </p>
+      <p className="text-xs text-gray-400 dark:text-gray-500">Paid income items are locked until revised.</p>
+      <div className="flex justify-end gap-2">
+        <button type="button" class="btn-secondary" onClick={onClose}>Cancel</button>
+        <button type="button" class="btn-primary" onClick={() => onConfirm(income)}>Mark Paid</button>
+      </div>
+    </div>
+  )
+}
+
 function CloseoutModal({ periodId, onClose }) {
   const qc = useQueryClient()
   const [comments, setComments] = useState('')
@@ -1668,6 +1709,7 @@ export default function PeriodDetailPage() {
   const [budgetAdjustModal, setBudgetAdjustModal] = useState(null)
   const [confirmPaidModal, setConfirmPaidModal] = useState(null)
   const [confirmPaidInvestmentModal, setConfirmPaidInvestmentModal] = useState(null)
+  const [confirmPaidIncomeModal, setConfirmPaidIncomeModal] = useState(null)
   const [balanceModal, setBalanceModal] = useState(null)
   const [showCloseout, setShowCloseout] = useState(false)
   const [showExport, setShowExport] = useState(false)
@@ -1685,6 +1727,11 @@ export default function PeriodDetailPage() {
   const { data: budget } = useQuery({
     queryKey: ['budget', data?.period?.budgetid],
     queryFn: () => getBudget(data.period.budgetid),
+    enabled: !!data?.period?.budgetid,
+  })
+  const { data: allPeriods } = useQuery({
+    queryKey: ['periods', data?.period?.budgetid],
+    queryFn: () => getPeriodsForBudget(data.period.budgetid),
     enabled: !!data?.period?.budgetid,
   })
 
@@ -1719,6 +1766,7 @@ export default function PeriodDetailPage() {
     onError: error => setAutoExpenseFeedback({ tone: 'error', text: error?.response?.data?.detail || 'Unable to run Auto Expense right now.' }),
   })
   const setInvestmentStatus = useMutation({ mutationFn: ({ desc, status, revisionComment = null }) => setPeriodInvestmentStatus(id, desc, status, revisionComment), onSuccess: () => qc.invalidateQueries({ queryKey: ['period', id] }) })
+  const setIncomeStatus = useMutation({ mutationFn: ({ desc, status, revisionComment = null }) => setPeriodIncomeStatus(id, desc, status, revisionComment), onSuccess: () => qc.invalidateQueries({ queryKey: ['period', id] }) })
   const editIncomeBudget = useMutation({ mutationFn: ({ desc, data }) => updatePeriodIncomeBudget(id, desc, data), onSuccess: () => qc.invalidateQueries({ queryKey: ['period', id] }) })
   const editExpenseBudget = useMutation({ mutationFn: ({ desc, data }) => updatePeriodExpenseBudget(id, desc, data), onSuccess: () => qc.invalidateQueries({ queryKey: ['period', id] }) })
   const deleteExpenseLine = useMutation({ mutationFn: desc => removePeriodExpense(id, desc), onSuccess: () => qc.invalidateQueries({ queryKey: ['period', id] }) })
@@ -1744,6 +1792,12 @@ export default function PeriodDetailPage() {
 
   const { incomes, balances = [], investments = [] } = data
   const expenses = localExpenses ?? data.expenses
+
+  // Compute previous and next period IDs for navigation
+  const sortedPeriods = allPeriods ? [...allPeriods].sort((a, b) => new Date(a.startdate) - new Date(b.startdate)) : []
+  const currentPeriodIndex = sortedPeriods.findIndex(p => p.finperiodid === id)
+  const prevPeriod = currentPeriodIndex > 0 ? sortedPeriods[currentPeriodIndex - 1] : null
+  const nextPeriod = currentPeriodIndex >= 0 && currentPeriodIndex < sortedPeriods.length - 1 ? sortedPeriods[currentPeriodIndex + 1] : null
   let closeoutHealth = null
   try {
     closeoutHealth = data.closeout_snapshot?.health_snapshot_json ? JSON.parse(data.closeout_snapshot.health_snapshot_json) : null
@@ -1781,7 +1835,7 @@ export default function PeriodDetailPage() {
     const si = cur.findIndex(x => x.expensedesc === src)
     const ti = cur.findIndex(x => x.expensedesc === targetDesc)
     if (si < 0 || ti < 0) return
-    if (locked || closed || cur[si]?.status === 'Paid' || cur[ti]?.status === 'Paid') return
+    if (locked || closed) return
     const [moved] = cur.splice(si, 1)
     cur.splice(ti, 0, moved)
     setLocalExpenses(cur)
@@ -1839,6 +1893,15 @@ export default function PeriodDetailPage() {
     setInvestmentStatus.mutate({ desc: investment.investmentdesc, status: 'Paid' })
   }
 
+  const handleMarkIncomePaid = income => {
+    const remaining = Number(income.actualamount ?? 0) - Number(income.budgetamount ?? 0)
+    if (remaining !== 0) {
+      setConfirmPaidIncomeModal({ income })
+      return
+    }
+    setIncomeStatus.mutate({ desc: income.incomedesc, status: 'Paid' })
+  }
+
   return (
     <div className="space-y-5">
       {/* Header */}
@@ -1852,7 +1915,7 @@ export default function PeriodDetailPage() {
             <span className="text-gray-800 dark:text-gray-200">Budget Cycle Details</span>
           </div>
           <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-            {fmtDateRange(period.startdate, period.enddate, 'medium')}
+            {fmtDateRange(period.startdate, period.enddate)}
           </h1>
           {budget && <p className="text-sm text-gray-500 dark:text-gray-400">{budget.budget_frequency} · {budget.budgetowner} · {getCycleStageLabel(cycleStage)}</p>}
         </div>
@@ -1924,6 +1987,26 @@ export default function PeriodDetailPage() {
         </div>
       )}
 
+      {/* Period Navigation */}
+      <div className="flex items-center justify-between">
+        <Link
+          to={prevPeriod ? `/periods/${prevPeriod.finperiodid}` : '#'}
+          className={`flex items-center gap-1 text-sm font-medium ${prevPeriod ? 'text-dosh-600 hover:text-dosh-700 dark:text-dosh-400 dark:hover:text-dosh-300' : 'text-gray-300 dark:text-gray-600 cursor-not-allowed'}`}
+          onClick={e => { if (!prevPeriod) e.preventDefault() }}
+        >
+          <ChevronLeftIcon className="w-5 h-5" />
+          <span className="hidden sm:inline">{prevPeriod ? fmtDate(prevPeriod.startdate) : 'Previous'}</span>
+        </Link>
+        <Link
+          to={nextPeriod ? `/periods/${nextPeriod.finperiodid}` : '#'}
+          className={`flex items-center gap-1 text-sm font-medium ${nextPeriod ? 'text-dosh-600 hover:text-dosh-700 dark:text-dosh-400 dark:hover:text-dosh-300' : 'text-gray-300 dark:text-gray-600 cursor-not-allowed'}`}
+          onClick={e => { if (!nextPeriod) e.preventDefault() }}
+        >
+          <span className="hidden sm:inline">{nextPeriod ? fmtDate(nextPeriod.startdate) : 'Next'}</span>
+          <ChevronRightIcon className="w-5 h-5" />
+        </Link>
+      </div>
+
       {/* Summary cards */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {[
@@ -1954,86 +2037,106 @@ export default function PeriodDetailPage() {
           )}
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm period-detail-table">
             <thead>
               <tr className="border-b border-gray-100 dark:border-gray-800">
-                <th className="table-header-cell text-left">Description</th>
-                <th className="table-header-cell text-right col-budget">Budget</th>
-                <th className="table-header-cell text-right col-actual">
+                <th className="w-6 px-2"></th>
+                <th className="table-header-cell text-left w-[28%]">Description</th>
+                <th className="table-header-cell text-right col-budget w-[14%]">Budget</th>
+                <th className="table-header-cell text-right col-actual w-[14%]">
                   <span title="Sum of all transactions — read-only">Actual ∑</span>
                 </th>
-                <th className="table-header-cell text-right">Variance</th>
-                <th className="table-header-cell text-center w-[152px]">Actions</th>
+                <th className="table-header-cell text-right w-[12%]">Remaining</th>
+                <th className="table-header-cell text-left w-[18%]">Account</th>
+                <th className="table-header-cell text-center w-[18%]">Status / Txns</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
-              {incomes.length === 0 && <tr><td colSpan={5} className="px-4 py-4 text-center text-gray-400 italic text-sm">No income entries</td></tr>}
-              {incomes.map(i => (
-                <tr key={i.incomedesc} className="table-row">
-                  <td className="table-cell font-medium">
-                    <div className="flex items-center gap-2">
-                      <span>{i.incomedesc}</span>
-                      {i.system_key === 'carry_forward' && <span className="badge-blue">System</span>}
-                    </div>
-                  </td>
-                  <td className="table-cell-muted text-right col-budget">
-                    <BudgetAmountCell
-                      amount={i.budgetamount}
-                      canEdit={!locked && !closed && i.system_key !== 'carry_forward'}
-                      onEdit={() => setBudgetAdjustModal({ category: 'income', desc: i.incomedesc, budgetamount: i.budgetamount, title: i.incomedesc })}
-                      label={i.incomedesc}
-                    />
-                  </td>
-                  <td className="table-cell text-right col-actual font-semibold text-gray-800 dark:text-gray-200">{fmt(i.actualamount)}</td>
-                  <td className="table-cell text-right">
-                    <span className={`font-medium ${Number(i.actualamount) >= Number(i.budgetamount) ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'}`}>
-                      {fmt(Number(i.actualamount) - Number(i.budgetamount))}
-                    </span>
-                  </td>
-                  <td className="px-3 py-2 w-[152px]">
-                    <div className="ml-auto grid w-[116px] grid-cols-4 justify-items-center gap-1">
-                      <ActionIconButton
-                        disabled={closed}
-                        onClick={() => setIncomeModal({ incomedesc: i.incomedesc, budgetamount: i.budgetamount, actualamount: i.actualamount, defaultType: 'credit' })}
-                        title="Add income transaction"
-                        tone="success"
-                        icon={PlusIcon}
+              {incomes.length === 0 && <tr><td colSpan={7} className="px-4 py-4 text-center text-gray-400 italic text-sm">No income entries</td></tr>}
+              {incomes.map(i => {
+                const remaining = Number(i.actualamount) - Number(i.budgetamount)
+                return (
+                  <tr key={i.incomedesc} className="table-row">
+                    <td className="w-6 px-2 text-gray-200 dark:text-gray-700">
+                      <Bars2Icon className="w-4 h-4 opacity-0" />
+                    </td>
+                    <td className="table-cell font-medium">
+                      <div className="flex items-center gap-1.5">
+                        <span>{i.incomedesc}</span>
+                        {i.system_key === 'carry_forward' && <span className="badge-blue">System</span>}
+                      </div>
+                    </td>
+                    <td className="table-cell-muted text-right col-budget">
+                      <BudgetAmountCell
+                        amount={i.budgetamount}
+                        canEdit={!locked && !closed && i.system_key !== 'carry_forward'}
+                        onEdit={() => setBudgetAdjustModal({ category: 'income', desc: i.incomedesc, budgetamount: i.budgetamount, title: i.incomedesc })}
+                        label={i.incomedesc}
                       />
-                      <ActionIconButton
-                        disabled={closed}
-                        onClick={() => setIncomeModal({ incomedesc: i.incomedesc, budgetamount: i.budgetamount, actualamount: i.actualamount, defaultType: 'debit' })}
-                        title="Add income correction"
-                        tone="danger"
-                        icon={MinusIcon}
-                      />
-                      <ActionIconButton
-                        onClick={() => setIncomeModal({ incomedesc: i.incomedesc, budgetamount: i.budgetamount, actualamount: i.actualamount, defaultType: 'credit', readOnly: closed })}
-                        title="View transactions"
-                        icon={ListBulletIcon}
-                      />
-                      {!locked && !closed && i.system_key !== 'carry_forward' && (
-                        <DeleteActionButton
-                          onClick={() => { if (globalThis.confirm(`Remove "${i.incomedesc}" from this budget cycle?`)) deleteIncomeLine.mutate(i.incomedesc) }}
-                          title="Remove from budget cycle"
+                    </td>
+                    <td className="table-cell text-right col-actual font-semibold text-gray-800 dark:text-gray-200">{fmt(i.actualamount)}</td>
+                    <td className="table-cell text-right">
+                      {i.status === 'Paid' ? (
+                        <span className="font-medium text-success-600 dark:text-success-400">Paid</span>
+                      ) : (
+                        <span className={`font-medium ${remaining >= 0 ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'}`}>
+                          {fmt(remaining)}
+                        </span>
+                      )}
+                    </td>
+                    <td className="table-cell-muted text-sm">
+                      {i.linked_account ? <span className="text-purple-600 dark:text-purple-400">{i.linked_account}</span> : <span className="text-gray-300 dark:text-gray-600">—</span>}
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="flex items-center justify-center gap-1">
+                        <IncomeStatusPill
+                          income={i}
+                          onMarkPaid={() => handleMarkIncomePaid(i)}
+                          onRevise={() => setIncomeStatus.mutate({ desc: i.incomedesc, status: 'Revised' })}
                         />
-                      )}
-                      {(locked || closed || i.system_key === 'carry_forward') && (
-                        <EmptyActionSlot />
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                        <ActionIconButton
+                          disabled={closed || i.status === 'Paid'}
+                          onClick={() => setIncomeModal({ incomedesc: i.incomedesc, budgetamount: i.budgetamount, actualamount: i.actualamount, defaultType: 'credit' })}
+                          title="Add income transaction"
+                          tone="success"
+                          icon={PlusIcon}
+                        />
+                        <ActionIconButton
+                          disabled={closed || i.status === 'Paid'}
+                          onClick={() => setIncomeModal({ incomedesc: i.incomedesc, budgetamount: i.budgetamount, actualamount: i.actualamount, defaultType: 'debit' })}
+                          title="Add income correction"
+                          tone="danger"
+                          icon={MinusIcon}
+                        />
+                        <ActionIconButton
+                          onClick={() => setIncomeModal({ incomedesc: i.incomedesc, budgetamount: i.budgetamount, actualamount: i.actualamount, defaultType: 'credit', readOnly: closed })}
+                          title="View transactions"
+                          icon={ListBulletIcon}
+                        />
+                        {!locked && !closed && i.system_key !== 'carry_forward' && i.status !== 'Paid' ? (
+                          <DeleteActionButton
+                            onClick={() => { if (globalThis.confirm(`Remove "${i.incomedesc}" from this budget cycle?`)) deleteIncomeLine.mutate(i.incomedesc) }}
+                            title="Remove from budget cycle"
+                          />
+                        ) : (
+                          <EmptyActionSlot />
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
             <tfoot>
               <tr className="border-t-2 border-gray-200 dark:border-gray-700 font-semibold bg-gray-50 dark:bg-gray-800">
+                <td className="w-6 px-2"></td>
                 <td className="px-4 py-2 text-gray-700 dark:text-gray-300 text-sm">Total Income</td>
                 <td className="px-4 py-2 text-right text-gray-600 dark:text-gray-400 text-sm">{fmt(totalIncomeBudget)}</td>
                 <td className="px-4 py-2 text-right text-success-700 dark:text-success-400 text-sm">{fmt(totalIncomeActual)}</td>
                 <td className="px-4 py-2 text-right text-sm">
                   <span className={totalIncomeActual >= totalIncomeBudget ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'}>{fmt(totalIncomeActual - totalIncomeBudget)}</span>
                 </td>
-                <td className="px-3 py-2 w-[152px]"></td>
+                <td colSpan={2} />
               </tr>
             </tfoot>
           </table>
@@ -2051,18 +2154,18 @@ export default function PeriodDetailPage() {
           )}
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm period-detail-table">
             <thead>
               <tr className="border-b border-gray-100 dark:border-gray-800">
                 <th className="w-6 px-2"></th>
-                <th className="table-header-cell text-left">Description</th>
-                <th className="table-header-cell text-right col-budget">Budget</th>
-                <th className="table-header-cell text-right col-actual">
+                <th className="table-header-cell text-left w-[28%]">Description</th>
+                <th className="table-header-cell text-right col-budget w-[14%]">Budget</th>
+                <th className="table-header-cell text-right col-actual w-[14%]">
                   <span title="Sum of all transactions — read-only">Actual ∑</span>
                 </th>
-                <th className="table-header-cell text-right">Remaining</th>
-                <th className="table-header-cell text-left">Schedule</th>
-                <th className="table-header-cell text-center">
+                <th className="table-header-cell text-right w-[12%]">Remaining</th>
+                <th className="table-header-cell text-left w-[18%]">Schedule</th>
+                <th className="table-header-cell text-center w-[18%]">
                   <div className="flex items-center justify-center gap-2">
                     <span>Status / Txns</span>
                     <label htmlFor="expense-status-filter" className="sr-only">Status</label>
@@ -2090,7 +2193,7 @@ export default function PeriodDetailPage() {
                 const isPaid = e.status === 'Paid'
                 const canDelete = !locked && !closed && Number(e.actualamount) === 0 && Number(e.budgetamount) === 0
                 const canEditBudget = !locked && !closed && !isPaid
-                const canReorder = expenseStatusFilter === 'all' && !locked && !closed && !isPaid
+                const canReorder = expenseStatusFilter === 'all' && !locked && !closed
                 const canToggleAutoPaytype = autoExpenseEnabled && isScheduledExpense(e) && !locked && !closed && !isPaid
                 return (
                   <tr
@@ -2149,7 +2252,7 @@ export default function PeriodDetailPage() {
                       </div>
                     </td>
                     <td className="px-3 py-2">
-                      <div className="flex items-center justify-center gap-1 flex-wrap">
+                      <div className="flex items-center justify-center gap-1">
                           <ExpenseStatusPill
                             expense={e}
                             onMarkPaid={() => handleMarkPaid(e)}
@@ -2174,11 +2277,13 @@ export default function PeriodDetailPage() {
                           title="View transactions"
                           icon={ListBulletIcon}
                         />
-                        {canDelete && !isPaid && (
+                        {canDelete && !isPaid ? (
                           <DeleteActionButton
                             onClick={() => { if (globalThis.confirm(`Remove "${e.expensedesc}" from this budget cycle?`)) deleteExpenseLine.mutate(e.expensedesc) }}
                             title="Remove from budget cycle (no actuals, zero budget)"
                           />
+                        ) : (
+                          <EmptyActionSlot />
                         )}
                       </div>
                     </td>
@@ -2207,15 +2312,16 @@ export default function PeriodDetailPage() {
         <div className="card">
           <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 font-semibold text-gray-700 dark:text-gray-200 text-sm">Investments</div>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm period-detail-table">
               <thead>
                 <tr className="border-b border-gray-100 dark:border-gray-800">
-                  <th className="table-header-cell text-left">Investment</th>
-                  <th className="table-header-cell text-right col-budget">Budget</th>
-                  <th className="table-header-cell text-right col-actual">Actual ∑</th>
-                  <th className="table-header-cell text-right">Remaining</th>
-                  <th className="table-header-cell text-left">Account</th>
-                  <th className="table-header-cell text-center">Status / Txns</th>
+                  <th className="w-6 px-2"></th>
+                  <th className="table-header-cell text-left w-[28%]">Investment</th>
+                  <th className="table-header-cell text-right col-budget w-[14%]">Budget</th>
+                  <th className="table-header-cell text-right col-actual w-[14%]">Actual ∑</th>
+                  <th className="table-header-cell text-right w-[12%]">Remaining</th>
+                  <th className="table-header-cell text-left w-[18%]">Account</th>
+                  <th className="table-header-cell text-center w-[18%]">Status / Txns</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
@@ -2223,6 +2329,9 @@ export default function PeriodDetailPage() {
                   const remaining = Number(inv.remaining_amount ?? 0)
                   return (
                     <tr key={inv.investmentdesc} className="table-row">
+                      <td className="w-6 px-2 text-gray-200 dark:text-gray-700">
+                        <Bars2Icon className="w-4 h-4 opacity-0" />
+                      </td>
                       <td className="table-cell font-medium">{inv.investmentdesc}</td>
                       <td className="table-cell-muted text-right col-budget">
                         <BudgetAmountCell
@@ -2240,7 +2349,7 @@ export default function PeriodDetailPage() {
                         {inv.linked_account_desc ? <span className="text-purple-600 dark:text-purple-400">{inv.linked_account_desc}</span> : <span className="text-gray-300 dark:text-gray-600">—</span>}
                       </td>
                       <td className="px-3 py-2">
-                        <div className="flex items-center justify-center gap-1 flex-wrap">
+                        <div className="flex items-center justify-center gap-1">
                           <InvestmentStatusPill
                             investment={inv}
                             onMarkPaid={() => handleMarkInvestmentPaid(inv)}
@@ -2273,6 +2382,7 @@ export default function PeriodDetailPage() {
               </tbody>
               <tfoot>
                 <tr className="border-t-2 border-gray-200 dark:border-gray-700 font-semibold bg-gray-50 dark:bg-gray-800">
+                  <td className="w-6 px-2"></td>
                   <td className="px-4 py-2 text-gray-700 dark:text-gray-300 text-sm">Total Investments</td>
                   <td className="px-4 py-2 text-right text-gray-600 dark:text-gray-400 text-sm">{fmt(effectiveInvestmentBudget)}</td>
                   <td className="px-4 py-2 text-right text-gray-800 dark:text-gray-200 text-sm">{fmt(totalInvestmentActual)}</td>
@@ -2292,7 +2402,7 @@ export default function PeriodDetailPage() {
         <div className="card">
           <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 font-semibold text-gray-700 dark:text-gray-200 text-sm">Account Balances</div>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm period-detail-table">
               <thead>
                 <tr className="border-b border-gray-100 dark:border-gray-800">
                   <th className="table-header-cell text-left">Account</th>
@@ -2438,6 +2548,18 @@ export default function PeriodDetailPage() {
             onConfirm={() => {
               setInvestmentStatus.mutate({ desc: confirmPaidInvestmentModal.investment.investmentdesc, status: 'Paid' })
               setConfirmPaidInvestmentModal(null)
+            }}
+          />
+        </Modal>
+      )}
+      {confirmPaidIncomeModal && (
+        <Modal title="Mark Income as Paid?" onClose={() => setConfirmPaidIncomeModal(null)}>
+          <ConfirmPaidIncomeModal
+            income={confirmPaidIncomeModal.income}
+            onClose={() => setConfirmPaidIncomeModal(null)}
+            onConfirm={() => {
+              setIncomeStatus.mutate({ desc: confirmPaidIncomeModal.income.incomedesc, status: 'Paid' })
+              setConfirmPaidIncomeModal(null)
             }}
           />
         </Modal>
@@ -2680,6 +2802,18 @@ InvestmentStatusPill.propTypes = {
 
 ConfirmPaidInvestmentModal.propTypes = {
   investment: PropTypes.object.isRequired,
+  onConfirm: PropTypes.func.isRequired,
+  onClose: PropTypes.func.isRequired,
+}
+
+IncomeStatusPill.propTypes = {
+  income: PropTypes.object.isRequired,
+  onMarkPaid: PropTypes.func.isRequired,
+  onRevise: PropTypes.func.isRequired,
+}
+
+ConfirmPaidIncomeModal.propTypes = {
+  income: PropTypes.object.isRequired,
   onConfirm: PropTypes.func.isRequired,
   onClose: PropTypes.func.isRequired,
 }

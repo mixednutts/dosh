@@ -1,5 +1,31 @@
 # Dosh Release Notes
 
+## Unreleased
+
+## 0.3.1-alpha | released | 2026-04-10
+
+Dosh now adds Income status workflow and improves date format consistency.
+
+### Improvements
+
+- Added Income status workflow matching Expenses and Investments: Income lines now show `Spent` progress bar, can be marked `Paid`, and reopened as `Revised` when edits are needed
+- Hardened beta localisation settings so supported locale, currency, timezone, and date-format options now come from the backend and stay aligned with API validation
+- Restored the Settings date format control to a standard dropdown while adding supported custom formats such as `MM-dd-yy` and `MMM-dd-yyyy`
+- Improved date handling so the shared calendar control follows the active budget locale and date ranges use standard platform range formatting where available
+- Improved money entry normalization with string-based decimal handling, current negative-value rejection, and clearer beta scope that non-Latin digit locales are out of scope
+- Removed the unused AutoNumeric dependency and kept the active custom numeric input contract
+- Updated calculator amount fields so simple operators trigger calculation directly, with leading `=` still supported but no separate `Adjust` button required
+- Focused the shared add-transaction modal on the amount field by default
+
+### Fixed
+
+- Fixed date format consistency across the application: Layout sidebar, Period Detail header, navigation links, and Budget Cycles page now all respect the user's date format preference instead of using hardcoded presets
+- Expense items can now be deactivated even when already in use. Deactivation affects only future budget cycles; existing cycles retain the expense line. A warning explains the impact when deactivating an in-use expense.
+
+### Notes
+
+- Machine-readable CSV and JSON export remain locale-neutral for beta and are not presented as localized or human-readable export modes
+
 ## 0.3.0-alpha | released | 2026-04-10
 
 Dosh now adds budget-level localisation controls across regional display, date handling, and amount entry.

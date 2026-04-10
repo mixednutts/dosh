@@ -8,6 +8,7 @@ jest.mock('../api/client', () => ({
   getPeriodDetail: jest.fn(),
   getBudget: jest.fn(),
   setPeriodLock: jest.fn(),
+  getPeriodsForBudget: jest.fn(),
   getIncomeTransactions: jest.fn(),
   addIncomeTransaction: jest.fn(),
   deleteIncomeTransaction: jest.fn(),
@@ -91,6 +92,7 @@ describe('PeriodDetailPage', () => {
           varianceamount: '0.00',
           is_system: false,
           system_key: null,
+          linked_account: 'Main Account',
         },
       ],
       expenses: [],
@@ -557,7 +559,9 @@ describe('PeriodDetailPage', () => {
     expect(screen.getByTitle('Add income correction')).toBeTruthy()
     expect(screen.getByTitle('View transactions')).toBeTruthy()
     expect(screen.getByTitle('Remove from budget cycle')).toBeTruthy()
-    expect(screen.getByText('Actions')).toBeTruthy()
+    // Verify "Status / Txns" column header exists in Income section
+    const incomeSection = screen.getByText('Income').closest('.card')
+    expect(incomeSection.textContent).toContain('Status / Txns')
 
     fireEvent.click(screen.getByLabelText('Edit budget for Salary'))
     expect(await screen.findByText('Edit Line Budget — Salary')).toBeTruthy()
@@ -2520,7 +2524,7 @@ describe('PeriodDetailPage', () => {
     const totalIncomeRow = totalIncomeCell.closest('tr')
 
     expect(totalIncomeRow).toBeTruthy()
-    expect(totalIncomeRow.children).toHaveLength(5)
+    expect(totalIncomeRow.children).toHaveLength(6)
   })
 
   it('uses the same spent-pill wording model for investments as expenses', async () => {
@@ -3147,5 +3151,158 @@ describe('PeriodDetailPage', () => {
     await waitFor(() => {
       expect(client.setPeriodInvestmentStatus).toHaveBeenCalledWith(60, 'Brokerage', 'Revised', null)
     })
+  })
+
+  it('renders consistent table layout across income, expense, and investment sections', async () => {
+    // Layout consistency test: ensures column alignment persists across sections
+    client.getBudget.mockResolvedValue({
+      budgetid: 1,
+      budgetowner: 'Alex',
+      description: 'Home Budget',
+      budget_frequency: 'Monthly',
+      allow_cycle_lock: true,
+      auto_expense_enabled: false,
+    })
+    client.getPeriodsForBudget.mockResolvedValue([
+      { finperiodid: 70, startdate: '2026-03-01T00:00:00', enddate: '2026-03-31T00:00:00' },
+      { finperiodid: 71, startdate: '2026-04-01T00:00:00', enddate: '2026-04-30T00:00:00' },
+      { finperiodid: 72, startdate: '2026-05-01T00:00:00', enddate: '2026-05-31T00:00:00' },
+    ])
+    client.getPeriodDetail.mockResolvedValue({
+      period: {
+        finperiodid: 71,
+        budgetid: 1,
+        startdate: '2026-04-01T00:00:00',
+        enddate: '2026-04-30T00:00:00',
+        islocked: false,
+        cycle_status: 'ACTIVE',
+      },
+      incomes: [
+        {
+          finperiodid: 71,
+          budgetid: 1,
+          incomedesc: 'Salary',
+          budgetamount: '3000.00',
+          actualamount: '3000.00',
+          varianceamount: '0.00',
+          is_system: false,
+          system_key: null,
+          linked_account: 'Checking',
+        },
+      ],
+      expenses: [
+        {
+          finperiodid: 71,
+          budgetid: 1,
+          expensedesc: 'Rent',
+          budgetamount: '1000.00',
+          actualamount: '1000.00',
+          remaining_amount: '0.00',
+          status: 'Paid',
+          is_oneoff: false,
+          freqtype: 'Always',
+          frequency_value: null,
+          effectivedate: null,
+          paytype: 'MANUAL',
+          revision_snapshot: 0,
+        },
+      ],
+      investments: [
+        {
+          finperiodid: 71,
+          budgetid: 1,
+          investmentdesc: 'Savings',
+          budgeted_amount: '500.00',
+          actualamount: '500.00',
+          remaining_amount: '0.00',
+          status: 'Paid',
+          linked_account_desc: 'Savings Account',
+          revision_snapshot: 0,
+        },
+      ],
+      balances: [],
+      projected_savings: '1500.00',
+      closeout_snapshot: null,
+    })
+
+    renderWithProviders(<PeriodDetailPage />, {
+      route: '/periods/71',
+      path: '/periods/:periodId',
+    })
+
+    await screen.findByText('Salary')
+
+    // Verify "Remaining" column header exists in Income (not "Variance")
+    const incomeSection = screen.getByText('Income').closest('.card')
+    expect(incomeSection.textContent).toContain('Remaining')
+    expect(incomeSection.textContent).not.toContain('Variance')
+
+    // Verify "Account" column exists in Income section
+    expect(incomeSection.textContent).toContain('Account')
+
+    // Verify linked account is displayed
+    expect(screen.getByText('Checking')).toBeTruthy()
+
+    // Verify consistent column headers across sections
+    const expenseSection = screen.getByText('Expenses').closest('.card')
+    const investmentSection = screen.getByText('Investments').closest('.card')
+
+    // All sections should have Budget, Actual, Remaining columns
+    expect(incomeSection.textContent).toContain('Budget')
+    expect(incomeSection.textContent).toContain('Actual')
+    expect(expenseSection.textContent).toContain('Budget')
+    expect(expenseSection.textContent).toContain('Actual')
+    expect(expenseSection.textContent).toContain('Remaining')
+    expect(investmentSection.textContent).toContain('Budget')
+    expect(investmentSection.textContent).toContain('Actual')
+    expect(investmentSection.textContent).toContain('Remaining')
+
+    // All sections should have "Status / Txns" column
+    expect(incomeSection.textContent).toContain('Status / Txns')
+    expect(expenseSection.textContent).toContain('Status / Txns')
+    expect(investmentSection.textContent).toContain('Status / Txns')
+  })
+
+  it('shows period navigation chevrons when other periods exist', async () => {
+    client.getBudget.mockResolvedValue({
+      budgetid: 1,
+      budgetowner: 'Alex',
+      description: 'Home Budget',
+      budget_frequency: 'Monthly',
+      allow_cycle_lock: true,
+    })
+    client.getPeriodsForBudget.mockResolvedValue([
+      { finperiodid: 80, startdate: '2026-03-01T00:00:00', enddate: '2026-03-31T00:00:00' },
+      { finperiodid: 81, startdate: '2026-04-01T00:00:00', enddate: '2026-04-30T00:00:00' },
+      { finperiodid: 82, startdate: '2026-05-01T00:00:00', enddate: '2026-05-31T00:00:00' },
+    ])
+    client.getPeriodDetail.mockResolvedValue({
+      period: {
+        finperiodid: 81,
+        budgetid: 1,
+        startdate: '2026-04-01T00:00:00',
+        enddate: '2026-04-30T00:00:00',
+        islocked: false,
+        cycle_status: 'ACTIVE',
+      },
+      incomes: [],
+      expenses: [],
+      investments: [],
+      balances: [],
+      projected_savings: '0.00',
+      closeout_snapshot: null,
+    })
+
+    renderWithProviders(<PeriodDetailPage />, {
+      route: '/periods/81',
+      path: '/periods/:periodId',
+    })
+
+    // Wait for page to load
+    await screen.findByText('Home Budget')
+
+    // Navigation links should be present (chevrons are part of the links)
+    const navLinks = document.querySelectorAll('a[href^="/periods/"]')
+    expect(navLinks.length).toBe(2) // Previous and next
   })
 })

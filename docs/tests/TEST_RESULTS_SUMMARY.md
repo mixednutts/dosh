@@ -4,6 +4,45 @@ This document records meaningful automated test results from major working sessi
 
 It exists separately from [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) so the strategy can stay stable while future sessions still have a record of what was actually run and verified.
 
+## Latest Session: Income Status Workflow, Date Format Consistency, And Agent Documentation
+
+Session outcomes verified in this run:
+
+- Income now supports status workflow matching Expenses and Investments (Current → Paid → Revised → Paid)
+- Income status pills display progress bar and clickable workflow like other categories
+- When Income is marked Paid, Remaining column displays "Paid" (green) instead of calculated amount
+- Income Paid confirmation modal correctly shows "shortfall" for deficit (Actual < Budget)
+- Date formatting consistently respects user preference across all pages (no hardcoded presets)
+- Expense reordering allowed regardless of Paid status (only blocked by locked/closed period)
+- Created AGENTS.md for agent session initialization and scripts/db-migrate.sh migration helper
+
+### Verification
+
+Commands run during this session:
+
+```bash
+cd /home/ubuntu/dosh/frontend
+npm test -- --runInBand PeriodDetailPage.test.jsx
+
+npm run build
+cd /home/ubuntu/dosh
+docker compose down && docker compose up -d --build
+```
+
+Result:
+
+- frontend PeriodDetailPage tests: `53 passed`
+- build completed successfully (~304KB minified)
+- Docker Compose release completed with new migration
+- `/api/health` returned `{"status":"ok","app":"Dosh"}`
+- schema revision updated to `32e38f31a3bd` (income status migration)
+
+Backend test addition:
+
+- Added `test_paid_income_requires_revision_before_more_changes` to `test_status_workflows.py`
+- Test follows same pattern as expense and investment status workflow tests
+- Verifies: mark Paid → edits blocked → revise → edits allowed
+
 ## Latest Session: Localisation Beta Hardening, Operator-Triggered Calculator Entry, Date-Format Cleanup, And Redeploy
 
 Session outcomes verified in this run:

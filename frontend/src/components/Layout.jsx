@@ -47,7 +47,7 @@ function PeriodShortcutGroup({ title, periods, activePeriodId, onNav, emptyMessa
               )}
             >
               <span className="min-w-0 truncate">
-                {formatDateRange(period.startdate, period.enddate, 'compact')}
+                {formatDateRange(period.startdate, period.enddate)}
               </span>
               <ChevronRightIcon className="h-3.5 w-3.5 shrink-0" />
             </Link>

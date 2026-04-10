@@ -162,7 +162,7 @@ Frontend:
 
 Operational note:
 
-- the current app-version baseline is `0.3.0-alpha`, displayed in the UI as `v0.3.0-alpha`
+- the current app-version baseline is `0.3.1-alpha`, displayed in the UI as `v0.3.1-alpha`
 - Alembic is the required path for normal schema evolution from the current aligned baseline, with migration and release rules defined in [MIGRATION_AND_RELEASE_MANAGEMENT.md](/home/ubuntu/dosh/docs/MIGRATION_AND_RELEASE_MANAGEMENT.md)
 - the repo now has an explicit transaction-ledger cutover script in [cutover_unified_transactions.py](/home/ubuntu/dosh/backend/scripts/cutover_unified_transactions.py) for the current schema baseline
 - backend tests now run against an isolated SQLite database per test case through [conftest.py](/home/ubuntu/dosh/backend/tests/conftest.py)

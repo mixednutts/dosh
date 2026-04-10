@@ -50,7 +50,7 @@ from ..schemas import (
     AddExpenseToPeriodRequest, AddIncomeToPeriodRequest,
     SavingsTransferRequest,
     PeriodBalanceOut, PeriodExpenseReorderRequest, PeriodInvestmentOut,
-    PeriodExpenseStatusUpdate, PeriodExpenseBudgetUpdate, PeriodLineBudgetAdjustRequest,
+    PeriodExpenseStatusUpdate, PeriodIncomeStatusUpdate, PeriodExpenseBudgetUpdate, PeriodLineBudgetAdjustRequest,
     PeriodCloseoutPreviewOut, PeriodCloseoutRequest, PeriodDeleteOptionsOut,
     PeriodInvestmentStatusUpdate, PeriodTransactionOut, PeriodExpensePayTypeUpdate,
     AutoExpenseRunResultOut,
@@ -230,6 +230,19 @@ def _enrich_investments(investments: list, db) -> list[PeriodInvestmentOut]:
     return out
 
 
+def _enrich_incomes(incomes: list, db) -> list[PeriodIncomeOut]:
+    """Attach linked_account from IncomeType."""
+    from ..models import IncomeType
+    out = []
+    for pi in incomes:
+        it = db.get(IncomeType, (pi.budgetid, pi.incomedesc))
+        d = PeriodIncomeOut.model_validate(pi)
+        if it:
+            d.linked_account = it.linked_account
+        out.append(d)
+    return out
+
+
 def _period_status(period: FinancialPeriod) -> str:
     stage = cycle_stage(period)
     if stage == CURRENT_STAGE:
@@ -315,7 +328,7 @@ def _load_period_detail_components(period: FinancialPeriod, db: Session) -> dict
         balance.balance_type = bt.balance_type if bt else None
         enriched_balances.append(balance)
 
-    income_out = [PeriodIncomeOut.model_validate(i) for i in incomes]
+    income_out = _enrich_incomes(incomes, db)
     expense_out = _enrich_expenses(expenses, db)
     investment_out = _enrich_investments(investments, db)
     period_status = _period_status(period)
@@ -1491,6 +1504,40 @@ def update_income_budget(
     for period_id in changed_period_ids:
         sync_period_state(period_id, db)
 
+    db.commit()
+    db.refresh(pi)
+    return pi
+
+
+# ── Update income status (Current | Paid | Revised) ─────────────────────────
+
+@router.patch("/{finperiodid}/income/{incomedesc}/status", response_model=PeriodIncomeOut, responses=error_responses(404, 409, 422, 423))
+def set_income_status(
+    finperiodid: int,
+    incomedesc: str,
+    payload: PeriodIncomeStatusUpdate,
+    db: DbSession,
+):
+    period = _get_period_or_404(finperiodid, db)
+    _assert_not_closed(period)
+    allowed = {WORKING, PAID, REVISED}
+    if payload.status not in allowed:
+        raise HTTPException(422, f"status must be one of {allowed}")
+    pi = db.get(PeriodIncome, (finperiodid, incomedesc))
+    if not pi:
+        raise HTTPException(404, "Period income not found")
+    current_status = getattr(pi, "status", WORKING) or WORKING
+    if current_status != PAID and payload.status == REVISED:
+        raise HTTPException(409, "Only paid income can be revised")
+    if current_status == PAID and payload.status == WORKING:
+        raise HTTPException(409, "Paid income must be revised before returning to Current")
+    if current_status == REVISED and payload.status == WORKING:
+        raise HTTPException(409, "Revised income must be marked Paid when edits are complete")
+    pi.status = payload.status
+    if payload.status == REVISED:
+        pi.revision_comment = (payload.revision_comment or "").strip() or None
+    else:
+        pi.revision_comment = None
     db.commit()
     db.refresh(pi)
     return pi

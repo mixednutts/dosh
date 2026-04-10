@@ -89,3 +89,53 @@ def test_paid_investment_requires_revision_before_more_changes(client, db_sessio
     )
     assert updated_budget.status_code == 200, updated_budget.text
     assert updated_budget.json()["status"] == "Revised"
+
+
+def test_paid_income_requires_revision_before_more_changes(client, db_session):
+    """Income status workflow matches Expense and Investment behavior."""
+    setup = create_minimum_budget_setup(db_session)
+    budget = setup["budget"]
+    active_period = generate_periods(
+        client,
+        budgetid=budget.budgetid,
+        startdate=app_now_naive().replace(hour=0, minute=0, second=0, microsecond=0),
+        count=1,
+    )[0]
+
+    # Mark income as Paid
+    mark_paid = client.patch(
+        f"/api/periods/{active_period['finperiodid']}/income/Salary/status",
+        json={"status": "Paid"},
+    )
+    assert mark_paid.status_code == 200, mark_paid.text
+    assert mark_paid.json()["status"] == "Paid"
+
+    # Budget edits should be blocked while Paid
+    budget_edit = client.patch(
+        f"/api/periods/{active_period['finperiodid']}/income/Salary/budget",
+        json={"budgetamount": "5500.00", "scope": "current", "note": "Increase current period income"},
+    )
+    assert budget_edit.status_code == 423
+
+    # Transactions should be blocked while Paid
+    add_transaction = client.post(
+        f"/api/periods/{active_period['finperiodid']}/incomes/Salary/transactions/",
+        json={"amount": "100.00", "note": "Bonus"},
+    )
+    assert add_transaction.status_code == 423
+
+    # Revise to allow edits
+    revise = client.patch(
+        f"/api/periods/{active_period['finperiodid']}/income/Salary/status",
+        json={"status": "Revised"},
+    )
+    assert revise.status_code == 200, revise.text
+    assert revise.json()["status"] == "Revised"
+
+    # Budget edits should now work
+    updated_budget = client.patch(
+        f"/api/periods/{active_period['finperiodid']}/income/Salary/budget",
+        json={"budgetamount": "5500.00", "scope": "current", "note": "Increase current period income"},
+    )
+    assert updated_budget.status_code == 200, updated_budget.text
+    assert updated_budget.json()["status"] == "Revised"

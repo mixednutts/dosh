@@ -103,8 +103,8 @@ function PeriodSummaryRow({ summary, onDelete }) {
   const surplusBudgetTone = Number(summary.surplus_budget) >= 0 ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'
   const surplusActualTone = Number(summary.surplus_actual) >= 0 ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'
   const projectedSavingsTone = Number(summary.projected_savings) >= 0 ? 'text-success-700 dark:text-success-400' : 'text-red-600 dark:text-red-400'
-  const startLabel = formatDate(period.startdate, 'short')
-  const endLabel = formatDate(period.enddate, 'short')
+  const startLabel = formatDate(period.startdate)
+  const endLabel = formatDate(period.enddate)
   let cycleBadgeClass = 'badge-green'
   if (stage === 'CURRENT') {
     cycleBadgeClass = 'badge-blue'
@@ -520,7 +520,7 @@ function DeleteCycleModal({ deleteTarget, deleteMode, setDeleteMode, removePerio
     <Modal title="Delete Budget Cycle" onClose={onClose}>
       <div className="space-y-4">
         <p className="text-sm text-gray-600 dark:text-gray-300">
-          Delete the budget cycle from {formatDateRange(deleteTarget.period.startdate, deleteTarget.period.enddate, 'medium')}?
+          Delete the budget cycle from {formatDateRange(deleteTarget.period.startdate, deleteTarget.period.enddate)}?
         </p>
         <p className="text-xs text-gray-500 dark:text-gray-400">
           {deleteOptions?.delete_reason || 'Only cycles without actuals or transactions can be removed.'}

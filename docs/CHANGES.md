@@ -37,6 +37,62 @@ For the implemented export-shape plan that now defines budget-cycle export behav
 
 For the implemented Auto Expense workflow rules, scheduler behavior, migration expectations, and AUTO/MANUAL eligibility constraints introduced this session, read [AUTO_EXPENSE_PLAN.md](/home/ubuntu/dosh/docs/plans/AUTO_EXPENSE_PLAN.md).
 
+## Latest Session: Income Status Workflow, Date Format Consistency, And Agent Documentation (0.3.1-alpha)
+
+This session added status tracking to Income (matching Expense/Investment behavior), fixed date format consistency across the application, and created agent-specific documentation and workflows.
+
+Important direction now in place:
+
+- Income now supports the same status workflow as Expenses and Investments: `Current` → `Paid` → `Revised` → `Paid`
+- Income status pills show progress bar and clickable workflow like other categories
+- When Income is marked `Paid`, the Remaining column displays "Paid" (green) instead of the calculated amount
+- Confirmation modal for marking Income Paid correctly shows "shortfall" when Actual < Budget (income deficit = under, not over)
+- Date formatting now consistently respects the user's date format preference across all pages (no hardcoded 'compact', 'short', or 'medium' presets)
+- Created `AGENTS.md` for agent session initialization guidance
+- Created `scripts/db-migrate.sh` helper to ensure migrations persist to host filesystem
+- Expense reordering is now allowed regardless of Paid status (only blocked by locked/closed period)
+
+### Files changed
+
+Backend:
+- [models.py](/home/ubuntu/dosh/backend/app/models.py): Added `status` and `revision_comment` columns to `PeriodIncome`
+- [schemas.py](/home/ubuntu/dosh/backend/app/schemas.py): Added `status` and `revision_comment` to `PeriodIncomeOut`, created `PeriodIncomeStatusUpdate`
+- [periods.py](/home/ubuntu/dosh/backend/app/routers/periods.py): Added `set_income_status` endpoint
+- [alembic/versions/32e38f31a3bd_add_income_status.py](/home/ubuntu/dosh/backend/alembic/versions/32e38f31a3bd_add_income_status.py): Migration for income status columns
+
+Frontend:
+- [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx): Income uses `ProgressStatusPill`, status workflow, date format fixes
+- [Layout.jsx](/home/ubuntu/dosh/frontend/src/components/Layout.jsx): Period shortcuts use user date format
+- [BudgetPeriodsPage.jsx](/home/ubuntu/dosh/frontend/src/pages/BudgetPeriodsPage.jsx): Period dates use user date format
+- [api/client.js](/home/ubuntu/dosh/frontend/src/api/client.js): Added `setPeriodIncomeStatus`
+
+Documentation:
+- [AGENTS.md](/home/ubuntu/dosh/AGENTS.md): Created agent session initialization guide
+- [scripts/db-migrate.sh](/home/ubuntu/dosh/scripts/db-migrate.sh): Created migration helper script
+
+### Verification
+
+Backend tests (54 passed):
+- Period detail tests: 53 passed
+- Status workflow tests: 1 new test added for Income status workflow
+
+Frontend tests (53 passed):
+- Period detail page tests: 53 passed
+
+### Testing Notes
+
+Per [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md), the Income status workflow follows the same pattern as Expense and Investment:
+- `test_paid_income_requires_revision_before_more_changes` added to [test_status_workflows.py](/home/ubuntu/dosh/backend/tests/test_status_workflows.py)
+- Tests verify: mark Paid → edits blocked → revise → edits allowed
+- This aligns with the existing expense and investment status workflow tests
+
+Deployment:
+- Built successfully with Vite
+- Docker Compose release completed
+- Health check: `{"status":"ok","app":"Dosh"}`
+- Version: `0.3.1-alpha` (patch bump for Income status workflow and date format fixes)
+- Schema revision: `32e38f31a3bd`
+
 ## Latest Session: Expense Deactivation For In-Use Items
 
 This session implemented the ability to deactivate expense items even when they are already in use (included in generated budget cycles or have recorded transactions).

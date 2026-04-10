@@ -87,6 +87,32 @@
   .col-actual {
     @apply bg-dosh-50/60 dark:bg-dosh-900/20;
   }
+
+  /* ── Consistent Period Detail table layout ── */
+  .period-detail-table {
+    table-layout: fixed;
+    width: 100%;
+  }
+  .period-detail-table th,
+  .period-detail-table td {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .period-detail-table th:nth-child(1),
+  .period-detail-table td:nth-child(1) { width: 24px; }
+  .period-detail-table th:nth-child(2),
+  .period-detail-table td:nth-child(2) { width: 22%; }
+  .period-detail-table th:nth-child(3),
+  .period-detail-table td:nth-child(3) { width: 13%; }
+  .period-detail-table th:nth-child(4),
+  .period-detail-table td:nth-child(4) { width: 13%; }
+  .period-detail-table th:nth-child(5),
+  .period-detail-table td:nth-child(5) { width: 12%; }
+  .period-detail-table th:nth-child(6),
+  .period-detail-table td:nth-child(6) { width: 18%; }
+  .period-detail-table th:nth-child(7),
+  .period-detail-table td:nth-child(7) { width: 180px; }
 }
 
 .dosh-datepicker-popper {

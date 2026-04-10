@@ -90,7 +90,7 @@ dosh/
 
 - `Budget Cycle` is the preferred user-facing wording where it improves clarity, while backend naming may still use `period` for stability.
 - The product direction is practical, supportive, and workflow-driven rather than accounting-heavy.
-- The current release baseline is `0.3.0-alpha`, displayed in the UI as `v0.3.0-alpha`.
+- The current release baseline is `0.3.1-alpha`, displayed in the UI as `v0.3.1-alpha`.
 - Versioning, migration naming, and release-step expectations are defined in [MIGRATION_AND_RELEASE_MANAGEMENT.md](/home/ubuntu/dosh/docs/MIGRATION_AND_RELEASE_MANAGEMENT.md).
 - Published GitHub Releases are now the app-facing source for in-app release information, while [RELEASE_NOTES.md](/home/ubuntu/dosh/docs/RELEASE_NOTES.md) remains the repo-managed source used to generate those release bodies.
 - Detailed roadmap, plan, and testing content should live in the next-layer documents above rather than growing this README.

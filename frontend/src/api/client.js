@@ -174,6 +174,8 @@ export const removePeriodExpense = (periodId, desc) =>
   api.delete(`/periods/${periodId}/expense/${encodeURIComponent(desc)}`)
 export const removePeriodIncome = (periodId, desc) =>
   api.delete(`/periods/${periodId}/income/${encodeURIComponent(desc)}`)
+export const setPeriodIncomeStatus = (periodId, desc, status, revision_comment = null) =>
+  api.patch(`/periods/${periodId}/income/${encodeURIComponent(desc)}/status`, { status, revision_comment }).then(r => r.data)
 
 export const updatePeriodInvestmentBudget = (periodId, desc, data) =>
   api.patch(`/periods/${periodId}/investment/${encodeURIComponent(desc)}/budget`, data).then(r => r.data)

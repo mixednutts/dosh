@@ -100,6 +100,9 @@ class PeriodIncome(Base):
     is_system = Column(Boolean, nullable=False, default=False)
     system_key = Column(String, nullable=True)
     revision_snapshot = Column(Integer, default=0, nullable=False)
+    # Current | Paid | Revised
+    status = Column(String, default='Current', nullable=False)
+    revision_comment = Column(String, nullable=True)
 
     period = relationship("FinancialPeriod", back_populates="period_incomes")
 

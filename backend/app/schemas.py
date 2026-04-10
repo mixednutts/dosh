@@ -520,11 +520,19 @@ class PeriodIncomeOut(BaseModel):
     is_system: bool = False
     system_key: Optional[str] = None
     revision_snapshot: int = 0
+    linked_account: Optional[str] = None
+    status: str = 'Current'
+    revision_comment: Optional[str] = None
     model_config = {"from_attributes": True}
 
 
 class PeriodIncomeActualUpdate(BaseModel):
     actualamount: Decimal
+
+
+class PeriodIncomeStatusUpdate(BaseModel):
+    status: str
+    revision_comment: Optional[str] = None
 
 
 # ── PeriodExpense ─────────────────────────────────────────────────────────────

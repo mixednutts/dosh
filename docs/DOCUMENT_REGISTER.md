@@ -51,6 +51,40 @@ Maintenance notes:
 - should remain concise and current
 - should summarize rather than duplicate detailed design or backlog content
 
+### AGENTS.md
+
+Document:
+
+- [AGENTS.md](/home/ubuntu/dosh/AGENTS.md)
+
+Document type:
+
+- session handoff or working context
+
+Primary purpose:
+
+- provide agent-specific session initialization guidance
+- consolidate agent workflows and quick reference links
+- complement PROJECT_CONTEXT.md with AI-session-specific navigation
+
+Primary source-of-truth scope:
+
+- agent session reading order
+- agent-specific workflows (migration helper, date formatting patterns)
+- quick reference links to canonical documents
+
+Key relationships:
+
+- points to PROJECT_CONTEXT.md as primary working handoff
+- links to all canonical source documents
+- complements rather than duplicates DOCUMENTATION_FRAMEWORK.md
+
+Maintenance notes:
+
+- should remain minimal and navigation-focused
+- should not duplicate content from canonical documents
+- update when new agent workflows are identified
+
 ### MIGRATION_AND_RELEASE_MANAGEMENT.md
 
 Document:
