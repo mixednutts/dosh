@@ -2,7 +2,11 @@
 
 ## Unreleased
 
-Post-release changes will accumulate here until the next version is intentionally chosen.
+Post-release changes will accumulate here until the next version is ready to be selected.
+
+## 0.3.0-alpha | released | 2026-04-10
+
+Dosh now adds budget-level localisation controls across regional display, date handling, and amount entry.
 
 ### Highlights
 
@@ -17,6 +21,11 @@ Post-release changes will accumulate here until the next version is intentionall
 - Added fixed-day-of-month rollover handling for short months, including the accepted `31st` behavior and helper guidance in the expense flows
 - Aligned transaction-modal quick-fill behavior across income, expense, and investment through the shared modal rules, and neutralized transaction submit-button styling so these actions no longer read like cancel or destructive actions
 - Expanded the release-notes modal so newly available versions can reveal their details inline without losing the current-version focus
+- Added budget-level locale, currency, and timezone preferences, with settings controls and validation so each budget can drive its regional display behavior
+- Added a budget-level date format preference so normal date display can follow the selected budget setting while internal date keys stay stable
+- Added app-wide `Intl`-based currency, number, percent, date, time, and date-range formatting across high-traffic budget, setup, history, and period-detail surfaces
+- Added localized numeric masked entry for normal amount fields without currency symbols or codes inside the editable field, while preserving explicit leading-`=` formula mode for arithmetic entry and normalized decimal submission
+- Added migration-backed deployment for the localisation preferences, fixed a post-deploy budgets-page refresh crash in the pending-closure list, and corrected amount-entry masking so plain focused entry does not lock the keyboard
 
 ## 0.2.0-alpha | released | 2026-04-08
 

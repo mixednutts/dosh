@@ -12,8 +12,8 @@ Use it when:
 
 ## Current Baseline
 
-- current canonical app version: `0.2.0-alpha`
-- current UI display format: `v0.2.0-alpha`
+- current canonical app version: `0.3.0-alpha`
+- current UI display format: `v0.3.0-alpha`
 - current app state classification: `alpha`
 - current schema management authority: Alembic
 - current deployment path: Docker Compose
@@ -40,6 +40,8 @@ Rules for incrementing versions:
 
 Backlog management rule for future bumps:
 
+- release-worthy work should be assessed for a version bump as part of the wrap-up or release-preparation step; this assessment may result in an immediate bump when the change is cohesive, tested, and suitable to publish
+- “intentionally chosen” means a human or responsible release agent has selected the semver target and release-note content; it is not a policy reason to defer a bump after the release scope is clear
 - version bumps should happen before the unreleased backlog becomes too broad to review confidently as one release
 - treat roughly `5` to `10` distinct user-facing or operationally meaningful change items in `Unreleased` as the soft upper limit for one future release candidate
 - if the `Unreleased` section grows past that range, stop defaulting to “wait longer” and intentionally choose the next semver or pre-release bump

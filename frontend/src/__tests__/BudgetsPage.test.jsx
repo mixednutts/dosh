@@ -478,7 +478,7 @@ describe('BudgetsPage', () => {
       path: '/budgets',
     })
 
-    fireEvent.click(await screen.findByRole('button', { name: 'View events for 15 April 2026' }))
+    fireEvent.click(await screen.findByRole('button', { name: /15 April 2026/ }))
 
     expect(await screen.findByRole('heading', { name: 'Wednesday 15 April 2026' })).not.toBeNull()
     expect(screen.getByText('Rent')).not.toBeNull()
@@ -530,7 +530,7 @@ describe('BudgetsPage', () => {
       path: '/budgets',
     })
 
-    const cycleStartDay = await screen.findByRole('button', { name: 'View events for 1 April 2026' })
+    const cycleStartDay = await screen.findByRole('button', { name: /1 April 2026/ })
     expect(cycleStartDay.getAttribute('title')).toContain('Budget cycle starts')
 
     fireEvent.click(cycleStartDay)

@@ -4,6 +4,7 @@ import { QuestionMarkCircleIcon } from '@heroicons/react/24/outline'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { updateBudget } from '../../api/client'
 import { ACCOUNT_NAMING_OPTIONS } from '../../utils/accountNaming'
+import { CURRENCY_OPTIONS, DATE_FORMAT_OPTIONS, LOCALE_OPTIONS, TIMEZONE_OPTIONS } from '../../utils/localisation'
 
 function formatApiError(error, fallback) {
   return error?.response?.data?.detail || fallback
@@ -142,6 +143,78 @@ export default function SettingsTab({ budgetId, budget }) {
         </div>
 
         <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-800/50">
+          <label htmlFor="locale-preference" className="label">Locale</label>
+          <select
+            id="locale-preference"
+            className="input"
+            value={budget?.locale || 'en-AU'}
+            disabled={saveSettings.isPending}
+            onChange={e => handleSelectChange('locale', e.target.value)}
+          >
+            {LOCALE_OPTIONS.map(option => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </select>
+          <p className="mt-2 text-gray-600 dark:text-gray-400">
+            Choose the regional format Dosh should use for numbers, dates, and currency display.
+          </p>
+        </div>
+
+        <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-800/50">
+          <label htmlFor="currency-preference" className="label">Currency</label>
+          <select
+            id="currency-preference"
+            className="input"
+            value={budget?.currency || 'AUD'}
+            disabled={saveSettings.isPending}
+            onChange={e => handleSelectChange('currency', e.target.value)}
+          >
+            {CURRENCY_OPTIONS.map(option => (
+              <option key={option} value={option}>{option}</option>
+            ))}
+          </select>
+          <p className="mt-2 text-gray-600 dark:text-gray-400">
+            Choose the currency symbol and amount format for this budget.
+          </p>
+        </div>
+
+        <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-800/50">
+          <label htmlFor="timezone-preference" className="label">Timezone</label>
+          <select
+            id="timezone-preference"
+            className="input"
+            value={budget?.timezone || 'Australia/Sydney'}
+            disabled={saveSettings.isPending}
+            onChange={e => handleSelectChange('timezone', e.target.value)}
+          >
+            {TIMEZONE_OPTIONS.map(option => (
+              <option key={option} value={option}>{option}</option>
+            ))}
+          </select>
+          <p className="mt-2 text-gray-600 dark:text-gray-400">
+            Choose the local time Dosh should use for displayed timestamps and day-based guidance.
+          </p>
+        </div>
+
+        <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-800/50">
+          <label htmlFor="date-format-preference" className="label">Date Format</label>
+          <select
+            id="date-format-preference"
+            className="input"
+            value={budget?.date_format || 'medium'}
+            disabled={saveSettings.isPending}
+            onChange={e => handleSelectChange('date_format', e.target.value)}
+          >
+            {DATE_FORMAT_OPTIONS.map(option => (
+              <option key={option.value} value={option.value}>{option.label} - {option.sample}</option>
+            ))}
+          </select>
+          <p className="mt-2 text-gray-600 dark:text-gray-400">
+            Choose the default date shape Dosh should use in budget screens.
+          </p>
+        </div>
+
+        <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-800/50">
           <label htmlFor="account-naming-preference" className="label">Preferred Primary Account Naming</label>
           <select
             id="account-naming-preference"
@@ -175,6 +248,10 @@ SettingsTab.propTypes = {
     auto_add_surplus_to_investment: PropTypes.bool,
     allow_cycle_lock: PropTypes.bool,
     account_naming_preference: PropTypes.string,
+    locale: PropTypes.string,
+    currency: PropTypes.string,
+    timezone: PropTypes.string,
+    date_format: PropTypes.string,
     auto_expense_enabled: PropTypes.bool,
     auto_expense_offset_days: PropTypes.number,
   }),

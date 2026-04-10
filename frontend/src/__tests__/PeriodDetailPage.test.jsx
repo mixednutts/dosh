@@ -807,7 +807,7 @@ describe('PeriodDetailPage', () => {
     expect(screen.getByPlaceholderText('Amount').value).toBe('')
 
     fireEvent.change(screen.getByPlaceholderText('Amount'), {
-      target: { value: '500/4+0.5' },
+      target: { value: '=500/4+0.5' },
     })
     fireEvent.change(screen.getByPlaceholderText('Note (optional)'), {
       target: { value: 'Payroll correction' },
@@ -872,7 +872,7 @@ describe('PeriodDetailPage', () => {
     expect(await screen.findByText('Transactions — Rent')).toBeTruthy()
 
     fireEvent.change(screen.getByPlaceholderText('Amount'), {
-      target: { value: '1000/4+25' },
+      target: { value: '=1000/4+25' },
     })
     fireEvent.change(screen.getByPlaceholderText('Note (optional)'), {
       target: { value: 'Part payment' },
@@ -937,7 +937,7 @@ describe('PeriodDetailPage', () => {
     const amountInput = screen.getByPlaceholderText('Amount')
 
     fireEvent.click(screen.getByRole('button', { name: /Remaining amount \(\$700\.00\)/ }))
-    expect(amountInput.value).toBe('700')
+    expect(amountInput.value).toBe('700.00')
   })
 
   it('does not show add-remaining quick fill on the credit expense view', async () => {
@@ -1493,7 +1493,7 @@ describe('PeriodDetailPage', () => {
 
     await screen.findByText('Initial contribution')
     fireEvent.click(screen.getByRole('button', { name: /Remaining amount \(\$375\.00\)/ }))
-    expect(amountInput.value).toBe('375')
+    expect(amountInput.value).toBe('375.00')
   })
 
   it('hides the investment quick fill when nothing remains on the positive view', async () => {
@@ -1785,7 +1785,7 @@ describe('PeriodDetailPage', () => {
     expect(await screen.findByText('Transactions — Emergency Fund')).toBeTruthy()
 
     fireEvent.change(screen.getByPlaceholderText('Amount'), {
-      target: { value: '(200-50)/3' },
+      target: { value: '=(200-50)/3' },
     })
     fireEvent.change(screen.getByPlaceholderText('Note (optional)'), {
       target: { value: 'Adjusted contribution' },
@@ -1936,7 +1936,7 @@ describe('PeriodDetailPage', () => {
     expect(await screen.findByText('Edit Line Budget — Salary')).toBeTruthy()
 
     const textboxes = screen.getAllByRole('textbox')
-    fireEvent.change(textboxes[0], { target: { value: '1000/4+25' } })
+    fireEvent.change(textboxes[0], { target: { value: '=1000/4+25' } })
     fireEvent.change(textboxes[1], { target: { value: 'Adjusted budget' } })
     expect(screen.getByText('= $275.00')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Save Budget Change' }))
@@ -2090,7 +2090,7 @@ describe('PeriodDetailPage', () => {
       target: { value: 'Bonus' },
     })
     fireEvent.change(screen.getByLabelText('Budget Amount ($)'), {
-      target: { value: '1000/4+25' },
+      target: { value: '=1000/4+25' },
     })
     fireEvent.change(screen.getByLabelText('Comment / Note'), {
       target: { value: 'Quarterly top-up' },
@@ -2153,7 +2153,7 @@ describe('PeriodDetailPage', () => {
       target: { value: 'Rent' },
     })
     fireEvent.change(screen.getByLabelText('Budget Amount ($)'), {
-      target: { value: '1000/4+25' },
+      target: { value: '=1000/4+25' },
     })
     fireEvent.change(screen.getByLabelText('Comment / Note'), {
       target: { value: 'Monthly allocation' },
@@ -2219,7 +2219,7 @@ describe('PeriodDetailPage', () => {
     expect(await screen.findByText('Transactions — Salary')).toBeTruthy()
 
     const amountInput = screen.getByPlaceholderText('Amount')
-    fireEvent.change(amountInput, { target: { value: '1000//4' } })
+    fireEvent.change(amountInput, { target: { value: '=1000//4' } })
     fireEvent.click(screen.getByRole('button', { name: 'Add Income' }))
 
     expect(screen.getAllByText('Enter a valid calculation').length).toBeGreaterThan(0)
@@ -2227,7 +2227,7 @@ describe('PeriodDetailPage', () => {
     expect(client.addIncomeTransaction).not.toHaveBeenCalled()
 
     fireEvent.click(screen.getByRole('button', { name: /Full amount \(\$2,000\.00\)/ }))
-    expect(amountInput.value).toBe('2000')
+    expect(screen.getByPlaceholderText('Amount').value).toBe('2,000.00')
     expect(screen.queryByText('= $2,000.00')).toBeNull()
 
     fireEvent.change(screen.getByPlaceholderText('Note (optional)'), {

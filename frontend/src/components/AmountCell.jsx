@@ -4,12 +4,13 @@
  */
 import { useState } from 'react'
 import PropTypes from 'prop-types'
+import LocalizedAmountInput from './LocalizedAmountInput'
+import { useLocalisation } from './LocalisationContext'
 
 export default function AmountCell({ value, onSave, disabled = false }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState('')
-
-  const fmt = v => Number(v).toLocaleString('en-AU', { style: 'currency', currency: 'AUD' })
+  const { formatCurrency } = useLocalisation()
 
   if (!editing || disabled) {
     return (
@@ -19,18 +20,16 @@ export default function AmountCell({ value, onSave, disabled = false }) {
         className={`rounded px-1 text-left hover:bg-gray-100 ${disabled ? 'cursor-default' : 'cursor-pointer'}`}
         disabled={disabled}
       >
-        {fmt(value ?? 0)}
+        {formatCurrency(value ?? 0)}
       </button>
     )
   }
 
   return (
-    <input
+    <LocalizedAmountInput
       autoFocus
-      type="number"
-      step="0.01"
       value={draft}
-      onChange={e => setDraft(e.target.value)}
+      onChange={setDraft}
       onBlur={() => { setEditing(false); onSave(Number.parseFloat(draft) || 0) }}
       onKeyDown={e => {
         if (e.key === 'Enter') { setEditing(false); onSave(Number.parseFloat(draft) || 0) }

@@ -25,6 +25,10 @@ class Budget(Base):
     period_criticality_bias = Column(Integer, nullable=False, default=50)
     allow_cycle_lock = Column(Boolean, nullable=False, default=True)
     account_naming_preference = Column(String, nullable=False, default="Transaction")
+    locale = Column(String, nullable=False, default="en-AU")
+    currency = Column(String, nullable=False, default="AUD")
+    timezone = Column(String, nullable=False, default="Australia/Sydney")
+    date_format = Column(String, nullable=False, default="medium")
     auto_expense_enabled = Column(Boolean, nullable=False, default=False)
     auto_expense_offset_days = Column(Integer, nullable=False, default=0)
 

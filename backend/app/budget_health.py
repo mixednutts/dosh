@@ -432,7 +432,7 @@ def _build_current_period_check(
                     f"Your budget health concern point is set to the lower of {comfortable_surplus_buffer_pct}% deficit "
                     f"({percent_deficit_threshold})"
                     + (
-                        f" and ${maximum_deficit_amount}."
+                        f" and a fixed deficit amount of {maximum_deficit_amount}."
                         if maximum_deficit_amount is not None
                         else "."
                     )

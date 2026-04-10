@@ -5,6 +5,8 @@ import { PlusIcon, PencilIcon, TrashIcon, ClockIcon } from '@heroicons/react/24/
 import { getIncomeTypes, createIncomeType, updateIncomeType, deleteIncomeType, getBalanceTypes, getBudgetSetupAssessment, getIncomeTypeHistory } from '../../api/client'
 import Modal from '../../components/Modal'
 import SetupItemHistoryModal from '../../components/SetupItemHistoryModal'
+import LocalizedAmountInput from '../../components/LocalizedAmountInput'
+import { useLocalisation } from '../../components/LocalisationContext'
 import { getBalanceTypeLabel } from '../../utils/accountNaming'
 
 const emptyForm = { incomedesc: '', issavings: false, autoinclude: true, amount: '', linked_account: '' }
@@ -31,8 +33,8 @@ function IncomeTypeForm({ initial = emptyForm, onSubmit, onClose, loading, budge
         <input id={`${formIdPrefix}-description`} required disabled={structureLocked} className="input" value={form.incomedesc} onChange={e => set('incomedesc', e.target.value)} placeholder="e.g. Salary" />
       </div>
       <div>
-        <label htmlFor={`${formIdPrefix}-amount`} className="label">Default Amount ($)</label>
-        <input id={`${formIdPrefix}-amount`} disabled={structureLocked} type="number" step="0.01" min="0" className="input" value={form.amount} onChange={e => set('amount', e.target.value)} />
+        <label htmlFor={`${formIdPrefix}-amount`} className="label">Default Amount</label>
+        <LocalizedAmountInput id={`${formIdPrefix}-amount`} disabled={structureLocked} min="0" className="input" value={form.amount} onChange={value => set('amount', value)} />
       </div>
       <div>
         <label htmlFor={`${formIdPrefix}-linked-account`} className="label">Paid into Account</label>
@@ -73,9 +75,8 @@ function IncomeTypeForm({ initial = emptyForm, onSubmit, onClose, loading, budge
   )
 }
 
-const fmt = v => Number(v).toLocaleString('en-AU', { style: 'currency', currency: 'AUD' })
-
 export default function IncomeTypesTab({ budgetId, budget }) {
+  const { formatCurrency } = useLocalisation()
   const qc = useQueryClient()
   const [modal, setModal] = useState(null)
   const [historyItem, setHistoryItem] = useState(null)
@@ -175,7 +176,7 @@ export default function IncomeTypesTab({ budgetId, budget }) {
                     {t.incomedesc}
                     {usage?.in_use ? <span className="ml-2 badge-amber">In Use</span> : null}
                   </td>
-                  <td className="table-cell text-right text-gray-600 dark:text-gray-300">{fmt(t.amount)}</td>
+                  <td className="table-cell text-right text-gray-600 dark:text-gray-300">{formatCurrency(t.amount)}</td>
                   <td className="table-cell text-gray-600 dark:text-gray-300">{t.linked_account ?? <span className="text-gray-400 italic">—</span>}</td>
                   <td className="table-cell text-center">{t.autoinclude ? <span className="badge-green">Yes</span> : <span className="badge-gray">No</span>}</td>
                   <td className="table-cell">

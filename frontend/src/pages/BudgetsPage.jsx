@@ -3,10 +3,11 @@ import PropTypes from 'prop-types'
 import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArrowLeftIcon, ArrowRightIcon, ArrowTrendingDownIcon, ArrowTrendingUpIcon, CalendarDaysIcon, MinusIcon, PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline'
-import { addMonths, differenceInCalendarDays, endOfMonth, endOfWeek, format, isSameDay, isSameMonth, parseISO, startOfMonth, startOfWeek, subMonths } from 'date-fns'
+import { addMonths, differenceInCalendarDays, endOfMonth, endOfWeek, isSameDay, isSameMonth, parseISO, startOfMonth, startOfWeek, subMonths } from 'date-fns'
 import { getBudgets, createBudget, createDemoBudget, deleteBudget, getPeriodsForBudget, getBudgetHealth, getPeriodDetail } from '../api/client'
 import Modal from '../components/Modal'
 import Spinner from '../components/Spinner'
+import { LocalisationProvider, useLocalisation } from '../components/LocalisationContext'
 import { listFixedDayOccurrencesInRange } from '../utils/fixedDayScheduling'
 import { getCycleStage } from '../utils/periodStage'
 
@@ -15,7 +16,6 @@ const CUSTOM_DAY_CYCLE_VALUE = '__custom_day_cycle__'
 const isDevModeEnabled = () => (typeof __DEV_MODE__ !== 'undefined' ? __DEV_MODE__ : false)
 
 const emptyForm = { description: '', budgetowner: '', budget_frequency: 'Fortnightly' }
-const fmtCurrency = value => Number(value ?? 0).toLocaleString('en-AU', { style: 'currency', currency: 'AUD' })
 
 function parseCustomDayCycle(frequency) {
   const match = /^Every (\d+) Days$/.exec(frequency || '')
@@ -74,8 +74,8 @@ function groupPeriods(periods) {
   return { pendingClosure, current, future, historical }
 }
 
-function formatPeriodRange(period) {
-  return `${format(parseISO(period.startdate), 'dd MMM yy')} - ${format(parseISO(period.enddate), 'dd MMM yy')}`
+function formatPeriodRange(period, formatDateRange) {
+  return formatDateRange(period.startdate, period.enddate, 'short')
 }
 
 function startOfDay(date) {
@@ -214,17 +214,17 @@ function getCalendarDefaultMonth(currentPeriod, today) {
   return cycleStart
 }
 
-function buildEventsByDate(events, visibleMonth) {
+function buildEventsByDate(events, visibleMonth, formatDateKey) {
   return events
     .filter(event => isSameMonth(event.date, visibleMonth))
     .reduce((acc, event) => {
-      const key = format(event.date, 'yyyy-MM-dd')
+      const key = formatDateKey(event.date)
       acc[key] = [...(acc[key] ?? []), event]
       return acc
     }, {})
 }
 
-function buildCompactDayIndicators(dayEvents) {
+function buildCompactDayIndicators(dayEvents, formatCurrency) {
   const incomeEvents = dayEvents.filter(event => event.kind === 'income')
   const expenseEvents = dayEvents.filter(event => event.kind === 'expense')
 
@@ -234,7 +234,7 @@ function buildCompactDayIndicators(dayEvents) {
     indicators.push({
       key: 'income',
       kind: 'income',
-      title: incomeEvents.map(event => `${event.title} · ${fmtCurrency(event.amount)}`).join('\n'),
+      title: incomeEvents.map(event => `${event.title} · ${formatCurrency(event.amount)}`).join('\n'),
     })
   }
 
@@ -242,18 +242,18 @@ function buildCompactDayIndicators(dayEvents) {
     indicators.push({
       key: 'expense',
       kind: 'expense',
-      title: expenseEvents.map(event => `${event.title} · ${fmtCurrency(event.amount)}`).join('\n'),
+      title: expenseEvents.map(event => `${event.title} · ${formatCurrency(event.amount)}`).join('\n'),
     })
   }
 
   return indicators
 }
 
-function buildDayEventsTitle(dayEvents) {
+function buildDayEventsTitle(dayEvents, formatCurrency) {
   return dayEvents
     .map(event => {
       if (event.kind === 'cycle-start') return event.title
-      return `${event.title} · ${fmtCurrency(event.amount)}`
+      return `${event.title} · ${formatCurrency(event.amount)}`
     })
     .join('\n')
 }
@@ -308,6 +308,8 @@ function getCurrentPeriodDetailText(daysRemaining, cycleStage = null) {
 }
 
 function PendingClosureList({ periods, budgetId }) {
+  const { formatDateRange } = useLocalisation()
+
   if (periods.length === 0) return null
 
   const visiblePeriods = periods.slice(0, 3)
@@ -323,7 +325,7 @@ function PendingClosureList({ periods, budgetId }) {
         {visiblePeriods.map(period => (
           <div key={period.finperiodid} className="flex items-center justify-between gap-2 rounded-lg border border-amber-200/80 bg-white px-2.5 py-2 dark:border-amber-900/60 dark:bg-slate-900/70">
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[12px] font-medium text-gray-900 dark:text-gray-100">{formatPeriodRange(period)}</p>
+              <p className="truncate text-[12px] font-medium text-gray-900 dark:text-gray-100">{formatPeriodRange(period, formatDateRange)}</p>
             </div>
             <Link
               to={`/periods/${period.finperiodid}?closeout=1`}
@@ -347,6 +349,7 @@ function PendingClosureList({ periods, budgetId }) {
 }
 
 function CalendarDayEventsModal({ date, events, onClose }) {
+  const { formatCurrency, formatDate } = useLocalisation()
   const orderedEvents = [...events].sort((a, b) => {
     const rank = { 'cycle-start': 0, income: 1, expense: 2 }
     if (a.kind !== b.kind) return rank[a.kind] - rank[b.kind]
@@ -354,7 +357,7 @@ function CalendarDayEventsModal({ date, events, onClose }) {
   })
 
   return (
-    <Modal title={format(date, 'EEEE d MMMM yyyy')} onClose={onClose} size="md">
+    <Modal title={formatDate(date, 'long')} onClose={onClose} size="md">
       <div className="space-y-2">
         {orderedEvents.map(event => (
           <div
@@ -369,7 +372,7 @@ function CalendarDayEventsModal({ date, events, onClose }) {
                 </p>
               </div>
               {event.amount !== null ? (
-                <span className="shrink-0 text-sm font-semibold text-gray-900 dark:text-gray-100">{fmtCurrency(event.amount)}</span>
+                <span className="shrink-0 text-sm font-semibold text-gray-900 dark:text-gray-100">{formatCurrency(event.amount)}</span>
               ) : null}
             </div>
           </div>
@@ -399,8 +402,9 @@ function dayFallsWithinPeriods(day, periods) {
 }
 
 function CalendarMonthGrid({ periods, visibleMonth, onChangeMonth, today, events, compact = false, onSelectDay = null }) {
+  const { formatCurrency, formatDate, formatDateKey } = useLocalisation()
   const monthWeeks = buildMonthGrid(visibleMonth)
-  const eventsByDate = buildEventsByDate(events, visibleMonth)
+  const eventsByDate = buildEventsByDate(events, visibleMonth, formatDateKey)
 
   return (
     <div className={`rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900 ${compact ? 'p-2.5' : 'p-3'}`}>
@@ -415,7 +419,7 @@ function CalendarMonthGrid({ periods, visibleMonth, onChangeMonth, today, events
         </button>
         <div className="text-center">
           <p className={`${compact ? 'text-xs' : 'text-sm'} font-semibold text-gray-900 dark:text-gray-100`}>
-            {format(visibleMonth, 'MMMM yyyy')}
+            {formatDate(visibleMonth, 'monthYear')}
           </p>
           {!compact ? (
             <p className="text-[11px] text-gray-500 dark:text-gray-400">Current cycle timing</p>
@@ -437,16 +441,16 @@ function CalendarMonthGrid({ periods, visibleMonth, onChangeMonth, today, events
       </div>
       <div className="mt-1 space-y-1">
         {monthWeeks.map((week, weekIndex) => (
-          <div key={`${format(visibleMonth, 'yyyy-MM')}-week-${weekIndex}`} className="grid grid-cols-7 gap-1">
+          <div key={`${formatDateKey(visibleMonth)}-week-${weekIndex}`} className="grid grid-cols-7 gap-1">
             {week.map(day => {
-              const dateKey = format(day, 'yyyy-MM-dd')
+              const dateKey = formatDateKey(day)
               const dayEvents = eventsByDate[dateKey] ?? []
               const hasCycleStart = dayEvents.some(event => event.kind === 'cycle-start')
               const inCurrentMonth = isSameMonth(day, visibleMonth)
               const isToday = isSameDay(day, today)
               const isCycleDay = dayFallsWithinPeriods(day, periods)
               const canOpenDay = dayEvents.length > 0 && typeof onSelectDay === 'function'
-              const dayTitle = canOpenDay ? buildDayEventsTitle(dayEvents) : undefined
+              const dayTitle = canOpenDay ? buildDayEventsTitle(dayEvents, formatCurrency) : undefined
 
               return (
                 <button
@@ -461,19 +465,19 @@ function CalendarMonthGrid({ periods, visibleMonth, onChangeMonth, today, events
                     if (canOpenDay) onSelectDay(day, dayEvents)
                   }}
                   disabled={!canOpenDay}
-                  aria-label={canOpenDay ? `View events for ${format(day, 'd MMMM yyyy')}` : undefined}
+                  aria-label={canOpenDay ? `View events for ${formatDate(day, 'long')}` : undefined}
                   title={dayTitle}
                 >
                     <div className="flex items-center justify-between gap-1">
                       <span className={`${compact ? 'text-[9px]' : 'text-[11px]'} font-semibold ${
                         inCurrentMonth ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-600'
                       }`}>
-                        {format(day, 'd')}
+                        {formatDate(day, 'day')}
                       </span>
                   </div>
                   {compact ? (
                     <div className="mt-0.5 flex items-center gap-0.5">
-                      {buildCompactDayIndicators(dayEvents).map(indicator => (
+                      {buildCompactDayIndicators(dayEvents, formatCurrency).map(indicator => (
                         <span
                           key={`${dateKey}-${indicator.key}`}
                           className={`h-1.5 w-2.5 rounded-full ${indicator.kind === 'income' ? 'bg-dosh-500' : 'bg-amber-500'}`}
@@ -487,11 +491,11 @@ function CalendarMonthGrid({ periods, visibleMonth, onChangeMonth, today, events
                         <div
                           key={event.key}
                           className={`rounded px-1.5 py-1 text-[10px] leading-tight ${getCalendarEventPillClass(event.kind)}`}
-                          title={event.kind === 'cycle-start' ? event.title : `${event.title} · ${fmtCurrency(event.amount)}`}
+                          title={event.kind === 'cycle-start' ? event.title : `${event.title} · ${formatCurrency(event.amount)}`}
                         >
                           <div className="truncate font-semibold">{event.title}</div>
                           <div className="truncate opacity-80">
-                            {event.kind === 'cycle-start' ? 'Cycle start' : fmtCurrency(event.amount)}
+                            {event.kind === 'cycle-start' ? 'Cycle start' : formatCurrency(event.amount)}
                           </div>
                         </div>
                       ))}
@@ -513,6 +517,7 @@ function CalendarMonthGrid({ periods, visibleMonth, onChangeMonth, today, events
 }
 
 function FullCalendarModal({ budgetName, periods, events, today, onClose }) {
+  const { formatDate } = useLocalisation()
   const todayMonth = startOfMonth(getCalendarDefaultMonth(periods[0], today))
   const [visibleMonth, setVisibleMonth] = useState(todayMonth)
   const viewingTodayMonth = isSameMonth(visibleMonth, todayMonth)
@@ -524,7 +529,7 @@ function FullCalendarModal({ budgetName, periods, events, today, onClose }) {
         <div className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="rounded-full border border-dosh-200 bg-dosh-50 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-dosh-800 dark:border-dosh-800 dark:bg-dosh-950/30 dark:text-dosh-200">
-              Today {format(today, 'dd MMM')}
+              Today {formatDate(today, 'compact')}
             </div>
             <button
               type="button"
@@ -588,6 +593,7 @@ function TrafficLight({ status }) {
 }
 
 function BalanceSummaryCard({ currentPeriod, currentPeriodDetail, isLoading }) {
+  const { formatCurrency } = useLocalisation()
   if (!currentPeriod) {
     return (
       <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 dark:border-gray-700 dark:bg-gray-800/50">
@@ -633,21 +639,22 @@ function BalanceSummaryCard({ currentPeriod, currentPeriodDetail, isLoading }) {
           <div key={balance.balancedesc} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 text-xs">
             <span className="min-w-0 truncate text-gray-600 dark:text-gray-300">{balance.balancedesc}</span>
             <span className="shrink-0 text-right font-semibold text-gray-900 dark:text-gray-100">
-              {fmtCurrency(balance.closing_amount)}
+              {formatCurrency(balance.closing_amount)}
             </span>
           </div>
         ))}
       </div>
       <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 border-t border-gray-200 pt-2 dark:border-gray-700">
         <span className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Total</span>
-        <span className="text-right text-sm font-semibold text-gray-900 dark:text-gray-100">{fmtCurrency(totalClosing)}</span>
+        <span className="text-right text-sm font-semibold text-gray-900 dark:text-gray-100">{formatCurrency(totalClosing)}</span>
       </div>
     </div>
   )
 }
 
 function CalendarSummaryCard({ currentPeriod, calendarPeriods, calendarPeriodDetails, isLoading, budgetName }) {
-  const today = startOfDay(new Date())
+  const { getToday } = useLocalisation()
+  const today = startOfDay(getToday())
   const defaultMonth = getCalendarDefaultMonth(currentPeriod, today)
   const [visibleMonth, setVisibleMonth] = useState(startOfMonth(defaultMonth))
   const [showFullCalendar, setShowFullCalendar] = useState(false)
@@ -730,13 +737,14 @@ function CalendarSummaryCard({ currentPeriod, calendarPeriods, calendarPeriodDet
 }
 
 function BudgetStats({ budgetId, budgetName, periods = [], currentPeriodDetail, calendarPeriods = [], calendarPeriodDetails = [], currentPeriodDetailLoading, health, onOpenHealth, onOpenCurrentPeriodCheck }) {
+  const { formatDateRange, getToday } = useLocalisation()
   const grouped = useMemo(() => groupPeriods(periods), [periods])
   const currentPeriod = grouped.current[0] ?? null
   const currentPeriodStage = currentPeriod ? getCycleStage(currentPeriod) : null
   const daysRemaining = currentPeriod
-    ? Math.max(0, differenceInCalendarDays(parseISO(currentPeriod.enddate), new Date()) + 1)
+    ? Math.max(0, differenceInCalendarDays(parseISO(currentPeriod.enddate), getToday()) + 1)
     : null
-  const currentPeriodValue = currentPeriod ? formatPeriodRange(currentPeriod) : 'No current budget cycle'
+  const currentPeriodValue = currentPeriod ? formatPeriodRange(currentPeriod, formatDateRange) : 'No current budget cycle'
   const currentPeriodDetailText = getCurrentPeriodDetailText(daysRemaining, currentPeriodStage)
 
   return (
@@ -827,6 +835,7 @@ function BudgetStats({ budgetId, budgetName, periods = [], currentPeriodDetail, 
 }
 
 function CurrentPeriodCheckModal({ budget, assessment, evaluatedAt, onClose }) {
+  const { formatDateTime, timezone } = useLocalisation()
   return (
     <Modal title={`Current Budget Cycle Check — ${budget.description || 'Untitled Budget'}`} onClose={onClose} size="lg">
       <div className="space-y-5">
@@ -836,7 +845,7 @@ function CurrentPeriodCheckModal({ budget, assessment, evaluatedAt, onClose }) {
               <TrafficLight status={assessment.status} />
               <p className={`text-sm font-semibold ${healthToneClass(assessment.status)}`}>{assessment.summary}</p>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Evaluated {format(parseISO(evaluatedAt), 'dd MMM yyyy HH:mm')} local time
+                Evaluated {formatDateTime(evaluatedAt, 'medium')} {timezone}
               </p>
             </div>
             <div className={`flex h-16 w-16 items-center justify-center rounded-full text-xl font-light shadow-sm ${healthCircleClass(assessment.status)}`}>
@@ -871,6 +880,7 @@ function CurrentPeriodCheckModal({ budget, assessment, evaluatedAt, onClose }) {
 }
 
 function BudgetHealthModal({ budget, health, onClose }) {
+  const { formatDateTime, timezone } = useLocalisation()
   return (
     <Modal title={`Budget Health — ${budget.description || 'Untitled Budget'}`} onClose={onClose} size="lg">
       <div className="space-y-5">
@@ -898,7 +908,7 @@ function BudgetHealthModal({ budget, health, onClose }) {
                 <span>{health.momentum_summary}</span>
               </p>
               <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                Evaluated {format(parseISO(health.evaluated_at), 'dd MMM yyyy HH:mm')} local time
+                Evaluated {formatDateTime(health.evaluated_at, 'medium')} {timezone}
               </p>
             </div>
           </div>
@@ -1101,12 +1111,13 @@ function BudgetForm({ initial = emptyForm, onSubmit, onCreateDemo, onClose, load
 }
 
 export default function BudgetsPage() {
+  const { getToday } = useLocalisation()
   const qc = useQueryClient()
   const navigate = useNavigate()
   const [modal, setModal] = useState(null)
   const [healthModal, setHealthModal] = useState(null)
   const [currentCheckModal, setCurrentCheckModal] = useState(null)
-  const today = startOfDay(new Date())
+  const today = startOfDay(getToday())
 
   const { data: budgets = [], isLoading } = useQuery({ queryKey: ['budgets'], queryFn: getBudgets })
   const periodQueries = useQueries({
@@ -1237,28 +1248,30 @@ export default function BudgetsPage() {
                   ))}
                 </div>
               ) : (
-                <BudgetStats
-                  budgetId={b.budgetid}
-                  budgetName={b.description || 'Untitled Budget'}
-                  periods={periodQueries[index]?.data ?? []}
-                  currentPeriodDetail={(() => {
-                    const groupedPeriods = groupPeriods(periodQueries[index]?.data ?? [])
-                    const currentPeriod = groupedPeriods.current[0]
-                    return currentPeriod ? calendarPeriodDetailsById[currentPeriod.finperiodid] ?? null : null
-                  })()}
-                  calendarPeriods={getCalendarRelevantPeriods(periodQueries[index]?.data ?? [], today)}
-                  calendarPeriodDetails={getCalendarRelevantPeriods(periodQueries[index]?.data ?? [], today)
-                    .map(period => calendarPeriodDetailsById[period.finperiodid])
-                    .filter(Boolean)}
-                  currentPeriodDetailLoading={calendarBudgetLoadingByBudgetId[b.budgetid]}
-                  health={healthQueries[index]?.data ?? null}
-                  onOpenHealth={() => healthQueries[index]?.data && setHealthModal({ budget: b, health: healthQueries[index].data })}
-                  onOpenCurrentPeriodCheck={() => healthQueries[index]?.data && setCurrentCheckModal({
-                    budget: b,
-                    assessment: healthQueries[index].data.current_period_check,
-                    evaluatedAt: healthQueries[index].data.evaluated_at,
-                  })}
-                />
+                <LocalisationProvider budget={b}>
+                  <BudgetStats
+                    budgetId={b.budgetid}
+                    budgetName={b.description || 'Untitled Budget'}
+                    periods={periodQueries[index]?.data ?? []}
+                    currentPeriodDetail={(() => {
+                      const groupedPeriods = groupPeriods(periodQueries[index]?.data ?? [])
+                      const currentPeriod = groupedPeriods.current[0]
+                      return currentPeriod ? calendarPeriodDetailsById[currentPeriod.finperiodid] ?? null : null
+                    })()}
+                    calendarPeriods={getCalendarRelevantPeriods(periodQueries[index]?.data ?? [], today)}
+                    calendarPeriodDetails={getCalendarRelevantPeriods(periodQueries[index]?.data ?? [], today)
+                      .map(period => calendarPeriodDetailsById[period.finperiodid])
+                      .filter(Boolean)}
+                    currentPeriodDetailLoading={calendarBudgetLoadingByBudgetId[b.budgetid]}
+                    health={healthQueries[index]?.data ?? null}
+                    onOpenHealth={() => healthQueries[index]?.data && setHealthModal({ budget: b, health: healthQueries[index].data })}
+                    onOpenCurrentPeriodCheck={() => healthQueries[index]?.data && setCurrentCheckModal({
+                      budget: b,
+                      assessment: healthQueries[index].data.current_period_check,
+                      evaluatedAt: healthQueries[index].data.evaluated_at,
+                    })}
+                  />
+                </LocalisationProvider>
               )}
             </div>
           ))}
@@ -1280,20 +1293,24 @@ export default function BudgetsPage() {
       )}
 
       {healthModal && (
-        <BudgetHealthModal
-          budget={healthModal.budget}
-          health={healthModal.health}
-          onClose={() => setHealthModal(null)}
-        />
+        <LocalisationProvider budget={healthModal.budget}>
+          <BudgetHealthModal
+            budget={healthModal.budget}
+            health={healthModal.health}
+            onClose={() => setHealthModal(null)}
+          />
+        </LocalisationProvider>
       )}
 
       {currentCheckModal && (
-        <CurrentPeriodCheckModal
-          budget={currentCheckModal.budget}
-          assessment={currentCheckModal.assessment}
-          evaluatedAt={currentCheckModal.evaluatedAt}
-          onClose={() => setCurrentCheckModal(null)}
-        />
+        <LocalisationProvider budget={currentCheckModal.budget}>
+          <CurrentPeriodCheckModal
+            budget={currentCheckModal.budget}
+            assessment={currentCheckModal.assessment}
+            evaluatedAt={currentCheckModal.evaluatedAt}
+            onClose={() => setCurrentCheckModal(null)}
+          />
+        </LocalisationProvider>
       )}
     </div>
   )

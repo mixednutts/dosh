@@ -1,12 +1,14 @@
 import { useEffect, useRef } from 'react'
 import PropTypes from 'prop-types'
 import jsep from 'jsep'
-
-const fmt = value => Number(value ?? 0).toLocaleString('en-AU', { style: 'currency', currency: 'AUD' })
+import LocalizedAmountInput from './LocalizedAmountInput'
+import { useLocalisation } from './LocalisationContext'
+import { DEFAULT_LOCALISATION, parseLocalizedAmountInput } from '../utils/localisation'
 
 const ALLOWED_EXPRESSION_PATTERN = /^[\d\s.+\-*/()]+$/
 const EXPRESSION_PREVIEW_PATTERN = /[+\-*/()]/
 const TRAILING_OPERATOR_PATTERN = /[+\-*/(]\s*$/
+const FORMULA_PREFIX = '='
 
 function roundCurrency(value) {
   return Math.round((value + Number.EPSILON) * 100) / 100
@@ -59,7 +61,7 @@ function evaluateArithmeticAst(node) {
   }
 }
 
-export function evaluateAmountExpression(rawValue) {
+export function evaluateAmountExpression(rawValue, localisation = DEFAULT_LOCALISATION) {
   const trimmed = (rawValue ?? '').trim()
 
   if (!trimmed) {
@@ -72,7 +74,40 @@ export function evaluateAmountExpression(rawValue) {
     }
   }
 
-  if (!ALLOWED_EXPRESSION_PATTERN.test(trimmed)) {
+  if (!trimmed.startsWith(FORMULA_PREFIX)) {
+    const resolvedValue = parseLocalizedAmountInput(trimmed, localisation)
+    if (resolvedValue === null) {
+      return {
+        state: 'invalid',
+        resolvedValue: null,
+        error: 'Enter a valid amount, or start a calculation with =',
+        shouldShowPreview: false,
+        previewText: '',
+      }
+    }
+
+    return {
+      state: 'valid',
+      resolvedValue: roundCurrency(resolvedValue),
+      error: '',
+      shouldShowPreview: false,
+      previewText: '',
+    }
+  }
+
+  const expression = trimmed.slice(1).trim()
+
+  if (!expression) {
+    return {
+      state: 'incomplete',
+      resolvedValue: null,
+      error: '',
+      shouldShowPreview: true,
+      previewText: '=',
+    }
+  }
+
+  if (!ALLOWED_EXPRESSION_PATTERN.test(expression)) {
     return {
       state: 'invalid',
       resolvedValue: null,
@@ -83,7 +118,7 @@ export function evaluateAmountExpression(rawValue) {
   }
 
   try {
-    const ast = jsep(trimmed)
+    const ast = jsep(expression)
     const numericValue = Number(evaluateArithmeticAst(ast))
 
     if (!Number.isFinite(numericValue)) {
@@ -94,17 +129,17 @@ export function evaluateAmountExpression(rawValue) {
       state: 'valid',
       resolvedValue: roundCurrency(numericValue),
       error: '',
-      shouldShowPreview: EXPRESSION_PREVIEW_PATTERN.test(trimmed),
+      shouldShowPreview: true,
       previewText: '',
     }
   } catch {
-    if (EXPRESSION_PREVIEW_PATTERN.test(trimmed) && isIncompleteExpression(trimmed)) {
+    if (EXPRESSION_PREVIEW_PATTERN.test(expression) && isIncompleteExpression(expression)) {
       return {
         state: 'incomplete',
         resolvedValue: null,
         error: '',
         shouldShowPreview: true,
-        previewText: `= ${trimmed}`,
+        previewText: `= ${expression}`,
       }
     }
 
@@ -129,8 +164,12 @@ export default function AmountExpressionInput({
   id,
   className = '',
 }) {
-  const evaluation = evaluateAmountExpression(value)
+  const localisation = useLocalisation()
+  const evaluation = evaluateAmountExpression(value, localisation)
   const previousNotificationRef = useRef()
+  const previousIsFormulaRef = useRef(false)
+  const formulaInputRef = useRef(null)
+  const isFormula = String(value ?? '').trim().startsWith(FORMULA_PREFIX)
 
   useEffect(() => {
     const nextNotification = `${evaluation.state}:${evaluation.resolvedValue ?? 'null'}`
@@ -139,24 +178,51 @@ export default function AmountExpressionInput({
     onResolvedChange(evaluation.resolvedValue, evaluation.state)
   }, [evaluation.resolvedValue, evaluation.state, onResolvedChange])
 
+  useEffect(() => {
+    const justEnteredFormulaMode = isFormula && !previousIsFormulaRef.current
+    previousIsFormulaRef.current = isFormula
+
+    if (!justEnteredFormulaMode) return
+
+    const input = formulaInputRef.current
+    if (!input) return
+    input.focus()
+    input.setSelectionRange(input.value.length, input.value.length)
+  }, [isFormula])
+
   return (
     <div className="space-y-1">
-      <input
-        id={id}
-        autoFocus={autoFocus}
-        type="text"
-        inputMode="decimal"
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        placeholder={placeholder}
-        required={required}
-        aria-invalid={evaluation.state === 'invalid'}
-        data-min={min}
-        className={className || 'input'}
-      />
+      {isFormula ? (
+        <input
+          ref={formulaInputRef}
+          id={id}
+          autoFocus={autoFocus}
+          type="text"
+          inputMode="decimal"
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          placeholder={placeholder}
+          required={required}
+          aria-invalid={evaluation.state === 'invalid'}
+          data-min={min}
+          className={className || 'input'}
+        />
+      ) : (
+        <LocalizedAmountInput
+          id={id}
+          value={value}
+          onChange={onChange}
+          min={min}
+          placeholder={placeholder}
+          required={required}
+          autoFocus={autoFocus}
+          className={className || 'input'}
+          onFormulaStart={() => onChange('=')}
+        />
+      )}
       {(evaluation.state === 'valid' || evaluation.state === 'incomplete') && evaluation.shouldShowPreview && (
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          {evaluation.state === 'valid' ? `= ${fmt(evaluation.resolvedValue)}` : evaluation.previewText}
+          {evaluation.state === 'valid' ? `= ${localisation.formatCurrency(evaluation.resolvedValue)}` : evaluation.previewText}
         </p>
       )}
       {evaluation.state === 'invalid' && (

@@ -4,6 +4,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline'
 import { getBalanceTypes, createBalanceType, updateBalanceType, deleteBalanceType, getBudgetSetupAssessment } from '../../api/client'
 import Modal from '../../components/Modal'
+import LocalizedAmountInput from '../../components/LocalizedAmountInput'
+import { useLocalisation } from '../../components/LocalisationContext'
 import { getBalanceTypeLabel, getPreferredTransactionLabel } from '../../utils/accountNaming'
 
 const BALANCE_TYPE_OPTIONS = ['Transaction', 'Savings', 'Cash']
@@ -155,8 +157,8 @@ function BalanceTypeForm({
         </select>
         </div>
         <div>
-        <label htmlFor={`${formIdPrefix}-opening-balance`} className="label">Opening Balance ($)</label>
-        <input id={`${formIdPrefix}-opening-balance`} disabled={structureLocked} type="number" step="0.01" className="input" value={form.opening_balance} onChange={e => set('opening_balance', e.target.value)} placeholder="0.00" />
+        <label htmlFor={`${formIdPrefix}-opening-balance`} className="label">Opening Balance</label>
+        <LocalizedAmountInput id={`${formIdPrefix}-opening-balance`} disabled={structureLocked} className="input" value={form.opening_balance} onChange={value => set('opening_balance', value)} placeholder="0.00" />
         {openingBalanceLocked && (
           <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
             Opening balance can only be changed before this account is used in a generated budget cycle or recorded movement.
@@ -237,8 +239,6 @@ function BalanceTypeForm({
   )
 }
 
-const fmt = v => Number(v ?? 0).toLocaleString('en-AU', { style: 'currency', currency: 'AUD' })
-
 const TYPE_BADGE = {
   Transaction: 'badge-blue',
   Bank: 'badge-blue',
@@ -247,6 +247,7 @@ const TYPE_BADGE = {
 }
 
 export default function BalanceTypesTab({ budgetId, budget }) {
+  const { formatCurrency } = useLocalisation()
   const qc = useQueryClient()
   const [modal, setModal] = useState(null)
   const [actionError, setActionError] = useState('')
@@ -350,7 +351,7 @@ export default function BalanceTypesTab({ budgetId, budget }) {
                     <td className="table-cell">
                       <span className={TYPE_BADGE[t.balance_type] ?? 'badge-gray'}>{getBalanceTypeLabel(t.balance_type, accountNamingPreference)}</span>
                     </td>
-                    <td className="table-cell text-right text-gray-600 dark:text-gray-300">{fmt(t.opening_balance)}</td>
+                    <td className="table-cell text-right text-gray-600 dark:text-gray-300">{formatCurrency(t.opening_balance)}</td>
                     <td className="table-cell text-center">{t.is_primary ? <span className="badge-green">Yes</span> : <span className="badge-gray">—</span>}</td>
                     <td className="table-cell text-center">{t.active ? <span className="badge-green">Active</span> : <span className="badge-gray">Inactive</span>}</td>
                     <td className="table-cell">

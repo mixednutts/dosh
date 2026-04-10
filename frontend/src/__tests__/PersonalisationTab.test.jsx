@@ -47,7 +47,7 @@ describe('PersonalisationTab', () => {
 
     expect(overrunInput.value).toBe('15')
     expect(deficitInput.value).toBe('20')
-    expect(amountInput.value).toBe('75')
+    expect(amountInput.value).toBe('75.00')
 
     fireEvent.click(screen.getByRole('button', { name: 'Reset to Defaults' }))
 
@@ -61,9 +61,7 @@ describe('PersonalisationTab', () => {
 
     const amountInput = screen.getByLabelText('Maximum deficit amount')
     fireEvent.change(amountInput, { target: { value: '12.345' } })
-    expect(amountInput.value).toBe('')
-
-    fireEvent.change(amountInput, { target: { value: '12.34' } })
+    expect(amountInput.value).toBe('12.35')
 
     await act(async () => {
       jest.advanceTimersByTime(450)
@@ -71,7 +69,7 @@ describe('PersonalisationTab', () => {
 
     await waitFor(() => {
       expect(client.updateBudget).toHaveBeenCalledWith(1, expect.objectContaining({
-        maximum_deficit_amount: '12.34',
+        maximum_deficit_amount: '12.35',
       }))
     })
   })

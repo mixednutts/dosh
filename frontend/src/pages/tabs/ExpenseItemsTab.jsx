@@ -7,6 +7,8 @@ import { getExpenseItems, createExpenseItem, updateExpenseItem, deleteExpenseIte
 import Modal from '../../components/Modal'
 import SetupItemHistoryModal from '../../components/SetupItemHistoryModal'
 import ExpenseItemSchedulingFields from '../../components/ExpenseItemSchedulingFields'
+import LocalizedAmountInput from '../../components/LocalizedAmountInput'
+import { useLocalisation } from '../../components/LocalisationContext'
 import { getNextFixedDayOccurrence } from '../../utils/fixedDayScheduling'
 
 const emptyForm = {
@@ -18,8 +20,8 @@ const emptyForm = {
  * Calculate the next due date after `today` for a given expense item.
  * Returns a Date or null.
  */
-function calcNextDue(freqtype, frequencyValue, effectivedate) {
-  const today = new Date()
+function calcNextDue(freqtype, frequencyValue, effectivedate, todayDate = new Date()) {
+  const today = new Date(todayDate)
   today.setHours(0, 0, 0, 0)
 
   if (freqtype === 'Always') return null  // always in period, no specific date
@@ -80,9 +82,9 @@ function ExpenseItemForm({ initial = emptyForm, isEdit = false, onSubmit, onClos
         disableDescription={isEdit}
       />
       <div>
-        <label htmlFor={`${formIdPrefix}-amount`} className="label">Amount ($) <span className="text-red-500">*</span></label>
-        <input id={`${formIdPrefix}-amount`} required type="number" step="0.01" min="0" className="input"
-          value={form.expenseamount} onChange={e => set('expenseamount', e.target.value)} />
+        <label htmlFor={`${formIdPrefix}-amount`} className="label">Amount <span className="text-red-500">*</span></label>
+        <LocalizedAmountInput id={`${formIdPrefix}-amount`} required min="0" className="input"
+          value={form.expenseamount} onChange={value => set('expenseamount', value)} />
       </div>
       {isAlways && (
         <p className="text-xs text-dosh-600 dark:text-dosh-400 bg-dosh-50 dark:bg-dosh-900/20 rounded px-3 py-2">
@@ -118,8 +120,6 @@ function ExpenseItemForm({ initial = emptyForm, isEdit = false, onSubmit, onClos
   )
 }
 
-const fmt = v => Number(v).toLocaleString('en-AU', { style: 'currency', currency: 'AUD' })
-
 function FreqBadge({ freqtype, frequencyValue }) {
   if (!freqtype) return <span className="badge-gray">—</span>
   if (freqtype === 'Always') return <span className="badge-green">Always included</span>
@@ -129,6 +129,7 @@ function FreqBadge({ freqtype, frequencyValue }) {
 }
 
 export default function ExpenseItemsTab({ budgetId }) {
+  const { formatCurrency, formatDate, getToday } = useLocalisation()
   const qc = useQueryClient()
   const [modal, setModal] = useState(null)
   const [historyItem, setHistoryItem] = useState(null)
@@ -250,9 +251,9 @@ export default function ExpenseItemsTab({ budgetId }) {
             <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
               {displayed.map((item, idx) => {
                 const usage = expenseUsageByDesc[item.expensedesc]
-                const nextDue = calcNextDue(item.freqtype, item.frequency_value, item.effectivedate)
-                const nextDueStr = nextDue ? format(nextDue, 'dd MMM yyyy') : '—'
-                const commDate = item.effectivedate ? format(parseISO(item.effectivedate), 'dd MMM yyyy') : '—'
+                const nextDue = calcNextDue(item.freqtype, item.frequency_value, item.effectivedate, getToday())
+                const nextDueStr = nextDue ? formatDate(nextDue, 'medium') : '—'
+                const commDate = item.effectivedate ? formatDate(item.effectivedate, 'medium') : '—'
                 return (
                   <tr key={item.expensedesc} className="table-row">
                     <td className="px-2 py-2">
@@ -277,7 +278,7 @@ export default function ExpenseItemsTab({ budgetId }) {
                     <td className="px-3 py-2">
                       {getPayTypeBadge(item.paytype)}
                     </td>
-                    <td className="px-3 py-2 text-right text-gray-800 dark:text-gray-100 font-medium">{fmt(item.expenseamount)}</td>
+                    <td className="px-3 py-2 text-right text-gray-800 dark:text-gray-100 font-medium">{formatCurrency(item.expenseamount)}</td>
                     <td className="px-3 py-2 text-gray-500 dark:text-gray-400 text-xs">{commDate}</td>
                     <td className="px-3 py-2 text-xs font-medium">
                       {nextDue

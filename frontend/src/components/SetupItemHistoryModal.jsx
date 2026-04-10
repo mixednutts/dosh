@@ -1,9 +1,7 @@
-import { format, parseISO } from 'date-fns'
 import PropTypes from 'prop-types'
 import Modal from './Modal'
 import Spinner from './Spinner'
-
-const fmt = v => Number(v ?? 0).toLocaleString('en-AU', { style: 'currency', currency: 'AUD' })
+import { useLocalisation } from './LocalisationContext'
 
 function formatChangeValue(value) {
   if (value === null || value === undefined || value === '') return '—'
@@ -19,12 +17,13 @@ function categoryLabel(category) {
   return 'Item'
 }
 
-function buildSetupSummary(category, item) {
+function buildSetupSummary(category, item, localisation) {
   if (!item) return []
+  const { formatCurrency, formatDate } = localisation
 
   if (category === 'income') {
     return [
-      ['Default Amount', fmt(item.amount ?? 0)],
+      ['Default Amount', formatCurrency(item.amount ?? 0)],
       ['Paid into Account', item.linked_account || '—'],
       ['Auto Include', item.autoinclude ? 'Yes' : 'No'],
     ]
@@ -32,20 +31,20 @@ function buildSetupSummary(category, item) {
 
   if (category === 'expense') {
     return [
-      ['Amount', fmt(item.expenseamount ?? 0)],
+      ['Amount', formatCurrency(item.expenseamount ?? 0)],
       ['Frequency', item.freqtype || '—'],
       ['Schedule Value', item.frequency_value ?? '—'],
       ['Pay Type', item.paytype || '—'],
-      ['Effective Date', item.effectivedate ? format(parseISO(item.effectivedate), 'dd MMM yyyy') : '—'],
+      ['Effective Date', item.effectivedate ? formatDate(item.effectivedate, 'medium') : '—'],
       ['Active', item.active ? 'Yes' : 'No'],
     ]
   }
 
   if (category === 'investment') {
     return [
-      ['Initial Value', fmt(item.initial_value ?? 0)],
-      ['Planned Contribution', fmt(item.planned_amount ?? 0)],
-      ['Effective Date', item.effectivedate ? format(parseISO(item.effectivedate), 'dd MMM yyyy') : '—'],
+      ['Initial Value', formatCurrency(item.initial_value ?? 0)],
+      ['Planned Contribution', formatCurrency(item.planned_amount ?? 0)],
+      ['Effective Date', item.effectivedate ? formatDate(item.effectivedate, 'medium') : '—'],
       ['Linked Account', item.linked_account_desc || '—'],
       ['Primary', item.is_primary ? 'Yes' : 'No'],
       ['Active', item.active ? 'Yes' : 'No'],
@@ -56,9 +55,11 @@ function buildSetupSummary(category, item) {
 }
 
 export default function SetupItemHistoryModal({ historyQuery, itemDesc, category, currentItem, onClose }) {
+  const localisation = useLocalisation()
+  const { formatCurrency, formatDate, formatDateTime } = localisation
   const { data, isLoading, error } = historyQuery
   const title = `History Details — ${itemDesc}`
-  const setupSummary = buildSetupSummary(category, currentItem)
+  const setupSummary = buildSetupSummary(category, currentItem, localisation)
   let historyDetails
 
   if (isLoading) {
@@ -78,8 +79,8 @@ export default function SetupItemHistoryModal({ historyQuery, itemDesc, category
         <div className="divide-y divide-gray-100 dark:divide-gray-800 max-h-[28rem] overflow-y-auto">
           {data.entries.map(entry => {
             const scopeLabel = entry.budget_scope === 'future' ? 'Current + Future' : 'Current Only'
-            const startLabel = entry.period_startdate ? format(parseISO(entry.period_startdate), 'dd MMM yyyy') : '—'
-            const endLabel = entry.period_enddate ? format(parseISO(entry.period_enddate), 'dd MMM yyyy') : '—'
+            const startLabel = entry.period_startdate ? formatDate(entry.period_startdate, 'medium') : '—'
+            const endLabel = entry.period_enddate ? formatDate(entry.period_enddate, 'medium') : '—'
 
             return (
               <div key={entry.id} className="px-4 py-3 space-y-1.5">
@@ -104,7 +105,7 @@ export default function SetupItemHistoryModal({ historyQuery, itemDesc, category
                   <>
                     <div className="flex items-center justify-between gap-3">
                       <div className="text-sm font-medium text-gray-800 dark:text-gray-100">
-                        {fmt(entry.budget_before_amount)} {'->'} {fmt(entry.budget_after_amount)}
+                        {formatCurrency(entry.budget_before_amount)} {'->'} {formatCurrency(entry.budget_after_amount)}
                       </div>
                       <div className="flex items-center gap-2">
                         {entry.revisionnum ? <span className="badge-blue">{`Revision ${entry.revisionnum}`}</span> : null}
@@ -118,7 +119,7 @@ export default function SetupItemHistoryModal({ historyQuery, itemDesc, category
                   </>
                 )}
                 <div className="text-xs text-gray-400">
-                  Logged {format(parseISO(entry.entrydate), 'dd MMM yyyy HH:mm')}
+                  Logged {formatDateTime(entry.entrydate, 'medium')}
                 </div>
               </div>
             )

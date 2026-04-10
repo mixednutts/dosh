@@ -4,6 +4,150 @@ This document records meaningful automated test results from major working sessi
 
 It exists separately from [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) so the strategy can stay stable while future sessions still have a record of what was actually run and verified.
 
+## Latest Session: Localisation Date Format, Version-Bump Reassessment, And Regression Sweep
+
+Session outcomes verified in this run:
+
+- budget-level `date_format` was added alongside existing localisation preferences, defaulting to `medium`
+- Settings now exposes a date-format selector and shared localisation helpers apply the selected default date format through `Intl.DateTimeFormat`
+- [DateField.jsx](/home/ubuntu/dosh/frontend/src/components/DateField.jsx) now maps the selected budget date format into the date-picker display format while still submitting normalized `yyyy-MM-dd` values
+- release policy was clarified so “intentionally chosen” does not block a version bump once release scope is clear
+- version `0.3.0-alpha` was selected for the localisation release and the release notes were converted from `Unreleased` into a released entry dated `2026-04-10`
+- Alembic head moved to `c4d8e6f1a2b3`
+
+### Verification
+
+Commands run during this session:
+
+```bash
+cd /home/ubuntu/dosh/backend
+./.venv/bin/pytest tests/test_budget_schema_validation.py tests/test_auto_expense_migration.py tests/test_app_smoke.py
+./.venv/bin/pytest
+
+cd /home/ubuntu/dosh/frontend
+npm test -- --runTestsByPath src/__tests__/localisation.test.jsx src/__tests__/SettingsTab.test.jsx src/__tests__/Layout.test.jsx --silent
+npm run build
+npm test -- --silent
+
+cd /home/ubuntu/dosh
+python3 scripts/release_management.py validate --ref WORKTREE --require-release-entry
+```
+
+Result:
+
+- focused backend batch passed with `24 passed`
+- full backend suite passed with `114 passed`
+- focused frontend batch passed with `17 passed`
+- Vite production build passed
+- full frontend suite passed with `150 passed`
+- release validation confirmed all required version touchpoints aligned at `0.3.0-alpha` and found the matching released entry
+- migration-aware deployment completed successfully and live `/api/info` returned version `0.3.0-alpha` with schema revision `c4d8e6f1a2b3`
+
+Failures and resolutions:
+
+- the first full frontend run found stale regression expectations that quick-fill and personalisation amount fields should include `$` inside editable value inputs
+- those tests were corrected to preserve the current product contract: display labels may show currency symbols, but editable value fields stay numeric-only
+
+Deployment verification:
+
+```bash
+cd /home/ubuntu/dosh
+INCLUDE_OVERRIDE=true ./scripts/release_with_migrations.sh
+curl -sS http://127.0.0.1:3080/api/health
+curl -sS http://127.0.0.1:3080/api/info
+curl -I http://127.0.0.1:3080
+docker compose -f docker-compose.yml -f docker-compose.override.yml ps
+```
+
+Result:
+
+- Alembic upgraded the deployed database from `9b7f3c2d1a4e` to `c4d8e6f1a2b3`
+- `/api/health` returned `ok`
+- `/api/info` returned `{"app":"Dosh","version":"0.3.0-alpha","schema_revision":"c4d8e6f1a2b3"}`
+- the frontend root returned `HTTP/1.1 200 OK`
+- `dosh-backend` and `dosh-frontend` were both running, with the frontend exposed on `3080`
+
+## Latest Session: Full Localisation Support, Masked Amount Input, Formula Mode, And Deployment Refresh Fix
+
+Session outcomes verified in this run:
+
+- budget-level `locale`, `currency`, and `timezone` preferences were added with backend validation and Alembic migration coverage
+- shared frontend localisation helpers now cover currency, number, percent, date, time, date-time, date-range, storage date keys, timezone-aware today, localized amount parsing, and AutoNumeric options
+- normal amount entry now uses localized numeric masked inputs without currency symbols or codes inside editable fields, while formula mode activates only with a leading `=`
+- touched high-traffic surfaces now use shared localisation helpers rather than hard-coded `en-AU`, `AUD`, raw percent strings, or browser-local timestamp assumptions
+- the migration-aware deployment upgraded the live schema to `9b7f3c2d1a4e`
+- a post-deploy `/budgets` refresh crash was reproduced, fixed, rebuilt, redeployed, and verified with Playwright
+
+### Backend verification
+
+Commands run during this session:
+
+```bash
+cd /home/ubuntu/dosh/backend
+./.venv/bin/pytest
+```
+
+Result:
+
+- backend full suite passed with `113 passed`
+- migration helper head revision was updated to `c4d8e6f1a2b3`
+- budget preference schema validation and migration upgrade coverage passed as part of the suite
+
+### Frontend verification
+
+Commands run during this session:
+
+```bash
+cd /home/ubuntu/dosh/frontend
+npm test -- --silent
+npm run build
+npm test -- --runTestsByPath src/__tests__/BudgetsPage.test.jsx --silent
+```
+
+Result:
+
+- frontend full Jest suite passed with `142 tests passed`
+- Vite production build passed
+- targeted Budgets page regression passed after fixing the pending-closure refresh crash
+
+### Deployment verification
+
+Commands run during this session:
+
+```bash
+cd /home/ubuntu/dosh
+INCLUDE_OVERRIDE=true ./scripts/release_with_migrations.sh
+docker compose -f docker-compose.yml -f docker-compose.override.yml up -d --build frontend
+curl http://127.0.0.1:8000/api/health
+curl http://127.0.0.1:8000/api/info
+```
+
+Result:
+
+- the migration-aware release script built the images, backed up SQLite as `dosh-20260410-070948.db`, ran Alembic upgrade, and restarted the stack
+- `/api/health` returned `ok`
+- `/api/info` returned version `0.3.0-alpha` with schema revision `9b7f3c2d1a4e` before the follow-up date-format migration was added
+- after the post-deploy fix and frontend redeploy, Playwright refreshed `http://127.0.0.1:3080/budgets` with no console or page errors and confirmed the page rendered
+
+### Failures and resolutions
+
+Observed issues during the session:
+
+- post-deploy refresh of the budgets page flashed, then rendered black/blank because `PendingClosureList` called `formatPeriodRange(period)` without passing the required `formatDateRange` helper
+- `npm audit --audit-level=critical` still reports a critical advisory for `axios <1.15.0`, with a fix available through `npm audit fix`
+
+Resolution:
+
+- updated [BudgetsPage.jsx](/home/ubuntu/dosh/frontend/src/pages/BudgetsPage.jsx) so `PendingClosureList` resolves `formatDateRange` from localisation context and passes it into `formatPeriodRange`
+- rebuilt and redeployed the frontend after the fix
+- left the `axios` advisory unresolved because it was outside the localisation implementation scope and should be handled as a deliberate dependency-maintenance task
+
+Final result:
+
+- full localisation support for regional formatting and numeric masked amount input is implemented, tested, migrated, and deployed
+- the post-deploy budgets-page refresh crash is fixed and verified
+- version `0.3.0-alpha` was selected after reassessing the release policy; release notes now carry the localisation scope as a released entry dated `2026-04-10`
+
 ## Latest Session: Account Primary-Per-Type Fix, In-Use Account Edit Guard Repair, And Transfer-Balance Verification
 
 Session outcomes verified in this run:

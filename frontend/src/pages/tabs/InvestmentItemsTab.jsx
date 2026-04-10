@@ -6,6 +6,8 @@ import { format, parseISO } from 'date-fns'
 import { getInvestmentItems, createInvestmentItem, updateInvestmentItem, deleteInvestmentItem, getBalanceTypes, getBudgetSetupAssessment, getInvestmentItemHistory } from '../../api/client'
 import Modal from '../../components/Modal'
 import SetupItemHistoryModal from '../../components/SetupItemHistoryModal'
+import LocalizedAmountInput from '../../components/LocalizedAmountInput'
+import { useLocalisation } from '../../components/LocalisationContext'
 import { getBalanceTypeLabel } from '../../utils/accountNaming'
 
 const emptyForm = { investmentdesc: '', active: true, effectivedate: '', initial_value: '', planned_amount: '', linked_account_desc: '', is_primary: false }
@@ -33,15 +35,15 @@ function InvestmentForm({ initial = emptyForm, isEdit = false, onSubmit, onClose
           placeholder="e.g. ETF Portfolio" />
       </div>
       <div>
-        <label htmlFor={`${formIdPrefix}-initial-value`} className="label">Initial / Seed Value ($)</label>
-        <input id={`${formIdPrefix}-initial-value`} disabled={structureLocked} type="number" step="0.01" min="0" className="input" value={form.initial_value}
-          onChange={e => set('initial_value', e.target.value)} placeholder="0.00" />
+        <label htmlFor={`${formIdPrefix}-initial-value`} className="label">Initial / Seed Value</label>
+        <LocalizedAmountInput id={`${formIdPrefix}-initial-value`} disabled={structureLocked} min="0" className="input" value={form.initial_value}
+          onChange={value => set('initial_value', value)} placeholder="0.00" />
         <p className="text-xs text-gray-400 mt-1">Starting balance or initial investment amount</p>
       </div>
       <div>
-        <label htmlFor={`${formIdPrefix}-planned-amount`} className="label">Planned Contribution ($)</label>
-        <input id={`${formIdPrefix}-planned-amount`} disabled={structureLocked} type="number" step="0.01" min="0" className="input" value={form.planned_amount}
-          onChange={e => set('planned_amount', e.target.value)} placeholder="0.00" />
+        <label htmlFor={`${formIdPrefix}-planned-amount`} className="label">Planned Contribution</label>
+        <LocalizedAmountInput id={`${formIdPrefix}-planned-amount`} disabled={structureLocked} min="0" className="input" value={form.planned_amount}
+          onChange={value => set('planned_amount', value)} placeholder="0.00" />
         <p className="text-xs text-gray-400 mt-1">Used as the default budgeted amount for future budget cycles when you want a planned contribution.</p>
       </div>
       <div>
@@ -88,6 +90,7 @@ function InvestmentForm({ initial = emptyForm, isEdit = false, onSubmit, onClose
 }
 
 export default function InvestmentItemsTab({ budgetId, budget }) {
+  const { formatCurrency, formatDate } = useLocalisation()
   const qc = useQueryClient()
   const [modal, setModal] = useState(null)
   const [historyItem, setHistoryItem] = useState(null)
@@ -176,17 +179,17 @@ export default function InvestmentItemsTab({ budgetId, budget }) {
                 </span>
                 {item.effectivedate && (
                   <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
-                    from {format(parseISO(item.effectivedate), 'dd MMM yyyy')}
+                    from {formatDate(item.effectivedate, 'medium')}
                   </span>
                 )}
                 {Number(item.initial_value) > 0 && (
                   <span className="ml-2 text-xs text-dosh-600 dark:text-dosh-400">
-                    seed: {Number(item.initial_value).toLocaleString('en-AU', { style: 'currency', currency: 'AUD' })}
+                    seed: {formatCurrency(item.initial_value)}
                   </span>
                 )}
                 {Number(item.planned_amount ?? 0) > 0 && (
                   <span className="ml-2 text-xs text-dosh-600 dark:text-dosh-400">
-                    planned: {Number(item.planned_amount).toLocaleString('en-AU', { style: 'currency', currency: 'AUD' })}
+                    planned: {formatCurrency(item.planned_amount)}
                   </span>
                 )}
                 {item.is_primary && (

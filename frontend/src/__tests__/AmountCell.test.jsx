@@ -11,7 +11,7 @@ describe('AmountCell', () => {
 
     fireEvent.click(screen.getByText('$12.50'))
 
-    const input = screen.getByDisplayValue('12.5')
+    const input = screen.getByRole('textbox')
     fireEvent.change(input, { target: { value: '25.75' } })
     fireEvent.blur(input)
 
@@ -25,7 +25,7 @@ describe('AmountCell', () => {
     const { rerender } = render(<AmountCell value={40} onSave={onSave} />)
 
     fireEvent.click(screen.getByText('$40.00'))
-    const firstInput = screen.getByDisplayValue('40')
+    const firstInput = screen.getByRole('textbox')
     fireEvent.change(firstInput, { target: { value: '50' } })
     fireEvent.keyDown(firstInput, { key: 'Enter' })
 
@@ -34,7 +34,7 @@ describe('AmountCell', () => {
     rerender(<AmountCell value={40} onSave={onSave} />)
 
     fireEvent.click(screen.getByText('$40.00'))
-    const secondInput = screen.getByDisplayValue('40')
+    const secondInput = screen.getByRole('textbox')
     fireEvent.change(secondInput, { target: { value: '60' } })
     fireEvent.keyDown(secondInput, { key: 'Escape' })
 
@@ -49,7 +49,7 @@ describe('AmountCell', () => {
 
     fireEvent.click(screen.getByText('$99.00'))
 
-    expect(screen.queryByRole('spinbutton')).toBeNull()
+    expect(screen.queryByRole('textbox')).toBeNull()
     expect(onSave).not.toHaveBeenCalled()
   })
 })

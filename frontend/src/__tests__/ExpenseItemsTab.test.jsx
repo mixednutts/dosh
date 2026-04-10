@@ -124,7 +124,10 @@ describe('ExpenseItemsTab', () => {
     expect(await screen.findByText('Rent')).toBeTruthy()
     fireEvent.click(screen.getAllByRole('button').find(button => button.className.includes('btn-secondary') && !button.title))
 
-    const amountInput = screen.getAllByRole('spinbutton').find(input => input.value === '1200.00' || input.value === '1200')
+    const amountInput = screen.getByLabelText(/Amount/i)
+    expect(amountInput.value).toBe('1,200.00')
+    fireEvent.focus(amountInput)
+    expect(amountInput.value).toBe('1200')
     fireEvent.change(amountInput, { target: { value: '1300' } })
 
     const activeToggle = screen.getAllByRole('checkbox')[1]

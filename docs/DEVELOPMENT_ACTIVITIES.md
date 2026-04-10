@@ -21,6 +21,7 @@ It complements:
 - [CHANGES.md](/home/ubuntu/dosh/docs/CHANGES.md) for recorded product decisions and recent implementation history
 - [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/docs/plans/BUDGET_HEALTH_ADDENDUM.md) for staged budget health direction
 - [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_CYCLE_LIFECYCLE_PLAN.md) for the detailed cycle lifecycle and close-out plan that is now partially implemented
+- [LOCALISATION_SUPPORT_PLAN.md](/home/ubuntu/dosh/docs/plans/LOCALISATION_SUPPORT_PLAN.md) for the implemented regional formatting, numeric masked amount input, formula-mode, and preference-resolution boundaries
 - [BUDGET_ADJUSTMENT_REVISION_HISTORY_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_ADJUSTMENT_REVISION_HISTORY_PLAN.md) for the budget-adjustment, revision-history, and setup-history rules implemented this session
 - [SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md](/home/ubuntu/dosh/docs/plans/SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md) for the centralized setup-validity and downstream-protection model implemented this session
 - [AUTO_EXPENSE_PLAN.md](/home/ubuntu/dosh/docs/plans/AUTO_EXPENSE_PLAN.md) for the implemented Auto Expense rules, scheduler behavior, AUTO/MANUAL eligibility, and migration expectations
@@ -114,7 +115,7 @@ Roadmap-to-activity mapping:
 
 - `Beta Release > Close Out Process` is currently implemented through `Period Close Out`, plus supporting `Setup Assessment And Protected Configuration` and `Quality > Test Coverage`
 - `Beta Release > Cash Management` is currently implemented through `Cash Management`, with supporting work expected from `Quality > UX/UI` and `Quality > Test Coverage`
-- `Beta Release > Localisation` is currently implemented through `Localisation and Regional Fit`, with supporting work from `Quality > Consistency` and `Quality > Test Coverage`
+- `Beta Release > Localisation` is implemented for app-wide regional formatting and amount input through `Localisation and Regional Fit`, with later terminology and translation-style expansion still tracked there
 - `Beta Release > Budget Health Engine` is currently implemented through `Budget Health`, with supporting work from `Quality > Test Coverage` and demo-data maintenance
 - `Beta Release > Maintainability` is currently implemented primarily through `Quality > Reliability`, `Quality > Consistency`, and the release and migration policy documents
 - `Phase 2 > Reconciliation Module` is currently implemented through `Reconciliation`
@@ -415,33 +416,38 @@ Roadmap alignment:
 
 - `Beta Release > Localisation`
 
-Dosh already shows signs of regional fit, but localisation is not yet being treated as a deliberate product capability.
+Dosh now treats localisation as a deliberate product capability for regional formatting and amount entry.
 
 Current implemented slice:
 
 - account naming now has a budget-level display preference for `Transaction`, `Everyday`, and `Checking`
 - this should be treated as the reference pattern for terminology preferences that are display-layer only
 - the data model should stay stable underneath unless a deeper domain reason appears
+- budget records now carry `locale`, `currency`, `timezone`, and `date_format` preferences, defaulting to `en-AU`, `AUD`, `Australia/Sydney`, and `medium`
+- frontend display formatting now flows through shared localisation helpers built on `Intl.NumberFormat` and `Intl.DateTimeFormat`
+- normal money entry now uses localized numeric masks without currency symbols or codes inside editable fields, while deliberate arithmetic uses explicit leading-`=` formula mode and still submits normalized decimal values
+- backend storage, API payloads, ledger calculations, migrations, and machine-readable exports remain locale-neutral
+- the implemented rules and boundaries are captured in [LOCALISATION_SUPPORT_PLAN.md](/home/ubuntu/dosh/docs/plans/LOCALISATION_SUPPORT_PLAN.md)
 
 #### Activity Group: Formatting Foundations
 
 Status:
 
-- `Next`
+- `Completed`
 
 - `Completed`: introduce a shared expense-flow date field with consistent day-only `DD MMM YYYY` display for effective dates, while keeping stored values normalized and leaving broader locale and currency preference work for a later dedicated localisation pass
-- move locale, currency, and date formatting out of hard-coded UI assumptions
-- introduce shared frontend formatting utilities for currency, number, and date presentation
-- add tests around locale-sensitive display and period-boundary assumptions where practical
+- `Completed`: move locale, currency, percent, number, date, time, date-range, and timezone-aware today formatting out of hard-coded UI assumptions and into shared frontend localisation utilities
+- `Completed`: replace app-surface hard-coded regional display strings across dashboard, budget overview, budget cycles, period detail, setup tabs, history modals, amount previews, and settings while preserving normalized backend/API values
+- `Completed`: add regression coverage around locale-sensitive display, masked amount input, formula-mode previews, and budget preference validation
 
 #### Activity Group: Preferences and Resolution
 
 Status:
 
-- `Next`
+- `Completed`
 
-- add budget-level or user-level locale and currency preferences
-- decide where locale, timezone, and currency preferences are stored and resolved
+- `Completed`: add budget-level `locale`, `currency`, `timezone`, and `date_format` preferences with backend validation, settings controls, and frontend resolution from the active budget
+- `Completed`: add Alembic migrations `9b7f3c2d1a4e` and `c4d8e6f1a2b3` for the budget localisation preferences and include them in the migration test harness
 
 #### Activity Group: Terminology and Regional Behavior
 
@@ -457,6 +463,7 @@ Status:
 - decide cautiously whether period naming should follow the same preference pattern later; it was discussed this session and intentionally deferred
 - document which localisation decisions belong in product copy versus data model behavior
 - identify backend responses that should stay neutral versus pre-formatted for display
+- `Completed`: keep the current localisation pass scoped to regional formatting and input masking, not full text translation or backend domain-model renaming
 
 Cross-links:
 
@@ -637,6 +644,7 @@ Status:
 - `Completed`: extend setup-item history so revision-number increases can show the actual changed setup fields, not only `BUDGETADJ` entries
 - `Completed`: align setup revision numbers with real stored history records and link setup-affecting future budget adjustments into that revision sequence
 - `Completed`: add inline arithmetic amount entry to period-detail transaction, budget-adjustment, add-income, and add-expense modals, with resolved previews for valid calculations and in-progress summaries for incomplete arithmetic input
+- `Completed`: revise amount entry so normal money fields use localized masking and arithmetic is entered deliberately through leading-`=` formula mode with localized result previews and normalized decimal submission
 - `Completed`: add an expense status filter to the period-detail expenses table and align the control with the existing status column rather than introducing a separate toolbar
 - `Completed`: add a `View previous releases` option to the in-app release-notes modal by extending the backend payload and revealing older released versions on demand
 - provide an activation workflow for income lines in budget setup and align that workflow consistently across income, investment, and expense setup sections
@@ -659,6 +667,7 @@ Status:
 - continue broadening budget health coverage as scoring and reporting evolve
 - extend backend and frontend coverage around close-out, carry-forward, and delete continuity
 - `Completed`: add dedicated migration coverage for clean Alembic upgrade and upgrade from a pre-feature SQLite snapshot, alongside focused Auto Expense backend and period-detail frontend regression coverage
+- `Completed`: add localisation regression coverage for budget preference validation, `Intl`-based formatting across representative locales, masked amount input, explicit formula mode, and touched high-traffic surfaces
 - future setup and workflow testing should expand beyond the original `1 transaction + 1 savings` assumption
 - bookmark named scenarios such as `Single Account` and `Multi Transaction` so future sessions can deliberately test differing account shapes rather than relying on one default personal setup model
 - consider adding a richer demo-validation checklist or smoke flow once more reporting and reconciliation surfaces exist
@@ -688,6 +697,7 @@ Status:
 - `Completed`: harden the SonarQube workflow so failed quality-gate runs still upload sanitized artifacts with explicit failed-condition context and file-level measure hotspots
 - `Completed`: harden backend release-notes parsing by replacing the regex-based header parser with bounded string parsing and dedicated regression coverage after the regex DoS exposure was flagged
 - `Completed`: align Dosh to a GitHub-managed release-tagging and release-publishing workflow that creates official Git tags from validated version bumps on `main`, publishes GitHub Releases from validated repo release content, and feeds the in-app release-notes view through the backend GitHub Releases client; the repository workflows, protected `main` SonarQube gate, first remote `v0.1.3-alpha` tag, and first published GitHub Release are now in place, and the app now resolves `current_release` successfully from the published GitHub Release; use [GITHUB_RELEASE_MANAGEMENT_WORKFLOW_PLAN.md](/home/ubuntu/dosh/docs/plans/GITHUB_RELEASE_MANAGEMENT_WORKFLOW_PLAN.md) and [GITHUB_RELEASE_RUNBOOK.md](/home/ubuntu/dosh/docs/GITHUB_RELEASE_RUNBOOK.md) as the current references
+- `Completed`: deploy the schema-changing localisation release through the migration-aware Compose script, verify live schema revisions `9b7f3c2d1a4e` and `c4d8e6f1a2b3`, then fix and redeploy the post-deploy budgets-page refresh crash caused by a missing `formatDateRange` dependency in the pending-closure list; follow-up date-format migration `c4d8e6f1a2b3` is part of the same `0.3.0-alpha` release scope
 
 #### Activity Group: Consistency
 
@@ -722,12 +732,12 @@ If we want a practical order of work rather than just a thematic roadmap, this i
 1. Reconciliation > Closed-Cycle Reconciliation Handoff: design the correction path for closed cycles and close remaining write-path gaps.
 2. Reporting and Analysis > Reporting Foundations: add a reporting summary endpoint that rolls up period and ledger data.
 3. Reporting and Analysis > Reporting Foundations: surface a budget-level reporting card set in the frontend.
-4. Localisation and Regional Fit > Formatting Foundations and Preferences And Resolution: introduce shared localisation utilities and decide how locale, currency, and timezone preferences are stored.
-5. Cash Management > Cash Model Definition and Cash Summary And Review Surfaces: define the workflow and first summary model for available, committed, and reserved cash.
-6. Budget Health > Personalisation and Evidence Language plus Quality > Test Coverage: refine health personalisation and add supporting tests.
-7. Quality > Reliability: replace ad hoc startup migrations with a proper migration system and clean up deployment or deprecation warnings.
-8. Quality > UX/UI and Bugs: review period-detail, sidebar, and budget-summary polish after real use and close the small remaining UI defects.
-9. Export and Backup > Export Scope and Format plus Backup and Restore Design: define the first export and backup scope, including format and restore expectations.
+4. Cash Management > Cash Model Definition and Cash Summary And Review Surfaces: define the workflow and first summary model for available, committed, and reserved cash.
+5. Budget Health > Personalisation and Evidence Language plus Quality > Test Coverage: refine health personalisation and add supporting tests.
+6. Quality > Reliability: clean up deployment or deprecation warnings and address the outstanding `axios` audit advisory.
+7. Quality > UX/UI and Bugs: review period-detail, sidebar, and budget-summary polish after real use and close the small remaining UI defects.
+8. Export and Backup > Export Scope and Format plus Backup and Restore Design: define the first export and backup scope, including format and restore expectations.
+9. Localisation and Regional Fit > Terminology and Regional Behavior: revisit broader terminology, translation-style, or regional-copy needs only after the implemented formatting foundation has settled.
 
 ## Implementation Notes To Preserve
 
@@ -742,8 +752,7 @@ To avoid duplicating the canonical roadmap entries above, use these sections as 
 
 - `Reconciliation > Closed-Cycle Reconciliation Handoff`
 - `Reporting and Analysis > Reporting Foundations`
-- `Localisation and Regional Fit > Formatting Foundations`
-- `Localisation and Regional Fit > Preferences and Resolution`
+- `Localisation and Regional Fit > Terminology and Regional Behavior`
 - `Cash Management > Cash Model Definition`
 - `Cash Management > Cash Summary and Review Surfaces`
 - `Budget Health > Personalisation and Evidence Language`
@@ -768,13 +777,13 @@ If we want a practical order of work rather than just a thematic roadmap, this i
 1. Design the reconciliation handoff for closed cycles and close remaining write-path gaps.
 2. Add a reporting summary endpoint that rolls up period and ledger data.
 3. Surface a budget-level reporting card set in the frontend.
-4. Introduce shared localisation utilities and decide how locale, currency, and timezone preferences are stored.
-5. Define the cash management workflow and the first summary model for available, committed, and reserved cash.
-6. Add tests and cleanup around health personalisation and current-period threshold behavior.
-7. Replace ad hoc startup migrations with a proper migration system.
-8. Clean up remaining deployment and backend deprecation warnings from startup hooks and timestamp usage.
-9. Review sidebar and budget-summary polish after real use, especially around future first-class sections.
-10. Define the first export and backup scope, including format and restore expectations.
+4. Define the cash management workflow and the first summary model for available, committed, and reserved cash.
+5. Add tests and cleanup around health personalisation and current-period threshold behavior.
+6. Clean up remaining deployment and backend deprecation warnings from startup hooks and timestamp usage.
+7. Address the outstanding `axios` audit advisory deliberately rather than bundling it into unrelated feature work.
+8. Review sidebar and budget-summary polish after real use, especially around future first-class sections.
+9. Define the first export and backup scope, including format and restore expectations.
+10. Revisit broader localisation terminology, translation-style, or regional-copy needs after the implemented formatting foundation has settled.
 11. Revisit summary-card customization only after the current period-detail card set feels stable in real use.
 
 ## Guardrails For Future Work

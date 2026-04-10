@@ -52,7 +52,7 @@ describe('IncomeTypesTab', () => {
     fireEvent.change(screen.getByPlaceholderText('e.g. Salary'), {
       target: { value: 'Salary' },
     })
-    fireEvent.change(screen.getByRole('spinbutton'), {
+    fireEvent.change(screen.getByLabelText('Default Amount'), {
       target: { value: '2500' },
     })
     fireEvent.change(screen.getByRole('combobox'), {
@@ -89,7 +89,7 @@ describe('IncomeTypesTab', () => {
     fireEvent.change(screen.getByPlaceholderText('e.g. Salary'), {
       target: { value: 'Casual Work' },
     })
-    fireEvent.change(screen.getByRole('spinbutton'), {
+    fireEvent.change(screen.getByLabelText('Default Amount'), {
       target: { value: '300' },
     })
     fireEvent.click(screen.getByText('Save'))
@@ -127,7 +127,7 @@ describe('IncomeTypesTab', () => {
     fireEvent.change(screen.getByPlaceholderText('e.g. Salary'), {
       target: { value: 'Main Salary' },
     })
-    fireEvent.change(screen.getByRole('spinbutton'), {
+    fireEvent.change(screen.getByLabelText('Default Amount'), {
       target: { value: '2600' },
     })
     fireEvent.change(screen.getByRole('combobox'), {

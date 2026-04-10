@@ -104,7 +104,7 @@ def test_budget_health_uses_tighter_of_percent_and_dollar_deficit_thresholds(cli
         for evidence in tighter_current["evidence"]
         if evidence["label"] == "Surplus (Budget)"
     )
-    assert "and $10.00." in tighter_detail
+    assert "and a fixed deficit amount of 10.00." in tighter_detail
     assert "Effective deficit limit: -10.00." in tighter_detail
     assert tighter_current["score"] < baseline_current["score"]
 

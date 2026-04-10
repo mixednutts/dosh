@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import PropTypes from 'prop-types'
 import { useParams, Link, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { format, parseISO, addDays } from 'date-fns'
+import { parseISO, addDays } from 'date-fns'
 import {
   LockClosedIcon, LockOpenIcon, ChevronRightIcon, PlusIcon,
   MinusIcon, TrashIcon, ListBulletIcon, Bars2Icon, PencilSquareIcon,
@@ -25,10 +25,17 @@ import Modal from '../components/Modal'
 import Spinner from '../components/Spinner'
 import AmountExpressionInput from '../components/AmountExpressionInput'
 import ExpenseItemSchedulingFields from '../components/ExpenseItemSchedulingFields'
+import { useLocalisation } from '../components/LocalisationContext'
+import { makeLocalisation } from '../utils/localisation'
 import { getNextFixedDayOccurrence } from '../utils/fixedDayScheduling'
 import { getCycleStage, getCycleStageLabel } from '../utils/periodStage'
 
-const fmt = v => Number(v ?? 0).toLocaleString('en-AU', { style: 'currency', currency: 'AUD' })
+let activeLocalisation = makeLocalisation()
+const fmt = v => activeLocalisation.formatCurrency(v)
+const fmtDate = (v, preset = 'medium') => activeLocalisation.formatDate(v, preset)
+const fmtDateTime = (v, preset = 'medium') => activeLocalisation.formatDateTime(v, preset)
+const fmtDateRange = (start, end, preset = 'medium') => activeLocalisation.formatDateRange(start, end, preset)
+const fmtPercent = v => activeLocalisation.formatPercent(v)
 const SECONDARY_BUTTON_CLASSES = 'flex items-center justify-center w-7 h-7 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors'
 const DELETE_BUTTON_CLASSES = 'flex items-center justify-center w-7 h-7 rounded-full text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors'
 const DISABLED_ICON_BUTTON_CLASSES = 'opacity-30 cursor-not-allowed bg-gray-100 text-gray-400'
@@ -261,7 +268,7 @@ function getExpenseScheduleBadge(expense) {
 
   const nextDue = calcNextDue(expense.freqtype, expense.frequency_value, expense.effectivedate)
   return (
-    <span className="badge-blue" title={nextDue ? `Next: ${format(nextDue, 'dd MMM yyyy')}` : undefined}>
+    <span className="badge-blue" title={nextDue ? `Next: ${fmtDate(nextDue, 'medium')}` : undefined}>
       {label}
     </span>
   )
@@ -290,7 +297,7 @@ function getTransactionListContent({ isLoading, items, emptyLabel, maxHeightClas
                 {getPrimaryText(item, amount)}
               </p>
               {item.note && <p className="truncate text-xs text-gray-500 dark:text-gray-400">{item.note}</p>}
-              <p className="text-xs text-gray-400">{format(parseISO(item.entrydate), 'dd MMM yyyy HH:mm')}</p>
+              <p className="text-xs text-gray-400">{fmtDateTime(item.entrydate, 'medium')}</p>
             </div>
             {!locked && item.entry_kind !== 'budget_adjustment' && (
               <button
@@ -689,7 +696,7 @@ function ProgressStatusPill({ item, budgetAmount, actualAmount, remainingAmount,
   const isNearLimit = rawPercent >= 90 && rawPercent <= 100
   const revisionComment = item.revision_comment?.trim()
   const title = budget > 0
-    ? `${Math.round(rawPercent)}% spent • ${fmt(actual)} of ${fmt(budget)} • Remaining ${fmt(remaining)}`
+    ? `${fmtPercent(Math.round(rawPercent))} spent • ${fmt(actual)} of ${fmt(budget)} • Remaining ${fmt(remaining)}`
     : `No budget set • Actual ${fmt(actual)}`
 
   if (status === 'Paid') {
@@ -877,7 +884,7 @@ function BalanceTransactionsModal({ periodId, balancedesc, movementAmount }) {
                     </div>
                     {tx.system_reason && <p className="text-xs text-amber-700 dark:text-amber-400">{tx.system_reason}</p>}
                     {tx.note && <p className="text-xs text-gray-500 dark:text-gray-400">{tx.note}</p>}
-                    <p className="text-xs text-gray-400">{format(parseISO(tx.entrydate), 'dd MMM yyyy HH:mm')}</p>
+                    <p className="text-xs text-gray-400">{fmtDateTime(tx.entrydate, 'medium')}</p>
                   </div>
                   <div className={`text-sm font-semibold ${isPositive ? 'text-dosh-700 dark:text-dosh-400' : 'text-red-700 dark:text-red-400'}`}>
                     {fmt(delta)}
@@ -1648,6 +1655,7 @@ function ExportCycleModal({ periodId, onClose }) {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function PeriodDetailPage() {
+  activeLocalisation = useLocalisation()
   const { periodId } = useParams()
   const [searchParams, setSearchParams] = useSearchParams()
   const id = Number.parseInt(periodId, 10)
@@ -1843,7 +1851,7 @@ export default function PeriodDetailPage() {
             <span className="text-gray-800 dark:text-gray-200">Budget Cycle Details</span>
           </div>
           <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-            {format(parseISO(period.startdate), 'dd MMM yyyy')} – {format(parseISO(period.enddate), 'dd MMM yyyy')}
+            {fmtDateRange(period.startdate, period.enddate, 'medium')}
           </h1>
           {budget && <p className="text-sm text-gray-500 dark:text-gray-400">{budget.budget_frequency} · {budget.budgetowner} · {getCycleStageLabel(cycleStage)}</p>}
         </div>

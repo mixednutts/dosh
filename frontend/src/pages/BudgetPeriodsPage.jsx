@@ -8,6 +8,7 @@ import { deleteBudget, deletePeriod, getBudget, getBudgetSetupAssessment, getPer
 import clsx from 'clsx'
 import Modal from '../components/Modal'
 import Spinner from '../components/Spinner'
+import { useLocalisation } from '../components/LocalisationContext'
 import { getCycleStage, getCycleStageLabel } from '../utils/periodStage'
 
 const PERIOD_GROUP_SESSION_KEY_PREFIX = 'dosh-budget-periods-group-open'
@@ -15,8 +16,6 @@ const PERIOD_GROUP_SESSION_KEY_PREFIX = 'dosh-budget-periods-group-open'
 function formatApiError(error, fallback) {
   return error?.response?.data?.detail || fallback
 }
-
-const fmt = value => Number(value ?? 0).toLocaleString('en-AU', { style: 'currency', currency: 'AUD' })
 
 function toDateInputValue(value) {
   return format(value, 'yyyy-MM-dd')
@@ -98,13 +97,14 @@ function getGroupedPeriodSummaries(periodSummaries) {
 }
 
 function PeriodSummaryRow({ summary, onDelete }) {
+  const { formatCurrency, formatDate } = useLocalisation()
   const { period } = summary
   const stage = getCycleStage(period)
   const surplusBudgetTone = Number(summary.surplus_budget) >= 0 ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'
   const surplusActualTone = Number(summary.surplus_actual) >= 0 ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'
   const projectedSavingsTone = Number(summary.projected_savings) >= 0 ? 'text-success-700 dark:text-success-400' : 'text-red-600 dark:text-red-400'
-  const startLabel = format(parseISO(period.startdate), 'dd MMM yy')
-  const endLabel = format(parseISO(period.enddate), 'dd MMM yy')
+  const startLabel = formatDate(period.startdate, 'short')
+  const endLabel = formatDate(period.enddate, 'short')
   let cycleBadgeClass = 'badge-green'
   if (stage === 'CURRENT') {
     cycleBadgeClass = 'badge-blue'
@@ -132,15 +132,15 @@ function PeriodSummaryRow({ summary, onDelete }) {
           {period.islocked && <span className="badge-amber">Locked</span>}
         </div>
       </td>
-      <td className="table-cell-muted text-right col-budget">{fmt(summary.income_budget)}</td>
-      <td className="table-cell text-right col-actual text-success-700 dark:text-success-400">{fmt(summary.income_actual)}</td>
-      <td className="table-cell-muted text-right col-budget">{fmt(summary.expense_budget)}</td>
-      <td className="table-cell text-right col-actual text-red-600 dark:text-red-400">{fmt(summary.expense_actual)}</td>
-      <td className="table-cell-muted text-right col-budget">{fmt(summary.investment_budget)}</td>
-      <td className="table-cell text-right col-actual text-success-700 dark:text-success-400">{fmt(summary.investment_actual)}</td>
-      <td className={clsx('table-cell text-right font-semibold', projectedSavingsTone)}>{fmt(summary.projected_savings)}</td>
-      <td className={clsx('table-cell text-right font-semibold', surplusBudgetTone)}>{fmt(summary.surplus_budget)}</td>
-      <td className={clsx('table-cell text-right font-semibold', surplusActualTone)}>{fmt(summary.surplus_actual)}</td>
+      <td className="table-cell-muted text-right col-budget">{formatCurrency(summary.income_budget)}</td>
+      <td className="table-cell text-right col-actual text-success-700 dark:text-success-400">{formatCurrency(summary.income_actual)}</td>
+      <td className="table-cell-muted text-right col-budget">{formatCurrency(summary.expense_budget)}</td>
+      <td className="table-cell text-right col-actual text-red-600 dark:text-red-400">{formatCurrency(summary.expense_actual)}</td>
+      <td className="table-cell-muted text-right col-budget">{formatCurrency(summary.investment_budget)}</td>
+      <td className="table-cell text-right col-actual text-success-700 dark:text-success-400">{formatCurrency(summary.investment_actual)}</td>
+      <td className={clsx('table-cell text-right font-semibold', projectedSavingsTone)}>{formatCurrency(summary.projected_savings)}</td>
+      <td className={clsx('table-cell text-right font-semibold', surplusBudgetTone)}>{formatCurrency(summary.surplus_budget)}</td>
+      <td className={clsx('table-cell text-right font-semibold', surplusActualTone)}>{formatCurrency(summary.surplus_actual)}</td>
       <td className="table-cell">
         <div className="flex flex-wrap justify-end gap-2">
           <Link to={`/periods/${period.finperiodid}`} className="btn-primary">
@@ -277,6 +277,7 @@ function PeriodSummaryGroup({ title, summaries, collapsed = false, collapsible =
 }
 
 export default function BudgetPeriodsPage() {
+  const { formatDateRange } = useLocalisation()
   const { budgetId } = useParams()
   const location = useLocation()
   const navigate = useNavigate()
@@ -507,6 +508,7 @@ export default function BudgetPeriodsPage() {
 }
 
 function DeleteCycleModal({ deleteTarget, deleteMode, setDeleteMode, removePeriod, onClose }) {
+  const { formatDateRange } = useLocalisation()
   const { data: deleteOptions } = useQuery({
     queryKey: ['period-delete-options', deleteTarget.period.finperiodid],
     queryFn: () => getPeriodDeleteOptions(deleteTarget.period.finperiodid),
@@ -518,7 +520,7 @@ function DeleteCycleModal({ deleteTarget, deleteMode, setDeleteMode, removePerio
     <Modal title="Delete Budget Cycle" onClose={onClose}>
       <div className="space-y-4">
         <p className="text-sm text-gray-600 dark:text-gray-300">
-          Delete the budget cycle from {format(parseISO(deleteTarget.period.startdate), 'dd MMM yyyy')} to {format(parseISO(deleteTarget.period.enddate), 'dd MMM yyyy')}?
+          Delete the budget cycle from {formatDateRange(deleteTarget.period.startdate, deleteTarget.period.enddate, 'medium')}?
         </p>
         <p className="text-xs text-gray-500 dark:text-gray-400">
           {deleteOptions?.delete_reason || 'Only cycles without actuals or transactions can be removed.'}

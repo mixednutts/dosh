@@ -430,7 +430,7 @@ describe('BudgetPeriodsPage', () => {
     })
 
     expect(await screen.findByTitle('Collapse planned budget cycles')).toBeTruthy()
-    expect(screen.getByText('30 Jun 26')).toBeTruthy()
+    expect(screen.getByText('30 June 26')).toBeTruthy()
 
     firstRender.unmount()
 
@@ -440,7 +440,7 @@ describe('BudgetPeriodsPage', () => {
     })
 
     expect(await screen.findByTitle('Collapse planned budget cycles')).toBeTruthy()
-    expect(screen.getByText('30 Jun 26')).toBeTruthy()
+    expect(screen.getByText('30 June 26')).toBeTruthy()
   })
 
   it('allows choosing future-chain deletion when both delete options are available', async () => {

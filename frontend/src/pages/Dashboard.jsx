@@ -2,13 +2,13 @@ import { useQuery } from '@tanstack/react-query'
 import PropTypes from 'prop-types'
 import { Link } from 'react-router-dom'
 import { getBudgets, getPeriodsForBudget, getPeriodDetail } from '../api/client'
-import { format, parseISO } from 'date-fns'
+import { parseISO } from 'date-fns'
 import Spinner from '../components/Spinner'
+import { useLocalisation } from '../components/LocalisationContext'
 import { getCycleStage, getCycleStageLabel } from '../utils/periodStage'
 
-const fmt = v => Number(v ?? 0).toLocaleString('en-AU', { style: 'currency', currency: 'AUD' })
-
 function PeriodRow({ budget, period }) {
+  const { formatCurrency, formatDateRange } = useLocalisation()
   const { data } = useQuery({
     queryKey: ['period', period.finperiodid],
     queryFn: () => getPeriodDetail(period.finperiodid),
@@ -27,7 +27,7 @@ function PeriodRow({ budget, period }) {
 
   const cell = (val, cls = '') => loading
     ? <td className="table-cell text-right"><span className="inline-block w-16 h-4 rounded bg-gray-100 dark:bg-gray-800 animate-pulse" /></td>
-    : <td className={`table-cell text-right font-medium ${cls}`}>{fmt(val)}</td>
+    : <td className={`table-cell text-right font-medium ${cls}`}>{formatCurrency(val)}</td>
 
   return (
     <tr className="table-row">
@@ -42,7 +42,7 @@ function PeriodRow({ budget, period }) {
       </td>
       <td className="table-cell">
         <div className="text-xs">
-          <p className="text-gray-700 dark:text-gray-200">{format(parseISO(period.startdate), 'dd MMM')} – {format(parseISO(period.enddate), 'dd MMM yyyy')}</p>
+          <p className="text-gray-700 dark:text-gray-200">{formatDateRange(period.startdate, period.enddate, 'medium')}</p>
           <span className="badge-gray mt-0.5 mr-1">{getCycleStageLabel(getCycleStage(period))}</span>
           {period.islocked && <span className="badge-amber mt-0.5">Locked</span>}
         </div>
@@ -52,10 +52,10 @@ function PeriodRow({ budget, period }) {
       {cell(effectiveExpenseBudget, 'text-gray-600 dark:text-gray-300')}
       {cell(expenseActual, 'text-red-600 dark:text-red-400')}
       <td className={`table-cell text-right font-bold ${!loading && surplusBudget >= 0 ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'}`}>
-        {loading ? <span className="inline-block w-16 h-4 rounded bg-gray-100 dark:bg-gray-800 animate-pulse" /> : fmt(surplusBudget)}
+        {loading ? <span className="inline-block w-16 h-4 rounded bg-gray-100 dark:bg-gray-800 animate-pulse" /> : formatCurrency(surplusBudget)}
       </td>
       <td className={`table-cell text-right font-bold ${!loading && surplusActual >= 0 ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'}`}>
-        {loading ? <span className="inline-block w-16 h-4 rounded bg-gray-100 dark:bg-gray-800 animate-pulse" /> : fmt(surplusActual)}
+        {loading ? <span className="inline-block w-16 h-4 rounded bg-gray-100 dark:bg-gray-800 animate-pulse" /> : formatCurrency(surplusActual)}
       </td>
       <td className="table-cell text-right">
         <Link to={`/periods/${period.finperiodid}`} className="badge-blue cursor-pointer whitespace-nowrap">Details →</Link>
@@ -65,6 +65,7 @@ function PeriodRow({ budget, period }) {
 }
 
 function BudgetTableRows({ budget }) {
+  const { formatDate } = useLocalisation()
   const { data: periods = [] } = useQuery({
     queryKey: ['periods', budget.budgetid],
     queryFn: () => getPeriodsForBudget(budget.budgetid),
@@ -101,7 +102,7 @@ function BudgetTableRows({ budget }) {
         <td className="table-cell-muted"><span className="badge-gray">{budget.budget_frequency}</span></td>
         <td colSpan={7} className="table-cell-muted italic">
           No current budget cycle
-          {upcoming && <span className="ml-2 text-xs text-gray-400">Next: {format(parseISO(upcoming.startdate), 'dd MMM yyyy')}</span>}
+          {upcoming && <span className="ml-2 text-xs text-gray-400">Next: {formatDate(upcoming.startdate, 'medium')}</span>}
         </td>
       </tr>
     )
@@ -135,6 +136,7 @@ BudgetTableRows.propTypes = {
 }
 
 export default function Dashboard() {
+  const { formatDate } = useLocalisation()
   const { data: budgets = [], isLoading } = useQuery({ queryKey: ['budgets'], queryFn: getBudgets })
 
   if (isLoading) return <div className="flex justify-center pt-16"><Spinner /></div>
@@ -143,7 +145,7 @@ export default function Dashboard() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Dashboard</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400">{format(new Date(), 'EEEE d MMMM yyyy')}</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">{formatDate(new Date(), 'long')}</p>
       </div>
 
       {budgets.length === 0 ? (

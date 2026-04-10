@@ -21,6 +21,10 @@ describe('SettingsTab', () => {
       auto_add_surplus_to_investment: true,
       allow_cycle_lock: true,
       account_naming_preference: 'Transaction',
+      locale: 'en-AU',
+      currency: 'AUD',
+      timezone: 'Australia/Sydney',
+      date_format: 'medium',
       auto_expense_enabled: false,
       auto_expense_offset_days: 0,
     })
@@ -33,6 +37,10 @@ describe('SettingsTab', () => {
           auto_add_surplus_to_investment: false,
           allow_cycle_lock: true,
           account_naming_preference: 'Transaction',
+          locale: 'en-AU',
+          currency: 'AUD',
+          timezone: 'Australia/Sydney',
+          date_format: 'medium',
           auto_expense_enabled: false,
           auto_expense_offset_days: 0,
         }}
@@ -57,6 +65,10 @@ describe('SettingsTab', () => {
       auto_add_surplus_to_investment: false,
       allow_cycle_lock: false,
       account_naming_preference: 'Transaction',
+      locale: 'en-AU',
+      currency: 'AUD',
+      timezone: 'Australia/Sydney',
+      date_format: 'medium',
       auto_expense_enabled: false,
       auto_expense_offset_days: 0,
     })
@@ -69,6 +81,10 @@ describe('SettingsTab', () => {
           auto_add_surplus_to_investment: false,
           allow_cycle_lock: true,
           account_naming_preference: 'Transaction',
+          locale: 'en-AU',
+          currency: 'AUD',
+          timezone: 'Australia/Sydney',
+          date_format: 'medium',
           auto_expense_enabled: false,
           auto_expense_offset_days: 0,
         }}
@@ -88,6 +104,10 @@ describe('SettingsTab', () => {
       auto_add_surplus_to_investment: false,
       allow_cycle_lock: true,
       account_naming_preference: 'Checking',
+      locale: 'en-AU',
+      currency: 'AUD',
+      timezone: 'Australia/Sydney',
+      date_format: 'medium',
       auto_expense_enabled: false,
       auto_expense_offset_days: 0,
     })
@@ -100,6 +120,10 @@ describe('SettingsTab', () => {
           auto_add_surplus_to_investment: false,
           allow_cycle_lock: true,
           account_naming_preference: 'Transaction',
+          locale: 'en-AU',
+          currency: 'AUD',
+          timezone: 'Australia/Sydney',
+          date_format: 'medium',
           auto_expense_enabled: false,
           auto_expense_offset_days: 0,
         }}
@@ -115,12 +139,61 @@ describe('SettingsTab', () => {
     })
   })
 
+  it('saves locale, currency, timezone, and date format preferences', async () => {
+    client.updateBudget.mockResolvedValue({
+      budgetid: 1,
+      auto_add_surplus_to_investment: false,
+      allow_cycle_lock: true,
+      account_naming_preference: 'Transaction',
+      locale: 'en-US',
+      currency: 'USD',
+      timezone: 'America/New_York',
+      date_format: 'numeric',
+      auto_expense_enabled: false,
+      auto_expense_offset_days: 0,
+    })
+
+    renderWithProviders(
+      <SettingsTab
+        budgetId={1}
+        budget={{
+          budgetid: 1,
+          auto_add_surplus_to_investment: false,
+          allow_cycle_lock: true,
+          account_naming_preference: 'Transaction',
+          locale: 'en-AU',
+          currency: 'AUD',
+          timezone: 'Australia/Sydney',
+          date_format: 'medium',
+          auto_expense_enabled: false,
+          auto_expense_offset_days: 0,
+        }}
+      />
+    )
+
+    fireEvent.change(screen.getByLabelText('Locale'), { target: { value: 'en-US' } })
+    fireEvent.change(screen.getByLabelText('Currency'), { target: { value: 'USD' } })
+    fireEvent.change(screen.getByLabelText('Timezone'), { target: { value: 'America/New_York' } })
+    fireEvent.change(screen.getByLabelText('Date Format'), { target: { value: 'numeric' } })
+
+    await waitFor(() => {
+      expect(client.updateBudget).toHaveBeenCalledWith(1, { locale: 'en-US' })
+      expect(client.updateBudget).toHaveBeenCalledWith(1, { currency: 'USD' })
+      expect(client.updateBudget).toHaveBeenCalledWith(1, { timezone: 'America/New_York' })
+      expect(client.updateBudget).toHaveBeenCalledWith(1, { date_format: 'numeric' })
+    })
+  })
+
   it('saves auto expense settings and offset days', async () => {
     client.updateBudget.mockResolvedValue({
       budgetid: 1,
       auto_add_surplus_to_investment: false,
       allow_cycle_lock: true,
       account_naming_preference: 'Transaction',
+      locale: 'en-AU',
+      currency: 'AUD',
+      timezone: 'Australia/Sydney',
+      date_format: 'medium',
       auto_expense_enabled: true,
       auto_expense_offset_days: 3,
     })

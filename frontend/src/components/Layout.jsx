@@ -7,19 +7,22 @@ import {
 import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import clsx from 'clsx'
-import { format, parseISO } from 'date-fns'
+import { parseISO } from 'date-fns'
 import Modal from './Modal'
 import ReleaseNotesModal from './ReleaseNotesModal'
 import Spinner from './Spinner'
+import { LocalisationProvider, useLocalisation } from './LocalisationContext'
 import { useDarkMode } from '../hooks/useDarkMode'
 import { getAppInfo, getBudgets, getBudgetSetupAssessment, getPeriodDetail, getPeriodsForBudget, getReleaseNotes } from '../api/client'
 import { getCycleStage } from '../utils/periodStage'
 
 function displayVersion(version) {
-  return `v${version || '0.2.0-alpha'}`
+  return `v${version || '0.3.0-alpha'}`
 }
 
 function PeriodShortcutGroup({ title, periods, activePeriodId, onNav, emptyMessage = null, moreText = null, moreTo = null, moreSubtle = false }) {
+  const { formatDateRange } = useLocalisation()
+
   if (periods.length === 0 && !emptyMessage) return null
 
   return (
@@ -44,7 +47,7 @@ function PeriodShortcutGroup({ title, periods, activePeriodId, onNav, emptyMessa
               )}
             >
               <span className="min-w-0 truncate">
-                {format(parseISO(period.startdate), 'dd MMM')} - {format(parseISO(period.enddate), 'dd MMM')}
+                {formatDateRange(period.startdate, period.enddate, 'compact')}
               </span>
               <ChevronRightIcon className="h-3.5 w-3.5 shrink-0" />
             </Link>
@@ -394,6 +397,7 @@ export default function Layout() {
   }, [sidebarCollapsed])
 
   return (
+    <LocalisationProvider budget={currentBudget}>
     <div className="min-h-screen flex">
       <aside
         className={clsx(
@@ -583,6 +587,7 @@ export default function Layout() {
         )
       ) : null}
     </div>
+    </LocalisationProvider>
   )
 }
 

@@ -35,12 +35,20 @@ def test_budget_update_validates_optional_frequency_and_quantizes_maximum_defici
         budget_frequency="Every 30 Days",
         maximum_deficit_amount=Decimal("12.345"),
         account_naming_preference="Checking",
+        locale="en-US",
+        currency="usd",
+        timezone="America/New_York",
+        date_format="short",
         auto_expense_offset_days=3,
     )
 
     assert update.budget_frequency == "Every 30 Days"
     assert update.maximum_deficit_amount == Decimal("12.34")
     assert update.account_naming_preference == "Checking"
+    assert update.locale == "en-US"
+    assert update.currency == "USD"
+    assert update.timezone == "America/New_York"
+    assert update.date_format == "short"
     assert update.auto_expense_offset_days == 3
 
 
@@ -57,3 +65,16 @@ def test_budget_update_rejects_negative_auto_expense_offset_days():
         BudgetUpdate(auto_expense_offset_days=-1)
 
     assert "auto_expense_offset_days" in str(exc_info.value)
+
+
+@pytest.mark.parametrize("field,value", [
+    ("locale", "not a locale"),
+    ("currency", "US"),
+    ("timezone", "Mars/Colony"),
+    ("date_format", "YYYY-MM-DD"),
+])
+def test_budget_update_rejects_invalid_localisation_preferences(field, value):
+    with pytest.raises(ValidationError) as exc_info:
+        BudgetUpdate(**{field: value})
+
+    assert field in str(exc_info.value)

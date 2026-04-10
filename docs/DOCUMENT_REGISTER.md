@@ -384,6 +384,37 @@ Maintenance notes:
 
 - should remain the main design-boundary document for inline arithmetic amount entry rather than becoming a second change log
 
+### LOCALISATION_SUPPORT_PLAN.md
+
+Document:
+
+- [LOCALISATION_SUPPORT_PLAN.md](/home/ubuntu/dosh/docs/plans/LOCALISATION_SUPPORT_PLAN.md)
+
+Document type:
+
+- domain or workflow plan
+
+Primary purpose:
+
+- preserve the implemented localisation-support decisions for regional formatting, amount masking, formula mode, and budget preference resolution
+
+Primary source-of-truth scope:
+
+- budget-level `locale`, `currency`, and `timezone` preference behavior
+- `Intl`-based currency, number, percent, date, time, and date-range display boundaries
+- numeric masked amount-entry behavior and explicit leading-`=` formula-mode boundary
+- locale-neutral backend storage, API, ledger, migration, and machine-readable export expectations
+
+Key relationships:
+
+- informs current-state and handoff guidance in [PROJECT_CONTEXT.md](/home/ubuntu/dosh/docs/PROJECT_CONTEXT.md)
+- linked from [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md) as the current localisation implementation reference
+- paired with verification notes in [TEST_RESULTS_SUMMARY.md](/home/ubuntu/dosh/docs/tests/TEST_RESULTS_SUMMARY.md)
+
+Maintenance notes:
+
+- should remain focused on localisation boundaries rather than becoming a full translation or copy-style guide
+
 ### BUDGET_CYCLE_EXPORT_PLAN.md
 
 Document:

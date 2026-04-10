@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import PropTypes from 'prop-types'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { updateBudget } from '../../api/client'
+import LocalizedAmountInput from '../../components/LocalizedAmountInput'
 
 const DEFAULTS = {
   acceptable_expense_overrun_pct: 10,
@@ -123,8 +124,6 @@ function normaliseFormValue(value) {
 }
 
 function CurrencyField({ value, onChange }) {
-  const displayValue = value === null || value === undefined ? '' : String(value)
-
   return (
     <div className="mt-4 rounded-lg border border-dashed border-gray-300 bg-white/70 px-3 py-3 dark:border-gray-600 dark:bg-gray-900/40">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -135,15 +134,13 @@ function CurrencyField({ value, onChange }) {
           </p>
         </div>
         <label className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-semibold text-dosh-700 shadow-sm dark:bg-gray-900 dark:text-dosh-300">
-          <span>$</span>
-          <input
-            type="text"
-            inputMode="decimal"
-            value={displayValue}
-            onChange={e => onChange(e.target.value)}
+          <LocalizedAmountInput
+            value={value === null || value === undefined ? '' : String(value)}
+            onChange={onChange}
+            min="0"
             placeholder="Optional"
             className="w-24 border-0 bg-transparent p-0 text-right text-xs font-semibold text-dosh-700 outline-none focus:ring-0 dark:text-dosh-300"
-            aria-label="Maximum deficit amount"
+            ariaLabel="Maximum deficit amount"
           />
         </label>
       </div>
@@ -264,10 +261,6 @@ export default function PersonalisationTab({ budgetId, budget }) {
     const trimmedValue = nextValue.trim()
     if (trimmedValue === '') {
       setValue('maximum_deficit_amount', null)
-      return
-    }
-
-    if (!/^\d*\.?\d{0,2}$/.test(trimmedValue)) {
       return
     }
 

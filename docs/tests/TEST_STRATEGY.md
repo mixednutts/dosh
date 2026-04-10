@@ -34,11 +34,12 @@ Observed current state:
 - frontend now uses a Vite build with standalone Jest plus React Testing Library, and includes user-facing workflow coverage
 - frontend Jest coverage now also includes a dedicated layout-navigation baseline for current sidebar hierarchy, setup-link visibility, and cycle-shortcut affordances
 - frontend Jest coverage now also includes Budgets page calendar behavior, including compact summary rendering, full-calendar interaction, bounded 3-month lookahead, and day-event modal behavior
+- frontend Jest coverage now includes localisation utility, masked amount input, and explicit formula-mode regressions across representative regional preferences
 - frontend also now has a Playwright end-to-end harness under [frontend/e2e](/home/ubuntu/dosh/frontend/e2e)
 - the project now has a credible regression foundation for controlled enhancement work
 - coverage is still selective rather than exhaustive, so new behavior should continue to be added together with tests
 - the latest recorded backend, frontend, and deployment verification outcomes live in [TEST_RESULTS_SUMMARY.md](/home/ubuntu/dosh/docs/tests/TEST_RESULTS_SUMMARY.md)
-- the latest frontend security baseline is now zero reported `npm audit` vulnerabilities after the Vite migration and dependency cleanup
+- the latest localisation session left a critical `npm audit` advisory for `axios <1.15.0` unresolved because it was outside the scoped localisation change; future dependency maintenance should review and resolve it deliberately
 - the GitHub workflow and backend container baseline now align on Python 3.12, so backend CI and deploy verification should treat that as the supported runtime
 
 This matters because Dosh is no longer mostly CRUD. It now contains workflow rules where subtle regressions would reduce trust:
@@ -112,6 +113,7 @@ These areas deserve extra caution whenever product work touches them:
 - transaction-backed income behavior, including dedicated income transaction history rather than inline actual overrides
 - modal-driven budget adjustment behavior across income, expense, and investment, including setup-history readback through the shared transaction model
 - period-detail modal amount-expression behavior, including raw-expression visibility, valid-expression preview, incomplete-expression in-progress summary behavior, and resolved-value submission across income, expense, investment, add-line, and budget-adjustment flows
+- localisation behavior, including budget-level locale/currency/timezone preference validation, shared `Intl` display helpers, masked amount input normalization, explicit leading-`=` formula mode, and timezone-aware labels
 - setup-revision history behavior, including field-level change capture, revision-number rebasing, and the distinction between setup-affecting future budget adjustments and current-only period adjustments
 - post-paid revise flows and read-only guards on closed cycles
 - budget-level Auto Expense automation, including scheduler-safe eligibility rules, AUTO/MANUAL protection, period-detail manual run behavior, and migration normalization of legacy invalid AUTO rows
@@ -141,7 +143,7 @@ Current development direction makes the following test emphasis especially usefu
 
 - reporting and reconciliation are likely to expand next, so ledger integrity and discrepancy behavior should stay well protected
 - close-out and reconciliation handoff still need hardening, so correction-after-close expectations remain a live risk area
-- localisation and regional-fit work is expected later, so tests should avoid depending on unnecessary hard-coded locale assumptions where possible
+- localisation and regional-fit formatting is now implemented, so tests should use shared formatting expectations or representative locale fixtures instead of reintroducing hard-coded regional assumptions where possible
 - startup no longer applies transitional schema mutation during app boot, so tests should focus on runtime workflow behavior and treat explicit cutover or migration flows as separate maintenance concerns
 
 ### Practical rule for future sessions

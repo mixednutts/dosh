@@ -48,7 +48,7 @@ describe('BalanceTypesTab', () => {
     fireEvent.change(screen.getByRole('combobox'), {
       target: { value: 'Transaction' },
     })
-    fireEvent.change(screen.getByRole('spinbutton'), {
+    fireEvent.change(screen.getByLabelText('Opening Balance'), {
       target: { value: '1250' },
     })
 
@@ -93,7 +93,7 @@ describe('BalanceTypesTab', () => {
     fireEvent.change(screen.getByPlaceholderText('e.g. Everyday Account'), {
       target: { value: 'Holiday Reserve' },
     })
-    fireEvent.change(screen.getByRole('spinbutton'), {
+    fireEvent.change(screen.getByLabelText('Opening Balance'), {
       target: { value: '500' },
     })
 
@@ -257,7 +257,7 @@ describe('BalanceTypesTab', () => {
     expect(deleteButton.disabled).toBe(true)
 
     fireEvent.click(screen.getAllByRole('button')[1])
-    const openingBalanceInput = screen.getByLabelText('Opening Balance ($)')
+    const openingBalanceInput = screen.getByLabelText('Opening Balance')
     expect(openingBalanceInput.disabled).toBe(true)
     expect(screen.getByText(/Opening balance can only be changed before this account is used/i)).toBeTruthy()
   })

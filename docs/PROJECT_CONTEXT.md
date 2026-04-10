@@ -19,6 +19,7 @@ It is a synthesis of the current Markdown sources in this repository:
 - [TEST_RESULTS_SUMMARY.md](/home/ubuntu/dosh/docs/tests/TEST_RESULTS_SUMMARY.md)
 - [INCOME_TRANSACTIONS_UNIFICATION_AND_LEGACY_LEDGER_CLEANUP_PLAN.md](/home/ubuntu/dosh/docs/plans/INCOME_TRANSACTIONS_UNIFICATION_AND_LEGACY_LEDGER_CLEANUP_PLAN.md)
 - [INLINE_EXPRESSION_AMOUNT_INPUT_PLAN.md](/home/ubuntu/dosh/docs/plans/INLINE_EXPRESSION_AMOUNT_INPUT_PLAN.md)
+- [LOCALISATION_SUPPORT_PLAN.md](/home/ubuntu/dosh/docs/plans/LOCALISATION_SUPPORT_PLAN.md)
 - [BUDGET_CYCLE_EXPORT_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_CYCLE_EXPORT_PLAN.md)
 - [GITHUB_RELEASE_MANAGEMENT_WORKFLOW_PLAN.md](/home/ubuntu/dosh/docs/plans/GITHUB_RELEASE_MANAGEMENT_WORKFLOW_PLAN.md)
 - [AUTO_EXPENSE_PLAN.md](/home/ubuntu/dosh/docs/plans/AUTO_EXPENSE_PLAN.md)
@@ -37,7 +38,7 @@ These guidelines apply across the project as a whole and should continue guiding
 - use this document as the operational handoff for new AI sessions
 - when working on Docker-related deployment or runtime setup, always check for [docker-compose.override.yml](/home/ubuntu/dosh/docker-compose.override.yml) and apply it when present in the development environment
 - keep [RELEASE_NOTES.md](/home/ubuntu/dosh/docs/RELEASE_NOTES.md) as the repo-managed release-content source that feeds published GitHub Releases
-- keep post-release work in the top versionless `Unreleased` section of [RELEASE_NOTES.md](/home/ubuntu/dosh/docs/RELEASE_NOTES.md) until the next release version is intentionally chosen
+- keep post-release work in the top versionless `Unreleased` section of [RELEASE_NOTES.md](/home/ubuntu/dosh/docs/RELEASE_NOTES.md) until the next release version is ready to be selected
 - maintain one primary source of truth per topic
 - prefer cross-links over duplicating maintained content
 - update [DOCUMENT_REGISTER.md](/home/ubuntu/dosh/docs/DOCUMENT_REGISTER.md) when managed documents are added, moved, renamed, or materially repurposed
@@ -90,6 +91,9 @@ These guidelines apply across the project as a whole and should continue guiding
 
 - treat localisation as explicit and centrally managed
 - prefer display-layer regional variation over unnecessary internal domain renaming
+- use the shared frontend localisation helpers for currency, number, percent, date, time, date-range, and timezone-aware today behavior rather than adding page-local `Intl` calls or hard-coded `en-AU`/`AUD` formatting
+- keep normalized backend/API values locale-neutral; financial values should remain numeric/decimal and dates should remain normalized ISO-style values unless a separate human-readable export mode is deliberately designed
+- normal amount entry should use localized numeric masks without currency symbols or currency codes inside editable fields, while arithmetic should remain explicit through leading-`=` formula mode
 - setup guidance and readiness messaging should respect the budget-level account naming preference rather than hard-coding `transaction` wording when a localized label such as `Everyday` or `Checking` is active
 
 ### Testing and Change Safety
@@ -125,7 +129,7 @@ It is now a workflow-driven personal finance application with:
 
 The product direction is practical, personal, and supportive rather than corporate or accounting-heavy. Functional clarity is preferred over decorative redesign.
 
-Localisation and regional-fit work now has an initial live slice through budget-level account naming preferences, while the core domain model still stays terminology-stable underneath.
+Localisation and regional-fit work now includes app-wide regional formatting, budget-level `locale`/`currency`/`timezone` preferences, localized numeric masked amount entry without currency symbols or codes inside editable fields, explicit formula-mode arithmetic entry, and budget-level account naming preferences, while the core domain model still stays terminology-stable underneath.
 
 ## Current Technical Shape
 
@@ -138,6 +142,7 @@ Backend:
 - budgeting and generation logic in [period_logic.py](/home/ubuntu/dosh/backend/app/period_logic.py)
 - budget health logic in [budget_health.py](/home/ubuntu/dosh/backend/app/budget_health.py)
 - transaction-backed movement and ledger support in [transaction_ledger.py](/home/ubuntu/dosh/backend/app/transaction_ledger.py)
+- budget localisation preferences live on `Budget` as `locale`, `currency`, `timezone`, and `date_format`, with defaults `en-AU`, `AUD`, `Australia/Sydney`, and `medium`; schema migrations `9b7f3c2d1a4e` and `c4d8e6f1a2b3` added those fields
 - release metadata for the in-app modal is now fetched from published GitHub Releases through [release_notes.py](/home/ubuntu/dosh/backend/app/release_notes.py), while repo-managed release content still lives in [RELEASE_NOTES.md](/home/ubuntu/dosh/docs/RELEASE_NOTES.md)
 
 Frontend:
@@ -149,12 +154,14 @@ Frontend:
 - React Query
 - Tailwind CSS
 - `prop-types` is now part of the frontend baseline so shared and page-level React components can carry explicit prop contracts for SonarQube-backed maintainability
-- period-detail modal amount expressions now use a small `jsep`-based parser plus a narrow arithmetic-only evaluator rather than a broader general-purpose math dependency
+- period-detail modal amount expressions now use explicit leading-`=` formula mode with a small `jsep`-based parser plus a narrow arithmetic-only evaluator rather than a broader general-purpose math dependency
+- regional display and amount-input behavior is centralized in [localisation.js](/home/ubuntu/dosh/frontend/src/utils/localisation.js), [LocalisationContext.jsx](/home/ubuntu/dosh/frontend/src/components/LocalisationContext.jsx), and [LocalizedAmountInput.jsx](/home/ubuntu/dosh/frontend/src/components/LocalizedAmountInput.jsx)
+- [AmountExpressionInput.jsx](/home/ubuntu/dosh/frontend/src/components/AmountExpressionInput.jsx) now combines localized numeric masked entry for normal amounts with explicit formula-mode previews and normalized decimal submission
 - current route flow defined in [App.jsx](/home/ubuntu/dosh/frontend/src/App.jsx)
 
 Operational note:
 
-- the current app-version baseline is `0.2.0-alpha`, displayed in the UI as `v0.2.0-alpha`
+- the current app-version baseline is `0.3.0-alpha`, displayed in the UI as `v0.3.0-alpha`
 - Alembic is the required path for normal schema evolution from the current aligned baseline, with migration and release rules defined in [MIGRATION_AND_RELEASE_MANAGEMENT.md](/home/ubuntu/dosh/docs/MIGRATION_AND_RELEASE_MANAGEMENT.md)
 - the repo now has an explicit transaction-ledger cutover script in [cutover_unified_transactions.py](/home/ubuntu/dosh/backend/scripts/cutover_unified_transactions.py) for the current schema baseline
 - backend tests now run against an isolated SQLite database per test case through [conftest.py](/home/ubuntu/dosh/backend/tests/conftest.py)
@@ -233,6 +240,9 @@ The repository already supports:
 - seeded demo-budget creation with historical close-outs, a current cycle, upcoming cycles, and health-relevant activity
 - budget-level primary-account display naming with `Transaction`, `Everyday`, and `Checking` as user-facing options while the stored account type remains `Transaction`
 - account setup now supports primary designation per balance type while still reserving the active primary `Transaction` account as the default anchor for expense-driven movement
+- budget settings now expose locale, currency, timezone, and date-format preferences used by shared frontend localisation helpers
+- currency, number, percent, date, time, date-range, and timezone-aware today display now resolve from the active budget instead of hard-coded regional assumptions
+- plain amount fields now keep plain typed text while focused, apply localized grouping and fixed decimals only when unfocused, avoid currency symbols and currency codes inside editable fields, and submit normalized decimal values; formula entry is explicit with a leading `=` and submits normalized decimal values after localized preview
 - setup-page collapsible `Personalisation` and `Settings` sections with session-persisted expand or collapse state
 - budget-cycle grouping using `Current`, `Planned`, `Pending Closure`, and `Historic`, with the sidebar and budget cycles page aligned to the same ordering and session-persisted collapse behavior
 - period-detail summary cards that now include both `Projected Savings` and `Remaining Expenses`
@@ -273,9 +283,9 @@ These are the clearest live development streams from the docs.
 1. Reporting and analysis
 2. Reconciliation
 3. Period close-out hardening
-4. Migration framework introduction from the new post-cutover schema baseline
+4. Maintainability and migration-backed deployment reliability
 5. Budget health Phase 2 preparation
-6. Localisation and regional fit
+6. Localisation and regional-fit follow-through for terminology, copy, and edge-case refinement
 7. Cash management workflow definition
 8. Export and backup readiness
 
@@ -287,7 +297,7 @@ The most useful enabling work for future sessions is:
 
 1. keep a test-with-change discipline for every workflow change
 2. expand coverage around close-out, deletion continuity, ledger integrity, income transaction behavior, reconciliation, and setup consequences
-3. replace the current explicit cutover-style schema baseline with real versioned migrations
+3. keep schema changes on the Alembic migration path and verify migration-backed deployment behavior
 4. tighten deployment and build reliability
 5. improve API and domain wording consistency while preserving backend stability
 6. keep closed-cycle correction design aligned with reconciliation rather than reopening normal edit paths
@@ -340,7 +350,8 @@ When making changes, preserve these working assumptions from the docs:
 - do not let future health personalisation rewrite historical closed-cycle meaning
 - do not overload the UI with scoring language users cannot reasonably trust
 - do not assume there is always one transaction account plus one savings account
-- do not let localisation work remain implicit through hard-coded `en-AU` formatting forever
+- do not reintroduce hard-coded locale, currency, percent, date, or browser-local timezone display formatting when shared localisation helpers already own the behavior
+- do not localize backend storage, API payloads, ledger calculations, migrations, or machine-readable exports by default
 - do not treat startup schema patching as a finished migration strategy
 - do not reintroduce direct inline actual-edit shortcuts that bypass the ledger-backed transaction model for income
 - do not weaken setup protection by reintroducing page-local readiness assumptions when centralized setup assessment already exists
@@ -364,6 +375,7 @@ Before starting a new feature or refactor:
 6. confirm whether the work touches lifecycle, close-out, carry-forward, ledger, or health rules before changing behavior
 7. if the work touches the expense scheduling or transaction-entry flows, inspect the current shared implementations in [ExpenseItemSchedulingFields.jsx](/home/ubuntu/dosh/frontend/src/components/ExpenseItemSchedulingFields.jsx), [DateField.jsx](/home/ubuntu/dosh/frontend/src/components/DateField.jsx), and [PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx) before assuming the behavior is page-local
 8. if the work touches budget-cycle stage wording or grouping, preserve the aligned user-facing order `Current`, `Planned`, `Pending Closure`, `Historic` across sidebar, budgets summary, and budget-cycle list surfaces
+9. if the work touches localisation or amount entry, inspect [LOCALISATION_SUPPORT_PLAN.md](/home/ubuntu/dosh/docs/plans/LOCALISATION_SUPPORT_PLAN.md), [localisation.js](/home/ubuntu/dosh/frontend/src/utils/localisation.js), [LocalisationContext.jsx](/home/ubuntu/dosh/frontend/src/components/LocalisationContext.jsx), [LocalizedAmountInput.jsx](/home/ubuntu/dosh/frontend/src/components/LocalizedAmountInput.jsx), and [AmountExpressionInput.jsx](/home/ubuntu/dosh/frontend/src/components/AmountExpressionInput.jsx) before changing page-level formatting or parsing
 
 ## CI Operational Notes
 

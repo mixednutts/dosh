@@ -31,9 +31,88 @@ For the dedicated workflow plan that now owns budget-adjustment, revision-histor
 
 For the implemented amount-entry plan that now defines inline arithmetic scope, preview behavior, and parser boundaries for period-detail modals, read [INLINE_EXPRESSION_AMOUNT_INPUT_PLAN.md](/home/ubuntu/dosh/docs/plans/INLINE_EXPRESSION_AMOUNT_INPUT_PLAN.md).
 
+For the implemented localisation support plan that now defines regional formatting, numeric masked amount input, formula-mode, and preference-resolution boundaries, read [LOCALISATION_SUPPORT_PLAN.md](/home/ubuntu/dosh/docs/plans/LOCALISATION_SUPPORT_PLAN.md).
+
 For the implemented export-shape plan that now defines budget-cycle export behavior, read [BUDGET_CYCLE_EXPORT_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_CYCLE_EXPORT_PLAN.md).
 
 For the implemented Auto Expense workflow rules, scheduler behavior, migration expectations, and AUTO/MANUAL eligibility constraints introduced this session, read [AUTO_EXPENSE_PLAN.md](/home/ubuntu/dosh/docs/plans/AUTO_EXPENSE_PLAN.md).
+
+## Latest Session: Full Localisation Support, Numeric Masked Amount Entry, Formula Mode, And Migration-Backed Deployment
+
+This session implemented the app-wide localisation plan and carried it through backend schema, frontend display/input behavior, tests, deployment, and a post-deploy refresh crash fix.
+
+Important direction now in place:
+
+- budgets now carry `locale`, `currency`, `timezone`, and `date_format` preferences, defaulting to `en-AU`, `AUD`, `Australia/Sydney`, and `medium`
+- display formatting now flows through shared frontend localisation helpers built on `Intl.NumberFormat` and `Intl.DateTimeFormat`
+- normal money entry uses localized numeric masks without currency symbols or codes inside editable fields, while arithmetic entry is explicit with leading `=`
+- formula previews are localized for display, but submitted values remain normalized decimals
+- backend storage, API payloads, ledger calculations, migrations, and machine-readable exports remain locale-neutral
+- broader text translation and country-specific terminology work remain out of scope for this pass
+- the implemented boundaries are captured in [LOCALISATION_SUPPORT_PLAN.md](/home/ubuntu/dosh/docs/plans/LOCALISATION_SUPPORT_PLAN.md)
+
+### 1. Budget preferences now drive regional formatting
+
+Current behavior:
+
+- [models.py](/home/ubuntu/dosh/backend/app/models.py) now stores budget-level `locale`, `currency`, `timezone`, and `date_format`
+- [schemas.py](/home/ubuntu/dosh/backend/app/schemas.py) validates those preferences on budget create and update
+- [9b7f3c2d1a4e_add_budget_localisation_preferences.py](/home/ubuntu/dosh/backend/alembic/versions/9b7f3c2d1a4e_add_budget_localisation_preferences.py) and [c4d8e6f1a2b3_add_budget_date_format_preference.py](/home/ubuntu/dosh/backend/alembic/versions/c4d8e6f1a2b3_add_budget_date_format_preference.py) add the schema fields through Alembic
+- [SettingsTab.jsx](/home/ubuntu/dosh/frontend/src/pages/tabs/SettingsTab.jsx) exposes the preferences alongside the existing budget settings
+
+Important product meaning:
+
+- localisation is now a budget-level behavior rather than a scattered page-level assumption
+- the budget-level date-format setting controls normal user-facing date display while storage keys and API payloads remain normalized
+- future formatting work should resolve preferences from the active budget and shared localisation provider
+
+### 2. Display and amount input now use shared localisation primitives
+
+Current behavior:
+
+- [localisation.js](/home/ubuntu/dosh/frontend/src/utils/localisation.js) owns shared currency, number, percent, date, time, date-time, date-range, storage-date, timezone-aware today, localized amount parsing, and AutoNumeric option behavior
+- [LocalisationContext.jsx](/home/ubuntu/dosh/frontend/src/components/LocalisationContext.jsx) resolves the active budget preferences for app surfaces
+- [LocalizedAmountInput.jsx](/home/ubuntu/dosh/frontend/src/components/LocalizedAmountInput.jsx) wraps localized numeric masked input without currency symbols or codes inside editable fields and emits normalized decimal values
+- high-traffic surfaces now use shared helpers instead of hard-coded `en-AU`, `AUD`, raw percent strings, or browser-local timestamp assumptions
+
+Important product meaning:
+
+- page-level formatting should not drift back into local `Intl` calls or literal currency strings
+- machine-readable output stays normalized unless a separate human-readable export mode is intentionally introduced
+
+### 3. Formula entry is now deliberate
+
+Current behavior:
+
+- [AmountExpressionInput.jsx](/home/ubuntu/dosh/frontend/src/components/AmountExpressionInput.jsx) now treats normal amount entry as plain typed text while focused, with localized grouping and fixed decimals applied only when unfocused and without currency symbols or currency codes inside editable fields
+- arithmetic formulas are entered deliberately with a leading `=`
+- previews use localized currency formatting while the submitted value remains a normalized decimal
+- existing supported formula scope remains narrow and arithmetic-only
+
+Important product meaning:
+
+- normal masked amount fields no longer need to parse localized arithmetic
+- formula behavior stays explicit and reviewable instead of surprising users while they type ordinary money values
+
+### 4. Deployment exposed and resolved a budgets-page refresh crash
+
+Current behavior:
+
+- the migration-aware release script deployed the schema-changing localisation work and migrated the live schema to revision `9b7f3c2d1a4e`
+- the follow-up date-format preference migration then upgraded the live schema to revision `c4d8e6f1a2b3`
+- after deployment, refreshing the budgets page briefly flashed and then rendered a black/blank page
+- Playwright diagnosed the runtime error as `TypeError: t is not a function` in the pending-closure list path
+- [BudgetsPage.jsx](/home/ubuntu/dosh/frontend/src/pages/BudgetsPage.jsx) now passes `formatDateRange` into `formatPeriodRange` for `PendingClosureList`
+- the frontend was rebuilt and redeployed after the fix, and a refresh of `/budgets` rendered without console or page errors
+
+Important reliability meaning:
+
+- deploy verification for schema-changing frontend work should include at least one route refresh on a high-traffic page, not just container health and root HTTP checks
+- the optional Compose override still matters for this environment and should be included when redeploying here
+
+Versioning note:
+
+- version `0.3.0-alpha` was selected for the localisation release after reassessing the release policy; the policy now clarifies that “intentionally chosen” does not block a bump once the release scope is clear
 
 ## Latest Session: Account Primary-Per-Type Repair, In-Use Account Primary Editing, And Transfer-Balance Confirmation
 

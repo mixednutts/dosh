@@ -1,5 +1,27 @@
 # Dosh Release Notes
 
+## 0.3.0-alpha | released | 2026-04-10
+
+Dosh now adds budget-level localisation controls across regional display, date handling, and amount entry.
+
+### Highlights
+
+- Fixed account setup so primary designation is now scoped per account type, preventing `Savings` or `Cash` accounts from displacing the required primary transaction account
+- Fixed in-use account editing so primary-flag changes no longer fail when the account structure itself is unchanged
+- Reconfirmed through focused transfer-and-balance tests that savings-transfer activity is represented as ledger-backed movement affecting both the selected savings account and the receiving account
+- Refined budget-cycle lifecycle presentation so periods now surface as `Current`, `Planned`, `Pending Closure`, or `Closed`, with overdue open cycles staying explicitly outstanding until close-out is completed
+- Aligned the sidebar, budget cycles page, and budget summary shortcuts around the new stage order and added direct close-out links for pending-closure periods
+- Expanded the rolling demo budget seed to include multiple pending-closure scenarios, carry-forward continuity, transaction-direction edge cases, and budget-adjustment examples for walkthroughs
+- Unified expense scheduling across Budget Setup and Period Detail around a shared add-expense field set, including consistent `Effective Date` wording and period-only note/include controls staying scoped to the period-detail flow
+- Replaced the touched native expense date inputs with a shared calendar control that now supports dark mode better, uses a clickable calendar icon, and displays effective dates as `DD MMM YYYY`
+- Added fixed-day-of-month rollover handling for short months, including the accepted `31st` behavior and helper guidance in the expense flows
+- Aligned transaction-modal quick-fill behavior across income, expense, and investment through the shared modal rules, and neutralized transaction submit-button styling so these actions no longer read like cancel or destructive actions
+- Expanded the release-notes modal so newly available versions can reveal their details inline without losing the current-version focus
+- Added budget-level locale, currency, timezone, and date format preferences, with settings controls and validation so each budget can drive its regional display behavior
+- Added app-wide `Intl`-based currency, number, percent, date, time, and date-range formatting across high-traffic budget, setup, history, and period-detail surfaces
+- Added localized numeric masked entry for normal amount fields without currency symbols or codes inside the editable field, while preserving explicit leading-`=` formula mode for arithmetic entry and normalized decimal submission
+- Added migration-backed deployment for the localisation preferences, fixed a post-deploy budgets-page refresh crash in the pending-closure list, and corrected amount-entry masking so plain focused entry does not lock the keyboard
+
 ## 0.2.0-alpha | released | 2026-04-08
 
 Dosh now adds scheduled Auto Expense automation while also tightening the release and migration reliability needed to ship it safely.

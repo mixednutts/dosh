@@ -1,9 +1,45 @@
 from datetime import datetime
 from decimal import Decimal
+import re
 from typing import Any, Optional
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from pydantic import BaseModel, field_validator, model_validator
 
 from .period_logic import parse_budget_frequency_days
+
+LOCALE_PATTERN = re.compile(r"^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$")
+CURRENCY_PATTERN = re.compile(r"^[A-Z]{3}$")
+DATE_FORMAT_OPTIONS = {"compact", "short", "medium", "long", "numeric"}
+
+
+def _validate_locale(value: str) -> str:
+    normalized = value.strip()
+    if not LOCALE_PATTERN.fullmatch(normalized):
+        raise ValueError("locale must be a valid BCP 47-style language tag")
+    return normalized
+
+
+def _validate_currency(value: str) -> str:
+    normalized = value.strip().upper()
+    if not CURRENCY_PATTERN.fullmatch(normalized):
+        raise ValueError("currency must be a 3-letter ISO 4217 code")
+    return normalized
+
+
+def _validate_timezone(value: str) -> str:
+    normalized = value.strip()
+    try:
+        ZoneInfo(normalized)
+    except ZoneInfoNotFoundError as exc:
+        raise ValueError("timezone must be a valid IANA timezone") from exc
+    return normalized
+
+
+def _validate_date_format(value: str) -> str:
+    normalized = value.strip()
+    if normalized not in DATE_FORMAT_OPTIONS:
+        raise ValueError(f"date_format must be one of {DATE_FORMAT_OPTIONS}")
+    return normalized
 
 
 # ── PayType ──────────────────────────────────────────────────────────────────
@@ -43,6 +79,10 @@ class BudgetBase(BaseModel):
     description: Optional[str] = None
     budget_frequency: str  # Weekly | Fortnightly | Monthly | Every N Days
     account_naming_preference: str = "Transaction"
+    locale: str = "en-AU"
+    currency: str = "AUD"
+    timezone: str = "Australia/Sydney"
+    date_format: str = "medium"
 
     @field_validator("budget_frequency")
     @classmethod
@@ -65,6 +105,26 @@ class BudgetBase(BaseModel):
             raise ValueError(f"account_naming_preference must be one of {allowed}")
         return v
 
+    @field_validator("locale")
+    @classmethod
+    def validate_locale(cls, v: str) -> str:
+        return _validate_locale(v)
+
+    @field_validator("currency")
+    @classmethod
+    def validate_currency(cls, v: str) -> str:
+        return _validate_currency(v)
+
+    @field_validator("timezone")
+    @classmethod
+    def validate_timezone(cls, v: str) -> str:
+        return _validate_timezone(v)
+
+    @field_validator("date_format")
+    @classmethod
+    def validate_date_format(cls, v: str) -> str:
+        return _validate_date_format(v)
+
 
 class BudgetCreate(BudgetBase):
     pass
@@ -84,6 +144,10 @@ class BudgetUpdate(BaseModel):
     period_criticality_bias: Optional[int] = None
     allow_cycle_lock: Optional[bool] = None
     account_naming_preference: Optional[str] = None
+    locale: Optional[str] = None
+    currency: Optional[str] = None
+    timezone: Optional[str] = None
+    date_format: Optional[str] = None
     auto_expense_enabled: Optional[bool] = None
     auto_expense_offset_days: Optional[int] = None
 
@@ -126,6 +190,34 @@ class BudgetUpdate(BaseModel):
             raise ValueError(f"account_naming_preference must be one of {allowed}")
         return v
 
+    @field_validator("locale")
+    @classmethod
+    def validate_optional_locale(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        return _validate_locale(v)
+
+    @field_validator("currency")
+    @classmethod
+    def validate_optional_currency(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        return _validate_currency(v)
+
+    @field_validator("timezone")
+    @classmethod
+    def validate_optional_timezone(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        return _validate_timezone(v)
+
+    @field_validator("date_format")
+    @classmethod
+    def validate_optional_date_format(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        return _validate_date_format(v)
+
     @field_validator("budget_frequency")
     @classmethod
     def validate_optional_frequency(cls, v: Optional[str]) -> Optional[str]:
@@ -154,6 +246,10 @@ class BudgetOut(BudgetBase):
     period_criticality_bias: int = 50
     allow_cycle_lock: bool = True
     account_naming_preference: str = "Transaction"
+    locale: str = "en-AU"
+    currency: str = "AUD"
+    timezone: str = "Australia/Sydney"
+    date_format: str = "medium"
     auto_expense_enabled: bool = False
     auto_expense_offset_days: int = 0
     model_config = {"from_attributes": True}
