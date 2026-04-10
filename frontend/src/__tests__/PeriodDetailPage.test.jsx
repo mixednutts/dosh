@@ -937,7 +937,7 @@ describe('PeriodDetailPage', () => {
     const amountInput = screen.getByPlaceholderText('Amount')
 
     fireEvent.click(screen.getByRole('button', { name: /Remaining amount \(\$700\.00\)/ }))
-    expect(amountInput.value).toBe('700.00')
+    expect(amountInput.value).toBe('700')
   })
 
   it('does not show add-remaining quick fill on the credit expense view', async () => {
@@ -1493,7 +1493,7 @@ describe('PeriodDetailPage', () => {
 
     await screen.findByText('Initial contribution')
     fireEvent.click(screen.getByRole('button', { name: /Remaining amount \(\$375\.00\)/ }))
-    expect(amountInput.value).toBe('375.00')
+    expect(amountInput.value).toBe('375')
   })
 
   it('hides the investment quick fill when nothing remains on the positive view', async () => {
@@ -2227,7 +2227,7 @@ describe('PeriodDetailPage', () => {
     expect(client.addIncomeTransaction).not.toHaveBeenCalled()
 
     fireEvent.click(screen.getByRole('button', { name: /Full amount \(\$2,000\.00\)/ }))
-    expect(screen.getByPlaceholderText('Amount').value).toBe('2,000.00')
+    expect(screen.getByPlaceholderText('Amount').value).toBe('2000')
     expect(screen.queryByText('= $2,000.00')).toBeNull()
 
     fireEvent.change(screen.getByPlaceholderText('Note (optional)'), {

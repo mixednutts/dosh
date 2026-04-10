@@ -47,9 +47,14 @@ export default function LocalizedAmountInput({
   }
 
   useEffect(() => {
-    if (isFocused) return
-    setDraftValue(formatDisplayValue(value))
-  }, [isFocused, value, localisation, options.decimalPlaces])
+    const nextDraftValue = isFocused
+      ? formatLocalizedAmountForEdit(value, localisation)
+      : formatDisplayValue(value)
+
+    if (nextDraftValue !== draftValue) {
+      setDraftValue(nextDraftValue)
+    }
+  }, [draftValue, formatDisplayValue, isFocused, localisation, value])
 
   const handleChange = event => {
     const nextValue = event.target.value

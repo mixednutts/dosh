@@ -97,6 +97,34 @@ Failure and resolution:
 - warning source: `afterEach` in [PersonalisationTab.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/PersonalisationTab.test.jsx) called `jest.runOnlyPendingTimers()` outside `act(...)`, which can trigger React Query notifications outside React’s test boundary
 - fix: wrap pending timer flush in `act(() => { jest.runOnlyPendingTimers() })`
 
+## Latest Session: PeriodDetail Quick-Fill Focused-Value Regression Fix
+
+Session outcome verified in this run:
+
+- restored quick-fill visibility in focused amount fields after the shared transaction amount input started auto-focusing by default
+
+### Verification
+
+Command run:
+
+```bash
+cd /home/ubuntu/dosh/frontend
+npm test -- --runInBand src/__tests__/PeriodDetailPage.test.jsx
+```
+
+Result:
+
+- suite passed with `1 passed`
+- tests passed with `51 passed`
+
+Failure and resolution:
+
+- initial failure: quick-fill buttons wrote state but the focused amount input still rendered stale empty text in `PeriodDetailPage` tests
+- root cause: [LocalizedAmountInput.jsx](/home/ubuntu/dosh/frontend/src/components/LocalizedAmountInput.jsx) skipped prop-to-draft sync while focused
+- fix: allow focused input draft to sync from external value changes using focused-edit formatting
+- follow-up failure: test expectations still asserted formatted values (`700.00`, `375.00`, `2,000.00`) while the focused field contract now intentionally shows plain editable values (`700`, `375`, `2000`)
+- fix: updated `PeriodDetailPage` assertions to match the focused-edit behavior
+
 ## Latest Session: Localisation Date Format, Version-Bump Reassessment, And Regression Sweep
 
 Session outcomes verified in this run:
