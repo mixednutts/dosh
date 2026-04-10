@@ -58,6 +58,24 @@ This pass did not implement:
 - accepting fully localized arithmetic expressions in normal masked amount fields
 - replacing the existing account naming preference pattern with a broader i18n framework
 
+## Beta Hardening Follow-Up
+
+The `0.3.0-alpha` implementation is a first regional-formatting slice, not mature localisation infrastructure.
+
+The non-translation hardening gaps now belong to `Beta Release > Localisation` and are tracked in [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md) under `Localisation Best-Practice Hardening`.
+
+Future work should be able to resume from that activity group without re-discovery. In short, the follow-up needs to address:
+
+- backend/frontend supported-option governance for locale, currency, timezone, and date-format choices
+- stronger currency and locale validation beyond shape checks
+- date picker locale alignment and standard date-range formatting through `Intl.DateTimeFormat.prototype.formatRange` where practical
+- the AutoNumeric dependency mismatch: either remove it and document the custom input contract, or fully adopt it only if it preserves numeric-only focused editing without caret locking
+- robust localized amount parsing for paste, negative-value policy, comma-decimal locales, non-breaking spaces, non-Latin digits if enabled, and invalid mixed separators
+- decimal precision at the money-entry boundary, with consideration for decimal-string preservation or a decimal library if future calculations demand it
+- formatter caching or memoization where repeated `Intl` construction becomes noisy or costly
+
+Full text translation remains deliberately outside this beta follow-up.
+
 ## Key References
 
 - [PROJECT_CONTEXT.md](/home/ubuntu/dosh/docs/PROJECT_CONTEXT.md)

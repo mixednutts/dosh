@@ -129,7 +129,7 @@ It is now a workflow-driven personal finance application with:
 
 The product direction is practical, personal, and supportive rather than corporate or accounting-heavy. Functional clarity is preferred over decorative redesign.
 
-Localisation and regional-fit work now includes app-wide regional formatting, budget-level `locale`/`currency`/`timezone` preferences, localized numeric masked amount entry without currency symbols or codes inside editable fields, explicit formula-mode arithmetic entry, and budget-level account naming preferences, while the core domain model still stays terminology-stable underneath.
+Localisation and regional-fit work now includes app-wide regional formatting, budget-level `locale`/`currency`/`timezone`/`date_format` preferences, localized numeric masked amount entry without currency symbols or codes inside editable fields, explicit formula-mode arithmetic entry, and budget-level account naming preferences, while the core domain model still stays terminology-stable underneath.
 
 ## Current Technical Shape
 
@@ -157,6 +157,7 @@ Frontend:
 - period-detail modal amount expressions now use explicit leading-`=` formula mode with a small `jsep`-based parser plus a narrow arithmetic-only evaluator rather than a broader general-purpose math dependency
 - regional display and amount-input behavior is centralized in [localisation.js](/home/ubuntu/dosh/frontend/src/utils/localisation.js), [LocalisationContext.jsx](/home/ubuntu/dosh/frontend/src/components/LocalisationContext.jsx), and [LocalizedAmountInput.jsx](/home/ubuntu/dosh/frontend/src/components/LocalizedAmountInput.jsx)
 - [AmountExpressionInput.jsx](/home/ubuntu/dosh/frontend/src/components/AmountExpressionInput.jsx) now combines localized numeric masked entry for normal amounts with explicit formula-mode previews and normalized decimal submission
+- localisation is not yet mature best-practice infrastructure: beta-scope follow-up work is tracked in [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md) under `Localisation Best-Practice Hardening`, covering supported-option governance, currency/locale validation, date picker locale behavior, `formatRange`, formatter caching, robust amount parsing, decimal precision, and the AutoNumeric/custom-input dependency decision; full text translation remains outside beta scope
 - current route flow defined in [App.jsx](/home/ubuntu/dosh/frontend/src/App.jsx)
 
 Operational note:

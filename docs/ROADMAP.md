@@ -74,7 +74,8 @@ Goal:
 Status:
 
 - completed for app-wide regional formatting, budget-level locale/currency/timezone preferences, numeric masked amount entry without currency symbols or codes inside editable fields, and explicit formula-mode amount entry
-- future expansion remains possible for broader text translation, regional copy variants, and terminology preferences beyond the current account-naming pattern
+- remaining beta work should harden the non-translation localisation foundation so it is closer to common React/FastAPI finance-app best practice
+- broader text translation remains a future opportunity rather than beta scope
 
 Includes:
 
@@ -83,6 +84,11 @@ Includes:
 - preference storage and resolution
 - terminology variation where appropriate
 - supporting regression coverage around locale-sensitive behavior
+- backend/frontend supported-option governance for locale, currency, timezone, and date-format choices
+- robust localized amount parsing, decimal precision, paste, negative-value, comma-decimal, and non-Latin digit behavior
+- date picker locale alignment and date-range formatting that use standard platform APIs where practical
+- cleanup of the AutoNumeric dependency mismatch: either fully adopt the library for masked inputs or remove it and document the custom input contract
+- formatter performance and consistency hardening, including avoiding needless per-call formatter construction where it matters
 
 ### 4. Budget Health Engine
 
@@ -203,7 +209,7 @@ Known gaps in the current documentation set:
 
 - `Cash Management` is now explicitly beta-critical and should be interpreted as supporting cash balances through a budget-cycle workflow.
 - `Budget Health` exists as a first release, but the roadmap now expects it to become robust, user-driven, and version-aware.
-- `Localisation` now has app-wide regional formatting and budget preference storage/resolution in place; remaining roadmap work is broader terminology, translation-style, and regional-copy refinement rather than the core formatting foundation.
+- `Localisation` now has app-wide regional formatting and budget preference storage/resolution in place; remaining beta work is best-practice hardening for non-translation localisation, while full text translation stays outside beta scope.
 - `Maintainability` work is spread across migration, release, reliability, and Sonar follow-through documents rather than being framed as one beta-critical stream.
 - `Phase 2` items may remain intentionally underdefined here until they are ready to become concrete activity streams in [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md).
 - `Bank Integration` is intentionally roadmap-only for now and does not need detailed activity breakdown yet.
