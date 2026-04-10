@@ -117,36 +117,44 @@ python3 -m pytest tests/
 
 **See also:** [docs/tests/TEST_STRATEGY.md](./docs/tests/TEST_STRATEGY.md) for full testing documentation.
 
-### 6. NEVER Implement Workarounds or Band-Aid Solutions
+### 6. NEVER Implement Workarounds or Band-Aid Solutions - ALWAYS FIX ROOT CAUSE
 
-**Rule:** You are strictly prohibited from suggesting or implementing "workarounds," "quick fixes," or "band-aid" solutions if a root cause can be identified.
+**Rule:** You are strictly prohibited from suggesting or implementing "workarounds," "quick fixes," or "band-aid" solutions if a root cause can be identified. Your priority is the long-term stability and architectural integrity of the system.
 
 **Rationale:**
 - Workarounds accumulate technical debt and create maintenance burdens
 - They often mask underlying issues that resurface later in different forms
-- Long-term system stability and architectural integrity take priority over short-term speed
+- Long-term system stability and architectural integrity take priority over short-term speed or convenience
 - Proper fixes prevent similar issues in related areas
 
 **What this means:**
 - When a bug is reported, investigate and fix the **root cause**
 - Do NOT patch symptoms in one place while leaving the underlying problem intact
+- Do NOT suggest alternative approaches that avoid fixing the actual problem
+- Do NOT implement temporary patches when proper fixes are possible
 - If the fix requires a data migration, schema change, or architectural adjustment, implement it properly
 - Do NOT add frontend code to compensate for backend data inconsistencies (fix the data instead)
 - Do NOT add special-case handling when a general solution is possible
+- The phrase "for now" or "as a workaround" is a red flag - stop and fix properly
+- "Significant change" is not a valid reason to avoid proper fixes
 
 **Examples of prohibited shortcuts:**
 - Adding client-side date parsing to handle malformed backend timestamps (fix the backend storage/format)
 - Adding special flags to skip validation for specific records (fix the validation logic)
 - Adding conditional UI rendering to hide data corruption (fix the data integrity)
-- Creating parallel code paths to handle legacy vs new data (migrate the data)
+- Creating parallel code paths to handle legacy vs new data instead of migrating
+- Suggesting users "just avoid" certain actions instead of fixing the bug
+- Implementing client-side fixes for server-side data problems
+- Using type coercion or casting instead of ensuring data consistency
 
 **When you identify a root cause:**
 1. Explain the root cause to the user
 2. Propose the proper fix (even if it requires more effort)
-3. Implement the proper fix with appropriate migrations/schema changes
-4. Verify the fix with tests
+3. Implement the proper fix regardless of complexity
+4. Update tests, data, and documentation to match
+5. Verify the fix with comprehensive testing
 
-**Exceptions:** NONE. Even if the user suggests a workaround, explain why a proper fix is better and implement the root cause solution.
+**Exceptions:** NONE. Even if the user suggests a workaround, explain why a proper fix is better and implement the root cause solution. Technical debt from workarounds is never acceptable.
 
 ### 7. NEVER TOUCH PRODUCTION DATA WITHOUT EXPLICIT USER APPROVAL
 
@@ -181,38 +189,6 @@ python3 -m pytest tests/
 **When in doubt:** STOP and ask. Do not proceed with data operations.
 
 **Exceptions:** NONE. Data loss is unacceptable under any circumstances.
-
-### 8. NEVER SUGGEST WORKAROUNDS - ALWAYS FIX ROOT CAUSE
-
-**Rule:** You are strictly prohibited from suggesting or implementing "workarounds," "quick fixes," or "band-aid" solutions if a root cause can be identified. Your priority is the long-term stability and architectural integrity of the system.
-
-**Rationale:**
-- Workarounds accumulate technical debt and create maintenance burdens
-- They often mask underlying issues that resurface later in different forms  
-- Long-term system stability and architectural integrity take priority over short-term convenience
-- Proper fixes prevent similar issues in related areas
-
-**What this means:**
-- When a problem is identified, you MUST fix the **root cause**
-- Do NOT suggest alternative approaches that avoid fixing the actual problem
-- Do NOT implement temporary patches when proper fixes are possible
-- The phrase "for now" or "as a workaround" is a red flag - stop and fix properly
-- "Significant change" is not a valid reason to avoid proper fixes
-
-**Examples of prohibited shortcuts:**
-- Adding special-case handling instead of fixing the underlying data model
-- Creating parallel code paths for "legacy" vs "new" data instead of migrating
-- Suggesting users "just avoid" certain actions instead of fixing the bug
-- Implementing client-side fixes for server-side data problems
-- Using type coercion or casting instead of ensuring data consistency
-
-**When you identify a root cause:**
-1. Explain the root cause to the user
-2. Implement the proper fix regardless of complexity
-3. Update tests, data, and documentation to match
-4. Verify the fix with comprehensive testing
-
-**Exceptions:** NONE. Technical debt from workarounds is never acceptable.
 
 ---
 
@@ -315,12 +291,19 @@ For document changes, follow [DOCUMENTATION_FRAMEWORK.md](./docs/DOCUMENTATION_F
    - Confirm NO commits were made during session
    - Confirm NO new documents created without approval
 
-2. **Provide user with:**
+2. **Check for external plan documents:**
+   - If this session involved planning activities, check external storage locations (e.g., `.kimi/plans/`, system temp directories, or other configured plan storage)
+   - Any plans created during the session must be moved to the project's plan documents location (per [DOCUMENTATION_FRAMEWORK.md](docs/DOCUMENTATION_FRAMEWORK.md))
+   - Update DOCUMENT_REGISTER.md for any new plan documents moved to the project
+   - **Do NOT leave plans in external storage** - they belong in the project's documentation
+
+3. **Provide user with:**
    - Summary of files modified
+   - Summary of plan documents created/moved (if any)
    - Proposed commit commands
    - Explicit statement: "NO commits made by agent"
 
-3. **User reviews and commits manually**
+4. **User reviews and commits manually**
 
 ---
 
@@ -353,5 +336,5 @@ git push origin main --force-with-lease  # if needed
 
 ---
 
-**Last Updated:** 2026-04-11 (added Hard Controls #6, #7, deployment awareness; documented data loss incident)
+**Last Updated:** 2026-04-11 (consolidated duplicate controls #6/#8; added deployment awareness, external plan document check; documented data loss incident)
 **Framework Version:** 1.0 (per DOCUMENTATION_FRAMEWORK.md)

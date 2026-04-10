@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Added
+
+- **Status Change History**: Budget settings now include an option to record Paid/Revised status changes as non-financial transaction records. When enabled, marking income, expense, or investment lines as Paid or Revised creates an audit trail entry visible in transaction details. This feeds into future budget health analysis for revision frequency and planning accuracy tracking.
+
 ### Fixed
 
 - Fixed remaining backend test failures from UTC datetime migration: all datetime comparisons now properly handle timezone-aware objects

@@ -4,9 +4,27 @@ This document records meaningful automated test results from major working sessi
 
 It exists separately from [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) so the strategy can stay stable while future sessions still have a record of what was actually run and verified.
 
-## Latest Session: UTC Datetime Migration Test Fixes And Deployment
+## Latest Session: Status Change History Feature And UTC Datetime Test Fixes
 
 Session outcomes verified in this run:
+
+### Status Change History Feature (Implemented)
+
+- Implemented budget-level `record_line_status_changes` setting (default: false)
+- Created `build_status_change_tx()` in transaction_ledger.py following budget adjustment pattern
+- Modified status endpoints (expense, income, investment) to create history records when setting enabled
+- Added database migration `b71415822583` for new column
+- Frontend displays status changes with "Status" badge in transaction details
+- Records are non-financial (amount = 0), excluded from totals, cannot be deleted
+
+**Files changed:**
+- [models.py](/home/ubuntu/dosh/backend/app/models.py): Added `record_line_status_changes` column to Budget
+- [schemas.py](/home/ubuntu/dosh/backend/app/schemas.py): Added setting to BudgetOut, BudgetUpdate schemas  
+- [transaction_ledger.py](/home/ubuntu/dosh/backend/app/transaction_ledger.py): Added `TX_TYPE_STATUS_CHANGE`, `build_status_change_tx()` function
+- [periods.py](/home/ubuntu/dosh/backend/app/routers/periods.py): Modified status endpoints to create history records when setting enabled
+- [alembic/versions/b71415822583_add_record_line_status_changes_setting.py](/home/ubuntu/dosh/backend/alembic/versions/b71415822583_add_record_line_status_changes_setting.py): Database migration
+
+### UTC Datetime Migration Test Fixes
 
 - Fixed 14 remaining backend test failures caused by offset-naive vs offset-aware datetime comparisons after UTC migration
 - Updated `cycle_management.py` to use `utc_now()` instead of `utc_now_naive()` for `period.closed_at`
@@ -34,10 +52,12 @@ Result:
 
 Files with meaningful backend updates:
 
-- [models.py](/home/ubuntu/dosh/backend/app/models.py): Removed `_ensure_utc()` and event listeners; cleaned up imports
+- [models.py](/home/ubuntu/dosh/backend/app/models.py): Removed `_ensure_utc()` and event listeners; cleaned up imports; added `record_line_status_changes` column
 - [cycle_management.py](/home/ubuntu/dosh/backend/app/cycle_management.py): Fixed `period.closed_at` to use `utc_now()`
 - [auto_expense.py](/home/ubuntu/dosh/backend/app/auto_expense.py): Fixed scheduler and `run_date` timezone handling
 - [period_logic.py](/home/ubuntu/dosh/backend/app/period_logic.py): Added `_ensure_utc()` helper for datetime normalization
+- [transaction_ledger.py](/home/ubuntu/dosh/backend/app/transaction_ledger.py): Added `build_status_change_tx()` for status change history
+- [periods.py](/home/ubuntu/dosh/backend/app/routers/periods.py): Modified status endpoints to create history records when setting enabled
 
 ### Deployment Verification
 
@@ -77,6 +97,7 @@ Final result:
 - All 121 backend tests passing
 - UTC datetime migration now fully complete and deployed
 - Database backup created before deployment for rollback safety
+- Status Change History feature fully implemented
 
 ---
 

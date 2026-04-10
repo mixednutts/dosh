@@ -41,15 +41,35 @@ For the implemented Auto Expense workflow rules, scheduler behavior, migration e
 
 This session fixed the remaining 14 backend test failures caused by datetime comparison issues after the UTC timezone migration, and created a plan for implementing Status Change History as non-financial transactions.
 
-### Plan Created: Status Change History
+### Status Change History Feature Implemented
 
-Created [STATUS_CHANGE_HISTORY_PLAN.md](/home/ubuntu/dosh/docs/plans/STATUS_CHANGE_HISTORY_PLAN.md) documenting the approach for recording Paid/Revised status changes as non-financial transactions:
+Implemented status change history as non-financial transactions, following the pattern established by budget adjustments:
 
-- Budget-level feature setting (`record_line_status_changes`, default: false)
-- Follows same pattern as budget adjustments (entry_kind = "status_change", amount = 0)
-- Creates audit trail visible in transaction details
-- Enables future budget health analysis (revision frequency, planning accuracy)
-- Gated by user-controllable setting in Settings tab
+**Behavior:**
+- Budget-level setting `record_line_status_changes` (default: false) controls whether status changes are recorded
+- When enabled, marking lines as Paid or Revised creates a `PeriodTransaction` with:
+  - `entry_kind = "status_change"`
+  - `tx_type = "STATUS"`  
+  - `amount = 0` (non-financial)
+  - Note showing status transition (e.g., "Status: Current → Paid")
+- Records appear in transaction details with "Status" badge
+- Excluded from actual/balance calculations (like budget adjustments)
+- Cannot be deleted (system-generated records)
+
+**Files changed:**
+- [models.py](/home/ubuntu/dosh/backend/app/models.py): Added `record_line_status_changes` column to Budget
+- [schemas.py](/home/ubuntu/dosh/backend/app/schemas.py): Added setting to BudgetOut, BudgetUpdate schemas
+- [transaction_ledger.py](/home/ubuntu/dosh/backend/app/transaction_ledger.py): Added `TX_TYPE_STATUS_CHANGE`, `build_status_change_tx()` function
+- [periods.py](/home/ubuntu/dosh/backend/app/routers/periods.py): Modified status endpoints to create history records when setting enabled
+- [alembic/versions/b71415822583_add_record_line_status_changes_setting.py](/home/ubuntu/dosh/backend/alembic/versions/b71415822583_add_record_line_status_changes_setting.py): Database migration
+
+**Frontend:**
+- Settings tab includes checkbox with question mark helper tooltip
+- Transaction modal displays status changes with gray "Status" badge
+- Excluded from running financial totals and delete actions
+
+**Documentation:**
+- Created [STATUS_CHANGE_HISTORY_PLAN.md](/home/ubuntu/dosh/docs/plans/STATUS_CHANGE_HISTORY_PLAN.md) capturing the design decisions
 
 ### UTC Datetime Migration Test Fixes
 
