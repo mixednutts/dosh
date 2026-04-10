@@ -170,12 +170,24 @@ def expense_assessment(budgetid: int, expensedesc: str, db: Session) -> dict:
         reasons.append("Referenced by recorded expense activity")
 
     reasons = _dedupe(reasons)
+    in_use = bool(reasons)
+
+    # Build deactivation impact guidance
+    deactivation_impact: str | None = None
+    if in_use:
+        deactivation_impact = (
+            "Deactivating this expense will remove it from future generated budget cycles. "
+            "Existing budget cycles, including the current cycle, will keep this expense line. "
+            "To remove it from the current cycle, manually delete the line if no transactions exist."
+        )
+
     return {
         "expensedesc": expensedesc,
-        "in_use": bool(reasons),
+        "in_use": in_use,
         "reasons": reasons,
         "can_delete": not reasons,
-        "can_deactivate": not reasons,
+        "can_deactivate": True,  # Deactivation always allowed, affects future cycles only
+        "deactivation_impact": deactivation_impact,
         # Expense revisions are an established supported workflow.
         "can_edit_structure": True,
     }

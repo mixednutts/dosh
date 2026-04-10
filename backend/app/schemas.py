@@ -310,6 +310,7 @@ class SetupAssessmentExpenseOut(BaseModel):
     reasons: list[str] = []
     can_delete: bool = True
     can_deactivate: bool = True
+    deactivation_impact: str | None = None
     can_edit_structure: bool = True
 
 

@@ -47,12 +47,13 @@ function calcNextDue(freqtype, frequencyValue, effectivedate, todayDate = new Da
   return null
 }
 
-function ExpenseItemForm({ initial = emptyForm, isEdit = false, onSubmit, onClose, loading, activeLocked = false, lockReasons = [] }) {
+function ExpenseItemForm({ initial = emptyForm, isEdit = false, onSubmit, onClose, loading, inUse = false, deactivationImpact = '' }) {
   const [form, setForm] = useState(initial)
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
   const formIdPrefix = isEdit ? 'edit-expense-item' : 'create-expense-item'
 
   const isAlways = form.freqtype === 'Always'
+  const showDeactivationWarning = inUse && !form.active
 
   return (
     <form onSubmit={e => {
@@ -92,17 +93,16 @@ function ExpenseItemForm({ initial = emptyForm, isEdit = false, onSubmit, onClos
         </p>
       )}
       <label htmlFor={`${formIdPrefix}-active`} className="flex items-start gap-3 text-sm cursor-pointer">
-        <input id={`${formIdPrefix}-active`} type="checkbox" disabled={activeLocked} checked={form.active} onChange={e => set('active', e.target.checked)}
+        <input id={`${formIdPrefix}-active`} type="checkbox" checked={form.active} onChange={e => set('active', e.target.checked)}
           className="rounded border-gray-300 dark:border-gray-600 text-dosh-600 focus:ring-dosh-500" />
         <span className="space-y-0.5">
           <span className="block font-medium text-gray-800 dark:text-gray-100">Active</span>
           <span className="block text-xs text-gray-500 dark:text-gray-400">Include in future generated budget cycles.</span>
         </span>
       </label>
-      {activeLocked && (
+      {showDeactivationWarning && deactivationImpact && (
         <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-300">
-          This expense item is already in use, so it cannot be deactivated.
-          {lockReasons.length > 0 ? ` ${lockReasons.join('. ')}.` : ''}
+          {deactivationImpact}
         </div>
       )}
       {isEdit && (
@@ -323,8 +323,8 @@ export default function ExpenseItemsTab({ budgetId }) {
               expenseamount: modal.item.expenseamount ?? '',
             } : emptyForm}
             isEdit={modal.mode === 'edit'}
-            activeLocked={modal.item ? expenseUsageByDesc[modal.item.expensedesc]?.can_deactivate === false : false}
-            lockReasons={modal.item ? (expenseUsageByDesc[modal.item.expensedesc]?.reasons || []) : []}
+            inUse={modal.item ? expenseUsageByDesc[modal.item.expensedesc]?.in_use === true : false}
+            deactivationImpact={modal.item ? (expenseUsageByDesc[modal.item.expensedesc]?.deactivation_impact || '') : ''}
             onSubmit={handleSubmit}
             onClose={() => setModal(null)}
             loading={create.isPending || update.isPending}
@@ -359,8 +359,8 @@ ExpenseItemForm.propTypes = {
   onSubmit: PropTypes.func.isRequired,
   onClose: PropTypes.func.isRequired,
   loading: PropTypes.bool.isRequired,
-  activeLocked: PropTypes.bool,
-  lockReasons: PropTypes.arrayOf(PropTypes.string),
+  inUse: PropTypes.bool,
+  deactivationImpact: PropTypes.string,
 }
 
 FreqBadge.propTypes = {

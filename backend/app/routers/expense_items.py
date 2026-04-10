@@ -39,10 +39,8 @@ def _assert_expense_delete_allowed(budgetid: int, expensedesc: str, db: Session)
         raise HTTPException(422, f'Expense item "{expensedesc}" is in use and cannot be deleted. {"; ".join(assessment["reasons"])}.')
 
 
-def _assert_expense_deactivate_allowed(budgetid: int, expensedesc: str, db: Session) -> None:
-    assessment = expense_assessment(budgetid, expensedesc, db)
-    if not assessment["can_deactivate"]:
-        raise HTTPException(422, f'Expense item "{expensedesc}" is in use and cannot be deactivated. {"; ".join(assessment["reasons"])}.')
+# Deactivation guard removed - deactivation is always allowed and only affects future cycles.
+# The setup assessment provides deactivation_impact guidance for UI messaging.
 
 
 def _expense_has_recorded_activity(budgetid: int, expensedesc: str, db: Session) -> bool:
@@ -156,8 +154,8 @@ def update_expense_item(
             payload_data=data,
             db=db,
         )
-    if data.get("active") is False:
-        _assert_expense_deactivate_allowed(budgetid, expensedesc, db)
+    # Deactivation is always allowed; it only affects future cycle generation.
+    # Existing cycles retain the expense line until manually removed.
     bump = data.pop("bump_revision", False)
 
     # Detect whether a revision-worthy field changed

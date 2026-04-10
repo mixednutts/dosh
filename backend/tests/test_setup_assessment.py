@@ -329,7 +329,8 @@ def test_delete_rejects_expense_item_that_is_already_in_use(client, db_session):
     assert "in use" in delete_response.json()["detail"].lower()
 
 
-def test_deactivation_rejects_expense_item_that_is_already_in_use(client, db_session):
+def test_deactivation_allows_expense_item_that_is_already_in_use(client, db_session):
+    """Deactivation is allowed for in-use expenses; it only affects future cycle generation."""
     budget = create_budget(db_session)
     create_income_type(db_session, budgetid=budget.budgetid)
     create_expense_item(db_session, budgetid=budget.budgetid, expensedesc="Rent")
@@ -342,13 +343,27 @@ def test_deactivation_rejects_expense_item_that_is_already_in_use(client, db_ses
         count=1,
     )
 
+    # Verify assessment shows in_use but allows deactivation with impact guidance
+    assessment_response = client.get(f"/api/budgets/{budget.budgetid}/setup-assessment")
+    assert assessment_response.status_code == 200
+    expense_assessment = next(
+        (e for e in assessment_response.json()["expense_items"] if e["expensedesc"] == "Rent"),
+        None
+    )
+    assert expense_assessment is not None
+    assert expense_assessment["in_use"] is True
+    assert expense_assessment["can_deactivate"] is True
+    assert expense_assessment["deactivation_impact"] is not None
+    assert "future generated budget cycles" in expense_assessment["deactivation_impact"]
+
+    # Deactivation should succeed (only affects future cycles)
     update_response = client.patch(
         f"/api/budgets/{budget.budgetid}/expense-items/Rent",
         json={"active": False},
     )
 
-    assert update_response.status_code == 422
-    assert "in use" in update_response.json()["detail"].lower()
+    assert update_response.status_code == 200
+    assert update_response.json()["active"] is False
 
 
 def test_edit_rejects_investment_line_that_is_already_in_use(client, db_session):

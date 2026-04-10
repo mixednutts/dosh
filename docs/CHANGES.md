@@ -37,6 +37,48 @@ For the implemented export-shape plan that now defines budget-cycle export behav
 
 For the implemented Auto Expense workflow rules, scheduler behavior, migration expectations, and AUTO/MANUAL eligibility constraints introduced this session, read [AUTO_EXPENSE_PLAN.md](/home/ubuntu/dosh/docs/plans/AUTO_EXPENSE_PLAN.md).
 
+## Latest Session: Expense Deactivation For In-Use Items
+
+This session implemented the ability to deactivate expense items even when they are already in use (included in generated budget cycles or have recorded transactions).
+
+Important direction now in place:
+
+- deactivating an expense item is now always allowed, regardless of in-use status
+- deactivation only affects **future** generated budget cycles; existing cycles retain the expense line
+- setup assessment now returns `can_deactivate: true` for all expenses, plus an informative `deactivation_impact` message when the expense is in use
+- the frontend now shows the deactivation impact warning when a user unchecks the "Active" toggle for an in-use expense
+- to remove an expense from the current cycle, users must manually delete the line (if no transactions exist)
+
+### Files changed
+
+Backend:
+- [setup_assessment.py](/home/ubuntu/dosh/backend/app/setup_assessment.py): `expense_assessment()` now always returns `can_deactivate: true` and includes `deactivation_impact` guidance
+- [schemas.py](/home/ubuntu/dosh/backend/app/schemas.py): `SetupAssessmentExpenseOut` added `deactivation_impact` field
+- [expense_items.py](/home/ubuntu/dosh/backend/app/routers/expense_items.py): removed `_assert_expense_deactivate_allowed()` guard
+
+Frontend:
+- [ExpenseItemsTab.jsx](/home/ubuntu/dosh/frontend/src/pages/tabs/ExpenseItemsTab.jsx): enabled active checkbox; shows warning instead of blocking
+
+Tests:
+- [test_setup_assessment.py](/home/ubuntu/dosh/backend/tests/test_setup_assessment.py): updated test to verify deactivation is allowed with impact guidance
+- [ExpenseItemsTab.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/ExpenseItemsTab.test.jsx): updated test to verify warning appears on uncheck
+
+### Verification
+
+Backend tests (34 passed):
+- setup assessment suite: 16 passed
+- budget setup workflows: 18 passed
+
+Frontend tests (9 passed):
+- ExpenseItemsTab suite: 9 passed
+
+Deployment:
+- Built successfully with Vite
+- Docker Compose release with migrations completed
+- Health check: `{"status":"ok","app":"Dosh"}`
+- Version: `0.3.0-alpha` (no bump required)
+- Schema revision: `c4d8e6f1a2b3`
+
 ## Latest Session: Localisation Beta Hardening, Operator-Triggered Calculator Entry, And Date-Format Cleanup
 
 This session finalized the beta non-translation localisation hardening work and deployed it through the migration-aware Compose path.

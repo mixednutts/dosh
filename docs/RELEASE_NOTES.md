@@ -12,6 +12,10 @@
 - Updated calculator amount fields so simple operators trigger calculation directly, with leading `=` still supported but no separate `Adjust` button required
 - Focused the shared add-transaction modal on the amount field by default
 
+### Fixed
+
+- Expense items can now be deactivated even when already in use. Deactivation affects only future budget cycles; existing cycles retain the expense line. A warning explains the impact when deactivating an in-use expense.
+
 ### Notes
 
 - Machine-readable CSV and JSON export remain locale-neutral for beta and are not presented as localized or human-readable export modes

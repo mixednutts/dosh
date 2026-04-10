@@ -70,7 +70,8 @@ describe('ExpenseItemsTab', () => {
           in_use: true,
           reasons: ['Included in generated budget cycles'],
           can_delete: false,
-          can_deactivate: false,
+          can_deactivate: true,
+          deactivation_impact: 'Deactivating this expense will remove it from future generated budget cycles.',
           can_edit_structure: true,
         },
       ],
@@ -84,7 +85,7 @@ describe('ExpenseItemsTab', () => {
     expect(deleteButton.disabled).toBe(true)
   })
 
-  it('allows revision-style edits while an in-use expense item cannot be deactivated', async () => {
+  it('allows revision-style edits and shows deactivation warning for in-use expense items', async () => {
     client.getExpenseItems.mockResolvedValue([
       {
         expensedesc: 'Rent',
@@ -111,7 +112,8 @@ describe('ExpenseItemsTab', () => {
           in_use: true,
           reasons: ['Included in generated budget cycles'],
           can_delete: false,
-          can_deactivate: false,
+          can_deactivate: true,
+          deactivation_impact: 'Deactivating this expense will remove it from future generated budget cycles. Existing budget cycles, including the current cycle, will keep this expense line.',
           can_edit_structure: true,
         },
       ],
@@ -130,8 +132,19 @@ describe('ExpenseItemsTab', () => {
     expect(amountInput.value).toBe('1200')
     fireEvent.change(amountInput, { target: { value: '1300' } })
 
+    // Active checkbox should be enabled (not disabled)
     const activeToggle = screen.getAllByRole('checkbox')[1]
-    expect(activeToggle.disabled).toBe(true)
+    expect(activeToggle.disabled).toBe(false)
+    
+    // Warning should appear when unchecking the active toggle
+    expect(screen.queryByText(/Deactivating this expense will remove it from future generated budget cycles/i)).toBeNull()
+    fireEvent.click(activeToggle) // uncheck
+    expect(screen.getByText(/Deactivating this expense will remove it from future generated budget cycles/i)).toBeTruthy()
+    
+    // Re-check to keep it active for the save
+    fireEvent.click(activeToggle) // check again
+    expect(screen.queryByText(/Deactivating this expense will remove it from future generated budget cycles/i)).toBeNull()
+    
     fireEvent.click(screen.getByText('Save'))
 
     await waitFor(() => {
