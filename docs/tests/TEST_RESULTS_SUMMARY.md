@@ -72,6 +72,31 @@ Versioning:
 
 - no version bump was made; this is recorded as unreleased follow-up work after `0.3.0-alpha`
 
+## Latest Session: SonarQube Test Warning Fix For PersonalisationTab
+
+Session outcome verified in this run:
+
+- resolved the React testing warning about updates not wrapped in `act(...)` during `PersonalisationTab` test teardown
+
+### Verification
+
+Command run:
+
+```bash
+cd /home/ubuntu/dosh/frontend
+npm test -- --runInBand src/__tests__/PersonalisationTab.test.jsx
+```
+
+Result:
+
+- suite passed with `1 passed`
+- tests passed with `3 passed`
+
+Failure and resolution:
+
+- warning source: `afterEach` in [PersonalisationTab.test.jsx](/home/ubuntu/dosh/frontend/src/__tests__/PersonalisationTab.test.jsx) called `jest.runOnlyPendingTimers()` outside `act(...)`, which can trigger React Query notifications outside React’s test boundary
+- fix: wrap pending timer flush in `act(() => { jest.runOnlyPendingTimers() })`
+
 ## Latest Session: Localisation Date Format, Version-Bump Reassessment, And Regression Sweep
 
 Session outcomes verified in this run:
