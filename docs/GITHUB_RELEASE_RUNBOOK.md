@@ -2,7 +2,7 @@
 
 This runbook is the high-level operator guide for Dosh GitHub-managed releases.
 
-Use it alongside [GITHUB_RELEASE_MANAGEMENT_WORKFLOW_PLAN.md](/home/ubuntu/dosh/docs/plans/GITHUB_RELEASE_MANAGEMENT_WORKFLOW_PLAN.md) and [MIGRATION_AND_RELEASE_MANAGEMENT.md](/home/ubuntu/dosh/docs/MIGRATION_AND_RELEASE_MANAGEMENT.md).
+Use it alongside [GITHUB_RELEASE_MANAGEMENT_WORKFLOW_PLAN.md](/home/ubuntu/dosh/docs/plans/GITHUB_RELEASE_MANAGEMENT_WORKFLOW_PLAN.md), [MIGRATION_AND_RELEASE_MANAGEMENT.md](/home/ubuntu/dosh/docs/MIGRATION_AND_RELEASE_MANAGEMENT.md), and [MIGRATION_AND_VERSION_SAFETY.md](/home/ubuntu/dosh/docs/MIGRATION_AND_VERSION_SAFETY.md).
 
 ## When To Use This
 

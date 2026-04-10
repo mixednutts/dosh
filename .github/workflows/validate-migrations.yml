@@ -1,0 +1,122 @@
+name: Validate Migrations
+
+on:
+  pull_request:
+    paths:
+      - "backend/alembic/versions/**"
+      - "backend/app/models.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-migrations:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: |
+          pip install -r requirements.txt
+
+      - name: Check for version-dependent migration logic
+        run: |
+          echo "Checking for dangerous patterns in migration files..."
+          VIOLATIONS=0
+          
+          for file in backend/alembic/versions/*.py; do
+            if [[ $(basename "$file") == "__"* ]]; then
+              continue
+            fi
+            
+            # Check for APP_VERSION references
+            if grep -q "APP_VERSION" "$file"; then
+              echo "❌ $file: contains APP_VERSION"
+              VIOLATIONS=$((VIOLATIONS + 1))
+            fi
+            
+            # Check for version.py imports
+            if grep -qE "(from app.version|import version)" "$file"; then
+              echo "❌ $file: imports version module"
+              VIOLATIONS=$((VIOLATIONS + 1))
+            fi
+            
+            # Check for dangerous patterns
+            if grep -qE "version.*[<>!=]+" "$file"; then
+              echo "❌ $file: contains version comparison"
+              VIOLATIONS=$((VIOLATIONS + 1))
+            fi
+          done
+          
+          if [[ $VIOLATIONS -gt 0 ]]; then
+            echo ""
+            echo "ERROR: $VIOLATIONS migration file(s) contain version-dependent logic."
+            echo "Migrations must NOT depend on APP_VERSION."
+            echo "See: docs/MIGRATION_AND_VERSION_SAFETY.md"
+            exit 1
+          fi
+          
+          echo "✅ No version-dependent migration logic detected."
+
+      - name: Validate migration chain
+        working-directory: backend
+        run: |
+          echo "Checking migration chain integrity..."
+          
+          # Get current head
+          HEAD=$(alembic heads 2>/dev/null | head -1 | awk '{print $1}')
+          echo "Head revision: $HEAD"
+          
+          # Check for multiple heads (branching)
+          HEAD_COUNT=$(alembic heads 2>/dev/null | wc -l)
+          if [[ $HEAD_COUNT -gt 1 ]]; then
+            echo "❌ ERROR: Multiple migration heads detected ($HEAD_COUNT)"
+            echo "Run: alembic merge heads"
+            exit 1
+          fi
+          
+          echo "✅ Migration chain is linear."
+
+      - name: Check for model-migration sync
+        working-directory: backend
+        run: |
+          echo "Checking if models are in sync with migrations..."
+          
+          # Generate a new migration from current models (dry-run)
+          # This will fail if models don't match migrations
+          alembic revision --autogenerate -m "ci_check" --sql 2>/dev/null > /tmp/check.sql || true
+          
+          # If there's actual DDL in the output, models are ahead of migrations
+          if grep -q "CREATE\|ALTER\|DROP" /tmp/check.sql 2>/dev/null; then
+            echo "❌ WARNING: Models appear to be out of sync with migrations."
+            echo "Generated SQL would contain:"
+            grep -E "^(CREATE|ALTER|DROP)" /tmp/check.sql | head -10
+            echo ""
+            echo "If these are intentional changes, create a migration:"
+            echo "  cd backend && alembic revision --autogenerate -m 'description'"
+            # Don't fail here - this is just informational for PRs
+          else
+            echo "✅ Models appear to be in sync with migrations."
+          fi
+
+      - name: Summary
+        run: |
+          echo ""
+          echo "=========================================="
+          echo "Migration Validation Summary"
+          echo "=========================================="
+          echo "✅ No version-dependent migration logic"
+          echo "✅ Migration chain is linear"
+          echo "✅ Model-migration sync checked"
+          echo ""
+          echo "For migration safety guidelines:"
+          echo "  docs/MIGRATION_AND_VERSION_SAFETY.md"

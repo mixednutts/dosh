@@ -138,6 +138,39 @@ def bump_layout_tests(version: str) -> None:
         print("  frontend/src/__tests__/Layout.test.jsx: updated")
 
 
+def check_migration_safety() -> bool:
+    """Check that migrations don't depend on APP_VERSION."""
+    migrations_dir = ROOT_DIR / "backend" / "alembic" / "versions"
+    issues = []
+    
+    for migration_file in migrations_dir.glob("*.py"):
+        if migration_file.name.startswith("__"):
+            continue
+        content = migration_file.read_text(encoding="utf-8")
+        
+        dangerous_patterns = [
+            ("APP_VERSION", "APP_VERSION constant"),
+            ("app_version", "app_version variable"),
+            ("from app.version", "version module import"),
+            ("import version", "version import"),
+            ('version.py', "version.py reference"),
+        ]
+        
+        for pattern, description in dangerous_patterns:
+            if pattern in content:
+                issues.append(f"  - {migration_file.name}: {description}")
+    
+    if issues:
+        print("\n⚠️  WARNING: Potential version-dependent migration logic detected:")
+        for issue in issues:
+            print(issue)
+        print("\nMigrations should NOT depend on APP_VERSION.")
+        print("See: docs/MIGRATION_AND_VERSION_SAFETY.md")
+        return False
+    
+    return True
+
+
 def validate_all_touchpoints(version: str) -> bool:
     """Run the release management validation."""
     result = subprocess.run(
@@ -150,7 +183,14 @@ def validate_all_touchpoints(version: str) -> bool:
         print("\nValidation failed:")
         print(result.stderr)
         return False
-    print("\nAll version touchpoints validated successfully!")
+    
+    # Also check migration safety
+    if not check_migration_safety():
+        print("\n⚠️  Migration safety check failed.")
+        return False
+    
+    print("\n✅ All version touchpoints validated successfully!")
+    print("✅ Migration safety check passed!")
     return True
 
 
@@ -197,3 +237,27 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+def check_for_version_sensitive_migration_logic(version: str) -> bool:
+    """Check if any migration depends on app version."""
+    migrations_dir = ROOT_DIR / "backend" / "alembic" / "versions"
+    issues = []
+    
+    for f in migrations_dir.glob("*.py"):
+        content = f.read_text(encoding="utf-8")
+        if "APP_VERSION" in content or "app_version" in content.lower():
+            issues.append(f"  - {f.name}: contains APP_VERSION reference")
+        if "version" in content.lower() and "if" in content.lower():
+            # Check for conditional version logic
+            lines = content.lower().split("\n")
+            for i, line in enumerate(lines, 1):
+                if "version" in line and any(x in line for x in [">", "<", "==", ">=", "<="]):
+                    issues.append(f"  - {f.name}:{i}: potential version comparison")
+    
+    if issues:
+        print("Warning: Potential version-sensitive migration logic found:")
+        for issue in issues:
+            print(issue)
+        return False
+    return True
