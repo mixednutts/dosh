@@ -10,7 +10,7 @@ from alembic.config import Config
 
 
 BASELINE_REVISION = "abfa823847b9"
-HEAD_REVISION = "c4d8e6f1a2b3"
+HEAD_REVISION = "32e38f31a3bd"
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 ALEMBIC_INI_PATH = BACKEND_DIR / "alembic.ini"
 ALEMBIC_SCRIPT_PATH = BACKEND_DIR / "alembic"
