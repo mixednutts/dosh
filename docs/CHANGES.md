@@ -67,14 +67,17 @@ Frontend:
 - [api/client.js](/home/ubuntu/dosh/frontend/src/api/client.js): Added `setPeriodIncomeStatus`
 
 Documentation:
-- [AGENTS.md](/home/ubuntu/dosh/AGENTS.md): Created agent session initialization guide
+- [AGENTS.md](/home/ubuntu/dosh/AGENTS.md): Created agent session initialization guide; added testing section with venv pytest commands
 - [scripts/db-migrate.sh](/home/ubuntu/dosh/scripts/db-migrate.sh): Created migration helper script
+- [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md): Added "Test-by-Change Discipline" section with venv workflow documentation
+- [AGENTS.md](/home/ubuntu/dosh/AGENTS.md): Added testing quick reference for agent sessions
 
 ### Verification
 
-Backend tests (54 passed):
-- Period detail tests: 53 passed
-- Status workflow tests: 1 new test added for Income status workflow
+Backend tests (121 passed):
+- Full backend suite: 121 passed (including new Income status workflow test)
+- Status workflow tests: 3/3 passed (expense, investment, income)
+- Migration tests: Updated HEAD_REVISION, all passing
 
 Frontend tests (53 passed):
 - Period detail page tests: 53 passed
@@ -85,6 +88,14 @@ Per [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md), the Incom
 - `test_paid_income_requires_revision_before_more_changes` added to [test_status_workflows.py](/home/ubuntu/dosh/backend/tests/test_status_workflows.py)
 - Tests verify: mark Paid → edits blocked → revise → edits allowed
 - This aligns with the existing expense and investment status workflow tests
+
+**Local venv test execution (test-by-change discipline):**
+```bash
+cd /home/ubuntu/dosh/backend
+.venv/bin/pytest tests/test_status_workflows.py -v
+.venv/bin/pytest tests/test_auto_expense_migration.py -v
+.venv/bin/pytest tests/ -v  # Full suite
+```
 
 Deployment:
 - Built successfully with Vite

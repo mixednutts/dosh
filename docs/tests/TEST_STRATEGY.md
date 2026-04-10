@@ -31,6 +31,7 @@ Observed current state:
 - backend maintenance coverage now also includes a dedicated Alembic migration harness for clean upgrades and upgrade from a pre-feature SQLite snapshot
 - backend test dependencies are listed in [backend/requirements-dev.txt](/home/ubuntu/dosh/backend/requirements-dev.txt)
 - backend test configuration is defined in [backend/pytest.ini](/home/ubuntu/dosh/backend/pytest.ini)
+- backend tests run in a Python virtual environment at `backend/.venv/` with pytest available at `backend/.venv/bin/pytest`
 - frontend now uses a Vite build with standalone Jest plus React Testing Library, and includes user-facing workflow coverage
 - frontend Jest coverage now also includes a dedicated layout-navigation baseline for current sidebar hierarchy, setup-link visibility, and cycle-shortcut affordances
 - frontend Jest coverage now also includes Budgets page calendar behavior, including compact summary rendering, full-calendar interaction, bounded 3-month lookahead, and day-event modal behavior
@@ -146,6 +147,66 @@ Current development direction makes the following test emphasis especially usefu
 - localisation and regional-fit formatting is now implemented, so tests should use shared formatting expectations or representative locale fixtures instead of reintroducing hard-coded regional assumptions where possible
 - startup no longer applies transitional schema mutation during app boot, so tests should focus on runtime workflow behavior and treat explicit cutover or migration flows as separate maintenance concerns
 
+## Test-by-Change Discipline
+
+Dosh follows a **test-by-change** discipline: meaningful workflow changes should include tests that protect the new behavior.
+
+### When to add tests
+
+- **New features**: Any new workflow or API endpoint should have regression coverage
+- **Bug fixes**: Include a test that would have caught the bug
+- **Behavior changes**: Update or add tests when intentional behavior changes
+- **Refactors**: Ensure existing tests pass; add tests if coverage gaps are exposed
+
+### When tests can be deferred
+
+- Pure UI styling changes without behavior impact
+- Documentation-only changes
+- Configuration changes that don't affect code paths
+
+### Local test execution
+
+Backend tests run in a virtual environment to ensure isolation and reproducibility.
+
+**Setup (one-time):**
+```bash
+cd /home/ubuntu/dosh/backend
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt -r requirements-dev.txt
+```
+
+**Running tests:**
+```bash
+# All tests
+cd /home/ubuntu/dosh/backend
+.venv/bin/pytest tests/ -v
+
+# Specific test file
+.venv/bin/pytest tests/test_status_workflows.py -v
+
+# Specific test
+.venv/bin/pytest tests/test_status_workflows.py::test_paid_income_requires_revision_before_more_changes -v
+
+# With coverage report
+.venv/bin/pytest tests/ --cov=app --cov-report=xml:coverage.xml
+```
+
+**Frontend tests:**
+```bash
+cd /home/ubuntu/dosh/frontend
+npm test
+
+# Specific test file
+npm test -- PeriodDetailPage.test.jsx
+```
+
+### CI vs local testing
+
+- **Local (venv)**: Fast iteration, targeted test runs during development
+- **CI (GitHub Actions)**: Full suite with coverage, SonarQube analysis, multi-environment validation
+
+Always run targeted local tests before pushing. The CI will run the full suite including backend pytest with coverage reporting.
+
 ### Practical rule for future sessions
 
 If a behavior is described in the Markdown docs as a user-facing workflow rule, continuity rule, or historical-integrity constraint, it should either:
@@ -234,6 +295,76 @@ Notes:
 - Avoid coverage theater: do not add brittle or low-value tests whose main purpose is to increase a metric without improving trust in the product.
 - Whenever a product rule is documented in an MD file, it should usually have a corresponding test case or explicit testing note.
 - Prefer documenting new test scope and remaining gaps back into this file so future sessions do not have to rediscover the current boundary.
+
+## Test Integrity
+
+Tests must verify **user-visible behavior**, not implementation details. When a code change causes a test to fail, evaluate whether the test or the code is wrong—do not restructure the test just to produce a pass.
+
+### Core principles
+
+1. **Tests should verify user-visible behavior, not implementation details**
+   - Assertions should check what the user actually sees or experiences
+   - Avoid testing internal state, private methods, or intermediate calculations unless they are explicit user-facing outputs
+
+2. **Assertions should be specific and deterministic**
+   - When the test controls the inputs, the expected output should be known exactly
+   - Use specific matchers that would fail if the output format changes unexpectedly
+   - Avoid overly flexible matchers (regex wildcards, function matchers that accept anything) that would pass with incorrect output
+
+3. **Mock external dependencies; don't weaken assertions**
+   - It is valid to mock external dependencies (APIs, localization settings, date/time) to make tests deterministic
+   - It is NOT valid to weaken assertions so they'd pass regardless of the actual output
+   - If a dependency change affects output, either fix the code or update the expected value—not the matcher flexibility
+
+4. **Evaluate failures honestly**
+   - If a code change causes a test to fail, ask: is the new behavior correct?
+   - If yes: update the test's expected values to match the new correct behavior
+   - If no: fix the code
+   - Never alter tests just to make them pass when the product behavior is wrong
+
+### Examples
+
+**Bad practice—making assertions vague to force a pass:**
+
+```javascript
+// Original: specific, deterministic assertion
+expect(screen.getByText('30 June 26')).toBeTruthy()
+
+// Bad: weakened to pass with any format containing "30"
+expect(screen.getByText(/30/)).toBeTruthy()
+
+// Bad: function matcher that accepts anything with the right characters
+expect(screen.getByText((content) => 
+  content.includes('30') && content.includes('2026')
+)).toBeTruthy()
+```
+
+These weakened assertions would pass even if dates were formatted incorrectly (e.g., "30-06-2026", "June 30 2026", or even corrupted output like "30 ERROR 2026").
+
+**Good practice—controlling inputs to make output predictable:**
+
+```javascript
+// Control the localization context so output is deterministic
+renderWithProviders(<BudgetPeriodsPage />, {
+  route: '/budgets/1',
+  path: '/budgets/:budgetId',
+  budget: { 
+    locale: 'en-AU', 
+    currency: 'AUD', 
+    timezone: 'Australia/Sydney', 
+    date_format: 'short'  // Explicit format: "30 June 26"
+  },
+})
+
+// Assert on the exact user-visible string
+expect(screen.getByText('30 June 26')).toBeTruthy()
+```
+
+This approach:
+- Verifies the exact user-visible format
+- Would fail if the format logic changed unexpectedly
+- Makes the test's assumptions explicit (short date format, en-AU locale)
+- Remains a valid functional test of user-visible behavior
 
 ## Recommended Test Pyramid
 

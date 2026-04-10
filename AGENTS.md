@@ -72,6 +72,32 @@ Artifacts include: `sonar-summary.md`, `sonar-issues-full.json`, `sonar-componen
 
 See [PROJECT_CONTEXT.md](/home/ubuntu/dosh/docs/PROJECT_CONTEXT.md) CI Operational Notes section for full details.
 
+### Testing (Test-by-Change Discipline)
+
+Dosh requires **test-by-change**: meaningful workflow changes must include tests.
+
+**Quick test commands:**
+
+```bash
+# Backend (using venv pytest)
+cd /home/ubuntu/dosh/backend
+.venv/bin/pytest tests/test_status_workflows.py -v
+.venv/bin/pytest tests/test_auto_expense_migration.py -v
+.venv/bin/pytest tests/ -v  # Full suite
+
+# Frontend
+npm test -- PeriodDetailPage.test.jsx
+npm test
+```
+
+**When tests are required:**
+- New features → Add regression tests
+- Bug fixes → Add test that would have caught the bug  
+- Behavior changes → Update/add tests
+- Refactors → Ensure existing tests pass
+
+See [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) for full testing guidance.
+
 ## Quick Reference Links
 
 | Topic | Canonical Document |

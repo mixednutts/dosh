@@ -271,6 +271,7 @@ describe('BudgetPeriodsPage', () => {
     const firstRender = renderWithProviders(<BudgetPeriodsPage />, {
       route: '/budgets/1',
       path: '/budgets/:budgetId',
+      budget: { locale: 'en-AU', currency: 'AUD', timezone: 'Australia/Sydney', date_format: 'short' },
     })
 
     expect(await screen.findByText('Budget Cycles')).toBeTruthy()
@@ -287,6 +288,7 @@ describe('BudgetPeriodsPage', () => {
     renderWithProviders(<BudgetPeriodsPage />, {
       route: '/budgets/1',
       path: '/budgets/:budgetId',
+      budget: { locale: 'en-AU', currency: 'AUD', timezone: 'Australia/Sydney', date_format: 'short' },
     })
 
     expect(await screen.findByTitle('Collapse historic budget cycles')).toBeTruthy()
@@ -427,6 +429,7 @@ describe('BudgetPeriodsPage', () => {
     const firstRender = renderWithProviders(<BudgetPeriodsPage />, {
       route: '/budgets/1#upcoming',
       path: '/budgets/:budgetId',
+      budget: { locale: 'en-AU', currency: 'AUD', timezone: 'Australia/Sydney', date_format: 'short' },
     })
 
     expect(await screen.findByTitle('Collapse planned budget cycles')).toBeTruthy()
@@ -437,6 +440,7 @@ describe('BudgetPeriodsPage', () => {
     renderWithProviders(<BudgetPeriodsPage />, {
       route: '/budgets/1',
       path: '/budgets/:budgetId',
+      budget: { locale: 'en-AU', currency: 'AUD', timezone: 'Australia/Sydney', date_format: 'short' },
     })
 
     expect(await screen.findByTitle('Collapse planned budget cycles')).toBeTruthy()
