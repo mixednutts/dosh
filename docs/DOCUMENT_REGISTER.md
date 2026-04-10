@@ -59,31 +59,35 @@ Document:
 
 Document type:
 
-- session handoff or working context
+- session handoff or working context (with framework/governance aspects)
 
 Primary purpose:
 
 - provide agent-specific session initialization guidance
-- consolidate agent workflows and quick reference links
+- define hard operational controls for AI agent sessions
+- establish constraints and guardrails (NEVER stage/commit, DOCUMENTATION_FRAMEWORK compliance)
 - complement PROJECT_CONTEXT.md with AI-session-specific navigation
 
 Primary source-of-truth scope:
 
-- agent session reading order
-- agent-specific workflows (migration helper, date formatting patterns)
-- quick reference links to canonical documents
+- agent session initialization path
+- hard operational controls (non-negotiable rules)
+- DOCUMENTATION_FRAMEWORK compliance requirements for agents
+- workflow guidelines for making and documenting changes
 
 Key relationships:
 
 - points to PROJECT_CONTEXT.md as primary working handoff
+- references DOCUMENTATION_FRAMEWORK.md as compliance standard
 - links to all canonical source documents
-- complements rather than duplicates DOCUMENTATION_FRAMEWORK.md
+- complements DOCUMENTATION_FRAMEWORK.md with agent-specific constraints
 
 Maintenance notes:
 
-- should remain minimal and navigation-focused
-- should not duplicate content from canonical documents
-- update when new agent workflows are identified
+- hard controls defined in [AGENTS.md](/home/ubuntu/dosh/AGENTS.md) are non-negotiable and permanent
+- update when DOCUMENTATION_FRAMEWORK compliance requirements change
+- keep current project state snapshot updated
+- preserve clear separation between agent constraints and general project guidance
 
 ### MIGRATION_AND_RELEASE_MANAGEMENT.md
 
