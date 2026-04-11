@@ -37,6 +37,61 @@ For the implemented export-shape plan that now defines budget-cycle export behav
 
 For the implemented Auto Expense workflow rules, scheduler behavior, migration expectations, and AUTO/MANUAL eligibility constraints introduced this session, read [AUTO_EXPENSE_PLAN.md](/home/ubuntu/dosh/docs/plans/AUTO_EXPENSE_PLAN.md).
 
+## Latest Session: PeriodDetailPage Complete Modularization And Legacy Schema Cleanup
+
+This session completed the three-phase modularization of PeriodDetailPage.jsx, reducing it from 2,911 lines to 642 lines (78% reduction), and fixed a legacy database schema issue that was blocking demo budget creation.
+
+### Frontend Component Architecture Completely Restructured
+
+The PeriodDetailPage component has been fully decomposed into a modular architecture with clear separation of concerns.
+
+**What changed:**
+- Extracted 15 components into 5 organized directories under `frontend/src/components/`
+- Created `components/transaction/` with 7 components (TransactionWorkflowModal, TransactionEntryForm, TransactionListPanel, IncomeTransactionsModal, ExpenseEntriesModal, InvestmentTxModal, AmountSummaryGrid)
+- Created `components/status/` with 2 components (ProgressStatusPill, ConfirmPaidModal)  
+- Created `components/modals/` with 4 action modals (BalanceTransactionsModal, BudgetAdjustmentModal, CloseoutModal, ExportCycleModal)
+- Created `components/period-lines/` with 2 components (AddIncomeLineModal, AddExpenseLineModal)
+- Created `components/period-sections/` with 4 section components (IncomeSection, ExpenseSection, InvestmentSection, BalanceSection)
+- Extracted 3 utility modules to `utils/` (transactionHelpers.js, periodCalculations.jsx, iconButtons.jsx)
+
+**Build fixes required:**
+- Renamed `iconButtons.js` → `iconButtons.jsx` (contains JSX)
+- Renamed `periodCalculations.js` → `periodCalculations.jsx` (contains JSX)
+- Fixed PropTypes warning by making `status` optional in ProgressStatusPill
+
+**Why:**
+- The 2,911-line PeriodDetailPage.jsx was a maintainability hotspot per SonarQube
+- Component extraction enables reusability and easier testing
+- Clear directory structure by function rather than by type simplifies navigation
+- Phase 3 section extraction (Activity 1) further reduced main page complexity
+
+**Verification:**
+- All 164 frontend tests passing
+- Production build successful
+- Deployed to production environment
+
+### Legacy Database Schema Issue Resolved
+
+Post-deployment, the "Create Demo Budget" function failed due to a pre-baseline schema artifact.
+
+**What changed:**
+- Removed legacy `isfixed` column from `incometypes` database table
+- Column was a pre-Alembic-baseline artifact not reflected in current SQLAlchemy models
+- Used SQLite table recreation to safely drop the column while preserving data
+
+**Why:**
+- The `isfixed` feature was intentionally removed from the product model per CHANGES.md history
+- The column mismatch caused IntegrityError when creating IncomeType records via demo_budget.py
+- Proper fix maintains alignment between database schema and SQLAlchemy models
+
+**Verification:**
+- Demo budget creation now works correctly
+- All income types in demo seed function properly
+- No regression in existing budget/period functionality
+
+**Deferred:**
+- Phase 2 modularization targets (BudgetsPage.jsx, BudgetPeriodsPage.jsx) remain for future sessions
+
 ## Latest Session: Transaction Entry Date Simplification And UI Layout Refinement
 
 This session simplified the transaction entry date/time handling and refined the transaction modal layout based on user feedback.

@@ -577,6 +577,37 @@ Maintenance notes:
 
 - should remain focused on status change history behavior rather than becoming a general transaction ledger document
 
+### FRONTEND_MODULARISATION_PLAN.md
+
+Document:
+
+- [FRONTEND_MODULARISATION_PLAN.md](/home/ubuntu/dosh/docs/FRONTEND_MODULARISATION_PLAN.md)
+
+Document type:
+
+- technical improvement plan
+
+Primary purpose:
+
+- define the phased approach for reducing frontend component complexity through extraction and modularization
+
+Primary source-of-truth scope:
+
+- PeriodDetailPage component breakdown strategy
+- component directory structure and organization
+- extraction patterns for transaction components, status pills, modals, and utility functions
+
+Key relationships:
+
+- implemented in [frontend/src/pages/PeriodDetailPage.jsx](/home/ubuntu/dosh/frontend/src/pages/PeriodDetailPage.jsx)
+- new components located in [frontend/src/components/](/home/ubuntu/dosh/frontend/src/components/)
+- extraction utilities in [frontend/src/utils/](/home/ubuntu/dosh/frontend/src/utils/)
+
+Maintenance notes:
+
+- update when adding new major sections or completing additional phases
+- track component extraction progress and line count reductions
+
 ### GITHUB_RELEASE_RUNBOOK.md
 
 Document:

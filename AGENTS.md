@@ -210,6 +210,12 @@ For document changes, follow [DOCUMENTATION_FRAMEWORK.md](./docs/DOCUMENTATION_F
 **Schema Revision:** b71415822583 (adds status change history setting)
 
 **Recent Work:**
+- **PeriodDetailPage Modularization (COMPLETED):** Reduced from 2,911 lines to 642 lines (78% reduction)
+  - Phase 1A: Extracted transaction modals to `components/transaction/` (7 components)
+  - Phase 1B: Extracted action modals to `components/modals/` (4 components)
+  - Phase 2: Extracted utility functions to `utils/` (3 modules)
+  - Phase 3: Extracted section components to `components/period-sections/` (4 components)
+  - Post-deploy fix: Removed legacy `isfixed` column from database (pre-baseline schema artifact)
 - Transaction entry date/time simplified: now read-only with current datetime, removed editable calendar picker
 - UI layout refinements: widened Add Remaining/Full button to match amount field width
 - UTC datetime migration completed: all backend datetime storage now uses UTC with proper timezone handling

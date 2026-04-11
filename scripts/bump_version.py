@@ -118,9 +118,9 @@ def bump_layout_tests(version: str) -> None:
     # Update both '0.3.0-alpha' style strings and 'v0.3.0-alpha' style strings
     pattern1 = re.compile(r"version:\s*'[^']+'")
     pattern2 = re.compile(r"current_version:\s*'[^']+'")
-    pattern3 = re.compile(r"(getByText\('v)[^']+(")")
-    pattern4 = re.compile(r"(findByText\('v)[^']+(")")
-    pattern5 = re.compile(r"(findByRole\([^)]+\{\s*name:\s*\/v)[^/]+(")")
+    pattern3 = re.compile(r"(getByText\('v)[^']+('\))")
+    pattern4 = re.compile(r"(findByText\('v)[^']+('\))")
+    pattern5 = re.compile(r"(findByRole\([^)]+\{\s*name:\s*\/v)[^/]+(/i\))")
     
     text = path.read_text(encoding="utf-8")
     original = text

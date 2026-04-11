@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.3.2-alpha | released | 2026-04-11
+
 ### Added
 
 - **Status Change History**: Budget settings now include an option to record Paid/Revised status changes as non-financial transaction records. When enabled, marking income, expense, or investment lines as Paid or Revised creates an audit trail entry visible in transaction details. This feeds into future budget health analysis for revision frequency and planning accuracy tracking.
@@ -10,6 +12,7 @@
 
 - Fixed remaining backend test failures from UTC datetime migration: all datetime comparisons now properly handle timezone-aware objects
 - Cleaned up redundant timezone handling code in models (now handled by `UTCDateTime` type decorator)
+- Fixed demo budget creation failure caused by legacy `isfixed` database column (pre-baseline schema artifact)
 
 ### Changed
 
@@ -18,8 +21,14 @@
 
 ### Engineering
 
+- **PeriodDetailPage Complete Modularization**: Reduced from 2,911 lines to 642 lines (78% reduction) through three-phase extraction
+  - Extracted 7 transaction components to `components/transaction/`
+  - Extracted 4 action modals to `components/modals/`
+  - Extracted 4 section components to `components/period-sections/`
+  - Extracted 3 utility modules to `utils/`
 - Database datetime storage now consistently uses UTC format with `+00:00` suffix
 - All backend tests passing (121/121)
+- All frontend tests passing (164/164)
 - Removed unused `parseDateTimeInput` function and `DATE_PARSE_PATTERNS` from localisation utilities
 - Removed unused `format` import from date-fns in PeriodDetailPage.jsx
 
