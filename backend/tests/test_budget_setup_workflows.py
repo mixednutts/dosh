@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from decimal import Decimal
 
 from app.time_utils import utc_now
@@ -848,3 +849,58 @@ def test_setup_history_endpoints_return_budget_adjustment_details(client, db_ses
     assert investment_payload["category"] == "investment"
     assert investment_payload["entries"][0]["type"] == "BUDGETADJ"
     assert investment_payload["entries"][0]["note"] == "Boost savings target"
+
+
+def test_adding_scheduled_expense_to_future_only_applies_to_periods_where_due(client, db_session):
+    """A new 'Every N Days' expense should not be added to future periods where it does not occur."""
+    budget = create_budget(db_session, budget_frequency="Monthly")
+    create_income_type(db_session, budgetid=budget.budgetid)
+    create_balance_type(db_session, budgetid=budget.budgetid)
+    # Dummy expense so generation succeeds; the real scheduled expense is added afterward
+    create_expense_item(db_session, budgetid=budget.budgetid, expensedesc="Rent")
+
+    # Generate three monthly periods: Jan, Feb, Mar 2026
+    periods = generate_periods(client, budgetid=budget.budgetid, startdate=datetime(2026, 1, 1), count=3)
+    period_1 = periods[0]
+    period_2 = periods[1]
+    period_3 = periods[2]
+
+    # Create the scheduled expense after generation so it is not already in any period
+    expense = create_expense_item(
+        db_session,
+        budgetid=budget.budgetid,
+        expensedesc="Quarterly Bill",
+        expenseamount=Decimal("100.00"),
+        freqtype="Every N Days",
+        frequency_value=75,
+        effectivedate=datetime(2026, 1, 1),
+        paytype="MANUAL",
+    )
+
+    # Add the expense to the first period with "future" scope
+    add_response = client.post(
+        f"/api/periods/{period_1['finperiodid']}/add-expense",
+        json={
+            "budgetid": budget.budgetid,
+            "expensedesc": expense.expensedesc,
+            "budgetamount": "100.00",
+            "scope": "future",
+            "note": "Adding scheduled expense",
+        },
+    )
+    assert add_response.status_code == 201, add_response.text
+
+    # Verify the expense exists in period 1 (directly added)
+    detail_1 = client.get(f"/api/periods/{period_1['finperiodid']}").json()
+    expenses_1 = {e["expensedesc"] for e in detail_1["expenses"]}
+    assert "Quarterly Bill" in expenses_1
+
+    # Verify the expense does NOT exist in period 2 (no occurrence within Feb)
+    detail_2 = client.get(f"/api/periods/{period_2['finperiodid']}").json()
+    expenses_2 = {e["expensedesc"] for e in detail_2["expenses"]}
+    assert "Quarterly Bill" not in expenses_2
+
+    # Verify the expense exists in period 3 (occurs on 17 Mar, which is 75 days after 1 Jan)
+    detail_3 = client.get(f"/api/periods/{period_3['finperiodid']}").json()
+    expenses_3 = {e["expensedesc"] for e in detail_3["expenses"]}
+    assert "Quarterly Bill" in expenses_3

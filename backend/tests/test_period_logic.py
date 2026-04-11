@@ -42,3 +42,17 @@ def test_fixed_day_occurrence_rolls_to_next_day_after_month_end():
     )
 
     assert result == Decimal("20.00")
+
+
+def test_fixed_day_occurrence_respects_effectivedate():
+    """A scheduled expense with a future effective date should not apply to earlier periods."""
+    result = expense_occurs_in_period(
+        freqtype="Fixed Day of Month",
+        frequency_value=31,
+        effectivedate=datetime(2026, 6, 15),
+        period_start=datetime(2026, 1, 1),
+        period_end=datetime(2026, 1, 31),
+        expense_amount=Decimal("10.00"),
+    )
+
+    assert result is None

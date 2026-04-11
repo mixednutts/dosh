@@ -37,6 +37,61 @@ For the implemented export-shape plan that now defines budget-cycle export behav
 
 For the implemented Auto Expense workflow rules, scheduler behavior, migration expectations, and AUTO/MANUAL eligibility constraints introduced this session, read [AUTO_EXPENSE_PLAN.md](/home/ubuntu/dosh/docs/plans/AUTO_EXPENSE_PLAN.md).
 
+## Latest Session: Bug Fixes For Scheduled Expense Period Applicability, Date Field Autocomplete, And Budget Cycle Delete Messaging
+
+This session fixed three user-facing issues: scheduled expenses incorrectly applying to future periods where they were not due, browser autofill overlapping the Effective Date calendar picker, and misleading delete messaging for the last budget cycle in a chain.
+
+### Scheduled Expense Period Applicability Fix
+
+**What changed:**
+- Fixed `expense_occurs_in_period` in `backend/app/period_logic.py` so "Fixed Day of Month" schedules now respect `effectivedate` and return `None` for periods ending before the effective date
+- Fixed `add_expense_to_period` in `backend/app/routers/periods.py` so that when `expense_occurs_in_period` returns `None`, the period is skipped instead of creating a `PeriodExpense` with a `0.00` budget
+- Previously, `or Decimal("0.00")` was converting `None` into a zero-budget row, causing the expense to appear in cycles where it was not actually due
+
+**Why:**
+- Adding a scheduled expense (e.g., "Every 75 Days") to a period with "This + future unlocked cycles" scope was incorrectly creating rows in every future cycle, even when no occurrence fell within those cycles
+
+**Verification:**
+- Added `test_fixed_day_occurrence_respects_effectivedate` in `backend/tests/test_period_logic.py`
+- Added `test_adding_scheduled_expense_to_future_only_applies_to_periods_where_due` in `backend/tests/test_budget_setup_workflows.py`
+- Extended `create_expense_item` factory to support `frequency_value` and `effectivedate`
+- All backend tests passing
+
+### Effective Date Calendar Autocomplete Fix
+
+**What changed:**
+- Added `autoComplete="off"` to the `DatePicker` input in `frontend/src/components/DateField.jsx`
+
+**Why:**
+- Browser autofill suggestions were rendering over the calendar popup when the Effective Date field was focused in the Add Expense modal
+
+### Budget Cycle Delete Messaging Fix
+
+**What changed:**
+- Updated `DeleteCycleModal` in `frontend/src/pages/BudgetPeriodsPage.jsx`
+- When `future_chain_count <= 1`, the modal now shows a simple message: "This budget cycle will be deleted." instead of the misleading radio option "Delete this cycle and all upcoming cycles (1)"
+- The radio options are now only shown when `future_chain_count > 1`
+
+**Why:**
+- Deleting the last cycle in a chain was displaying "Delete this cycle and all upcoming cycles (1)", which implied there were additional cycles even though there were none
+
+**Verification:**
+- Added frontend test covering the simple delete confirmation for a trailing cycle in `frontend/src/__tests__/BudgetPeriodsPage.test.jsx`
+- All frontend tests passing
+
+### Release Process Fix
+
+**What changed:**
+- Fixed `bump_version.py` regex `pattern5` to use a strict version-number match instead of a broad `[^/]+` capture
+- This prevents the script from corrupting non-version strings that happen to start with `v` (such as `view previous releases` in `Layout.test.jsx`)
+- Restored `Layout.test.jsx` mock data that was corrupted by the previous loose regex
+
+**Why:**
+- The version bump to `0.3.3-alpha` exposed that `bump_version.py` was rewriting `findByRole('button', { name: /view previous releases \(1\)/i })` into `findByRole('button', { name: /v0.3.3-alpha/i })`, breaking the test
+- This is the same class of oversight that caused the `0.3.1-alpha` → `0.3.2-alpha` CI break (incomplete bump script)
+
+---
+
 ## Latest Session: SonarQube Cleanup, Workflow Artifact Fix, And Post-Modularization Maintenance
 
 This session focused on cleaning up the SonarQube maintainability debt introduced by the recent `PeriodDetailPage.jsx` modularization, improving the CI artifact retrieval script, and deploying the fixes.

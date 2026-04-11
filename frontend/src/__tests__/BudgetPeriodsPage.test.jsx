@@ -116,6 +116,59 @@ describe('BudgetPeriodsPage', () => {
     expect(screen.getByText(/preserve continuity/i)).toBeTruthy()
   })
 
+  it('shows simple delete confirmation when future chain is only the current cycle', async () => {
+    client.getBudget.mockResolvedValue({
+      budgetid: 1,
+      budgetowner: 'Alex',
+      description: 'Home Budget',
+      budget_frequency: 'Monthly',
+    })
+    client.getPeriodSummariesForBudget.mockResolvedValue([
+      {
+        period: {
+          finperiodid: 51,
+          budgetid: 1,
+          startdate: '2026-05-01T00:00:00',
+          enddate: '2026-05-31T00:00:00',
+          islocked: false,
+          cycle_status: 'PLANNED',
+        },
+        income_budget: '1000.00',
+        income_actual: '0.00',
+        expense_budget: '800.00',
+        expense_actual: '0.00',
+        investment_budget: '0.00',
+        investment_actual: '0.00',
+        surplus_budget: '200.00',
+        surplus_actual: '0.00',
+        projected_savings: '0.00',
+        can_delete: true,
+        delete_mode: 'single',
+        delete_reason: null,
+      },
+    ])
+    client.getPeriodDeleteOptions.mockResolvedValue({
+      can_delete_single: true,
+      can_delete_future_chain: true,
+      future_chain_count: 1,
+      delete_reason: null,
+      cycle_status: 'PLANNED',
+    })
+    client.deletePeriod.mockResolvedValue({})
+
+    renderWithProviders(<BudgetPeriodsPage />, {
+      route: '/budgets/1',
+      path: '/budgets/:budgetId',
+    })
+
+    expect(await screen.findByText('Budget Cycles')).toBeTruthy()
+    fireEvent.click(screen.getByTitle('Expand planned budget cycles'))
+    fireEvent.click(screen.getByTitle('Delete budget cycle'))
+
+    expect(await screen.findByText('This budget cycle will be deleted.')).toBeTruthy()
+    expect(screen.queryByText(/Delete this cycle and all upcoming cycles/i)).toBeNull()
+  })
+
   it('keeps delete confirmation disabled when the cycle is not deletable', async () => {
     client.getBudget.mockResolvedValue({
       budgetid: 1,

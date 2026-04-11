@@ -206,10 +206,14 @@ For document changes, follow [DOCUMENTATION_FRAMEWORK.md](./docs/DOCUMENTATION_F
 
 ## Current Project State (Snapshot)
 
-**Version:** 0.3.2-alpha
+**Version:** 0.3.3-alpha
 **Schema Revision:** d3091a75b8ff
 
 **Recent Work:**
+- Fixed scheduled expenses incorrectly applying to future periods where they were not due. Root cause: `expense_occurs_in_period` ignored `effectivedate` for "Fixed Day of Month" schedules, and `add_expense_to_period` converted `None` into a `0.00` budget row via `or Decimal("0.00")`
+- Fixed browser autofill overlapping the Effective Date calendar picker by adding `autoComplete="off"` to `DateField.jsx`
+- Fixed misleading delete messaging for the last budget cycle: now shows "This budget cycle will be deleted." instead of "Delete this cycle and all upcoming cycles (1)" when `future_chain_count <= 1`
+- Fixed `bump_version.py` regex that was corrupting non-version strings in test files (e.g., `view previous releases` → `v0.3.3-alpha`). Pattern5 now uses a strict semver match
 - **PeriodDetailPage Modularization (COMPLETED):** Reduced from 2,911 lines to 642 lines (78% reduction)
   - Phase 1A: Extracted transaction modals to `components/transaction/` (7 components)
   - Phase 1B: Extracted action modals to `components/modals/` (4 components)
@@ -364,11 +368,13 @@ When making changes, preserve these working assumptions:
 **Fix applied:**
 - Updated `backend/tests/test_app_smoke.py` assertions to `0.3.2-alpha`
 - Added `bump_backend_smoke_tests()` function to `scripts/bump_version.py`
+- **Subsequent fix (0.3.3-alpha bump):** Tightened `pattern5` in `bump_layout_tests()` from `[^/]+` to `\d+\.\d+\.\d+(?:-(?:alpha|beta|rc\d+))?` so non-version strings like `view previous releases` are no longer corrupted
 
 **Prevention for future:**
 - ALWAYS grep for `"X.Y.Z-alpha"` patterns across entire codebase before declaring version bump complete
 - ALWAYS run `pytest backend/tests/test_app_smoke.py -v` after version bump
 - NEVER assume bump_version.py is complete - verify by checking git diff
+- ALWAYS run the full frontend test suite after version bump because `Layout.test.jsx` contains mocked release data that `bump_version.py` may corrupt
 
 ---
 

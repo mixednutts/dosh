@@ -1130,7 +1130,9 @@ def add_expense_to_period(
                         period_start=fp.startdate,
                         period_end=fp.enddate,
                         expense_amount=Decimal(str(ei.expenseamount)),
-                    ) or Decimal("0.00")
+                    )
+                    if budgeted is None:
+                        continue
                 else:
                     budgeted = payload.budgetamount
                 db.add(PeriodExpense(

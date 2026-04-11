@@ -57,6 +57,8 @@ def create_expense_item(
     expensedesc: str = "Rent",
     expenseamount: Decimal = Decimal("1200.00"),
     freqtype: str = "Always",
+    frequency_value: int | None = None,
+    effectivedate: datetime | None = None,
     paytype: str = "MANUAL",
     sort_order: int = 0,
 ) -> ExpenseItem:
@@ -65,6 +67,8 @@ def create_expense_item(
         expensedesc=expensedesc,
         expenseamount=expenseamount,
         freqtype=freqtype,
+        frequency_value=frequency_value,
+        effectivedate=effectivedate,
         paytype=paytype,
         revisionnum=0,
         sort_order=sort_order,

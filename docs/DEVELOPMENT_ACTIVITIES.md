@@ -682,6 +682,9 @@ Status:
 - `Completed`: fix budget deletion so attempting to remove a budget does not fail with a SQLite `FOREIGN KEY constraint failed` error in the backend ASGI path once setup revision history exists
 - `Completed`: add the missing webpage favicon so browser tabs and installed shortcuts show the app identity correctly
 - `Completed`: recover the budget setup sections after the live setup-history schema mismatch temporarily made income, expense, and investment lines appear missing
+- `Completed`: fix scheduled expense period applicability so "Every N Days" and "Fixed Day of Month" expenses with a future effective date no longer create zero-budget rows in cycles where they do not occur
+- `Completed`: fix browser autofill overlapping the Effective Date calendar picker in the add-expense modal
+- `Completed`: fix misleading delete messaging for the last budget cycle so trailing cycles show "This budget cycle will be deleted." instead of "Delete this cycle and all upcoming cycles (1)"
 
 #### Activity Group: Enhancements
 

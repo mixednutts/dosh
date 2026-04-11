@@ -4,6 +4,54 @@ This document records meaningful automated test results from major working sessi
 
 It exists separately from [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) so the strategy can stay stable while future sessions still have a record of what was actually run and verified.
 
+## Latest Session: Scheduled Expense Fixes, Date Field Autocomplete, And Delete Messaging
+
+This session verified fixes for three user-facing issues: scheduled expense period applicability, calendar picker autofill overlap, and budget-cycle delete messaging for trailing cycles.
+
+### Verification
+
+Commands run during this session:
+
+```bash
+cd /home/ubuntu/dosh/backend
+.venv/bin/pytest tests/ -q
+```
+
+Result:
+
+- Full backend suite: **123 passed** (was 121; +2 new tests)
+- `test_fixed_day_occurrence_respects_effectivedate` added to protect the `period_logic.py` fix
+- `test_adding_scheduled_expense_to_future_only_applies_to_periods_where_due` added to protect the `periods.py` future-period propagation fix
+- No regressions introduced
+
+```bash
+cd /home/ubuntu/dosh/frontend
+CI=true npm test -- --watchAll=false --runInBand
+```
+
+Result:
+
+- Full frontend suite: **165 passed** (was 164; +1 new test), 16 test suites
+- `shows simple delete confirmation when future chain is only the current cycle` added to `BudgetPeriodsPage.test.jsx`
+- No regressions introduced
+
+### Deployment Verification
+
+```bash
+cd /home/ubuntu/dosh
+INCLUDE_OVERRIDE=true ./scripts/release_with_migrations.sh
+curl -sS http://127.0.0.1:3080/api/health
+```
+
+Result:
+
+- Backend container rebuilt and restarted successfully
+- Frontend container rebuilt and restarted successfully
+- Health endpoint returned `{"status":"ok","app":"Dosh"}`
+- Version endpoint returned `0.3.3-alpha`
+
+---
+
 ## Latest Session: SonarQube Cleanup And Post-Modularization Maintenance
 
 This session verified that a large cleanup pass of unused imports and variables introduced no regressions.

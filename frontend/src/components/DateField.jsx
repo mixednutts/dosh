@@ -97,6 +97,7 @@ export default function DateField({
         showTimeSelect={showTimeSelect}
         timeIntervals={15}
         timeCaption="Time"
+        autoComplete="off"
       />
       <button
         type="button"

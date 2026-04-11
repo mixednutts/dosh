@@ -2,10 +2,20 @@
 
 ## Unreleased
 
+## 0.3.3-alpha | released | 2026-04-12
+
+### Fixed
+
+- Fixed scheduled expenses incorrectly appearing in future budget cycles where they were not due. The "Every N Days" and "Fixed Day of Month" scheduling logic now correctly skips cycles that fall before the expense effective date or contain no occurrence
+- Fixed browser autofill suggestions overlapping the Effective Date calendar picker in the add-expense modal
+- Fixed misleading budget-cycle delete messaging: the last cycle in a chain now shows a simple "This budget cycle will be deleted." confirmation instead of "Delete this cycle and all upcoming cycles (1)"
+
 ### Engineering
 
 - Cleaned up ~50 unused imports and unused variables across `PeriodDetailPage.jsx`, `BudgetPeriodsPage.jsx`, `transactionHelpers.js`, and `periods.py` following the PeriodDetailPage modularization
 - Updated `scripts/fetch_latest_sonar_artifact.sh` to download the latest completed SonarQube workflow artifact regardless of success or failure, making failed-run diagnostics easier
+- Added backend regression coverage for scheduled expense period applicability (`test_period_logic.py`, `test_budget_setup_workflows.py`)
+- Added frontend regression coverage for trailing-cycle delete messaging (`BudgetPeriodsPage.test.jsx`)
 
 ## 0.3.2-alpha | released | 2026-04-11
 

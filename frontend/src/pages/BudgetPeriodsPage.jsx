@@ -524,7 +524,7 @@ function DeleteCycleModal({ deleteTarget, deleteMode, setDeleteMode, removePerio
         <p className="text-xs text-gray-500 dark:text-gray-400">
           {deleteOptions?.delete_reason || 'Only cycles without actuals or transactions can be removed.'}
         </p>
-        {deleteOptions?.can_delete_future_chain && (
+        {deleteOptions?.can_delete_future_chain && deleteOptions.future_chain_count > 1 ? (
           <div className="space-y-2 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/50">
             {canDeleteSingle && (
               <label htmlFor="delete-cycle-single" className="flex items-center gap-2 text-sm cursor-pointer">
@@ -537,7 +537,9 @@ function DeleteCycleModal({ deleteTarget, deleteMode, setDeleteMode, removePerio
               <span>Delete this cycle and all upcoming cycles ({deleteOptions.future_chain_count})</span>
             </label>
           </div>
-        )}
+        ) : (canDeleteSingle || canDeleteFutureChain) ? (
+          <p className="text-sm text-gray-600 dark:text-gray-300">This budget cycle will be deleted.</p>
+        ) : null}
         {removePeriod.isError && (
           <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300">
             {formatApiError(removePeriod.error, 'Unable to delete this budget cycle right now.')}

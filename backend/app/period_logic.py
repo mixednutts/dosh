@@ -81,6 +81,9 @@ def expense_occurs_in_period(
         return expense_amount
 
     if freqtype == "Fixed Day of Month":
+        effectivedate = _ensure_utc(effectivedate)
+        if effectivedate > period_end:
+            return None
         day = frequency_value
         count = 0
         # Walk month by month, including the previous month because an
