@@ -88,6 +88,7 @@ def add_transaction(
         payload.amount,
         db,
         note=payload.note,
+        entrydate=payload.entrydate,
     )
     sync_period_state(finperiodid, db)
     db.commit()

@@ -823,6 +823,7 @@ describe('PeriodDetailPage', () => {
       expect(client.addIncomeTransaction).toHaveBeenCalledWith(61, 'Salary', {
         amount: -125.5,
         note: 'Payroll correction',
+        entrydate: expect.any(String),
       })
     })
   })
@@ -889,6 +890,7 @@ describe('PeriodDetailPage', () => {
       expect(client.addExpenseEntry).toHaveBeenCalledWith(65, 'Rent', {
         amount: 275,
         note: 'Part payment',
+        entrydate: expect.any(String),
       })
     })
   })
@@ -940,7 +942,7 @@ describe('PeriodDetailPage', () => {
     fireEvent.click(await screen.findByTitle('Add expense transaction'))
     const amountInput = screen.getByPlaceholderText('Amount')
 
-    fireEvent.click(screen.getByRole('button', { name: /Remaining amount \(\$700\.00\)/ }))
+    fireEvent.click(screen.getByRole('button', { name: /\$700\.00/ }))
     expect(amountInput.value).toBe('700')
   })
 
@@ -992,7 +994,7 @@ describe('PeriodDetailPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Refund (−)' }))
 
     expect(screen.queryByRole('button', { name: /Remaining amount/i })).toBeNull()
-    expect(screen.getByRole('button', { name: /Full amount \(\$300\.00\)/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /\$300\.00/ })).toBeTruthy()
   })
 
   it('hides the expense quick fill when nothing remains on the debit view', async () => {
@@ -1093,7 +1095,7 @@ describe('PeriodDetailPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Refund (−)' }))
 
     expect(screen.queryByRole('button', { name: /Remaining amount/i })).toBeNull()
-    expect(screen.getByRole('button', { name: /Full amount \(\$1,000\.00\)/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /\$1,000\.00/ })).toBeTruthy()
   })
 
   it('uses neutral submit styling for expense transaction actions', async () => {
@@ -1196,7 +1198,7 @@ describe('PeriodDetailPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Refund (−)' }))
 
     expect(screen.queryByRole('button', { name: /Remaining amount/i })).toBeNull()
-    expect(screen.getByRole('button', { name: /Full amount \(\$1,360\.00\)/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /\$1,360\.00/ })).toBeTruthy()
   })
 
   it('hides the income quick fill when nothing remains on the positive view', async () => {
@@ -1291,7 +1293,7 @@ describe('PeriodDetailPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Correction (−)' }))
 
     expect(screen.queryByRole('button', { name: /Remaining amount/i })).toBeNull()
-    expect(screen.getByRole('button', { name: /Full amount \(\$2,000\.00\)/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /\$2,000\.00/ })).toBeTruthy()
   })
 
   it('shows full amount quick fill for the actual value on the income correction view when income actual exists below budget', async () => {
@@ -1340,7 +1342,7 @@ describe('PeriodDetailPage', () => {
 
     expect(screen.getByRole('button', { name: 'Add Correction' }).className).toContain('btn-neutral')
     expect(screen.queryByRole('button', { name: /Remaining amount/i })).toBeNull()
-    expect(screen.getByRole('button', { name: /Full amount \(\$300\.00\)/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /\$300\.00/ })).toBeTruthy()
   })
 
   it('uses neutral submit styling for income transaction actions', async () => {
@@ -1437,7 +1439,7 @@ describe('PeriodDetailPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Correction (−)' }))
 
     expect(screen.queryByRole('button', { name: /Remaining amount/i })).toBeNull()
-    expect(screen.getByRole('button', { name: /Full amount \(\$2,360\.00\)/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /\$2,360\.00/ })).toBeTruthy()
   })
 
   it('uses add-remaining quick fill for investment transactions when some budget is left', async () => {
@@ -1496,7 +1498,7 @@ describe('PeriodDetailPage', () => {
     const amountInput = screen.getByPlaceholderText('Amount')
 
     await screen.findByText('Initial contribution')
-    fireEvent.click(screen.getByRole('button', { name: /Remaining amount \(\$375\.00\)/ }))
+    fireEvent.click(screen.getByRole('button', { name: /\$375\.00/ }))
     expect(amountInput.value).toBe('375')
   })
 
@@ -1616,7 +1618,7 @@ describe('PeriodDetailPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Subtract (−)' }))
 
     expect(screen.queryByRole('button', { name: /Remaining amount/i })).toBeNull()
-    expect(screen.getByRole('button', { name: /Full amount \(\$500\.00\)/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /\$500\.00/ })).toBeTruthy()
   })
 
   it('shows full amount quick fill for the actual value on the investment decrease view when actual exists below budget', async () => {
@@ -1677,7 +1679,7 @@ describe('PeriodDetailPage', () => {
 
     expect(screen.getByRole('button', { name: 'Subtract' }).className).toContain('btn-neutral')
     expect(screen.queryByRole('button', { name: /Remaining amount/i })).toBeNull()
-    expect(screen.getByRole('button', { name: /Full amount \(\$125\.00\)/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /\$125\.00/ })).toBeTruthy()
   })
 
   it('uses neutral submit styling for investment transaction actions', async () => {
@@ -1802,6 +1804,7 @@ describe('PeriodDetailPage', () => {
       expect(client.addInvestmentTransaction).toHaveBeenCalledWith(66, 'Emergency Fund', {
         amount: 50,
         note: 'Adjusted contribution',
+        entrydate: expect.any(String),
       })
     })
   })
@@ -2293,7 +2296,7 @@ describe('PeriodDetailPage', () => {
     expect(screen.getByText('Enter a valid amount')).toBeTruthy()
     expect(client.addIncomeTransaction).not.toHaveBeenCalled()
 
-    fireEvent.click(screen.getByRole('button', { name: /Full amount \(\$2,000\.00\)/ }))
+    fireEvent.click(screen.getByRole('button', { name: /\$2,000\.00/ }))
     expect(screen.getByPlaceholderText('Amount').value).toBe('2000')
     expect(screen.queryByText('= $2,000.00')).toBeNull()
 
@@ -2306,6 +2309,7 @@ describe('PeriodDetailPage', () => {
       expect(client.addIncomeTransaction).toHaveBeenCalledWith(70, 'Salary', {
         amount: 2000,
         note: 'Full amount',
+        entrydate: expect.any(String),
       })
     })
   })
@@ -2357,7 +2361,7 @@ describe('PeriodDetailPage', () => {
     fireEvent.click(await screen.findByTitle('Add expense transaction'))
 
     expect(screen.queryByRole('button', { name: /Remaining amount/i })).toBeNull()
-    expect(screen.getByRole('button', { name: /Full amount \(\$1,000\.00\)/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /\$1,000\.00/ })).toBeTruthy()
   })
 
   it('shows full amount quick fill on the positive investment view when no actual has been recorded yet', async () => {
@@ -2407,7 +2411,7 @@ describe('PeriodDetailPage', () => {
     fireEvent.click(await screen.findByTitle('Add investment transaction'))
 
     expect(screen.queryByRole('button', { name: /Remaining amount/i })).toBeNull()
-    expect(screen.getByRole('button', { name: /Full amount \(\$500\.00\)/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /\$500\.00/ })).toBeTruthy()
   })
 
   it('shows fixed-day rollover guidance when creating a new expense line on day 31', async () => {

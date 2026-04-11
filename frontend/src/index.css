@@ -117,6 +117,7 @@
 
 .dosh-datepicker-popper {
   z-index: 60;
+  min-width: 320px;
 }
 
 .dosh-datepicker {
@@ -126,6 +127,56 @@
   color: rgb(15 23 42);
   box-shadow: 0 10px 35px rgba(15, 23, 42, 0.18);
   font-family: inherit;
+  display: flex;
+}
+
+/* Month container - make it wider */
+.dosh-datepicker .react-datepicker__month-container {
+  width: 280px;
+  float: none;
+}
+
+/* Day names and week rows */
+.dosh-datepicker .react-datepicker__day-names {
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 0.5rem;
+}
+
+.dosh-datepicker .react-datepicker__week {
+  display: flex;
+  justify-content: space-around;
+}
+
+/* Header styling */
+.dosh-datepicker .react-datepicker__header {
+  padding: 0.75rem 0;
+  background: rgb(248 250 252);
+  border-bottom: 1px solid rgb(226 232 240);
+  border-radius: 0.75rem 0 0 0;
+}
+
+.dosh-datepicker .react-datepicker__current-month {
+  font-size: 1rem;
+  font-weight: 600;
+  padding-bottom: 0.5rem;
+  color: rgb(51 65 85);
+}
+
+/* Day cell sizing - larger */
+.dosh-datepicker .react-datepicker__day,
+.dosh-datepicker .react-datepicker__day-name {
+  width: 2.2rem;
+  height: 2.2rem;
+  line-height: 2.2rem;
+  font-size: 0.875rem;
+  margin: 0.15rem;
+  text-align: center;
+}
+
+.dosh-datepicker .react-datepicker__day-name {
+  font-weight: 500;
+  color: rgb(100 116 139);
 }
 
 .dosh-datepicker .react-datepicker__header {
@@ -194,4 +245,81 @@
 
 .dark .dosh-datepicker .react-datepicker__day--outside-month {
   color: rgb(100 116 139);
+}
+
+/* Time picker container - wider and better positioned */
+.dosh-datepicker .react-datepicker__time-container {
+  border-left: 1px solid rgb(226 232 240);
+  width: 100px;
+  flex-shrink: 0;
+}
+
+.dosh-datepicker .react-datepicker__time {
+  background: rgb(255 255 255);
+  border-radius: 0 0.75rem 0.75rem 0;
+}
+
+.dosh-datepicker .react-datepicker__time-box {
+  border-radius: 0 0 0.75rem 0;
+  width: 100% !important;
+}
+
+.dosh-datepicker .react-datepicker__time-list {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(203 213 225) transparent;
+  height: 220px !important;
+}
+
+.dosh-datepicker .react-datepicker__time-list-item {
+  color: rgb(15 23 42);
+  font-size: 0.8rem;
+  padding: 0.4rem 0.5rem;
+  height: auto !important;
+  line-height: 1.4;
+}
+
+.dosh-datepicker .react-datepicker__time-list-item:hover {
+  background: rgb(226 232 240);
+}
+
+.dosh-datepicker .react-datepicker__time-list-item--selected {
+  background: rgb(13 148 136) !important;
+  color: white !important;
+}
+
+/* Dark mode for time picker */
+.dark .dosh-datepicker .react-datepicker__time-container {
+  border-left-color: rgb(51 65 85);
+}
+
+.dark .dosh-datepicker .react-datepicker__time {
+  background: rgb(15 23 42);
+}
+
+.dark .dosh-datepicker .react-datepicker__time-list {
+  scrollbar-color: rgb(71 85 105) transparent;
+}
+
+.dark .dosh-datepicker .react-datepicker__time-list-item {
+  color: rgb(226 232 240);
+}
+
+.dark .dosh-datepicker .react-datepicker__time-list-item:hover {
+  background: rgb(51 65 85);
+}
+
+/* Time header */
+.dosh-datepicker .react-datepicker__time-header {
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding: 0.5rem 0;
+  color: rgb(51 65 85);
+  background: rgb(248 250 252);
+  border-bottom: 1px solid rgb(226 232 240);
+}
+
+.dark .dosh-datepicker .react-datepicker__time-header {
+  color: rgb(226 232 240);
+  background: rgb(30 41 59);
+  border-bottom-color: rgb(51 65 85);
 }

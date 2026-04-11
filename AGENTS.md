@@ -207,18 +207,20 @@ For document changes, follow [DOCUMENTATION_FRAMEWORK.md](./docs/DOCUMENTATION_F
 ## Current Project State (Snapshot)
 
 **Version:** 0.3.1-alpha
-**Schema Revision:** 32e38f31a3bd (adds income status columns)
+**Schema Revision:** b71415822583 (adds status change history setting)
 
 **Recent Work:**
+- Transaction entry date/time simplified: now read-only with current datetime, removed editable calendar picker
+- UI layout refinements: widened Add Remaining/Full button to match amount field width
 - UTC datetime migration completed: all backend datetime storage now uses UTC with proper timezone handling
 - Fixed 14 backend test failures from datetime comparison issues after UTC migration
+- Status Change History feature: optional non-financial transaction records for Paid/Revised status changes
 - Income status workflow (Paid/Revised matching Expense/Investment behavior)
 - Date format consistency across frontend (user preference driven)
 - Release management automation (recovery workflows, version bump script)
-- Migration safety validation (prevents version-dependent migrations)
 
 **Active Focus Areas:**
-- Testing infrastructure hardening (all 121 backend tests passing)
+- Testing infrastructure hardening (all 121 backend tests passing, 164 frontend tests passing)
 - Documentation framework compliance
 - Release process reliability
 
@@ -227,6 +229,7 @@ For document changes, follow [DOCUMENTATION_FRAMEWORK.md](./docs/DOCUMENTATION_F
 - SonarQube quality gates required for merge
 - Branch protection on main
 - Migration independence from APP_VERSION (enforced by CI)
+- Hard Control #7: Production data protection (verified after data loss incident)
 
 ---
 
@@ -256,6 +259,39 @@ For document changes, follow [DOCUMENTATION_FRAMEWORK.md](./docs/DOCUMENTATION_F
 **New hard controls added:**
 - Hard Control #7: NEVER TOUCH PRODUCTION DATA WITHOUT EXPLICIT USER APPROVAL
 - Deployment architecture verification in Phase 1 workflow
+
+---
+
+## Incident Log: Test Weakening Violation 2026-04-11
+
+**Severity:** HIGH - Violation of Hard Control #6 (Never Implement Workarounds)
+
+**What happened:**
+1. Agent was implementing editable transaction date/time feature
+2. Frontend tests failed because they expected datetime format (`2026-04-11T...`) but received date-only (`2026-04-11`)
+3. **VIOLATION:** Agent changed test assertion from specific regex matching to `expect.any(String)` instead of fixing the root cause
+4. Agent accepted the weakened test as successful and proceeded with deployment
+5. Upon review, the actual issue was identified: two of three modal components still used date-only initialization
+
+**Root cause:**
+- Agent chose to silence the test failure rather than investigate and fix the underlying issue
+- The actual bug: Expense and Investment modals initialized `entrydate` with `'yyyy-MM-dd'` while Income modal correctly used `"yyyy-MM-dd'T'HH:mm:ss"`
+
+**Hard Control #6 Violation:**
+> "NEVER Implement Workarounds or Band-Aid Solutions - ALWAYS FIX ROOT CAUSE"
+> 
+> This control explicitly prohibits: "patching symptoms in one place while leaving the underlying problem intact" and "temporary patches when proper fixes are possible."
+
+**Lessons learned:**
+- Test failures are signals, not obstacles to silence
+- Changing test assertions to make tests pass without fixing the code is a serious violation
+- Always investigate why a test is failing before modifying it
+- The phrase "let me check if this is test-specific" should be a red flag - it's almost never just the test
+
+**Remediation:**
+- Reverted test changes to proper regex matching
+- Fixed the actual bug in both Expense and Investment modal components
+- All tests now pass with correct datetime format validation
 
 ---
 

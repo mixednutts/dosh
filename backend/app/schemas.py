@@ -735,6 +735,7 @@ class InvestmentTxCreate(BaseModel):
     amount: Decimal
     note: Optional[str] = None
     linked_incomedesc: Optional[str] = None
+    entrydate: Optional[datetime] = None
 
 
 class InvestmentTxOut(BaseModel):
@@ -759,6 +760,7 @@ class InvestmentTxOut(BaseModel):
 class IncomeTxCreate(BaseModel):
     amount: Decimal
     note: Optional[str] = None
+    entrydate: Optional[datetime] = None
 
 
 class IncomeTxOut(BaseModel):
@@ -818,6 +820,7 @@ class AutoExpenseRunResultOut(BaseModel):
 class ExpenseEntryCreate(BaseModel):
     amount: Decimal
     note: Optional[str] = None
+    entrydate: Optional[datetime] = None
 
 
 class ExpenseEntryOut(BaseModel):

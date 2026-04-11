@@ -11,10 +11,17 @@
 - Fixed remaining backend test failures from UTC datetime migration: all datetime comparisons now properly handle timezone-aware objects
 - Cleaned up redundant timezone handling code in models (now handled by `UTCDateTime` type decorator)
 
+### Changed
+
+- **Transaction Entry Date Simplification**: Transaction date/time is now read-only and automatically set to the current datetime when a transaction modal opens. Removed the editable date field and calendar picker due to layout and validation complexity. Dates display in the user's locale format (e.g., "11 Apr 2026, 2:30 PM" for en-AU).
+- **Add Remaining/Full Button Layout**: Widened the quick-fill button to equal the amount input field width (0.5fr grid column), eliminating the previously cramped appearance.
+
 ### Engineering
 
 - Database datetime storage now consistently uses UTC format with `+00:00` suffix
 - All backend tests passing (121/121)
+- Removed unused `parseDateTimeInput` function and `DATE_PARSE_PATTERNS` from localisation utilities
+- Removed unused `format` import from date-fns in PeriodDetailPage.jsx
 
 ## 0.3.1-alpha | released | 2026-04-10
 

@@ -11,24 +11,24 @@ import 'react-datepicker/dist/react-datepicker.css'
 
 const DATE_FIELD_FORMATS = {
   compact: {
-    default: { pattern: 'dd MMM', placeholder: 'DD MMM' },
-    'en-US': { pattern: 'MMM dd', placeholder: 'MMM DD' },
+    default: { pattern: 'dd MMM', placeholder: 'DD MMM', timePattern: 'dd MMM, h:mm aa' },
+    'en-US': { pattern: 'MMM dd', placeholder: 'MMM DD', timePattern: 'MMM dd, h:mm aa' },
   },
   short: {
-    default: { pattern: 'dd MMM yy', placeholder: 'DD MMM YY' },
-    'en-US': { pattern: 'MMM dd yy', placeholder: 'MMM DD YY' },
+    default: { pattern: 'dd MMM yy', placeholder: 'DD MMM YY', timePattern: 'dd MMM yy, h:mm aa' },
+    'en-US': { pattern: 'MMM dd yy', placeholder: 'MMM DD YY', timePattern: 'MMM dd yy, h:mm aa' },
   },
   medium: {
-    default: { pattern: 'dd MMM yyyy', placeholder: 'DD MMM YYYY' },
-    'en-US': { pattern: 'MMM dd yyyy', placeholder: 'MMM DD YYYY' },
+    default: { pattern: 'dd MMM yyyy', placeholder: 'DD MMM YYYY', timePattern: 'dd MMM yyyy, h:mm aa' },
+    'en-US': { pattern: 'MMM dd yyyy', placeholder: 'MMM DD YYYY', timePattern: 'MMM dd yyyy, h:mm aa' },
   },
   long: {
-    default: { pattern: 'EEEE, d MMMM yyyy', placeholder: 'Weekday, D Month YYYY' },
-    'en-US': { pattern: 'EEEE, MMMM d yyyy', placeholder: 'Weekday, Month D YYYY' },
+    default: { pattern: 'EEEE, d MMMM yyyy', placeholder: 'Weekday, D Month YYYY', timePattern: 'EEEE, d MMMM yyyy, h:mm aa' },
+    'en-US': { pattern: 'EEEE, MMMM d yyyy', placeholder: 'Weekday, Month D YYYY', timePattern: 'EEEE, MMMM d yyyy, h:mm aa' },
   },
   numeric: {
-    default: { pattern: 'dd/MM/yyyy', placeholder: 'DD/MM/YYYY' },
-    'en-US': { pattern: 'MM/dd/yyyy', placeholder: 'MM/DD/YYYY' },
+    default: { pattern: 'dd/MM/yyyy', placeholder: 'DD/MM/YYYY', timePattern: 'dd/MM/yyyy, h:mm aa' },
+    'en-US': { pattern: 'MM/dd/yyyy', placeholder: 'MM/DD/YYYY', timePattern: 'MM/dd/yyyy, h:mm aa' },
   },
 }
 
@@ -46,13 +46,20 @@ function toDate(value) {
   return parseISO(value)
 }
 
-function getDateFieldFormat(locale, dateFormat) {
+function getDateFieldFormat(locale, dateFormat, showTime = false) {
   const customFormat = normalizeDateFormatPattern(dateFormat)
   if (customFormat && !DATE_FIELD_FORMATS[customFormat]) {
-    return { pattern: customFormat, placeholder: customFormat.toUpperCase() }
+    return { 
+      pattern: showTime ? `${customFormat}, h:mm aa` : customFormat, 
+      placeholder: customFormat.toUpperCase() 
+    }
   }
   const configuredFormat = DATE_FIELD_FORMATS[dateFormat] || DATE_FIELD_FORMATS.medium
-  return configuredFormat[locale] || configuredFormat.default
+  const formatForLocale = configuredFormat[locale] || configuredFormat.default
+  return {
+    pattern: showTime ? (formatForLocale.timePattern || `${formatForLocale.pattern}, h:mm aa`) : formatForLocale.pattern,
+    placeholder: formatForLocale.placeholder
+  }
 }
 
 export default function DateField({
@@ -62,10 +69,11 @@ export default function DateField({
   disabled = false,
   placeholder = 'DD MMM YYYY',
   required = false,
+  showTimeSelect = false,
 }) {
   const { locale, date_format: dateFormat } = useLocalisation()
   const datePickerRef = useRef(null)
-  const fieldFormat = getDateFieldFormat(locale, dateFormat)
+  const fieldFormat = getDateFieldFormat(locale, dateFormat, showTimeSelect)
   const resolvedPlaceholder = placeholder === 'DD MMM YYYY' ? fieldFormat.placeholder : placeholder
   const datePickerLocale = DATE_PICKER_LOCALES[locale] || enAU
 
@@ -75,7 +83,7 @@ export default function DateField({
         ref={datePickerRef}
         id={id}
         selected={toDate(value)}
-        onChange={nextDate => onChange(nextDate ? format(nextDate, 'yyyy-MM-dd') : '')}
+        onChange={nextDate => onChange(nextDate ? format(nextDate, showTimeSelect ? "yyyy-MM-dd'T'HH:mm:ss" : 'yyyy-MM-dd') : '')}
         disabled={disabled}
         required={required}
         placeholderText={resolvedPlaceholder}
@@ -86,6 +94,9 @@ export default function DateField({
         popperClassName="dosh-datepicker-popper"
         popperPlacement="bottom-start"
         showPopperArrow={false}
+        showTimeSelect={showTimeSelect}
+        timeIntervals={15}
+        timeCaption="Time"
       />
       <button
         type="button"
@@ -107,4 +118,5 @@ DateField.propTypes = {
   disabled: PropTypes.bool,
   placeholder: PropTypes.string,
   required: PropTypes.bool,
+  showTimeSelect: PropTypes.bool,
 }

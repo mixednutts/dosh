@@ -25,6 +25,7 @@ import Modal from '../components/Modal'
 import Spinner from '../components/Spinner'
 import AmountExpressionInput from '../components/AmountExpressionInput'
 import ExpenseItemSchedulingFields from '../components/ExpenseItemSchedulingFields'
+import DateField from '../components/DateField'
 import { useLocalisation } from '../components/LocalisationContext'
 import { useFormatters } from '../components/useFormatters'
 import { getNextFixedDayOccurrence } from '../utils/fixedDayScheduling'
@@ -212,7 +213,7 @@ function buildAddTransactionHandler({ event, resolvedAmount, setError, mutate, t
     return
   }
   setError('')
-  mutate({ amount: toMutationAmount(type, amountValue), note: note || null })
+  mutate({ amount: toMutationAmount(type, amountValue), note: note || null, entrydate: new Date().toISOString() })
 }
 
 function createTransactionSubmitHandler({ resolvedAmount, setError, mutate, type, note, toMutationAmount }) {
@@ -492,6 +493,7 @@ function TransactionEntryForm({
   setAmount,
   note,
   setNote,
+  entrydate,
   error,
   setError,
   setResolvedAmount,
@@ -545,7 +547,7 @@ function TransactionEntryForm({
     : (typeof quickFillPolicy.fullValue === 'function'
         ? quickFillPolicy.fullValue({ type, actualAmount: numericActualAmount, budgetAmount: numericBudgetAmount, remainingAmount })
         : numericBudgetAmount)
-  const quickFillLabel = usesRemainingQuickFill ? 'Remaining amount' : 'Full amount'
+  const quickFillType = usesRemainingQuickFill ? 'Remaining' : 'Full'
 
   return (
     <form onSubmit={onSubmit} className="space-y-3 border-t border-gray-200 pt-1 dark:border-gray-700">
@@ -565,22 +567,23 @@ function TransactionEntryForm({
           </button>
         ))}
       </div>
-      <div className="flex items-center gap-2">
-        <div className="flex-1">
-          <AmountExpressionInput
-            autoFocus
-            value={amount}
-            onChange={nextValue => {
-              setAmount(nextValue)
-              setError('')
-            }}
-            onResolvedChange={(value, state) => setResolvedAmount({ value, state })}
-            min={0.01}
-            placeholder="Amount"
-            className="input w-full"
-            required
-          />
-        </div>
+      {/* Grid layout: Amount | [Quick Fill] | Note/Date */}
+      <div className={`grid gap-2 ${showQuickFill ? 'grid-cols-[0.5fr_0.5fr_1fr]' : 'grid-cols-[0.7fr_1.3fr]'}`}>
+        {/* Column 1: Amount - spans full height (Note + Date stacked) */}
+        <AmountExpressionInput
+          autoFocus
+          value={amount}
+          onChange={nextValue => {
+            setAmount(nextValue)
+            setError('')
+          }}
+          onResolvedChange={(value, state) => setResolvedAmount({ value, state })}
+          min={0.01}
+          placeholder="Amount"
+          className="input h-full min-h-[5.25rem]"
+          required
+        />
+        {/* Column 2: Quick Fill button - stacked 3 lines, distinct button styling */}
         {showQuickFill && (
           <button
             type="button"
@@ -588,21 +591,32 @@ function TransactionEntryForm({
               setAmount(String(quickFillValue))
               setError('')
             }}
-            className="btn-secondary whitespace-nowrap text-xs"
-            title={usesRemainingQuickFill ? 'Allocate the remaining budget amount' : 'Allocate the full budget amount'}
+            className="bg-dosh-600 hover:bg-dosh-700 text-white text-xs text-center leading-tight px-2 py-2 whitespace-nowrap rounded-md border border-dosh-500 shadow-sm w-full flex flex-col justify-center items-center"
+            title={usesRemainingQuickFill ? 'Add Remaining Amount' : 'Add Full Amount'}
           >
-            {quickFillLabel} ({formatters.fmt(quickFillValue)})
+            <span>Add</span>
+            <span>{quickFillType}</span>
+            <span className="font-semibold">{formatters.fmt(quickFillValue)}</span>
           </button>
         )}
-        <label htmlFor={noteInputId} className="sr-only">Transaction note</label>
-        <input
-          id={noteInputId}
-          type="text"
-          value={note}
-          onChange={e => setNote(e.target.value)}
-          placeholder="Note (optional)"
-          className="input flex-[2]"
-        />
+        {/* Last Column: Note (top) and Date (bottom) */}
+        <div className="flex flex-col gap-2">
+          <label htmlFor={noteInputId} className="sr-only">Transaction note</label>
+          <input
+            id={noteInputId}
+            type="text"
+            value={note}
+            onChange={e => setNote(e.target.value)}
+            placeholder="Note (optional)"
+            className="input h-12"
+          />
+          <div
+            id={`transaction-date-${kind}`}
+            className="input h-12 text-sm flex items-center px-3 bg-slate-50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700"
+          >
+            {entrydate}
+          </div>
+        </div>
       </div>
       <div className="flex justify-end gap-2">
         <button type="button" className="btn-secondary" onClick={onClose}>Close</button>
@@ -625,6 +639,7 @@ function TransactionWorkflowModal({
   setAmount,
   note,
   setNote,
+  entrydate,
   error,
   setError,
   setResolvedAmount,
@@ -674,6 +689,7 @@ function TransactionWorkflowModal({
           setAmount={setAmount}
           note={note}
           setNote={setNote}
+          entrydate={entrydate}
           error={error}
           setError={setError}
           setResolvedAmount={setResolvedAmount}
@@ -782,11 +798,17 @@ function ConfirmPaidModal({ noun, item, remainingAmount, onConfirm, onClose, for
 function IncomeTransactionsModal({ periodId, incomedesc, budgetamount, actualamount, locked, readOnly = false, onClose, defaultType = 'credit' }) {
   const config = getTransactionModalConfig('income')
   const qc = useQueryClient()
+  const formatters = useFormatters()
   const [amount, setAmount] = useState('')
   const [resolvedAmount, setResolvedAmount] = useState({ value: null, state: 'empty' })
   const [note, setNote] = useState('')
+  const [entrydate, setEntrydate] = useState('')
   const [type, setType] = useState(defaultType) // credit | debit
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    setEntrydate(formatters.fmtDateTime(new Date()))
+  }, [formatters])
 
   const { data: transactions = [], isLoading } = useQuery({
     queryKey: ['income-transactions', periodId, incomedesc],
@@ -801,6 +823,7 @@ function IncomeTransactionsModal({ periodId, incomedesc, budgetamount, actualamo
       setAmount('')
       setResolvedAmount({ value: null, state: 'empty' })
       setNote('')
+      setEntrydate(formatters.fmtDateTime(new Date()))
       setError('')
       onClose()
     },
@@ -837,6 +860,7 @@ function IncomeTransactionsModal({ periodId, incomedesc, budgetamount, actualamo
       setAmount={setAmount}
       note={note}
       setNote={setNote}
+      entrydate={entrydate}
       error={error}
       setError={setError}
       setResolvedAmount={setResolvedAmount}
@@ -926,11 +950,17 @@ function BalanceTransactionsModal({ periodId, balancedesc, movementAmount }) {
 function ExpenseEntriesModal({ periodId, budgetId, expensedesc, budgetamount, actualamount, locked, readOnly = false, onClose, defaultType = 'debit' }) {
   const config = getTransactionModalConfig('expense')
   const qc = useQueryClient()
+  const formatters = useFormatters()
   const [amount, setAmount] = useState('')
   const [resolvedAmount, setResolvedAmount] = useState({ value: null, state: 'empty' })
   const [note, setNote] = useState('')
+  const [entrydate, setEntrydate] = useState('')
   const [type, setType] = useState(defaultType) // 'debit' | 'credit'
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    setEntrydate(formatters.fmtDateTime(new Date()))
+  }, [formatters])
 
   const { data: entries = [], isLoading } = useQuery({
     queryKey: ['expense-entries', periodId, expensedesc],
@@ -945,6 +975,7 @@ function ExpenseEntriesModal({ periodId, budgetId, expensedesc, budgetamount, ac
       setAmount('')
       setResolvedAmount({ value: null, state: 'empty' })
       setNote('')
+      setEntrydate(formatters.fmtDateTime(new Date()))
       setError('')
       onClose()
     },
@@ -980,6 +1011,7 @@ function ExpenseEntriesModal({ periodId, budgetId, expensedesc, budgetamount, ac
       setAmount={setAmount}
       note={note}
       setNote={setNote}
+      entrydate={entrydate}
       error={error}
       setError={setError}
       setResolvedAmount={setResolvedAmount}
@@ -1012,11 +1044,17 @@ ExpenseEntriesModal.propTypes = {
 function InvestmentTxModal({ periodId, investmentdesc, openingValue, closingValue, budgetedAmount, locked, readOnly = false, onClose, defaultType = 'increase' }) {
   const config = getTransactionModalConfig('investment')
   const qc = useQueryClient()
+  const formatters = useFormatters()
   const [amount, setAmount] = useState('')
   const [resolvedAmount, setResolvedAmount] = useState({ value: null, state: 'empty' })
   const [note, setNote] = useState('')
+  const [entrydate, setEntrydate] = useState('')
   const [type, setType] = useState(defaultType)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    setEntrydate(formatters.fmtDateTime(new Date()))
+  }, [formatters])
 
   const { data: transactions = [], isLoading } = useQuery({
     queryKey: ['investment-tx', periodId, investmentdesc],
@@ -1031,6 +1069,7 @@ function InvestmentTxModal({ periodId, investmentdesc, openingValue, closingValu
       setAmount('')
       setResolvedAmount({ value: null, state: 'empty' })
       setNote('')
+      setEntrydate(formatters.fmtDateTime(new Date()))
       setError('')
       onClose()
     },
@@ -1066,6 +1105,7 @@ function InvestmentTxModal({ periodId, investmentdesc, openingValue, closingValu
       setAmount={setAmount}
       note={note}
       setNote={setNote}
+      entrydate={entrydate}
       error={error}
       setError={setError}
       setResolvedAmount={setResolvedAmount}
@@ -2691,11 +2731,13 @@ TransactionListPanel.propTypes = {
 }
 
 TransactionEntryForm.propTypes = {
+  kind: PropTypes.oneOf(['income', 'expense', 'investment']).isRequired,
   locked: PropTypes.bool.isRequired,
   amount: PropTypes.string.isRequired,
   setAmount: PropTypes.func.isRequired,
   note: PropTypes.string.isRequired,
   setNote: PropTypes.func.isRequired,
+  entrydate: PropTypes.string.isRequired,
   error: PropTypes.string.isRequired,
   setError: PropTypes.func.isRequired,
   setResolvedAmount: PropTypes.func.isRequired,
@@ -2711,6 +2753,7 @@ TransactionEntryForm.propTypes = {
   submitLabel: PropTypes.func.isRequired,
   isPending: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
+  actualAmount: PropTypes.oneOfType([PropTypes.number, PropTypes.string]).isRequired,
 }
 
 TransactionWorkflowModal.propTypes = {
@@ -2720,7 +2763,7 @@ TransactionWorkflowModal.propTypes = {
     entry_kind: PropTypes.string,
     amount: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
     note: PropTypes.string,
-    entrydate: PropTypes.string.isRequired,
+    entrydate: PropTypes.string,
     budget_before_amount: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
     budget_after_amount: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
   })).isRequired,
@@ -2731,6 +2774,7 @@ TransactionWorkflowModal.propTypes = {
   setAmount: PropTypes.func.isRequired,
   note: PropTypes.string.isRequired,
   setNote: PropTypes.func.isRequired,
+  entrydate: PropTypes.string.isRequired,
   error: PropTypes.string.isRequired,
   setError: PropTypes.func.isRequired,
   setResolvedAmount: PropTypes.func.isRequired,
