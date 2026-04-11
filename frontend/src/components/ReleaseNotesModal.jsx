@@ -1,5 +1,5 @@
 import PropTypes from 'prop-types'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
 
 import Modal from './Modal'
@@ -132,12 +132,17 @@ ReleaseExpandableCard.propTypes = {
 export default function ReleaseNotesModal({ releaseNotes, onClose }) {
   const [showPreviousReleases, setShowPreviousReleases] = useState(false)
   const [expandedNewerVersions, setExpandedNewerVersions] = useState({})
+  const availableUpdatesRef = useRef(null)
 
   const toggleNewerVersion = version => {
     setExpandedNewerVersions(current => ({
       ...current,
       [version]: !current[version],
     }))
+  }
+
+  const scrollToAvailableUpdates = () => {
+    availableUpdatesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
   return (
@@ -148,9 +153,13 @@ export default function ReleaseNotesModal({ releaseNotes, onClose }) {
           <div className="mt-2 flex items-center justify-between gap-3">
             <p className="text-base font-semibold text-gray-900 dark:text-white">v{releaseNotes.current_version}</p>
             {releaseNotes.update_available ? (
-              <span className="rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-700 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+              <button
+                type="button"
+                onClick={scrollToAvailableUpdates}
+                className="rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-700 transition-colors hover:bg-amber-100 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-300 dark:hover:bg-amber-950/60"
+              >
                 {releaseNotes.newer_release_count} newer release{releaseNotes.newer_release_count === 1 ? '' : 's'} available
-              </span>
+              </button>
             ) : (
               <span className="rounded-full border border-dosh-300 bg-dosh-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-dosh-700 dark:border-dosh-700 dark:bg-dosh-950/40 dark:text-dosh-300">
                 Up to date
@@ -162,7 +171,7 @@ export default function ReleaseNotesModal({ releaseNotes, onClose }) {
         {releaseNotes.current_release ? <ReleaseCard release={releaseNotes.current_release} tone="current" /> : null}
 
         {releaseNotes.newer_releases.length ? (
-          <div className="space-y-3">
+          <div ref={availableUpdatesRef} className="space-y-3">
             <div>
               <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">Available Updates</h3>
               <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">

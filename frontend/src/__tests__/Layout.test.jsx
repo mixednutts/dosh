@@ -1,5 +1,5 @@
 import React from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 
@@ -215,6 +215,50 @@ describe('Layout navigation', () => {
 
     expect(await screen.findByText('Expanded release details are available on demand')).toBeTruthy()
     expect(screen.getByRole('button', { name: /hide details/i })).toBeTruthy()
+  })
+
+  it('scrolls to available updates when the newer release badge is clicked', async () => {
+    const scrollIntoViewMock = jest.fn()
+    HTMLElement.prototype.scrollIntoView = scrollIntoViewMock
+
+    client.getReleaseNotes.mockResolvedValue({
+      current_version: '0.3.3-alpha',
+      update_available: true,
+      newer_release_count: 1,
+      previous_release_count: 0,
+      current_release: {
+        version: '0.3.3-alpha',
+        status: 'released',
+        release_date: '2026-04-08',
+        summary: 'Current version summary.',
+        sections: [
+          { title: 'Current', items: ['Current release item'] },
+        ],
+      },
+      newer_releases: [
+        {
+          version: '0.4.0-alpha',
+          status: 'released',
+          release_date: '2026-04-09',
+          summary: 'Update summary.',
+          sections: [
+            { title: 'Enhancements', items: ['New feature'] },
+          ],
+        },
+      ],
+      previous_releases: [],
+    })
+
+    renderLayout('/budgets')
+
+    fireEvent.click(await screen.findByRole('button', { name: /v0.3.3-alpha/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /1 newer release available/i }))
+
+    await waitFor(() => {
+      expect(scrollIntoViewMock).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' })
+    })
+
+    delete HTMLElement.prototype.scrollIntoView
   })
 
   it('collapses the current budget cycle shortcuts when the budget list is collapsed', async () => {

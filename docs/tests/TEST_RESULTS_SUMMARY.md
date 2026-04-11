@@ -4,6 +4,52 @@ This document records meaningful automated test results from major working sessi
 
 It exists separately from [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) so the strategy can stay stable while future sessions still have a record of what was actually run and verified.
 
+## Latest Session: Release Notes Modal Scroll-To-Updates UX Improvement
+
+This session verified a small UX improvement to the in-app Release Notes modal: the "N newer release available" badge now scrolls directly to the Available Updates section.
+
+### Verification
+
+Commands run during this session:
+
+```bash
+cd /home/ubuntu/dosh/frontend
+CI=true npm test -- --watchAll=false --runInBand
+```
+
+Result:
+
+- Full frontend suite: **166 passed** (was 165; +1 new test), 16 test suites
+- `scrolls to available updates when the newer release badge is clicked` added to `Layout.test.jsx`
+- No regressions introduced
+
+```bash
+cd /home/ubuntu/dosh/backend
+.venv/bin/pytest tests/ -q
+```
+
+Result:
+
+- Full backend suite: **123 passed**
+- No regressions introduced
+
+### Deployment Verification
+
+```bash
+cd /home/ubuntu/dosh
+INCLUDE_OVERRIDE=true ./scripts/release_with_migrations.sh
+curl -sS http://127.0.0.1:3080/api/health
+```
+
+Result:
+
+- Backend container rebuilt and restarted successfully
+- Frontend container rebuilt and restarted successfully
+- Health endpoint returned `{"status":"ok","app":"Dosh"}`
+- Version endpoint returned `0.3.3-alpha`
+
+---
+
 ## Latest Session: Scheduled Expense Fixes, Date Field Autocomplete, And Delete Messaging
 
 This session verified fixes for three user-facing issues: scheduled expense period applicability, calendar picker autofill overlap, and budget-cycle delete messaging for trailing cycles.

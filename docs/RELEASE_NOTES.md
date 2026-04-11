@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Improved
+
+- Release Notes modal "N newer release available" badge is now clickable and smoothly scrolls to the "Available Updates" section
+
 ## 0.3.3-alpha | released | 2026-04-12
 
 ### Fixed

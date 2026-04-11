@@ -214,6 +214,7 @@ For document changes, follow [DOCUMENTATION_FRAMEWORK.md](./docs/DOCUMENTATION_F
 - Fixed browser autofill overlapping the Effective Date calendar picker by adding `autoComplete="off"` to `DateField.jsx`
 - Fixed misleading delete messaging for the last budget cycle: now shows "This budget cycle will be deleted." instead of "Delete this cycle and all upcoming cycles (1)" when `future_chain_count <= 1`
 - Fixed `bump_version.py` regex that was corrupting non-version strings in test files (e.g., `view previous releases` → `v0.3.3-alpha`). Pattern5 now uses a strict semver match
+- Improved Release Notes modal UX: clicking the "N newer release available" badge now scrolls focus down to the "Available Updates" section
 - **PeriodDetailPage Modularization (COMPLETED):** Reduced from 2,911 lines to 642 lines (78% reduction)
   - Phase 1A: Extracted transaction modals to `components/transaction/` (7 components)
   - Phase 1B: Extracted action modals to `components/modals/` (4 components)

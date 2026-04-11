@@ -637,6 +637,7 @@ Status:
 
 - `Completed`: consolidate Budget Setup and Period Detail add-expense scheduling onto a shared field set based on the Period Detail flow, standardize `Effective Date` wording, keep period-only note and include controls out of Budget Setup, and finish the accepted date-picker, fixed-day guidance, quick-fill, and neutral action-button polish in the touched expense workflows
 - `Completed`: extend the release-notes modal so newly available versions can expand inline for details without losing the current-version focus
+- `Completed`: make the "N newer release available" badge in the release-notes modal clickable so it scrolls directly to the Available Updates section
 - provide clear definitions and calculation explanations for the period-detail summary cards, likely through hover helper text or another suitable method, with implementation approach to be confirmed before work starts
 - `Completed`: align the budget-setup account table headings and values, separate add-account helper copy more clearly, and tighten primary-account affordances so the setup flow explains what is active, what is primary, and why
 - `Completed`: rename budget-setup income wording from `Income Type` to `Income Source` across the relevant setup surfaces

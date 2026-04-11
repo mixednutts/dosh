@@ -37,6 +37,26 @@ For the implemented export-shape plan that now defines budget-cycle export behav
 
 For the implemented Auto Expense workflow rules, scheduler behavior, migration expectations, and AUTO/MANUAL eligibility constraints introduced this session, read [AUTO_EXPENSE_PLAN.md](/home/ubuntu/dosh/docs/plans/AUTO_EXPENSE_PLAN.md).
 
+## Latest Session: Release Notes Modal Scroll-To-Updates UX Improvement
+
+This session improved the in-app Release Notes modal so that users can quickly navigate to available updates.
+
+### Release Notes Scroll-to-Available-Updates
+
+**What changed:**
+- Converted the static "N newer release available" badge in `frontend/src/components/ReleaseNotesModal.jsx` from a `<span>` into a clickable `<button>`
+- Added a `useRef` reference to the "Available Updates" section container
+- Clicking the badge now calls `scrollIntoView({ behavior: 'smooth', block: 'start' })` to bring the updates into focus
+
+**Why:**
+- When a newer release was available, the badge was purely informational. Users had to manually scroll past the current version details to reach the available updates. Making it interactive reduces friction.
+
+**Verification:**
+- Added `scrolls to available updates when the newer release badge is clicked` test in `frontend/src/__tests__/Layout.test.jsx`
+- All frontend tests passing
+
+---
+
 ## Latest Session: Bug Fixes For Scheduled Expense Period Applicability, Date Field Autocomplete, And Budget Cycle Delete Messaging
 
 This session fixed three user-facing issues: scheduled expenses incorrectly applying to future periods where they were not due, browser autofill overlapping the Effective Date calendar picker, and misleading delete messaging for the last budget cycle in a chain.
