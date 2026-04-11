@@ -266,6 +266,8 @@ export default function BalanceTypesTab({ budgetId, budget }) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['balance-types', budgetId] })
       qc.invalidateQueries({ queryKey: ['budget-setup-assessment', budgetId] })
+      qc.invalidateQueries({ queryKey: ['period-summaries', budgetId] })
+      qc.invalidateQueries({ queryKey: ['period-detail'] })
       setActionError('')
       setModal(null)
     },
@@ -277,6 +279,8 @@ export default function BalanceTypesTab({ budgetId, budget }) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['balance-types', budgetId] })
       qc.invalidateQueries({ queryKey: ['budget-setup-assessment', budgetId] })
+      qc.invalidateQueries({ queryKey: ['period-summaries', budgetId] })
+      qc.invalidateQueries({ queryKey: ['period-detail'] })
       setActionError('')
       setModal(null)
     },
@@ -288,6 +292,8 @@ export default function BalanceTypesTab({ budgetId, budget }) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['balance-types', budgetId] })
       qc.invalidateQueries({ queryKey: ['budget-setup-assessment', budgetId] })
+      qc.invalidateQueries({ queryKey: ['period-summaries', budgetId] })
+      qc.invalidateQueries({ queryKey: ['period-detail'] })
       setActionError('')
     },
     onError: error => setActionError(error?.response?.data?.detail || 'Unable to delete this account right now.'),

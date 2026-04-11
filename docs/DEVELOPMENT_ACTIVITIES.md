@@ -686,6 +686,8 @@ Status:
 - `Completed`: fix scheduled expense period applicability so "Every N Days" and "Fixed Day of Month" expenses with a future effective date no longer create zero-budget rows in cycles where they do not occur
 - `Completed`: fix browser autofill overlapping the Effective Date calendar picker in the add-expense modal
 - `Completed`: fix misleading delete messaging for the last budget cycle so trailing cycles show "This budget cycle will be deleted." instead of "Delete this cycle and all upcoming cycles (1)"
+- `Completed`: hide Setup Assessment messaging on the Budget Setup page once any budget cycle exists for the budget
+- `Completed`: fix newly added active accounts not appearing in existing budget cycle details by backfilling `PeriodBalance` rows for current and future periods when an active account is created (closed and pending-closure periods are intentionally skipped)
 
 #### Activity Group: Enhancements
 

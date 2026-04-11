@@ -37,6 +37,42 @@ For the implemented export-shape plan that now defines budget-cycle export behav
 
 For the implemented Auto Expense workflow rules, scheduler behavior, migration expectations, and AUTO/MANUAL eligibility constraints introduced this session, read [AUTO_EXPENSE_PLAN.md](/home/ubuntu/dosh/docs/plans/AUTO_EXPENSE_PLAN.md).
 
+## Latest Session: Budget Setup Assessment Visibility And New Account Period Balance Backfill
+
+This session fixed two issues in the budget setup and period balance area.
+
+### Setup Assessment Hidden Once Budget Cycles Exist
+
+**What changed:**
+- `frontend/src/pages/BudgetDetailPage.jsx` now fetches period summaries via `getPeriodSummariesForBudget`
+- The Setup Assessment card is only rendered when `periodSummaries.length === 0`
+- Once any budget cycle exists, the pre-generation assessment messaging is hidden so it no longer distracts from ongoing budget management
+
+**Why:**
+- The Setup Assessment is designed to guide users before their first cycle. Once cycles exist, its "ready for your first budget cycle" message is no longer relevant and can clutter the setup page.
+
+**Verification:**
+- Added `hides the setup assessment card when budget cycles already exist` test in `frontend/src/__tests__/BudgetDetailPage.test.jsx`
+- All frontend tests passing
+
+### New Active Account Backfills Period Balances For Current And Future Cycles
+
+**What changed:**
+- `backend/app/routers/balance_types.py` `create_balance_type` now creates `PeriodBalance` rows for existing budget periods when the new account is `active`, but **only for periods whose stage is `CURRENT` or `PLANNED`**
+- Closed periods and pending-closure periods are intentionally skipped; the new account does not retroactively appear in historical cycles
+- Opening balance for the earliest eligible period uses the account's `opening_balance`; subsequent periods use the previous period's `closing_amount`
+- After creating the rows, `recalculate_budget_chain` is called to ensure consistency across the entire period chain
+- `frontend/src/pages/tabs/BalanceTypesTab.jsx` now invalidates `period-summaries` and `period-detail` queries on create/update/delete so the UI reflects the new account immediately
+
+**Why:**
+- Previously, adding a new active account via Budget Setup only created the setup-level `BalanceType`. Existing budget cycles had no `PeriodBalance` row for the new account, so it was missing from the Account Balances section in cycle details.
+
+**Verification:**
+- Added `test_creating_active_balance_type_creates_period_balances_for_existing_periods` and `test_creating_active_balance_type_skips_closed_and_pending_closure_periods` to `backend/tests/test_transactions_and_balances.py`
+- All backend tests passing
+
+---
+
 ## Latest Session: Release Notes Modal Scroll-To-Updates UX Improvement
 
 This session improved the in-app Release Notes modal so that users can quickly navigate to available updates.

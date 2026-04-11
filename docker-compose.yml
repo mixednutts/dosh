@@ -6,7 +6,7 @@ services:
     volumes:
       - dosh-data:/app/data
     environment:
-      - APP_VERSION=0.3.3-alpha
+      - APP_VERSION=0.3.4-alpha
       - DEV_MODE=true
       - DATABASE_URL=sqlite:////app/data/dosh.db
       - TZ=Australia/Sydney
@@ -17,7 +17,7 @@ services:
     build:
       context: ./frontend
       args:
-        APP_VERSION: "0.3.3-alpha"
+        APP_VERSION: "0.3.4-alpha"
         DEV_MODE: "true"
     container_name: dosh-frontend
     restart: unless-stopped

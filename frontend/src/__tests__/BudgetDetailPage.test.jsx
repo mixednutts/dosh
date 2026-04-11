@@ -11,6 +11,7 @@ jest.mock('../api/client', () => ({
   getInvestmentItems: jest.fn(),
   getBalanceTypes: jest.fn(),
   getBudgetSetupAssessment: jest.fn(),
+  getPeriodSummariesForBudget: jest.fn(),
   updateBudget: jest.fn(),
 }))
 
@@ -45,6 +46,10 @@ describe('BudgetDetailPage', () => {
     })
   }
 
+  function mockNoPeriods() {
+    client.getPeriodSummariesForBudget.mockResolvedValue([])
+  }
+
   it('shows setup guidance when no accounts exist yet', async () => {
     client.getBudget.mockResolvedValue({
       budgetid: 1,
@@ -60,6 +65,7 @@ describe('BudgetDetailPage', () => {
       can_generate: false,
       blocking_issues: ['Choose one active account as the primary transaction account so expense entries have a default home.'],
     })
+    mockNoPeriods()
 
     renderWithProviders(<BudgetDetailPage />, {
       route: '/budgets/1/setup',
@@ -104,6 +110,7 @@ describe('BudgetDetailPage', () => {
       expense_items: [{ expense_desc: 'Rent', in_use: true }],
       investment_items: [{ investment_desc: 'ETF Portfolio', in_use: true }],
     })
+    mockNoPeriods()
 
     renderWithProviders(<BudgetDetailPage />, {
       route: '/budgets/1/setup',
@@ -138,6 +145,7 @@ describe('BudgetDetailPage', () => {
     ])
     client.getInvestmentItems.mockResolvedValue([])
     mockSetupAssessment()
+    mockNoPeriods()
 
     renderWithProviders(<BudgetDetailPage />, {
       route: '/budgets/1/setup',
@@ -172,6 +180,7 @@ describe('BudgetDetailPage', () => {
       can_generate: false,
       blocking_issues: ['Choose one active account as the primary transaction account so expense entries have a default home.'],
     })
+    mockNoPeriods()
 
     renderWithProviders(<BudgetDetailPage />, {
       route: '/budgets/1/setup',
@@ -204,6 +213,7 @@ describe('BudgetDetailPage', () => {
         'Add at least one active account so Dosh has a place to track this budget\'s balances.',
       ],
     })
+    mockNoPeriods()
 
     renderWithProviders(<BudgetDetailPage />, {
       route: '/budgets/1/setup',
@@ -244,6 +254,7 @@ describe('BudgetDetailPage', () => {
       budget_frequency: 'Monthly',
     })
     mockSetupAssessment()
+    mockNoPeriods()
 
     renderWithProviders(<BudgetDetailPage />, {
       route: '/budgets/1/setup',
@@ -292,6 +303,7 @@ describe('BudgetDetailPage', () => {
     client.getExpenseItems.mockResolvedValue([{ expensedesc: 'Rent', active: true }])
     client.getInvestmentItems.mockResolvedValue([])
     mockSetupAssessment()
+    mockNoPeriods()
 
     const firstRender = renderWithProviders(<BudgetDetailPage />, {
       route: '/budgets/1/setup',
@@ -311,5 +323,33 @@ describe('BudgetDetailPage', () => {
 
     expect(await screen.findByTitle('Collapse personalisation')).toBeTruthy()
     expect(screen.getByText('Personalisation Tab')).toBeTruthy()
+  })
+
+  it('hides the setup assessment card when budget cycles already exist', async () => {
+    client.getBudget.mockResolvedValue({
+      budgetid: 1,
+      budgetowner: 'Alex',
+      description: 'Home Budget',
+      budget_frequency: 'Monthly',
+    })
+    client.getBalanceTypes.mockResolvedValue([
+      { balancedesc: 'Everyday', balance_type: 'Transaction', active: true, is_primary: true },
+    ])
+    client.getIncomeTypes.mockResolvedValue([{ incomedesc: 'Salary' }])
+    client.getExpenseItems.mockResolvedValue([{ expensedesc: 'Rent', active: true }])
+    client.getInvestmentItems.mockResolvedValue([])
+    client.getPeriodSummariesForBudget.mockResolvedValue([
+      { period: { finperiodid: 10, startdate: '2024-01-01', enddate: '2024-01-31' } },
+    ])
+    mockSetupAssessment()
+
+    renderWithProviders(<BudgetDetailPage />, {
+      route: '/budgets/1/setup',
+      path: '/budgets/:budgetId/setup',
+    })
+
+    expect(await screen.findByText(/1 account, 1 income source, 1 active expense item, 0 investments/)).toBeTruthy()
+    expect(screen.queryByText(/Setup Assessment/)).toBeNull()
+    expect(screen.queryByText(/This setup is ready for your first budget cycle\./)).toBeNull()
   })
 })

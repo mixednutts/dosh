@@ -164,3 +164,92 @@ def test_locked_active_cycle_still_allows_actuals_and_transactions(client, db_se
 
     assert Decimal(balances["Main Account"]["movement_amount"]) == Decimal("925.00")
     assert Decimal(balances["Rainy Day"]["movement_amount"]) == Decimal("-75.00")
+
+
+def test_creating_active_balance_type_creates_period_balances_for_existing_periods(client, db_session):
+    setup = create_minimum_budget_setup(db_session)
+    budget = setup["budget"]
+
+    periods = generate_periods(
+        client,
+        budgetid=budget.budgetid,
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
+        count=2,
+    )
+    assert len(periods) == 2
+
+    response = client.post(
+        f"/api/budgets/{budget.budgetid}/balance-types",
+        json={
+            "balancedesc": "New Account",
+            "balance_type": "Transaction",
+            "opening_balance": "250.00",
+            "active": True,
+            "is_primary": False,
+        },
+    )
+    assert response.status_code == 201, response.text
+
+    for period in periods:
+        balances_response = client.get(f"/api/periods/{period['finperiodid']}/balances")
+        assert balances_response.status_code == 200, balances_response.text
+        balances = {row["balancedesc"]: row for row in balances_response.json()}
+        assert "New Account" in balances
+        assert Decimal(balances["New Account"]["opening_amount"]) == Decimal("250.00")
+
+
+def test_creating_active_balance_type_skips_closed_and_pending_closure_periods(client, db_session):
+    from datetime import timedelta
+    from app.time_utils import utc_now
+
+    setup = create_minimum_budget_setup(db_session)
+    budget = setup["budget"]
+
+    # Generate 3 periods starting from 60 days ago so:
+    # - first is historic (will be closed)
+    # - second is pending closure (ended before now, not closed)
+    # - third is current or future
+    start = utc_now().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=60)
+    periods = generate_periods(client, budgetid=budget.budgetid, startdate=start, count=3)
+    assert len(periods) == 3
+
+    first_period_id = periods[0]["finperiodid"]
+    second_period_id = periods[1]["finperiodid"]
+    third_period_id = periods[2]["finperiodid"]
+
+    # Close the first period
+    close_response = client.post(
+        f"/api/periods/{first_period_id}/closeout",
+        json={"create_next_cycle": False},
+    )
+    assert close_response.status_code == 200, close_response.text
+
+    response = client.post(
+        f"/api/budgets/{budget.budgetid}/balance-types",
+        json={
+            "balancedesc": "Late Account",
+            "balance_type": "Transaction",
+            "opening_balance": "100.00",
+            "active": True,
+            "is_primary": False,
+        },
+    )
+    assert response.status_code == 201, response.text
+
+    # Closed period should NOT have the new account
+    closed_balances = client.get(f"/api/periods/{first_period_id}/balances")
+    assert closed_balances.status_code == 200, closed_balances.text
+    closed_descs = {row["balancedesc"] for row in closed_balances.json()}
+    assert "Late Account" not in closed_descs
+
+    # Pending closure period should NOT have the new account
+    pending_balances = client.get(f"/api/periods/{second_period_id}/balances")
+    assert pending_balances.status_code == 200, pending_balances.text
+    pending_descs = {row["balancedesc"] for row in pending_balances.json()}
+    assert "Late Account" not in pending_descs
+
+    # Current/future period SHOULD have the new account
+    current_balances = client.get(f"/api/periods/{third_period_id}/balances")
+    assert current_balances.status_code == 200, current_balances.text
+    current_descs = {row["balancedesc"] for row in current_balances.json()}
+    assert "Late Account" in current_descs

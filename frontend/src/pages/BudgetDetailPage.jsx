@@ -3,7 +3,7 @@ import PropTypes from 'prop-types'
 import { useParams, Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronDownIcon, ChevronRightIcon, ArrowUpIcon } from '@heroicons/react/24/outline'
-import { getBudget, getIncomeTypes, getExpenseItems, getInvestmentItems, getBalanceTypes, getBudgetSetupAssessment, updateBudget } from '../api/client'
+import { getBudget, getIncomeTypes, getExpenseItems, getInvestmentItems, getBalanceTypes, getBudgetSetupAssessment, updateBudget, getPeriodSummariesForBudget } from '../api/client'
 import Spinner from '../components/Spinner'
 import IncomeTypesTab from './tabs/IncomeTypesTab'
 import ExpenseItemsTab from './tabs/ExpenseItemsTab'
@@ -287,6 +287,7 @@ export default function BudgetDetailPage() {
   const { data: expenseItems = [] } = useQuery({ queryKey: ['expense-items', id], queryFn: () => getExpenseItems(id), enabled: !!budget })
   const { data: investmentItems = [] } = useQuery({ queryKey: ['investment-items', id], queryFn: () => getInvestmentItems(id), enabled: !!budget })
   const { data: setupAssessment } = useQuery({ queryKey: ['budget-setup-assessment', id], queryFn: () => getBudgetSetupAssessment(id), enabled: !!budget })
+  const { data: periodSummaries = [] } = useQuery({ queryKey: ['period-summaries', id], queryFn: () => getPeriodSummariesForBudget(id), enabled: !!budget })
 
   useEffect(() => {
     const handleScroll = () => setShowReturnTop(globalThis.scrollY > 420)
@@ -379,7 +380,7 @@ export default function BudgetDetailPage() {
               {countLabel(accounts.length, 'account')}, {countLabel(incomeTypes.length, 'income source')}, {countLabel(activeExpenseItems.length, 'active expense item')}, {countLabel(investmentItems.length, 'investment')}
             </p>
           </div>
-          {setupAssessment ? (
+          {setupAssessment && periodSummaries.length === 0 ? (
             <div className={`rounded-xl px-4 py-3 ${
               setupAssessment.can_generate
                 ? 'border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/20'

@@ -4,6 +4,54 @@ This document records meaningful automated test results from major working sessi
 
 It exists separately from [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) so the strategy can stay stable while future sessions still have a record of what was actually run and verified.
 
+## Latest Session: Budget Setup Assessment Visibility And New Account Period Balance Backfill
+
+This session verified fixes for two issues: hiding the Setup Assessment card once budget cycles exist, and ensuring newly created active accounts appear in existing cycle Account Balances.
+
+### Verification
+
+Commands run during this session:
+
+```bash
+cd /home/ubuntu/dosh/frontend
+CI=true npm test -- --watchAll=false --runInBand
+```
+
+Result:
+
+- Full frontend suite: **167 passed** (was 166; +1 new test), 16 test suites
+- `hides the setup assessment card when budget cycles already exist` added to `BudgetDetailPage.test.jsx`
+- No regressions introduced
+
+```bash
+cd /home/ubuntu/dosh/backend
+.venv/bin/pytest tests/ -q
+```
+
+Result:
+
+- Full backend suite: **125 passed** (was 123; +2 new tests)
+- `test_creating_active_balance_type_creates_period_balances_for_existing_periods` added to `test_transactions_and_balances.py`
+- `test_creating_active_balance_type_skips_closed_and_pending_closure_periods` added to `test_transactions_and_balances.py`
+- No regressions introduced
+
+### Deployment Verification
+
+```bash
+cd /home/ubuntu/dosh
+INCLUDE_OVERRIDE=true ./scripts/release_with_migrations.sh
+curl -sS http://127.0.0.1:3080/api/health
+```
+
+Result:
+
+- Backend container rebuilt and restarted successfully
+- Frontend container rebuilt and restarted successfully
+- Health endpoint returned `{"status":"ok","app":"Dosh"}`
+- Version endpoint returned `0.3.4-alpha`
+
+---
+
 ## Latest Session: Release Notes Modal Scroll-To-Updates UX Improvement
 
 This session verified a small UX improvement to the in-app Release Notes modal: the "N newer release available" badge now scrolls directly to the Available Updates section.

@@ -1,6 +1,10 @@
+from decimal import Decimal
+
 from fastapi import APIRouter, HTTPException
 from sqlalchemy.orm import Session
 from ..api_docs import DbSession, error_responses
+from ..cycle_management import recalculate_budget_chain, cycle_stage
+from ..cycle_constants import CURRENT_STAGE, PLANNED
 from ..models import Budget, BalanceType, PeriodBalance, FinancialPeriod
 from ..schemas import (
     BalanceTypeCreate, BalanceTypeOut, BalanceTypeUpdate,
@@ -143,6 +147,34 @@ def create_balance_type(budgetid: int, payload: BalanceTypeCreate, db: DbSession
     db.add(bt)
     db.commit()
     db.refresh(bt)
+
+    if bt.active:
+        all_periods = (
+            db.query(FinancialPeriod)
+            .filter(FinancialPeriod.budgetid == budgetid)
+            .order_by(FinancialPeriod.startdate, FinancialPeriod.finperiodid)
+            .all()
+        )
+        periods = [p for p in all_periods if cycle_stage(p) in {CURRENT_STAGE, PLANNED}]
+        previous_period = None
+        for period in periods:
+            if previous_period:
+                prev_pb = db.get(PeriodBalance, (previous_period.finperiodid, bt.balancedesc))
+                opening = Decimal(str(prev_pb.closing_amount)) if prev_pb else Decimal(str(bt.opening_balance))
+            else:
+                opening = Decimal(str(bt.opening_balance))
+            db.add(PeriodBalance(
+                finperiodid=period.finperiodid,
+                budgetid=budgetid,
+                balancedesc=bt.balancedesc,
+                opening_amount=opening,
+                closing_amount=opening,
+            ))
+            previous_period = period
+        if periods:
+            recalculate_budget_chain(budgetid, db)
+            db.commit()
+
     return bt
 
 
