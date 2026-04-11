@@ -28,8 +28,6 @@ runs = json.load(sys.stdin)
 for run in runs:
     if run.get("status") != "completed":
         continue
-    if run.get("conclusion") != "success":
-        continue
     if target_branch and run.get("headBranch") != target_branch:
         continue
     print(run["databaseId"])
@@ -41,9 +39,9 @@ raise SystemExit(1)
 
 if [[ -z "${RUN_ID}" ]]; then
   if [[ -n "${TARGET_BRANCH}" ]]; then
-    echo "No successful ${WORKFLOW_FILE} workflow run found for branch '${TARGET_BRANCH}'." >&2
+    echo "No completed ${WORKFLOW_FILE} workflow run found for branch '${TARGET_BRANCH}'." >&2
   else
-    echo "No successful ${WORKFLOW_FILE} workflow run found." >&2
+    echo "No completed ${WORKFLOW_FILE} workflow run found." >&2
   fi
   exit 1
 fi

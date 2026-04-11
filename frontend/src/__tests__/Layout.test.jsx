@@ -158,7 +158,7 @@ describe('Layout navigation', () => {
   it('opens release notes from the version label', async () => {
     renderLayout('/budgets')
 
-    fireEvent.click(await screen.findByRole('button', { name: /v0.3.1-alpha/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /v0.3.2-alpha/i }))
 
     expect(await screen.findByRole('heading', { name: 'Release Notes' })).toBeTruthy()
     expect(await screen.findByText(/running version/i)).toBeTruthy()
@@ -168,10 +168,10 @@ describe('Layout navigation', () => {
   it('can reveal previous released versions from the release notes modal', async () => {
     renderLayout('/budgets')
 
-    fireEvent.click(await screen.findByRole('button', { name: /v0.3.1-alpha/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /v0.3.2-alpha/i }))
     fireEvent.click(await screen.findByRole('button', { name: /view previous releases \(1\)/i }))
 
-    expect(await screen.findByText('v0.3.2-alpha')).toBeTruthy()
+    expect(await screen.findByText(/Dosh now hardens release-notes parsing against regex-driven denial-of-service risk/i)).toBeTruthy()
     expect(screen.getByRole('button', { name: /hide previous releases/i })).toBeTruthy()
   })
 
@@ -206,9 +206,9 @@ describe('Layout navigation', () => {
 
     renderLayout('/budgets')
 
-    fireEvent.click(await screen.findByRole('button', { name: /v0.3.1-alpha/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /v0.3.2-alpha/i }))
 
-    expect(await screen.findByText('v0.3.2-alpha')).toBeTruthy()
+    expect(await screen.findByText('Update summary.')).toBeTruthy()
     expect(screen.queryByText('Expanded release details are available on demand')).toBeNull()
 
     fireEvent.click(screen.getByRole('button', { name: /view details/i }))

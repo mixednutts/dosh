@@ -112,3 +112,5 @@ The workflow generates:
 - JavaScript coverage at `frontend/coverage/lcov.info`
 
 Those reports are then consumed by SonarQube during the scan step.
+
+To inspect the latest workflow artifact locally (sanitized reports, issue summaries, and component metrics), use [`scripts/fetch_latest_sonar_artifact.sh`](/home/ubuntu/dosh/scripts/fetch_latest_sonar_artifact.sh).

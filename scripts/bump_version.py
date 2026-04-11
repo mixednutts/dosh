@@ -120,7 +120,7 @@ def bump_layout_tests(version: str) -> None:
     pattern2 = re.compile(r"current_version:\s*'[^']+'")
     pattern3 = re.compile(r"(getByText\('v)[^']+('\))")
     pattern4 = re.compile(r"(findByText\('v)[^']+('\))")
-    pattern5 = re.compile(r"(findByRole\([^)]+\{\s*name:\s*\/v)[^/]+(/i\))")
+    pattern5 = re.compile(r"(findByRole\([^)]*?\{\s*name:\s*\/v)[^/]+(/i\s*\})")
     
     text = path.read_text(encoding="utf-8")
     original = text
