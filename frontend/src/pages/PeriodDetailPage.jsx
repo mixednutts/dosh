@@ -1,69 +1,34 @@
 import { useState, useRef, useEffect } from 'react'
-import PropTypes from 'prop-types'
 import { useParams, Link, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { parseISO, addDays } from 'date-fns'
 import {
-  LockClosedIcon, LockOpenIcon, ChevronRightIcon, ChevronLeftIcon, PlusIcon,
-  MinusIcon, TrashIcon, ListBulletIcon, Bars2Icon, PencilSquareIcon,
+  LockClosedIcon, LockOpenIcon, ChevronRightIcon, ChevronLeftIcon,
   ArrowDownTrayIcon,
 } from '@heroicons/react/24/outline'
 import {
   getPeriodDetail, getBudget, setPeriodLock, getPeriodsForBudget,
-  getIncomeTransactions, addIncomeTransaction, deleteIncomeTransaction,
-  addExpenseToPeriod, addIncomeToPeriod, savingsTransfer,
-  getExpenseItems, getIncomeTypes, createExpenseItem, createIncomeType,
-  getExpenseEntries, addExpenseEntry, deleteExpenseEntry,
-  reorderPeriodExpenses, getBalanceTransactions,
-  getInvestmentTransactions, addInvestmentTransaction, deleteInvestmentTransaction,
+  reorderPeriodExpenses,
   setPeriodExpenseStatus, updatePeriodExpenseBudget, removePeriodExpense,
-  updatePeriodInvestmentBudget, getBalanceTypes, removePeriodIncome, updatePeriodIncomeBudget, setPeriodIncomeStatus,
-  setPeriodInvestmentStatus, getPeriodCloseoutPreview, closeOutPeriod, exportPeriod,
-  updatePeriodExpensePayType, runPeriodAutoExpenses,
+  updatePeriodInvestmentBudget, removePeriodIncome, updatePeriodIncomeBudget, setPeriodIncomeStatus,
+  setPeriodInvestmentStatus, updatePeriodExpensePayType, runPeriodAutoExpenses,
 } from '../api/client'
 import Modal from '../components/Modal'
 import Spinner from '../components/Spinner'
-import AmountExpressionInput from '../components/AmountExpressionInput'
-import ExpenseItemSchedulingFields from '../components/ExpenseItemSchedulingFields'
-import DateField from '../components/DateField'
 import { useLocalisation } from '../components/LocalisationContext'
 import { useFormatters } from '../components/useFormatters'
-import { getNextFixedDayOccurrence } from '../utils/fixedDayScheduling'
 import { getCycleStage, getCycleStageLabel } from '../utils/periodStage'
 import {
-  SECONDARY_BUTTON_CLASSES,
-  DELETE_BUTTON_CLASSES,
-  iconButtonClassName,
-  getResolvedAmountValue,
-  balanceTransactionDelta,
-  balanceTransactionLabel,
-  buildTransactionDisplayResolver,
-  getTransactionModalConfig,
-  buildTransactionSubmitHandler,
   getPeriodBudgetMutation,
   getPositiveRemainingValue,
-  hasLineActualActivity,
   getIncomeSurplusContribution,
   getOutflowSurplusContribution,
-  calcNextDue,
-  freqLabel,
-  isScheduledExpense,
-  getExpenseScheduleBadge,
-  ActionIconButton,
-  EmptyActionSlot,
-  DeleteActionButton,
-  BudgetAmountCell,
 } from '../utils'
 import {
-  ExpenseStatusPill,
-  InvestmentStatusPill,
-  IncomeStatusPill,
   ConfirmPaidExpenseModal,
   ConfirmPaidInvestmentModal,
   ConfirmPaidIncomeModal,
 } from '../components/status'
 import {
-  TransactionWorkflowModal,
   IncomeTransactionsModal,
   ExpenseEntriesModal,
   InvestmentTxModal,
@@ -88,7 +53,6 @@ import {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function PeriodDetailPage() {
-  const localisation = useLocalisation()
   const { periodId } = useParams()
   const [searchParams, setSearchParams] = useSearchParams()
   const id = Number.parseInt(periodId, 10)
@@ -116,7 +80,7 @@ export default function PeriodDetailPage() {
 
   // Localised formatters (use localisation context from budget)
   const formatters = useFormatters()
-  const { fmt, fmtDate, fmtDateTime, fmtDateRange, fmtPercent } = formatters
+  const { fmt, fmtDate, fmtDateRange } = formatters
 
   const { data, isLoading, isError } = useQuery({ queryKey: ['period', id], queryFn: () => getPeriodDetail(id) })
   const { data: budget } = useQuery({
@@ -245,8 +209,7 @@ export default function PeriodDetailPage() {
   const totalInvestmentActual = investments.reduce((s, inv) => s + Number(inv.actualamount ?? 0), 0)
   const totalInvestmentRemaining = investments.reduce((s, inv) => s + getPositiveRemainingValue(inv.remaining_amount), 0)
   const totalExpenseRemaining = expenses.reduce((s, e) => s + getPositiveRemainingValue(e.remaining_amount), 0)
-  const totalBalanceOpening = balances.reduce((s, b) => s + Number(b.opening_amount ?? 0), 0)
-  const totalBalanceClosing = balances.reduce((s, b) => s + Number(b.opening_amount ?? 0) + Number(b.movement_amount ?? 0), 0)
+
   const surplusActual = totalIncomeActual - totalExpenseActual - totalInvestmentActual
   const budgetIncomeContribution = incomes.reduce((s, income) => (
     s + getIncomeSurplusContribution({

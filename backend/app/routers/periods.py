@@ -781,7 +781,6 @@ def list_period_summaries_for_budget(budgetid: int, db: DbSession):
     for row in investment_rows:
         investments_by_period[row.finperiodid].append(row)
 
-    now = app_now_naive()
     summaries: list[PeriodSummaryOut] = []
     cumulative_projected_savings = Decimal("0.00")
 

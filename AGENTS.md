@@ -206,8 +206,8 @@ For document changes, follow [DOCUMENTATION_FRAMEWORK.md](./docs/DOCUMENTATION_F
 
 ## Current Project State (Snapshot)
 
-**Version:** 0.3.1-alpha
-**Schema Revision:** b71415822583 (adds status change history setting)
+**Version:** 0.3.2-alpha
+**Schema Revision:** d3091a75b8ff
 
 **Recent Work:**
 - **PeriodDetailPage Modularization (COMPLETED):** Reduced from 2,911 lines to 642 lines (78% reduction)
@@ -215,7 +215,7 @@ For document changes, follow [DOCUMENTATION_FRAMEWORK.md](./docs/DOCUMENTATION_F
   - Phase 1B: Extracted action modals to `components/modals/` (4 components)
   - Phase 2: Extracted utility functions to `utils/` (3 modules)
   - Phase 3: Extracted section components to `components/period-sections/` (4 components)
-  - Post-deploy fix: Removed legacy `isfixed` column from database (pre-baseline schema artifact)
+  - Post-modularization cleanup: Removed ~50 unused imports and unused variables from `PeriodDetailPage.jsx` and related files, resolving the SonarQube `S1128` spike introduced by extraction
 - Transaction entry date/time simplified: now read-only with current datetime, removed editable calendar picker
 - UI layout refinements: widened Add Remaining/Full button to match amount field width
 - UTC datetime migration completed: all backend datetime storage now uses UTC with proper timezone handling
@@ -224,11 +224,13 @@ For document changes, follow [DOCUMENTATION_FRAMEWORK.md](./docs/DOCUMENTATION_F
 - Income status workflow (Paid/Revised matching Expense/Investment behavior)
 - Date format consistency across frontend (user preference driven)
 - Release management automation (recovery workflows, version bump script)
+- SonarQube workflow artifact retrieval updated to fetch the latest completed run regardless of success or failure, ensuring failed workflow artifacts are accessible for diagnosis
 
 **Active Focus Areas:**
 - Testing infrastructure hardening (all 121 backend tests passing, 164 frontend tests passing)
 - Documentation framework compliance
 - Release process reliability
+- SonarQube maintainability follow-through (props validation, cognitive complexity, form-label accessibility)
 
 **Guardrails in Effect:**
 - Test-by-change discipline (tests with behavior changes)

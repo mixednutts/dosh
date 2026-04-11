@@ -760,6 +760,7 @@ Status:
 - `Completed`: reduce the dominant backend SonarQube router noise by switching FastAPI endpoints to a shared `DbSession` dependency alias and centralized documented error responses
 - `Completed`: clear the active SonarQube new-code duplication hotspot in `PeriodDetailPage.jsx`; the verified follow-up run now shows duplication below the quality-gate threshold, shifting the remaining quality work toward coverage and residual frontend maintainability findings instead
 - `Completed`: complete three-phase modularization of `PeriodDetailPage.jsx` (2,911 lines → 642 lines, 78% reduction); extracted 15 components to organized directories and 3 utility modules
+- `Completed`: cleared the modularization-induced unused-import spike (`javascript:S1128`) and related unused-variable warnings (`S1481`/`S1854`) from `PeriodDetailPage.jsx`, `BudgetPeriodsPage.jsx`, `transactionHelpers.js`, and `periods.py`; SonarQube issue count reduced from 159 back toward the pre-modularization baseline
 - continue reducing SonarQube noise by addressing the next concentrated frontend rule clusters after props validation and the completed FastAPI router cleanup, especially nested ternaries, form-label associations, and residual maintainability findings in `PeriodDetailPage.jsx` and related high-traffic frontend files now that the duplication hotspot is resolved
 - standardize terminology around savings and investments
 - standardize where the UI says `Budget Cycle` while backend and API continue using `period`

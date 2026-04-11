@@ -277,7 +277,6 @@ function PeriodSummaryGroup({ title, summaries, collapsed = false, collapsible =
 }
 
 export default function BudgetPeriodsPage() {
-  const { formatDateRange } = useLocalisation()
   const { budgetId } = useParams()
   const location = useLocation()
   const navigate = useNavigate()

@@ -37,6 +37,44 @@ For the implemented export-shape plan that now defines budget-cycle export behav
 
 For the implemented Auto Expense workflow rules, scheduler behavior, migration expectations, and AUTO/MANUAL eligibility constraints introduced this session, read [AUTO_EXPENSE_PLAN.md](/home/ubuntu/dosh/docs/plans/AUTO_EXPENSE_PLAN.md).
 
+## Latest Session: SonarQube Cleanup, Workflow Artifact Fix, And Post-Modularization Maintenance
+
+This session focused on cleaning up the SonarQube maintainability debt introduced by the recent `PeriodDetailPage.jsx` modularization, improving the CI artifact retrieval script, and deploying the fixes.
+
+### Frontend And Backend Cleanup
+
+Following the 78% line-count reduction of `PeriodDetailPage.jsx`, a large cluster of unused imports (`javascript:S1128`) and unused variables (`S1481`/`S1854`) appeared in SonarQube. This session systematically removed that cleanup debt.
+
+**What changed:**
+- Removed ~50 unused imports from `frontend/src/pages/PeriodDetailPage.jsx`, including orphaned `date-fns` helpers, Heroicons, API client functions, and utility imports left behind after component extraction
+- Removed unused variables `localisation`, `fmtDateTime`, `fmtPercent`, `totalBalanceOpening`, and `totalBalanceClosing` from `PeriodDetailPage.jsx`
+- Removed unused `formatDateRange` destructuring from `frontend/src/pages/BudgetPeriodsPage.jsx`
+- Removed unused `useFormatters` import from `frontend/src/utils/transactionHelpers.js`
+- Removed unused `now` local variable from `backend/app/routers/periods.py`
+
+**Why:**
+- The modularization extracted components, modals, and utilities to dedicated directories, but the parent file still imported many symbols that were no longer referenced
+- Cleaning this up restores a quieter SonarQube profile and prevents the issue count from masking real maintainability hotspots
+
+**Verification:**
+- All 164 frontend tests passing
+- All 121 backend tests passing
+- Deployed to production environment successfully
+
+### SonarQube Workflow Artifact Retrieval Improved
+
+The `scripts/fetch_latest_sonar_artifact.sh` script previously filtered for only successful workflow runs. After a failed run (`24276408969`) produced a needed artifact, the script was updated to retrieve the latest **completed** run regardless of conclusion.
+
+**What changed:**
+- Removed the `conclusion == "success"` filter from the `gh run list` Python inline script
+- Updated error messages to refer to "completed" rather than "successful" runs
+
+**Why:**
+- Failed workflow runs still upload sanitized SonarQube artifacts (via `if: always()`)
+- Debugging CI failures requires access to those artifacts, including quality-gate context and issue summaries from the failed run
+
+---
+
 ## Latest Session: PeriodDetailPage Complete Modularization And Legacy Schema Cleanup
 
 This session completed the three-phase modularization of PeriodDetailPage.jsx, reducing it from 2,911 lines to 642 lines (78% reduction), and fixed a legacy database schema issue that was blocking demo budget creation.

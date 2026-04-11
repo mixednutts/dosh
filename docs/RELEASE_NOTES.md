@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Engineering
+
+- Cleaned up ~50 unused imports and unused variables across `PeriodDetailPage.jsx`, `BudgetPeriodsPage.jsx`, `transactionHelpers.js`, and `periods.py` following the PeriodDetailPage modularization
+- Updated `scripts/fetch_latest_sonar_artifact.sh` to download the latest completed SonarQube workflow artifact regardless of success or failure, making failed-run diagnostics easier
+
 ## 0.3.2-alpha | released | 2026-04-11
 
 ### Added
