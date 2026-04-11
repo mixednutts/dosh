@@ -158,7 +158,7 @@ This repository setting has now been applied for the current repository and shou
 
 ## Open Decisions
 
-- decide whether the workflow should also validate documentation touchpoints such as [README.md](/home/ubuntu/dosh/README.md), [PROJECT_CONTEXT.md](/home/ubuntu/dosh/docs/PROJECT_CONTEXT.md), and [MIGRATION_AND_RELEASE_MANAGEMENT.md](/home/ubuntu/dosh/docs/MIGRATION_AND_RELEASE_MANAGEMENT.md), or whether those remain soft expectations outside the blocking tag gate
+- decide whether the workflow should also validate documentation touchpoints such as [README.md](/home/ubuntu/dosh/README.md), [AGENTS.md](/home/ubuntu/dosh/AGENTS.md), and [MIGRATION_AND_RELEASE_MANAGEMENT.md](/home/ubuntu/dosh/docs/MIGRATION_AND_RELEASE_MANAGEMENT.md), or whether those remain soft expectations outside the blocking tag gate
 - decide whether documentation touchpoints beyond the current version-validation set should ever become blocking gates
 - decide whether future deployment automation should ever be triggered from tags, or remain a manual operational step
 - decide the exact future Docker image publication policy for prerelease versus stable `latest` tags
@@ -178,5 +178,5 @@ The first practical implementation slice should be:
 - [MIGRATION_AND_RELEASE_MANAGEMENT.md](/home/ubuntu/dosh/docs/MIGRATION_AND_RELEASE_MANAGEMENT.md)
 - [GITHUB_RELEASE_RUNBOOK.md](/home/ubuntu/dosh/docs/GITHUB_RELEASE_RUNBOOK.md)
 - [RELEASE_NOTES.md](/home/ubuntu/dosh/docs/RELEASE_NOTES.md)
-- [PROJECT_CONTEXT.md](/home/ubuntu/dosh/docs/PROJECT_CONTEXT.md)
+- [AGENTS.md](/home/ubuntu/dosh/AGENTS.md)
 - [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md)

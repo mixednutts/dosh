@@ -17,7 +17,7 @@ Use this document to answer:
 Read this alongside:
 
 - [README.md](/home/ubuntu/dosh/README.md)
-- [PROJECT_CONTEXT.md](/home/ubuntu/dosh/docs/PROJECT_CONTEXT.md)
+- [AGENTS.md](/home/ubuntu/dosh/AGENTS.md) for operational constraints and current state
 - [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md)
 - [MIGRATION_AND_RELEASE_MANAGEMENT.md](/home/ubuntu/dosh/docs/MIGRATION_AND_RELEASE_MANAGEMENT.md)
 

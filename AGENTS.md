@@ -10,7 +10,7 @@ This document provides initialization context for AI agents and contributors wor
 Read this alongside:
 - [README.md](./README.md) - Project overview and entry point
 - [docs/DOCUMENTATION_FRAMEWORK.md](./docs/DOCUMENTATION_FRAMEWORK.md) - Documentation standards
-- [docs/PROJECT_CONTEXT.md](./docs/PROJECT_CONTEXT.md) - Current operational state
+- [docs/ROADMAP.md](./docs/ROADMAP.md) - Release-stage scope and priority framing
 
 ---
 
@@ -198,7 +198,7 @@ When starting a new session:
 
 1. **Read README.md** - Project overview
 2. **Read this AGENTS.md** - Operational constraints (hard controls)
-3. **Read PROJECT_CONTEXT.md** - Current state and active focus
+3. **Review Current Project State below** - Active focus and guardrails
 
 For document changes, follow [DOCUMENTATION_FRAMEWORK.md](./docs/DOCUMENTATION_FRAMEWORK.md).
 
@@ -254,6 +254,62 @@ If production is running untagged code, bump the version immediately so the
 
 ---
 
+## Core Domain Rules
+
+These rules are current product invariants unless deliberately revisited:
+
+- persisted lifecycle state remains `PLANNED`, `ACTIVE`, `CLOSED`
+- user-facing cycle stage is derived from lifecycle state plus dates: `Current`, `Pending Closure`, `Planned`, `Closed`
+- exactly one `Current` cycle should exist per budget, while multiple overdue open cycles may appear as `Pending Closure`
+- cycle chains should remain continuous without overlaps or silent retained gaps
+- `islocked` is a separate manual structure-protection control, not a lifecycle substitute
+- `CLOSED` cycles are historical and read-only through normal workflow paths
+- close-out is the event that freezes the cycle, snapshots historical data, and activates the next cycle
+- close-out history must be preserved as point-in-time snapshot data rather than recomputed from later settings
+- `Carried Forward` is a reserved system-managed income line on the next cycle only
+- carry-forward recalculation and next-cycle opening rebasing must stay synchronized
+- guided delete continuity matters more than a simple one-click delete path
+- generation readiness is now determined through centralized setup assessment rather than scattered page-level assumptions
+- expense-driven setups require one active primary transaction account before generation can proceed safely
+- deleting a non-trailing planned or active cycle may require `Delete this and all upcoming cycles`
+- balance movement is intended to be transaction-derived rather than freely edited
+- `ACTIVE` plus `islocked=true` protects structural edits but should still allow actual-entry and transaction-recording workflows
+- expense and investment workflows should remain aligned, including `Current`, `Paid`, and `Revised` behavior
+- paid lines are treated as finalized unless intentionally revised through the supported workflow
+- setup records already used by generated cycles or downstream activity should be protected from destructive edits
+- the active primary transaction account is a hard setup requirement for expense-driven workflows
+- account primaries are scoped per balance type, so `Savings` and `Cash` accounts may keep their own primary designation without replacing the primary `Transaction` account
+- protected in-use accounts may still allow non-structural changes such as primary-flag updates when `balance_type` and `opening_balance` are unchanged
+- income generation now uses the stored income-source amount directly; the retired `isfixed` concept should not be reintroduced
+- carry-forward should only be created from close-out of the prior cycle, not from simple future-cycle generation
+- budget adjustments for income, expense, and investment lines now live in `PeriodTransaction` as `BUDGETADJ` history and must stay excluded from actual and balance calculations
+
+---
+
+## Guardrails for New Development
+
+When making changes, preserve these working assumptions:
+
+- do not treat migration-era ledger backfill as normal recurring product behavior
+- do not weaken ledger trust by introducing manual balance-edit shortcuts
+- do not let future health personalisation rewrite historical closed-cycle meaning
+- do not overload the UI with scoring language users cannot reasonably trust
+- do not assume there is always one transaction account plus one savings account
+- do not reintroduce hard-coded locale, currency, percent, date, or browser-local timezone display formatting when shared localisation helpers already own the behavior
+- do not localize backend storage, API payloads, ledger calculations, migrations, or machine-readable exports by default
+- do not treat startup schema patching as a finished migration strategy
+- do not reintroduce direct inline actual-edit shortcuts that bypass the ledger-backed transaction model for income
+- do not weaken setup protection by reintroducing page-local readiness assumptions when centralized setup assessment already exists
+- do not treat backend test isolation as optional now that mixed-area sessions depend on it
+- prefer regional display-label preferences over renaming internal domain models when terminology variation is mostly user-facing
+- do not let demo-budget import become destructive; it should remain additive-only unless a separately named reset workflow is intentionally designed
+- do not duplicate setup entry points on the budget cycles sidebar when the page already provides the relevant setup action
+- do not treat current sidebar navigation behavior as unowned presentation detail; update the layout regression baseline deliberately when navigation rules change
+- when assessing a change, first determine whether it touches a shared component, shared logic, shared utility, or shared configuration; if it does, stop and seek explicit user confirmation before extending, generalising, or branching behavior from that shared surface
+- do not generalise a local fix through a shared surface without explicit approval
+
+---
+
 ## Incident Log: CI Pipeline Break - Version Bump Omission 2026-04-11
 
 **Severity:** CRITICAL - CI/CD pipeline blocked, recurring automation failure
@@ -296,6 +352,40 @@ If production is running untagged code, bump the version immediately so the
 - ALWAYS grep for `"X.Y.Z-alpha"` patterns across entire codebase before declaring version bump complete
 - ALWAYS run `pytest backend/tests/test_app_smoke.py -v` after version bump
 - NEVER assume bump_version.py is complete - verify by checking git diff
+
+---
+
+## Incident Log: Unauthorized Environment Modification 2026-04-11
+
+**Severity:** CRITICAL - 3rd infrastructure incident today
+
+**What happened:**
+1. User reported 404 error after deployment
+2. Agent misdiagnosed issue as missing docker-compose.override.yml network configuration
+3. Agent ran `docker compose down && docker compose up -d` directly without:
+   - Understanding user's environment topology
+   - Checking if override was already loaded (it was)
+   - Verifying actual cause of 404
+4. This unnecessarily disrupted containers and changed network state
+
+**Critical errors:**
+1. **Assumed override wasn't loaded** - `release_with_migrations.sh` HAD loaded it correctly
+2. **Ran destructive commands without approval** - `docker compose down` is destructive
+3. **Failed to diagnose actual cause** - never identified real 404 source
+4. **Bypassed user's workflow** - ran compose commands instead of using proper scripts
+
+**Why this is critical:**
+- **Environment corruption risk**: Direct docker commands bypass user's established workflow
+- **3rd infrastructure incident today** (data loss, CI break, environment mod)
+- **Pattern of assuming over verifying**: Agent assumed issue instead of investigating
+- **Unauthorized state changes**: Modified production container state without explicit approval
+
+**Prevention for future:**
+- NEVER run `docker compose down/up` directly - always use user's scripts
+- ALWAYS ask before running destructive container commands
+- ALWAYS verify diagnosis with evidence before acting
+- NEVER assume docker-compose.override.yml isn't loaded - check running containers first
+- When user reports 404: ask for URL, headers, and browser dev tools info first
 
 ---
 

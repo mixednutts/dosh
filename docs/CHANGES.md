@@ -564,7 +564,7 @@ Important direction now in place:
 - transaction submit buttons in the shared modal are now neutral rather than red or category-colored, while status pills remain category-specific
 - fixed-day-of-month scheduling now rolls a missing day such as the `31st` onto the next day after month end instead of producing inconsistent behavior across months
 - the release-notes modal now lets users expand newer available versions for details without having to leave the current-version context
-- future sessions should respect the stronger shared-surface decision gate now captured in [PROJECT_CONTEXT.md](/home/ubuntu/dosh/docs/PROJECT_CONTEXT.md): if a local fix starts to generalise through a shared component, shared logic, shared utility, or shared configuration, stop and seek explicit user confirmation first
+- future sessions should respect the stronger shared-surface decision gate now captured in [AGENTS.md](/home/ubuntu/dosh/AGENTS.md): if a local fix starts to generalise through a shared component, shared logic, shared utility, or shared configuration, stop and seek explicit user confirmation first
 
 ### 1. Expense scheduling now uses one shared form across Budget Setup and Period Detail
 
@@ -881,12 +881,12 @@ Because this was a backward-compatible fix to a shipped runtime path, the sessio
 Current behavior:
 
 - the app version baseline is now `0.1.1-alpha` across backend, frontend, Compose, package metadata, and runtime display fallbacks
-- [README.md](/home/ubuntu/dosh/README.md), [PROJECT_CONTEXT.md](/home/ubuntu/dosh/docs/PROJECT_CONTEXT.md), [MIGRATION_AND_RELEASE_MANAGEMENT.md](/home/ubuntu/dosh/docs/MIGRATION_AND_RELEASE_MANAGEMENT.md), [RELEASE_NOTES.md](/home/ubuntu/dosh/docs/RELEASE_NOTES.md), [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md), and [TEST_RESULTS_SUMMARY.md](/home/ubuntu/dosh/docs/tests/TEST_RESULTS_SUMMARY.md) were refreshed to reflect the current checkpoint
+- [README.md](/home/ubuntu/dosh/README.md), [AGENTS.md](/home/ubuntu/dosh/AGENTS.md), [MIGRATION_AND_RELEASE_MANAGEMENT.md](/home/ubuntu/dosh/docs/MIGRATION_AND_RELEASE_MANAGEMENT.md), [RELEASE_NOTES.md](/home/ubuntu/dosh/docs/RELEASE_NOTES.md), [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md), and [TEST_RESULTS_SUMMARY.md](/home/ubuntu/dosh/docs/tests/TEST_RESULTS_SUMMARY.md) were refreshed to reflect the current checkpoint
 - no document-placement changes were needed, so [DOCUMENT_REGISTER.md](/home/ubuntu/dosh/docs/DOCUMENT_REGISTER.md) remains structurally accurate without new entries
 
 Important operational meaning:
 
-- future sessions can keep using the same README to PROJECT_CONTEXT initialization path; only the current release baseline and the release-notes parser implementation details changed
+- future sessions can keep using the same README to AGENTS initialization path; only the current release baseline and the release-notes parser implementation details changed
 - the deployed environment was brought back into alignment with the repository after the version bump and documentation refresh
 
 ## Latest Session: Budget-Setup Safeguards, Income-Source Simplification, And Period-Detail Rollup Corrections

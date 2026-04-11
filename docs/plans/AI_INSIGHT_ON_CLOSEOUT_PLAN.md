@@ -7,7 +7,7 @@ It is intentionally a planning document, not a locked product decision. Use it t
 Read this alongside:
 
 - [README.md](/home/ubuntu/dosh/README.md)
-- [PROJECT_CONTEXT.md](/home/ubuntu/dosh/docs/PROJECT_CONTEXT.md)
+- [AGENTS.md](/home/ubuntu/dosh/AGENTS.md)
 - [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md)
 - [CHANGES.md](/home/ubuntu/dosh/docs/CHANGES.md)
 - [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_CYCLE_LIFECYCLE_PLAN.md)

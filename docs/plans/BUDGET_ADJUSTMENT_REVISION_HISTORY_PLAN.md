@@ -16,7 +16,7 @@ This plan is the source-of-truth design reference for:
 
 It complements:
 
-- [PROJECT_CONTEXT.md](/home/ubuntu/dosh/docs/PROJECT_CONTEXT.md) for current handoff context
+- [AGENTS.md](/home/ubuntu/dosh/AGENTS.md) for operational constraints and current state
 - [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md) for roadmap ownership and follow-up work
 - [CHANGES.md](/home/ubuntu/dosh/docs/CHANGES.md) for implementation history
 - [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/docs/plans/BUDGET_HEALTH_ADDENDUM.md) for broader health-direction guidance
@@ -170,7 +170,7 @@ Still-open follow-up that may build on this plan:
 
 ## Related Documents
 
-- [PROJECT_CONTEXT.md](/home/ubuntu/dosh/docs/PROJECT_CONTEXT.md)
+- [AGENTS.md](/home/ubuntu/dosh/AGENTS.md)
 - [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md)
 - [CHANGES.md](/home/ubuntu/dosh/docs/CHANGES.md)
 - [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/docs/plans/BUDGET_HEALTH_ADDENDUM.md)

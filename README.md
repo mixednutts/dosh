@@ -17,7 +17,7 @@ Use it to understand:
 For new AI or agent sessions:
 
 1. read this file first
-2. then read [PROJECT_CONTEXT.md](/home/ubuntu/dosh/docs/PROJECT_CONTEXT.md)
+2. then read [AGENTS.md](/home/ubuntu/dosh/AGENTS.md) for operational constraints and current state
 3. then read [ROADMAP.md](/home/ubuntu/dosh/docs/ROADMAP.md) to identify the release-stage scope
 4. then follow the links from there into the relevant activity, plan, history, or testing documents
 
@@ -43,7 +43,7 @@ dosh/
     ├── DOCUMENT_REGISTER.md
     ├── DEVELOPMENT_ACTIVITIES.md
     ├── CHANGES.md
-    ├── PROJECT_CONTEXT.md
+    ├── AGENTS.md (project context and agent constraints)
     ├── plans/
     └── tests/
 ```
@@ -52,7 +52,7 @@ dosh/
 
 ### Start and Orientation
 
-- [PROJECT_CONTEXT.md](/home/ubuntu/dosh/docs/PROJECT_CONTEXT.md): the working handoff document for future AI sessions and new development starts
+- [AGENTS.md](/home/ubuntu/dosh/AGENTS.md): the working handoff document for future AI sessions, containing operational constraints, current state, and project context
 - [MIGRATION_AND_RELEASE_MANAGEMENT.md](/home/ubuntu/dosh/docs/MIGRATION_AND_RELEASE_MANAGEMENT.md): the source of truth for semantic versioning, Alembic migrations, and release sequencing
 - [GITHUB_RELEASE_RUNBOOK.md](/home/ubuntu/dosh/docs/GITHUB_RELEASE_RUNBOOK.md): the high-level operator guide for GitHub-managed releases, private-repo token setup, and the current manual deployment handoff
 - [RELEASE_NOTES.md](/home/ubuntu/dosh/docs/RELEASE_NOTES.md): app-facing release notes shown in Dosh and maintained in the repo

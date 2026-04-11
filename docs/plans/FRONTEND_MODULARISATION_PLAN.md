@@ -5,7 +5,7 @@ This document defines the systematic extraction strategy for improving frontend 
 It exists as a dedicated implementation reference for the Quality > Consistency roadmap area.
 
 Read this alongside:
-- [PROJECT_CONTEXT.md](/home/ubuntu/dosh/docs/PROJECT_CONTEXT.md)
+- [AGENTS.md](/home/ubuntu/dosh/AGENTS.md)
 - [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md)
 - [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md)
 
@@ -253,6 +253,6 @@ Each extraction must:
 
 ## Related Documents
 
-- [PROJECT_CONTEXT.md](/home/ubuntu/dosh/docs/PROJECT_CONTEXT.md) - Current state and SonarQube context
+- [AGENTS.md](/home/ubuntu/dosh/AGENTS.md) - Current state and SonarQube context
 - [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md) - Roadmap alignment (Quality > Consistency)
 - [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) - Testing requirements during refactor

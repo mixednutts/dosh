@@ -66,7 +66,7 @@ Primary purpose:
 - provide agent-specific session initialization guidance
 - define hard operational controls for AI agent sessions
 - establish constraints and guardrails (NEVER stage/commit, DOCUMENTATION_FRAMEWORK compliance)
-- complement PROJECT_CONTEXT.md with AI-session-specific navigation
+- consolidate project context, domain rules, and AI-session-specific navigation
 
 Primary source-of-truth scope:
 
@@ -77,7 +77,7 @@ Primary source-of-truth scope:
 
 Key relationships:
 
-- points to PROJECT_CONTEXT.md as primary working handoff
+- serves as primary working handoff for AI sessions
 - references DOCUMENTATION_FRAMEWORK.md as compliance standard
 - links to all canonical source documents
 - complements DOCUMENTATION_FRAMEWORK.md with agent-specific constraints
@@ -112,7 +112,7 @@ Primary source-of-truth scope:
 
 Key relationships:
 
-- linked from [README.md](/home/ubuntu/dosh/README.md) and [PROJECT_CONTEXT.md](/home/ubuntu/dosh/docs/PROJECT_CONTEXT.md)
+- linked from [README.md](/home/ubuntu/dosh/README.md) and [AGENTS.md](/home/ubuntu/dosh/AGENTS.md)
 - informs future release and schema-update work across backend and deployment tooling
 
 Maintenance notes:
@@ -242,7 +242,7 @@ Primary source-of-truth scope:
 Key relationships:
 
 - informs roadmap items in [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md)
-- should remain aligned with current implementation described in [README.md](/home/ubuntu/dosh/README.md) and [PROJECT_CONTEXT.md](/home/ubuntu/dosh/docs/PROJECT_CONTEXT.md)
+- should remain aligned with current implementation described in [README.md](/home/ubuntu/dosh/README.md) and [AGENTS.md](/home/ubuntu/dosh/AGENTS.md)
 
 Maintenance notes:
 
@@ -271,7 +271,7 @@ Primary source-of-truth scope:
 Key relationships:
 
 - informs setup-related roadmap items in [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md)
-- complements current-state summaries in [README.md](/home/ubuntu/dosh/README.md) and [PROJECT_CONTEXT.md](/home/ubuntu/dosh/docs/PROJECT_CONTEXT.md)
+- complements current-state summaries in [README.md](/home/ubuntu/dosh/README.md) and [AGENTS.md](/home/ubuntu/dosh/AGENTS.md)
 
 Maintenance notes:
 
@@ -328,7 +328,7 @@ Primary source-of-truth scope:
 Key relationships:
 
 - relates to implementation history in [CHANGES.md](/home/ubuntu/dosh/docs/CHANGES.md)
-- informs current-state wording in [PROJECT_CONTEXT.md](/home/ubuntu/dosh/docs/PROJECT_CONTEXT.md) where relevant
+- informs current-state wording in [AGENTS.md](/home/ubuntu/dosh/AGENTS.md) where relevant
 
 Maintenance notes:
 
@@ -358,7 +358,7 @@ Primary source-of-truth scope:
 Key relationships:
 
 - informs health and quality roadmap items in [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md)
-- complements current-state and handoff guidance in [PROJECT_CONTEXT.md](/home/ubuntu/dosh/docs/PROJECT_CONTEXT.md)
+- complements current-state and handoff guidance in [AGENTS.md](/home/ubuntu/dosh/AGENTS.md)
 - relates to implementation history in [CHANGES.md](/home/ubuntu/dosh/docs/CHANGES.md)
 
 Maintenance notes:
@@ -414,7 +414,7 @@ Primary source-of-truth scope:
 
 Key relationships:
 
-- informs current-state wording in [PROJECT_CONTEXT.md](/home/ubuntu/dosh/docs/PROJECT_CONTEXT.md)
+- informs current-state wording in [AGENTS.md](/home/ubuntu/dosh/AGENTS.md)
 - links to testing and implementation outcomes in [TEST_RESULTS_SUMMARY.md](/home/ubuntu/dosh/docs/tests/TEST_RESULTS_SUMMARY.md) and [CHANGES.md](/home/ubuntu/dosh/docs/CHANGES.md)
 - complements activity tracking in [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md)
 
@@ -445,7 +445,7 @@ Primary source-of-truth scope:
 
 Key relationships:
 
-- informs current-state and handoff guidance in [PROJECT_CONTEXT.md](/home/ubuntu/dosh/docs/PROJECT_CONTEXT.md)
+- informs current-state and handoff guidance in [AGENTS.md](/home/ubuntu/dosh/AGENTS.md)
 - linked from [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md) as the current localisation implementation reference
 - paired with verification notes in [TEST_RESULTS_SUMMARY.md](/home/ubuntu/dosh/docs/tests/TEST_RESULTS_SUMMARY.md)
 
@@ -477,7 +477,7 @@ Primary source-of-truth scope:
 Key relationships:
 
 - linked from [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md) as the current design reference for export follow-through
-- complements current-state and handoff guidance in [PROJECT_CONTEXT.md](/home/ubuntu/dosh/docs/PROJECT_CONTEXT.md)
+- complements current-state and handoff guidance in [AGENTS.md](/home/ubuntu/dosh/AGENTS.md)
 - paired with verification notes in [TEST_RESULTS_SUMMARY.md](/home/ubuntu/dosh/docs/tests/TEST_RESULTS_SUMMARY.md)
 
 Maintenance notes:
@@ -539,7 +539,7 @@ Primary source-of-truth scope:
 
 Key relationships:
 
-- informs current-state and handoff guidance in [PROJECT_CONTEXT.md](/home/ubuntu/dosh/docs/PROJECT_CONTEXT.md)
+- informs current-state and handoff guidance in [AGENTS.md](/home/ubuntu/dosh/AGENTS.md)
 - linked from [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md) as the canonical Auto Expense rules reference
 - paired with verification notes in [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) and [TEST_RESULTS_SUMMARY.md](/home/ubuntu/dosh/docs/tests/TEST_RESULTS_SUMMARY.md)
 
@@ -869,7 +869,7 @@ Primary source-of-truth scope:
 
 Key relationships:
 
-- informs [README.md](/home/ubuntu/dosh/README.md), [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md), and [PROJECT_CONTEXT.md](/home/ubuntu/dosh/docs/PROJECT_CONTEXT.md)
+- informs [README.md](/home/ubuntu/dosh/README.md), [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md), and [AGENTS.md](/home/ubuntu/dosh/AGENTS.md)
 
 Maintenance notes:
 
@@ -877,11 +877,11 @@ Maintenance notes:
 
 ## Session Handoff or Working Context
 
-### PROJECT_CONTEXT.md
+### AGENTS.md
 
 Document:
 
-- [PROJECT_CONTEXT.md](/home/ubuntu/dosh/docs/PROJECT_CONTEXT.md)
+- [AGENTS.md](/home/ubuntu/dosh/AGENTS.md)
 
 Document type:
 
@@ -890,20 +890,28 @@ Document type:
 Primary purpose:
 
 - provide a concise current-state handoff for future sessions
+- establish hard operational controls for AI agent sessions
 
 Primary source-of-truth scope:
 
 - practical working context
 - current operating assumptions
 - immediate session-start orientation
+- hard operational controls (non-negotiable rules)
+- core domain rules and guardrails
 
 Key relationships:
 
 - synthesizes material from overview, roadmap, plan, testing, and history documents
+- references DOCUMENTATION_FRAMEWORK.md as compliance standard
 
 Maintenance notes:
 
 - should remain concise and handoff-oriented rather than replacing deeper source documents
+- update when hard controls or core domain rules change
+- preserves incident history for agent learning
+
+**Note:** Content previously in PROJECT_CONTEXT.md has been consolidated into AGENTS.md
 
 ## Framework and Governance Documents
 
@@ -958,7 +966,7 @@ Primary source-of-truth scope:
 Key relationships:
 
 - works against [.github/workflows/sonarqube.yml](/home/ubuntu/dosh/.github/workflows/sonarqube.yml)
-- retrieves the generated CI reports documented in this register and referenced in [PROJECT_CONTEXT.md](/home/ubuntu/dosh/docs/PROJECT_CONTEXT.md)
+- retrieves the generated CI reports documented in this register and referenced in [AGENTS.md](/home/ubuntu/dosh/AGENTS.md)
 
 Maintenance notes:
 
