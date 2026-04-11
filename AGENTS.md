@@ -237,6 +237,66 @@ For document changes, follow [DOCUMENTATION_FRAMEWORK.md](./docs/DOCUMENTATION_F
 - Migration independence from APP_VERSION (enforced by CI)
 - Hard Control #7: Production data protection (verified after data loss incident)
 
+**Release Workflow Clarification:**
+
+The phrase "do not assign a concrete next version number until you are ready to ship" 
+([GITHUB_RELEASE_RUNBOOK.md](/home/ubuntu/dosh/docs/GITHUB_RELEASE_RUNBOOK.md)) refers to code 
+**already deployed to production**, not future planned releases.
+
+Correct workflow:
+1. Deploy to production (`scripts/release_with_migrations.sh`)
+2. Bump version to match what's now running (`python3 scripts/bump_version.py X.Y.Z-alpha`)
+3. Move RELEASE_NOTES.md content from `## Unreleased` to `## X.Y.Z-alpha | released | YYYY-MM-DD`
+4. Push to main → GitHub auto-creates release tag
+
+If production is running untagged code, bump the version immediately so the 
+`/api/release-notes` endpoint can correctly identify `current_release`.
+
+---
+
+## Incident Log: CI Pipeline Break - Version Bump Omission 2026-04-11
+
+**Severity:** CRITICAL - CI/CD pipeline blocked, recurring automation failure
+
+**What happened:**
+1. User executed version bump from `0.3.1-alpha` → `0.3.2-alpha` using `scripts/bump_version.py`
+2. Agent declared bump complete without verifying ALL test files
+3. SonarQube workflow failed in CI with 2 test failures in `backend/tests/test_app_smoke.py`
+4. Root cause: `bump_version.py` did NOT update backend smoke test version assertions
+
+**Why this is critical:**
+- **2nd occurrence** of version-related oversight (1st: data loss from migration confusion)
+- **Release process fragility**: The bump script was incomplete, creating a trap for future releases
+- **CI/CD blocked**: SonarQube gate failed, preventing merge
+
+**What agent failed to do:**
+- Did not grep for version strings across entire codebase before declaring bump complete
+- Did not check backend tests - only focused on frontend (`Layout.test.jsx`)
+- Assumed `bump_version.py` was complete without verifying it handles ALL test files
+- Did not run test suite locally before telling user to push
+
+**Files that must update on version bump (COMPLETE LIST):**
+| File | Type | Handler in bump_version.py |
+|------|------|---------------------------|
+| `backend/app/version.py` | Source | `bump_backend_version()` |
+| `docker-compose.yml` | Config | `bump_docker_compose()` |
+| `backend/Dockerfile` | Config | `bump_backend_dockerfile()` |
+| `frontend/Dockerfile` | Config | `bump_frontend_dockerfile()` |
+| `frontend/package.json` | Config | `bump_package_json()` |
+| `frontend/package-lock.json` | Config | `bump_package_lock()` |
+| `frontend/src/components/Layout.jsx` | Source | `bump_layout_fallback()` |
+| `frontend/src/__tests__/Layout.test.jsx` | Test | `bump_layout_tests()` |
+| `backend/tests/test_app_smoke.py` | Test | `bump_backend_smoke_tests()` **(ADDED)** |
+
+**Fix applied:**
+- Updated `backend/tests/test_app_smoke.py` assertions to `0.3.2-alpha`
+- Added `bump_backend_smoke_tests()` function to `scripts/bump_version.py`
+
+**Prevention for future:**
+- ALWAYS grep for `"X.Y.Z-alpha"` patterns across entire codebase before declaring version bump complete
+- ALWAYS run `pytest backend/tests/test_app_smoke.py -v` after version bump
+- NEVER assume bump_version.py is complete - verify by checking git diff
+
 ---
 
 ## Incident Log: Data Loss 2026-04-11

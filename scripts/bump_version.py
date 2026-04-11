@@ -138,6 +138,30 @@ def bump_layout_tests(version: str) -> None:
         print("  frontend/src/__tests__/Layout.test.jsx: updated")
 
 
+def bump_backend_smoke_tests(version: str) -> None:
+    """Update version assertions in backend smoke tests."""
+    path = ROOT_DIR / "backend" / "tests" / "test_app_smoke.py"
+    
+    # Pattern to match version assertions like: assert response.json()["version"] == "0.3.1-alpha"
+    patterns = [
+        (re.compile(r'(assert response\.json\(\)\["version"\] == ")[^"]+(")'), 'response version'),
+        (re.compile(r'(assert payload\["current_version"\] == ")[^"]+(")'), 'payload current_version'),
+        (re.compile(r'(assert payload\["current_release"\]\["version"\] == ")[^"]+(")'), 'payload current_release version'),
+    ]
+    
+    text = path.read_text(encoding="utf-8")
+    original = text
+    
+    for pattern, desc in patterns:
+        text = pattern.sub(rf'\g<1>{version}\g<2>', text)
+    
+    if text == original:
+        print("  backend/tests/test_app_smoke.py: already up to date")
+    else:
+        path.write_text(text, encoding="utf-8")
+        print("  backend/tests/test_app_smoke.py: updated")
+
+
 def check_migration_safety() -> bool:
     """Check that migrations don't depend on APP_VERSION."""
     migrations_dir = ROOT_DIR / "backend" / "alembic" / "versions"
@@ -226,6 +250,7 @@ def main():
         print("  frontend/package-lock.json: skipped (use --skip-npm)")
     bump_layout_fallback(args.version)
     bump_layout_tests(args.version)
+    bump_backend_smoke_tests(args.version)
 
     if not args.no_validate:
         print()
