@@ -245,11 +245,26 @@ The phrase "do not assign a concrete next version number until you are ready to 
 ([GITHUB_RELEASE_RUNBOOK.md](/home/ubuntu/dosh/docs/GITHUB_RELEASE_RUNBOOK.md)) refers to code 
 **already deployed to production**, not future planned releases.
 
-Correct workflow:
-1. Deploy to production (`scripts/release_with_migrations.sh`)
-2. Bump version to match what's now running (`python3 scripts/bump_version.py X.Y.Z-alpha`)
-3. Move RELEASE_NOTES.md content from `## Unreleased` to `## X.Y.Z-alpha | released | YYYY-MM-DD`
-4. Push to main → GitHub auto-creates release tag
+**Local-First Release Workflow (this environment is the primary build and deploy authority):**
+
+This environment is the canonical development, build, and initial deployment platform. 
+The GitHub repository and workflows exist downstream for public release management, 
+quality-gate validation, and future Docker image publishing.
+
+Canonical sequence:
+1. Develop and build locally in this environment
+2. Deploy to the local Docker container (`scripts/release_with_migrations.sh`) — this container carries the user's real production data and also serves as the validation/test platform
+3. Validate directly in the running container (the preferred "test in production" approach)
+4. Bump version to match what's now running (`python3 scripts/bump_version.py X.Y.Z-alpha`)
+5. Move RELEASE_NOTES.md content from `## Unreleased` to `## X.Y.Z-alpha | released | YYYY-MM-DD`
+6. Push to GitHub `main` → SonarQube workflow runs → auto-creates release tag → GitHub Release is published
+7. *(Future)* GitHub Actions will build and publish the Docker image from the validated tag
+
+Important implications:
+- GitHub is **downstream**, not upstream. The SonarQube gate validates code that is already running locally.
+- If the GitHub workflow fails after local version bump, the fix is applied locally, redeployed, and then pushed.
+- PRs are not currently used; changes push directly from local `main` to GitHub `main`. PRs may be introduced later as the project matures or goes public.
+- The version bump must happen **after** local deployment so the canonical version matches the deployed state.
 
 If production is running untagged code, bump the version immediately so the 
 `/api/release-notes` endpoint can correctly identify `current_release`.

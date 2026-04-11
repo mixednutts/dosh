@@ -973,6 +973,37 @@ Maintenance notes:
 - should remain a small operational convenience script rather than growing into a general CI client
 - should print the downloaded artifact paths clearly enough that future sessions can immediately open the exported files
 
+## Visual Diagrams
+
+### release-workflow.drawio
+
+Document:
+
+- [release-workflow.drawio](/home/ubuntu/dosh/docs/diagrams/release-workflow.drawio)
+
+Document type:
+
+- visual diagram
+
+Primary purpose:
+
+- provide a visual flowchart of the Dosh release and version-bump workflow for onboarding, review, and documentation
+
+Primary source-of-truth scope:
+
+- release workflow sequence from development → PR → SonarQube gate → production deploy → version bump → GitHub tag → GitHub Release → in-app release notes
+
+Key relationships:
+
+- implements the workflow defined in [MIGRATION_AND_RELEASE_MANAGEMENT.md](/home/ubuntu/dosh/docs/MIGRATION_AND_RELEASE_MANAGEMENT.md)
+- complements [GITHUB_RELEASE_RUNBOOK.md](/home/ubuntu/dosh/docs/GITHUB_RELEASE_RUNBOOK.md) and [GITHUB_RELEASE_MANAGEMENT_WORKFLOW_PLAN.md](/home/ubuntu/dosh/docs/plans/GITHUB_RELEASE_MANAGEMENT_WORKFLOW_PLAN.md)
+- generated in draw.io XML format for import into Lucidchart and other diagram tools
+
+Maintenance notes:
+
+- should be updated whenever the release workflow sequence changes materially
+- source format is draw.io XML (`.drawio`) for portability across diagram tools
+
 ## Document Register Documents
 
 ### DOCUMENT_REGISTER.md
