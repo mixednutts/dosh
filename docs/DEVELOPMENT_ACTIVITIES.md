@@ -405,7 +405,7 @@ Status:
 - keep development and demo data realistic enough that health surfaces remain meaningful during walkthroughs and regression checks
 - keep the demo seed aligned with later budget-health scoring changes so walkthrough data does not become misleading or stale
 - `Completed`: update the rolling demo seed so new walkthroughs include `Closed`, multiple `Pending Closure`, `Current`, and `Planned` cycle stages together with transaction-direction and budget-adjustment examples
-- expand the demo seed to include expense items with varied types and recurrence patterns so calendar, timing, and workflow walkthroughs better reflect real use
+- `Completed`: expand the demo seed to include expense items with varied types and recurrence patterns (Fixed Day of Month, Every N Days) and mixed AUTO/MANUAL payment types so calendar, timing, cash-flow routing, and workflow walkthroughs better reflect real use
 - consider whether more than one demo seed profile is needed later, such as `healthy`, `under pressure`, or `recovery`, without weakening the current additive-only demo import behavior
 
 Cross-links:

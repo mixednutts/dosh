@@ -39,6 +39,33 @@ For the implemented Auto Expense workflow rules, scheduler behavior, migration e
 
 For the cash management workflow plan that defines generalised transfers, expense routing, investment tracking, and balance validation, read [CASH_MANAGEMENT_WORKFLOW_PLAN.md](/home/ubuntu/dosh/docs/plans/CASH_MANAGEMENT_WORKFLOW_PLAN.md).
 
+## Latest Session: Demo Data Update — Cash Flow, Scheduling, And Payment-Type Coverage
+
+This session updated the seeded demo budget in `backend/app/demo_budget.py` to make walkthrough data more realistic and to exercise recently implemented product features.
+
+### What changed
+
+- **Cash flow activities:** All expense items now set `default_account_desc="Everyday Account"` and all seeded expense transactions explicitly route to that account, demonstrating the cash-management account-routing workflow.
+- **Scheduled expenses — Fixed Day of Month:**
+  - **Rent** — day 1, `$1,850.00`, `AUTO`
+  - **Utilities** — day 15, `$240.00`, `AUTO`
+  - **Subscriptions** — day 3, `$85.00`, `AUTO`
+  - **Phone & Internet** (new) — day 20, `$75.00`, `AUTO`
+- **Scheduled expenses — Every N Days:**
+  - **Groceries** — every 7 days, `$140.00`, `MANUAL`
+- **Payment-type mix:** Rent, Utilities, Subscriptions, and Phone & Internet are `AUTO`; Groceries and Transport are `MANUAL`.
+- **Budget settings:** The demo budget now enables `auto_expense_enabled=True` with `auto_expense_offset_days=0` so the Auto Expense scheduler path is immediately exercisable.
+- **Seed amounts:** Updated historical and current period actuals to match the new expense mix (e.g., groceries now seed around `$580–$720` per month).
+
+### Verification
+
+- Full backend suite: **139 passed**
+- Full frontend suite: **168 passed**
+- Demo budget smoke test (`test_app_smoke.py::test_demo_budget_endpoint_creates_seeded_budget_with_closed_pending_current_and_planned_cycles`) passed
+- Deployed via `scripts/release_with_migrations.sh` with `docker-compose.override.yml`
+
+---
+
 ## Latest Session: Cash Management Workflow — Generalised Transfers, Expense Routing, And Investment Tracking
 
 This session implemented the cash management workflow improvements defined in [CASH_MANAGEMENT_WORKFLOW_PLAN.md](/home/ubuntu/dosh/docs/plans/CASH_MANAGEMENT_WORKFLOW_PLAN.md). The work generalised account transfers, added expense default account selection, enabled transaction-level account routing, and hardened investment transaction account tracking.

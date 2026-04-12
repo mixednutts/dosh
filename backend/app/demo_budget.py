@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 from decimal import Decimal
 
 from sqlalchemy.orm import Session
@@ -40,6 +40,8 @@ def _create_demo_setup(db: Session) -> Budget:
         period_criticality_bias=55,
         allow_cycle_lock=True,
         account_naming_preference="Everyday",
+        auto_expense_enabled=True,
+        auto_expense_offset_days=0,
     )
     db.add(budget)
     db.flush()
@@ -89,31 +91,40 @@ def _create_demo_setup(db: Session) -> Budget:
             budgetid=budget.budgetid,
             expensedesc="Rent",
             active=True,
-            freqtype="Always",
-            paytype="MANUAL",
+            freqtype="Fixed Day of Month",
+            frequency_value=1,
+            paytype="AUTO",
             revisionnum=0,
             expenseamount=Decimal("1850.00"),
             sort_order=0,
+            default_account_desc="Everyday Account",
+            effectivedate=datetime(2020, 1, 1),
         ),
         ExpenseItem(
             budgetid=budget.budgetid,
             expensedesc="Groceries",
             active=True,
-            freqtype="Always",
+            freqtype="Every N Days",
+            frequency_value=7,
             paytype="MANUAL",
             revisionnum=0,
-            expenseamount=Decimal("780.00"),
+            expenseamount=Decimal("140.00"),
             sort_order=1,
+            default_account_desc="Everyday Account",
+            effectivedate=datetime(2020, 1, 1),
         ),
         ExpenseItem(
             budgetid=budget.budgetid,
             expensedesc="Utilities",
             active=True,
-            freqtype="Always",
-            paytype="MANUAL",
+            freqtype="Fixed Day of Month",
+            frequency_value=15,
+            paytype="AUTO",
             revisionnum=0,
-            expenseamount=Decimal("260.00"),
+            expenseamount=Decimal("240.00"),
             sort_order=2,
+            default_account_desc="Everyday Account",
+            effectivedate=datetime(2020, 1, 1),
         ),
         ExpenseItem(
             budgetid=budget.budgetid,
@@ -122,18 +133,35 @@ def _create_demo_setup(db: Session) -> Budget:
             freqtype="Always",
             paytype="MANUAL",
             revisionnum=0,
-            expenseamount=Decimal("210.00"),
+            expenseamount=Decimal("200.00"),
             sort_order=3,
+            default_account_desc="Everyday Account",
         ),
         ExpenseItem(
             budgetid=budget.budgetid,
             expensedesc="Subscriptions",
             active=True,
-            freqtype="Always",
-            paytype="MANUAL",
+            freqtype="Fixed Day of Month",
+            frequency_value=3,
+            paytype="AUTO",
             revisionnum=0,
-            expenseamount=Decimal("95.00"),
+            expenseamount=Decimal("85.00"),
             sort_order=4,
+            default_account_desc="Everyday Account",
+            effectivedate=datetime(2020, 1, 1),
+        ),
+        ExpenseItem(
+            budgetid=budget.budgetid,
+            expensedesc="Phone & Internet",
+            active=True,
+            freqtype="Fixed Day of Month",
+            frequency_value=20,
+            paytype="AUTO",
+            revisionnum=0,
+            expenseamount=Decimal("75.00"),
+            sort_order=5,
+            default_account_desc="Everyday Account",
+            effectivedate=datetime(2020, 1, 1),
         ),
         InvestmentItem(
             budgetid=budget.budgetid,
@@ -150,27 +178,30 @@ def _create_demo_setup(db: Session) -> Budget:
 
 
 def _seed_period_activity(period, *, salary_amount: Decimal, side_hustle_amount: Decimal, interest_amount: Decimal,
-                          groceries_amount: Decimal, utilities_amount: Decimal, transport_amount: Decimal,
-                          subscriptions_amount: Decimal, investment_amount: Decimal, db: Session) -> None:
+                          rent_amount: Decimal, groceries_amount: Decimal, utilities_amount: Decimal,
+                          transport_amount: Decimal, subscriptions_amount: Decimal, phone_internet_amount: Decimal,
+                          investment_amount: Decimal, db: Session) -> None:
     salary_day = period.startdate + timedelta(days=1)
     side_hustle_day = period.startdate + timedelta(days=7)
     interest_day = period.enddate - timedelta(days=2)
-    rent_day = period.startdate + timedelta(days=2)
-    grocery_day = period.startdate + timedelta(days=10)
+    rent_day = period.startdate + timedelta(days=1)
+    grocery_day = period.startdate + timedelta(days=5)
     utility_day = period.startdate + timedelta(days=14)
-    transport_day = period.startdate + timedelta(days=18)
-    subscription_day = period.startdate + timedelta(days=21)
+    transport_day = period.startdate + timedelta(days=10)
+    subscription_day = period.startdate + timedelta(days=3)
+    phone_internet_day = period.startdate + timedelta(days=20)
     investment_day = period.enddate - timedelta(days=4)
 
     build_income_tx(period.finperiodid, period.budgetid, "Salary", salary_amount, db, note="Primary salary", entrydate=salary_day)
     build_income_tx(period.finperiodid, period.budgetid, "Side Hustle", side_hustle_amount, db, note="Freelance work", entrydate=side_hustle_day)
     build_income_tx(period.finperiodid, period.budgetid, "Interest", interest_amount, db, note="Savings interest", entrydate=interest_day)
 
-    build_expense_tx(period.finperiodid, period.budgetid, "Rent", Decimal("1850.00"), db, note="Monthly rent", entrydate=rent_day)
-    build_expense_tx(period.finperiodid, period.budgetid, "Groceries", groceries_amount, db, note="Supermarket shops", entrydate=grocery_day)
-    build_expense_tx(period.finperiodid, period.budgetid, "Utilities", utilities_amount, db, note="Utilities bundle", entrydate=utility_day)
-    build_expense_tx(period.finperiodid, period.budgetid, "Transport", transport_amount, db, note="Fuel and parking", entrydate=transport_day)
-    build_expense_tx(period.finperiodid, period.budgetid, "Subscriptions", subscriptions_amount, db, note="Recurring services", entrydate=subscription_day)
+    build_expense_tx(period.finperiodid, period.budgetid, "Rent", rent_amount, db, note="Monthly rent", entrydate=rent_day, account_desc="Everyday Account")
+    build_expense_tx(period.finperiodid, period.budgetid, "Groceries", groceries_amount, db, note="Supermarket shops", entrydate=grocery_day, account_desc="Everyday Account")
+    build_expense_tx(period.finperiodid, period.budgetid, "Utilities", utilities_amount, db, note="Utilities bundle", entrydate=utility_day, account_desc="Everyday Account")
+    build_expense_tx(period.finperiodid, period.budgetid, "Transport", transport_amount, db, note="Fuel and parking", entrydate=transport_day, account_desc="Everyday Account")
+    build_expense_tx(period.finperiodid, period.budgetid, "Subscriptions", subscriptions_amount, db, note="Recurring services", entrydate=subscription_day, account_desc="Everyday Account")
+    build_expense_tx(period.finperiodid, period.budgetid, "Phone & Internet", phone_internet_amount, db, note="Monthly connectivity", entrydate=phone_internet_day, account_desc="Everyday Account")
 
     build_investment_tx(
         period.finperiodid,
@@ -402,10 +433,12 @@ def create_standard_demo_budget(db: Session) -> Budget:
         "salary_amount": Decimal("4200.00"),
         "side_hustle_amount": Decimal("320.00"),
         "interest_amount": Decimal("23.00"),
-        "groceries_amount": Decimal("980.00"),
-        "utilities_amount": Decimal("355.00"),
-        "transport_amount": Decimal("295.00"),
-        "subscriptions_amount": Decimal("95.00"),
+        "rent_amount": Decimal("1850.00"),
+        "groceries_amount": Decimal("720.00"),
+        "utilities_amount": Decimal("295.00"),
+        "transport_amount": Decimal("245.00"),
+        "subscriptions_amount": Decimal("85.00"),
+        "phone_internet_amount": Decimal("75.00"),
         "investment_amount": Decimal("540.00"),
         "comments": "A pressured close-out. Groceries, utilities, and transport all ran high, which squeezed the month more than expected.",
         "goals": "Rebuild discipline on day-to-day spending and reduce avoidable cost drift next cycle.",
@@ -415,10 +448,12 @@ def create_standard_demo_budget(db: Session) -> Budget:
             "salary_amount": Decimal("4200.00"),
             "side_hustle_amount": Decimal("510.00"),
             "interest_amount": Decimal("24.00"),
-            "groceries_amount": Decimal("860.00"),
-            "utilities_amount": Decimal("300.00"),
-            "transport_amount": Decimal("245.00"),
-            "subscriptions_amount": Decimal("95.00"),
+            "rent_amount": Decimal("1850.00"),
+            "groceries_amount": Decimal("680.00"),
+            "utilities_amount": Decimal("265.00"),
+            "transport_amount": Decimal("225.00"),
+            "subscriptions_amount": Decimal("85.00"),
+            "phone_internet_amount": Decimal("75.00"),
             "investment_amount": Decimal("610.00"),
             "comments": "Still a little untidy, but better than the prior month. Extra side income helped absorb some of the overrun.",
             "goals": "Keep tightening grocery and utility spend while protecting savings momentum.",
@@ -427,10 +462,12 @@ def create_standard_demo_budget(db: Session) -> Budget:
             "salary_amount": Decimal("4200.00"),
             "side_hustle_amount": Decimal("380.00"),
             "interest_amount": Decimal("25.00"),
-            "groceries_amount": Decimal("760.00"),
-            "utilities_amount": Decimal("255.00"),
-            "transport_amount": Decimal("205.00"),
-            "subscriptions_amount": Decimal("95.00"),
+            "rent_amount": Decimal("1850.00"),
+            "groceries_amount": Decimal("620.00"),
+            "utilities_amount": Decimal("235.00"),
+            "transport_amount": Decimal("195.00"),
+            "subscriptions_amount": Decimal("85.00"),
+            "phone_internet_amount": Decimal("75.00"),
             "investment_amount": Decimal("565.00"),
             "comments": "The month closed in a steadier place, with spending much closer to plan and healthier carry-through into the next cycle.",
             "goals": "Hold the line on everyday costs and keep recovery momentum visible.",
@@ -440,10 +477,12 @@ def create_standard_demo_budget(db: Session) -> Budget:
         "salary_amount": Decimal("4200.00"),
         "side_hustle_amount": Decimal("140.00"),
         "interest_amount": Decimal("0.00"),
-        "groceries_amount": Decimal("960.00"),
-        "utilities_amount": Decimal("320.00"),
-        "transport_amount": Decimal("210.00"),
-        "subscriptions_amount": Decimal("95.00"),
+        "rent_amount": Decimal("1850.00"),
+        "groceries_amount": Decimal("580.00"),
+        "utilities_amount": Decimal("240.00"),
+        "transport_amount": Decimal("180.00"),
+        "subscriptions_amount": Decimal("85.00"),
+        "phone_internet_amount": Decimal("75.00"),
         "investment_amount": Decimal("1200.00"),
     }
 

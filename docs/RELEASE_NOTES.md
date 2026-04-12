@@ -2,7 +2,11 @@
 
 ## Unreleased
 
-_No unreleased changes yet._
+### Improved
+
+- Updated the dev-only demo budget seed to include realistic cash-flow routing, scheduled expenses (Fixed Day of Month and Every N Days), and a mix of AUTO and MANUAL payment types so walkthroughs better reflect real use.
+
+## 0.3.5-alpha | released | 2026-04-12
 
 ## 0.3.5-alpha | released | 2026-04-12
 

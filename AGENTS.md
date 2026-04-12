@@ -231,6 +231,7 @@ For document changes, follow [DOCUMENTATION_FRAMEWORK.md](./docs/DOCUMENTATION_F
 - Date format consistency across frontend (user preference driven)
 - Release management automation (recovery workflows, version bump script)
 - SonarQube workflow artifact retrieval updated to fetch the latest completed run regardless of success or failure, ensuring failed workflow artifacts are accessible for diagnosis
+- **Demo Data Update:** Seeded demo budget now covers cash-flow account routing, scheduled expenses (Fixed Day of Month and Every N Days), and AUTO/MANUAL payment types for realistic walkthroughs
 
 **Active Focus Areas:**
 - Testing infrastructure hardening (all 121 backend tests passing, 164 frontend tests passing)

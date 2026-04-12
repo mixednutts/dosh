@@ -63,7 +63,7 @@ Management rules:
 - keep user-facing release content in `RELEASE_NOTES.md`, not in frontend code
 - keep deeper engineering history and implementation detail in [CHANGES.md](/home/ubuntu/dosh/docs/CHANGES.md)
 - update `RELEASE_NOTES.md` whenever a version bump represents a releasable change worth surfacing in the app
-- keep release-note entries concise, version-oriented, and suitable for direct app display
+- keep release-note entries user-friendly, non-technical, concise, version-oriented, and suitable for direct app display
 
 In-app visibility rules:
 
