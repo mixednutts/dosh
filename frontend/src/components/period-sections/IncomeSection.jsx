@@ -3,6 +3,19 @@ import { PlusIcon, MinusIcon, ListBulletIcon, Bars2Icon } from '@heroicons/react
 import { IncomeStatusPill } from '../status'
 import { BudgetAmountCell, ActionIconButton, EmptyActionSlot, DeleteActionButton } from '../../utils'
 
+function parseTransferIncome(incomedesc) {
+  if (typeof incomedesc === 'string' && incomedesc.startsWith('Transfer: ')) {
+    const remainder = incomedesc.slice('Transfer: '.length)
+    const toIndex = remainder.indexOf(' to ')
+    if (toIndex > 0) {
+      const source = remainder.slice(0, toIndex)
+      const destination = remainder.slice(toIndex + ' to '.length)
+      return { isTransfer: true, source, destination, displayDesc: `Transfer from ${source}` }
+    }
+  }
+  return { isTransfer: false, displayDesc: incomedesc }
+}
+
 export function IncomeSection({
   incomes,
   locked,
@@ -35,17 +48,25 @@ export function IncomeSection({
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm period-detail-table">
+          <colgroup>
+            <col className="w-10" />
+            <col className="w-[26%]" />
+            <col className="w-[12%]" />
+            <col className="w-[12%]" />
+            <col className="w-[12%]" />
+            <col className="w-[25%]" />
+            <col className="w-[21%]" />
+          </colgroup>
           <thead>
             <tr className="border-b border-gray-100 dark:border-gray-800">
-              <th className="w-6 px-2"></th>
-              <th className="table-header-cell text-left w-[28%]">Description</th>
-              <th className="table-header-cell text-right col-budget w-[14%]">Budget</th>
-              <th className="table-header-cell text-right col-actual w-[14%]">
+              <th className="table-header-cell text-left" colSpan={2}>Description</th>
+              <th className="table-header-cell text-right col-budget">Budget</th>
+              <th className="table-header-cell text-right col-actual">
                 <span title="Sum of all transactions — read-only">Actual ∑</span>
               </th>
-              <th className="table-header-cell text-right w-[12%]">Remaining</th>
-              <th className="table-header-cell text-left w-[18%]">Account</th>
-              <th className="table-header-cell text-center w-[18%]">Status / Txns</th>
+              <th className="table-header-cell text-right">Remaining</th>
+              <th className="table-header-cell text-center">Account</th>
+              <th className="table-header-cell text-center">Status / Txns</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
@@ -56,14 +77,12 @@ export function IncomeSection({
             )}
             {incomes.map(i => {
               const remaining = Number(i.actualamount) - Number(i.budgetamount)
+              const transfer = parseTransferIncome(i.incomedesc)
               return (
                 <tr key={i.incomedesc} className="table-row">
-                  <td className="w-6 px-2 text-gray-200 dark:text-gray-700">
-                    <Bars2Icon className="w-4 h-4 opacity-0" />
-                  </td>
-                  <td className="table-cell font-medium">
+                  <td className="table-cell font-medium text-left" colSpan={2}>
                     <div className="flex items-center gap-1.5">
-                      <span>{i.incomedesc}</span>
+                      <span>{transfer.displayDesc}</span>
                       {i.system_key === 'carry_forward' && <span className="badge-blue">System</span>}
                     </div>
                   </td>
@@ -87,7 +106,9 @@ export function IncomeSection({
                     )}
                   </td>
                   <td className="table-cell-muted text-sm">
-                    {i.linked_account ? (
+                    {transfer.isTransfer ? (
+                      <span className="text-purple-600 dark:text-purple-400">{transfer.destination}</span>
+                    ) : i.linked_account ? (
                       <span className="text-purple-600 dark:text-purple-400">{i.linked_account}</span>
                     ) : (
                       <span className="text-gray-300 dark:text-gray-600">—</span>
@@ -139,8 +160,7 @@ export function IncomeSection({
           </tbody>
           <tfoot>
             <tr className="border-t-2 border-gray-200 dark:border-gray-700 font-semibold bg-gray-50 dark:bg-gray-800">
-              <td className="w-6 px-2"></td>
-              <td className="px-4 py-2 text-gray-700 dark:text-gray-300 text-sm">Total Income</td>
+              <td className="px-4 py-2 text-gray-700 dark:text-gray-300 text-sm" colSpan={2}>Total Income</td>
               <td className="px-4 py-2 text-right text-gray-600 dark:text-gray-400 text-sm">{fmt(totalIncomeBudget)}</td>
               <td className="px-4 py-2 text-right text-success-700 dark:text-success-400 text-sm">{fmt(totalIncomeActual)}</td>
               <td className="px-4 py-2 text-right text-sm">

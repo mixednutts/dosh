@@ -653,6 +653,10 @@ Status:
 - `Completed`: make expense and investment `View transactions` behave as read-only details modals so they match the movement-details pattern instead of showing add-transaction controls
 - `Completed`: move the expense status filter inline with the period-detail status column header
 - `Completed`: tighten period-detail UI polish around totals and status affordances, especially for the income, investment, and balance sections
+- `Completed`: unify period-detail table column widths across Income, Expense, Investment, and Account Balances using shared `<colgroup>` definitions
+- `Completed`: standardize period-detail header alignment so Description/Investment/Account headers are left-aligned, Budget/Actual/Remaining are right-aligned, and Account/Schedule/Account Type are centered
+- `Completed`: reorganize Account Balances columns to Account → Opening → Movement → Closing → Account Type → Details with matching background colors
+- `Completed`: update transfer income display so descriptions read "Transfer from {source}" and the destination account appears in the Account column
 - `Completed`: add period-detail totals for investments and balances while keeping movement read-only and avoiding a meaningless movement total
 - `Completed`: continue navigation and information architecture cleanup so the sidebar stays centered on one active budget context at a time
 - `Completed`: replace the `Edit` text label on the budget cycle details page with a more appropriate icon-based affordance where that action is already visually established elsewhere
@@ -789,6 +793,7 @@ Status:
 - `Completed`: clear the active SonarQube new-code duplication hotspot in `PeriodDetailPage.jsx`; the verified follow-up run now shows duplication below the quality-gate threshold, shifting the remaining quality work toward coverage and residual frontend maintainability findings instead
 - `Completed`: complete three-phase modularization of `PeriodDetailPage.jsx` (2,911 lines → 642 lines, 78% reduction); extracted 15 components to organized directories and 3 utility modules
 - `Completed`: cleared the modularization-induced unused-import spike (`javascript:S1128`) and related unused-variable warnings (`S1481`/`S1854`) from `PeriodDetailPage.jsx`, `BudgetPeriodsPage.jsx`, `transactionHelpers.js`, and `periods.py`; SonarQube issue count reduced from 159 back toward the pre-modularization baseline
+- `Completed`: remove stale `.period-detail-table :nth-child()` width overrides from `index.css` that were conflicting with the unified `<colgroup>` layout and causing column width misalignment
 - continue reducing SonarQube noise by addressing the next concentrated frontend rule clusters after props validation and the completed FastAPI router cleanup, especially nested ternaries, form-label associations, and residual maintainability findings in `PeriodDetailPage.jsx` and related high-traffic frontend files now that the duplication hotspot is resolved
 - standardize terminology around savings and investments
 - standardize where the UI says `Budget Cycle` while backend and API continue using `period`

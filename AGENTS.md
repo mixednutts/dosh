@@ -206,10 +206,16 @@ For document changes, follow [DOCUMENTATION_FRAMEWORK.md](./docs/DOCUMENTATION_F
 
 ## Current Project State (Snapshot)
 
-**Version:** 0.3.5-alpha
+**Version:** 0.3.6-alpha
 **Schema Revisions:** d3091a75b8ff, e4f5a6b7c8d9, f1a2b3c4d5e6
 
 **Recent Work:**
+- **Period Detail UI Unification (COMPLETED):** Unified table layouts, transfer income labels, and CSS alignment across Income, Expense, Investment, and Account Balances sections
+  - All period-detail tables now share identical `<colgroup>` column widths for consistent alignment
+  - Transfer income lines display "Transfer from {source}" with the destination account in the Account column
+  - Account Balances reorganized to Account → Opening → Movement → Closing → Account Type → Details with matching background colors
+  - Removed stale `:nth-child()` CSS width overrides that were overriding `<colgroup>` settings and causing misalignment
+  - All 54 frontend tests and 139 backend tests passing; deployed successfully
 - **Cash Management Workflow (COMPLETED):** Generalised account transfers, expense routing, and investment tracking
   - Transfers now work between any two active accounts via `/account-transfer`
   - Transfer validation uses committed-amount logic (`max(budget, actual)` for non-paid, `actual` for paid)

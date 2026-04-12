@@ -2,11 +2,22 @@
 
 ## Unreleased
 
+## 0.3.6-alpha | released | 2026-04-13
+
 ### Improved
 
-- Updated the dev-only demo budget seed to include realistic cash-flow routing, scheduled expenses (Fixed Day of Month and Every N Days), and a mix of AUTO and MANUAL payment types so walkthroughs better reflect real use.
+- **Period Detail Table Layout Unification**: Income, Expense, Investment, and Account Balances sections now share consistent column widths and header alignment across the period-detail page.
+- **Transfer Income Display**: Transfer income lines now show "Transfer from {source}" in the Description column and display the destination account in the Account column for clearer readability.
+- **Account Balances Column Reorganization**: The Account Balances table now uses the column order Account → Opening → Movement → Closing → Account Type → Details, with matching background colors (Opening = budget grey, Movement = actual tint) aligned to the other sections.
 
-## 0.3.5-alpha | released | 2026-04-12
+### Fixed
+
+- Fixed stale CSS `:nth-child()` width overrides in `index.css` that were forcing the Budget column to ~22% despite the `<colgroup>` setting 12%, causing misalignment across period-detail tables.
+
+### Engineering
+
+- Updated `PeriodDetailPage.test.jsx` assertions to match the new unified `colSpan` structure in income and balance tables.
+- Updated the dev-only demo budget seed to include realistic cash-flow routing, scheduled expenses (Fixed Day of Month and Every N Days), and a mix of AUTO and MANUAL payment types so walkthroughs better reflect real use.
 
 ## 0.3.5-alpha | released | 2026-04-12
 

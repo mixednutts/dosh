@@ -46,17 +46,25 @@ export function ExpenseSection({
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm period-detail-table">
+          <colgroup>
+            <col className="w-10" />
+            <col className="w-[26%]" />
+            <col className="w-[12%]" />
+            <col className="w-[12%]" />
+            <col className="w-[12%]" />
+            <col className="w-[25%]" />
+            <col className="w-[21%]" />
+          </colgroup>
           <thead>
             <tr className="border-b border-gray-100 dark:border-gray-800">
-              <th className="w-6 px-2"></th>
-              <th className="table-header-cell text-left w-[28%]">Description</th>
-              <th className="table-header-cell text-right col-budget w-[14%]">Budget</th>
-              <th className="table-header-cell text-right col-actual w-[14%]">
+              <th className="table-header-cell text-left" colSpan={2}>Description</th>
+              <th className="table-header-cell text-right col-budget">Budget</th>
+              <th className="table-header-cell text-right col-actual">
                 <span title="Sum of all transactions — read-only">Actual ∑</span>
               </th>
-              <th className="table-header-cell text-right w-[12%]">Remaining</th>
-              <th className="table-header-cell text-left w-[18%]">Schedule</th>
-              <th className="table-header-cell text-center w-[18%]">
+              <th className="table-header-cell text-right">Remaining</th>
+              <th className="table-header-cell text-center">Schedule</th>
+              <th className="table-header-cell text-center">
                 <div className="flex items-center justify-center gap-2">
                   <span>Status / Txns</span>
                   <label htmlFor="expense-status-filter" className="sr-only">Status</label>

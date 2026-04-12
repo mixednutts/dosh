@@ -99,20 +99,7 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .period-detail-table th:nth-child(1),
-  .period-detail-table td:nth-child(1) { width: 24px; }
-  .period-detail-table th:nth-child(2),
-  .period-detail-table td:nth-child(2) { width: 22%; }
-  .period-detail-table th:nth-child(3),
-  .period-detail-table td:nth-child(3) { width: 13%; }
-  .period-detail-table th:nth-child(4),
-  .period-detail-table td:nth-child(4) { width: 13%; }
-  .period-detail-table th:nth-child(5),
-  .period-detail-table td:nth-child(5) { width: 12%; }
-  .period-detail-table th:nth-child(6),
-  .period-detail-table td:nth-child(6) { width: 18%; }
-  .period-detail-table th:nth-child(7),
-  .period-detail-table td:nth-child(7) { width: 180px; }
+  /* Column widths are controlled via <colgroup> in each section component */
 }
 
 .dosh-datepicker-popper {

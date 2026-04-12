@@ -39,6 +39,26 @@ For the implemented Auto Expense workflow rules, scheduler behavior, migration e
 
 For the cash management workflow plan that defines generalised transfers, expense routing, investment tracking, and balance validation, read [CASH_MANAGEMENT_WORKFLOW_PLAN.md](/home/ubuntu/dosh/docs/plans/CASH_MANAGEMENT_WORKFLOW_PLAN.md).
 
+## Latest Session: Period Detail UI — Unified Tables, Transfer Labels, And CSS Alignment
+
+This session focused on unifying the period-detail page table layouts, improving transfer income readability, and fixing a CSS conflict that was causing column width misalignment.
+
+### What changed
+
+- **Unified column layout across all period-detail tables:** Income, Expense, Investment, and Account Balances now use identical `<colgroup>` widths (Description 26%, Budget/Opening 12%, Actual/Movement 12%, Remaining/Closing 12%, Account/Schedule/Account Type 25%, Status/Txns/Details 21%).
+- **Header alignment standardization:** Description/Investment/Account headers are left-aligned and span their adjacent sort-handle column; Budget/Actual/Remaining/Opening/Movement/Closing are right-aligned; Account/Schedule/Account Type and Status/Txns are centered.
+- **Account Balances reorganization:** Columns now follow Account → Opening → Movement → Closing → Account Type → Details, with Opening using the budget grey background and Movement using the actual tint background to match the other sections.
+- **Transfer income label update:** Transfer income lines now display "Transfer from {source}" in the Description column, while the destination account is shown in the Account column. The parser in `IncomeSection.jsx` handles both the new `Transfer: {source} to {destination}` format and the legacy `Transfer from {source}` format.
+- **CSS conflict resolution:** Removed stale `.period-detail-table th:nth-child(X)` and `td:nth-child(X)` width rules from `index.css`. These rules predated the `<colgroup>` unification and were causing the Budget column to render at ~22% (because `:nth-child()` counts physical cells, not logical columns, and `colSpan={2}` shifted the selector mapping).
+
+### Verification
+
+- Full backend suite: **139 passed**
+- Full frontend suite: **54 passed**
+- Docker Compose deployment via `scripts/release_with_migrations.sh` with `INCLUDE_OVERRIDE=true` completed successfully; health check passed
+
+---
+
 ## Latest Session: Demo Data Update — Cash Flow, Scheduling, And Payment-Type Coverage
 
 This session updated the seeded demo budget in `backend/app/demo_budget.py` to make walkthrough data more realistic and to exercise recently implemented product features.

@@ -2594,7 +2594,7 @@ describe('PeriodDetailPage', () => {
     const totalIncomeRow = totalIncomeCell.closest('tr')
 
     expect(totalIncomeRow).toBeTruthy()
-    expect(totalIncomeRow.children).toHaveLength(6)
+    expect(totalIncomeRow.children).toHaveLength(5)
   })
 
   it('uses the same spent-pill wording model for investments as expenses', async () => {

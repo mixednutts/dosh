@@ -29,15 +29,23 @@ export function InvestmentSection({
       <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 font-semibold text-gray-700 dark:text-gray-200 text-sm">Investments</div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm period-detail-table">
+          <colgroup>
+            <col className="w-10" />
+            <col className="w-[26%]" />
+            <col className="w-[12%]" />
+            <col className="w-[12%]" />
+            <col className="w-[12%]" />
+            <col className="w-[25%]" />
+            <col className="w-[21%]" />
+          </colgroup>
           <thead>
             <tr className="border-b border-gray-100 dark:border-gray-800">
-              <th className="w-6 px-2"></th>
-              <th className="table-header-cell text-left w-[28%]">Investment</th>
-              <th className="table-header-cell text-right col-budget w-[14%]">Budget</th>
-              <th className="table-header-cell text-right col-actual w-[14%]">Actual ∑</th>
-              <th className="table-header-cell text-right w-[12%]">Remaining</th>
-              <th className="table-header-cell text-left w-[18%]">Account</th>
-              <th className="table-header-cell text-center w-[18%]">Status / Txns</th>
+              <th className="table-header-cell text-left" colSpan={2}>Investment</th>
+              <th className="table-header-cell text-right col-budget">Budget</th>
+              <th className="table-header-cell text-right col-actual">Actual ∑</th>
+              <th className="table-header-cell text-right">Remaining</th>
+              <th className="table-header-cell text-center">Account</th>
+              <th className="table-header-cell text-center">Status / Txns</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
@@ -45,10 +53,7 @@ export function InvestmentSection({
               const remaining = Number(inv.remaining_amount ?? 0)
               return (
                 <tr key={inv.investmentdesc} className="table-row">
-                  <td className="w-6 px-2 text-gray-200 dark:text-gray-700">
-                    <Bars2Icon className="w-4 h-4 opacity-0" />
-                  </td>
-                  <td className="table-cell font-medium">{inv.investmentdesc}</td>
+                  <td className="table-cell font-medium text-left" colSpan={2}>{inv.investmentdesc}</td>
                   <td className="table-cell-muted text-right col-budget">
                     <BudgetAmountCell
                       amount={inv.budgeted_amount}
@@ -104,8 +109,7 @@ export function InvestmentSection({
           </tbody>
           <tfoot>
             <tr className="border-t-2 border-gray-200 dark:border-gray-700 font-semibold bg-gray-50 dark:bg-gray-800">
-              <td className="w-6 px-2"></td>
-              <td className="px-4 py-2 text-gray-700 dark:text-gray-300 text-sm">Total Investments</td>
+              <td className="px-4 py-2 text-gray-700 dark:text-gray-300 text-sm" colSpan={2}>Total Investments</td>
               <td className="px-4 py-2 text-right text-gray-600 dark:text-gray-400 text-sm">{fmt(effectiveInvestmentBudget)}</td>
               <td className="px-4 py-2 text-right text-gray-800 dark:text-gray-200 text-sm">{fmt(totalInvestmentActual)}</td>
               <td className="px-4 py-2 text-right text-sm">
