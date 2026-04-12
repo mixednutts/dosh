@@ -34,8 +34,7 @@ def _validate_default_account_desc(budgetid: int, account_desc: str | None, db: 
         raise HTTPException(404, f'Account "{account_desc}" not found')
     if not bt.active:
         raise HTTPException(422, f'Account "{account_desc}" is not active')
-    if bt.balance_type != "Transaction":
-        raise HTTPException(422, f'Account "{account_desc}" must be a Transaction account')
+
 
 
 def _get_expense_or_404(budgetid: int, expensedesc: str, db: Session) -> ExpenseItem:
@@ -67,6 +66,18 @@ def _expense_has_recorded_activity(budgetid: int, expensedesc: str, db: Session)
         .first()
         is not None
     )
+
+
+def _validate_scheduled_fields(payload_data: dict, current_item: Optional[ExpenseItem] = None) -> None:
+    freqtype = payload_data.get("freqtype", current_item.freqtype if current_item else None)
+    frequency_value = payload_data.get("frequency_value", current_item.frequency_value if current_item else None)
+    effectivedate = payload_data.get("effectivedate", current_item.effectivedate if current_item else None)
+
+    if freqtype in {"Fixed Day of Month", "Every N Days"}:
+        if frequency_value is None:
+            raise HTTPException(422, f'Frequency value is required for "{freqtype}" expenses.')
+        if freqtype == "Every N Days" and effectivedate is None:
+            raise HTTPException(422, 'Effective date is required for "Every N Days" expenses.')
 
 
 def _normalized_paytype_or_422(
@@ -131,6 +142,7 @@ def create_expense_item(budgetid: int, payload: ExpenseItemCreate, db: DbSession
         raise HTTPException(409, "Expense item with this description already exists")
     data = payload.model_dump()
     _validate_default_account_desc(budgetid, data.get("default_account_desc"), db)
+    _validate_scheduled_fields(data)
     data["paytype"] = _normalized_paytype_or_422(
         budgetid=budgetid,
         expensedesc=payload.expensedesc,
@@ -161,6 +173,7 @@ def update_expense_item(
     data = payload.model_dump(exclude_none=True)
     if "default_account_desc" in data:
         _validate_default_account_desc(budgetid, data["default_account_desc"], db)
+    _validate_scheduled_fields(data, current_item=ei)
     if "paytype" in data or "freqtype" in data or "frequency_value" in data or "effectivedate" in data:
         data["paytype"] = _normalized_paytype_or_422(
             budgetid=budgetid,

@@ -39,7 +39,9 @@ describe('ExpenseItemsTab', () => {
       investment_items: [],
     })
     client.getExpenseItemHistory.mockResolvedValue({ item_desc: 'Rent', category: 'expense', current_revisionnum: 0, entries: [] })
-    client.getBalanceTypes.mockResolvedValue([])
+    client.getBalanceTypes.mockResolvedValue([
+      { balancedesc: 'Main Account', balance_type: 'Transaction', is_primary: true, active: true },
+    ])
     client.getBudget.mockResolvedValue({ account_naming_preference: 'Transaction' })
   })
 
@@ -156,6 +158,65 @@ describe('ExpenseItemsTab', () => {
         expenseamount: 1300,
         active: true,
         default_account_desc: null,
+      }))
+    })
+  })
+
+  it('allows editing pay type for existing scheduled expense items', async () => {
+    client.getExpenseItems.mockResolvedValue([
+      {
+        expensedesc: 'Subscription',
+        active: true,
+        freqtype: 'Every N Days',
+        frequency_value: 14,
+        paytype: 'MANUAL',
+        effectivedate: '2026-04-01',
+        expenseamount: '50.00',
+        revisionnum: 1,
+        sort_order: 0,
+        default_account_desc: null,
+      },
+    ])
+    client.getBudgetSetupAssessment.mockResolvedValue({
+      budgetid: 1,
+      can_generate: true,
+      blocking_issues: [],
+      warnings: [],
+      accounts: [],
+      income_types: [],
+      expense_items: [
+        {
+          expensedesc: 'Subscription',
+          in_use: false,
+          reasons: [],
+          can_delete: true,
+          can_deactivate: true,
+          deactivation_impact: '',
+          can_edit_structure: true,
+        },
+      ],
+      investment_items: [],
+    })
+    client.updateExpenseItem.mockResolvedValue({})
+
+    renderWithProviders(<ExpenseItemsTab budgetId={1} />)
+
+    expect(await screen.findByText('Subscription')).toBeTruthy()
+    fireEvent.click(screen.getAllByRole('button').find(button => button.className.includes('btn-secondary') && !button.title))
+
+    // Pay type should be editable for scheduled expenses
+    const payTypeSelect = screen.getByRole('combobox', { name: /^Pay Type$/i })
+    expect(payTypeSelect.disabled).toBe(false)
+    expect(payTypeSelect.value).toBe('MANUAL')
+
+    fireEvent.change(payTypeSelect, { target: { value: 'AUTO' } })
+    expect(payTypeSelect.value).toBe('AUTO')
+
+    fireEvent.click(screen.getByText('Save'))
+
+    await waitFor(() => {
+      expect(client.updateExpenseItem).toHaveBeenCalledWith(1, 'Subscription', expect.objectContaining({
+        paytype: 'AUTO',
       }))
     })
   })
@@ -405,7 +466,7 @@ describe('ExpenseItemsTab', () => {
     })
   })
 
-  it('allows selecting a default transaction account for an expense item', async () => {
+  it('defaults debit account to the primary account and stores null', async () => {
     client.getExpenseItems.mockResolvedValue([])
     client.createExpenseItem.mockResolvedValue({})
     client.getBalanceTypes.mockResolvedValue([
@@ -425,13 +486,43 @@ describe('ExpenseItemsTab', () => {
       target: { value: '200' },
     })
 
-    // Uncheck "Use Primary Transaction Account"
-    const primaryCheckbox = screen.getByRole('checkbox', { name: /Use Primary Transaction Account/i })
-    fireEvent.click(primaryCheckbox)
+    // Debit Account dropdown should default to the primary account
+    const debitSelect = screen.getByRole('combobox', { name: /^Debit Account$/i })
+    expect(debitSelect.value).toBe('Main Account')
 
-    // Account dropdown should appear
-    const accountSelect = screen.getByRole('combobox', { name: /^Account$/i })
-    fireEvent.change(accountSelect, { target: { value: 'Joint Account' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => {
+      expect(client.createExpenseItem).toHaveBeenCalledWith(1, expect.objectContaining({
+        expensedesc: 'Groceries',
+        expenseamount: 200,
+        default_account_desc: null,
+      }))
+    })
+  })
+
+  it('allows selecting a non-primary debit account for an expense item', async () => {
+    client.getExpenseItems.mockResolvedValue([])
+    client.createExpenseItem.mockResolvedValue({})
+    client.getBalanceTypes.mockResolvedValue([
+      { balancedesc: 'Main Account', balance_type: 'Transaction', is_primary: true, active: true },
+      { balancedesc: 'Joint Account', balance_type: 'Transaction', is_primary: false, active: true },
+    ])
+    client.getBudget.mockResolvedValue({ account_naming_preference: 'Transaction' })
+
+    renderWithProviders(<ExpenseItemsTab budgetId={1} />)
+
+    fireEvent.click(await screen.findByText('Add Expense Item'))
+
+    fireEvent.change(screen.getByLabelText(/Description/i), {
+      target: { value: 'Groceries' },
+    })
+    fireEvent.change(screen.getByLabelText(/Amount/i), {
+      target: { value: '200' },
+    })
+
+    const debitSelect = screen.getByRole('combobox', { name: /^Debit Account$/i })
+    fireEvent.change(debitSelect, { target: { value: 'Joint Account' } })
 
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
 
@@ -442,5 +533,99 @@ describe('ExpenseItemsTab', () => {
         default_account_desc: 'Joint Account',
       }))
     })
+  })
+
+  it('allows selecting any active account (including non-Transaction) as the debit account', async () => {
+    client.getExpenseItems.mockResolvedValue([])
+    client.createExpenseItem.mockResolvedValue({})
+    client.getBalanceTypes.mockResolvedValue([
+      { balancedesc: 'Main Account', balance_type: 'Transaction', is_primary: true, active: true },
+      { balancedesc: 'Savings Account', balance_type: 'Savings', is_primary: false, active: true },
+      { balancedesc: 'Cash Wallet', balance_type: 'Cash', is_primary: false, active: true },
+    ])
+    client.getBudget.mockResolvedValue({ account_naming_preference: 'Transaction' })
+
+    renderWithProviders(<ExpenseItemsTab budgetId={1} />)
+
+    fireEvent.click(await screen.findByText('Add Expense Item'))
+
+    fireEvent.change(screen.getByLabelText(/Description/i), {
+      target: { value: 'Groceries' },
+    })
+    fireEvent.change(screen.getByLabelText(/Amount/i), {
+      target: { value: '150' },
+    })
+
+    const debitSelect = screen.getByRole('combobox', { name: /^Debit Account$/i })
+    fireEvent.change(debitSelect, { target: { value: 'Savings Account' } })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => {
+      expect(client.createExpenseItem).toHaveBeenCalledWith(1, expect.objectContaining({
+        expensedesc: 'Groceries',
+        expenseamount: 150,
+        default_account_desc: 'Savings Account',
+      }))
+    })
+  })
+
+  it('shows validation error when Fixed Day of Month is selected without a day value', async () => {
+    client.getExpenseItems.mockResolvedValue([])
+    client.createExpenseItem.mockResolvedValue({})
+
+    renderWithProviders(<ExpenseItemsTab budgetId={1} />)
+
+    fireEvent.click(await screen.findByText('Add Expense Item'))
+
+    fireEvent.change(screen.getByLabelText(/Description/i), {
+      target: { value: 'Utilities' },
+    })
+    fireEvent.change(screen.getByLabelText(/Frequency Type/i), {
+      target: { value: 'Fixed Day of Month' },
+    })
+    fireEvent.change(screen.getByLabelText(/Amount/i), {
+      target: { value: '120' },
+    })
+
+    // Clear the default day value if any
+    const dayInput = screen.getByLabelText(/Day of Month/i)
+    fireEvent.change(dayInput, { target: { value: '' } })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('Day of month is required for Fixed Day of Month expenses.')).toBeTruthy()
+    })
+    expect(client.createExpenseItem).not.toHaveBeenCalled()
+  })
+
+  it('shows validation error when Every N Days is selected without interval or effective date', async () => {
+    client.getExpenseItems.mockResolvedValue([])
+    client.createExpenseItem.mockResolvedValue({})
+
+    renderWithProviders(<ExpenseItemsTab budgetId={1} />)
+
+    fireEvent.click(await screen.findByText('Add Expense Item'))
+
+    fireEvent.change(screen.getByLabelText(/Description/i), {
+      target: { value: 'Petrol' },
+    })
+    fireEvent.change(screen.getByLabelText(/Frequency Type/i), {
+      target: { value: 'Every N Days' },
+    })
+    fireEvent.change(screen.getByLabelText(/Amount/i), {
+      target: { value: '80' },
+    })
+
+    const intervalInput = screen.getByLabelText(/Interval \(days\)/i)
+    fireEvent.change(intervalInput, { target: { value: '' } })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('Interval and effective date are required for Every N Days expenses.')).toBeTruthy()
+    })
+    expect(client.createExpenseItem).not.toHaveBeenCalled()
   })
 })

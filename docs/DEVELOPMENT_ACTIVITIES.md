@@ -698,6 +698,16 @@ Status:
 - `Completed`: hide Setup Assessment messaging on the Budget Setup page once any budget cycle exists for the budget
 - `Completed`: fix newly added active accounts not appearing in existing budget cycle details by backfilling `PeriodBalance` rows for current and future periods when an active account is created (closed and pending-closure periods are intentionally skipped)
 - `Completed`: fix transfer income line prefix so new transfers use `Transfer: {source} to {destination}` and legacy `Transfer from ` descriptions continue to parse correctly for backward compatibility
+- `Completed`: remediate issues arising from Cash Management workflow changes (generalised account transfers, expense routing, investment account tracking)
+  - `Completed`: remove the Transaction-only restriction on expense-item debit accounts so any active account can be selected
+  - `Completed`: replace the checkbox/conditional-dropdown account selector with a single "Debit Account" picklist that defaults to the primary account and stores `null` for the default
+  - `Completed`: relocate the `Always` scheduling helper text between Frequency Type and Pay Type fields for clearer context
+  - `Completed`: verify and protect pay-type editability for existing scheduled expense items with a regression test
+  - `Completed`: enforce `frequency_value` presence for `Fixed Day of Month` and `Every N Days` expenses in both backend validation and frontend form submission, preventing expenses from being saved with no interval set
+
+Cross-links:
+
+- Cash Management
 
 #### Activity Group: Enhancements
 

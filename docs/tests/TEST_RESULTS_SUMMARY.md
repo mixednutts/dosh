@@ -4,6 +4,54 @@ This document records meaningful automated test results from major working sessi
 
 It exists separately from [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) so the strategy can stay stable while future sessions still have a record of what was actually run and verified.
 
+## Latest Session: Cash Management Workflow — Bug Remediation And Scheduled Expense Validation
+
+This session fixed issues arising from the Cash Management workflow changes: expense-item debit account selection was restricted to Transaction accounts, the account selector UI was inconsistent, and scheduled expenses could be saved without a required interval or effective date.
+
+### Verification
+
+```bash
+cd /home/ubuntu/dosh/backend
+.venv/bin/python -m pytest tests/ -q
+```
+
+Result:
+
+- Full backend suite: **139 passed** (was 136; +3 new tests in `test_budget_setup_workflows.py`)
+- No regressions introduced
+
+```bash
+cd /home/ubuntu/dosh/frontend
+npx jest --runInBand
+```
+
+Result:
+
+- Full frontend suite: **173 passed** (was 168; +5 new tests across `ExpenseItemsTab.test.jsx`), 16 test suites
+- No regressions introduced
+
+### Deployment Verification
+
+```bash
+cd /home/ubuntu/dosh
+INCLUDE_OVERRIDE=true ./scripts/release_with_migrations.sh
+curl -sS http://127.0.0.1:3080/api/health
+```
+
+Result:
+
+- Backend container rebuilt and restarted successfully
+- Frontend container rebuilt and restarted successfully
+- Health endpoint returned `{"status":"ok","app":"Dosh"}`
+- Version endpoint returned `0.3.5-alpha`
+
+### Migration Verification
+
+- No new schema migrations required; validation logic changes only
+- Existing Alembic revisions `e4f5a6b7c8d9` and `f1a2b3c4d5e6` remain current
+
+---
+
 ## Latest Session: Cash Management Workflow — Generalised Transfers, Expense Routing, And Investment Tracking
 
 This session implemented the cash management workflow defined in [CASH_MANAGEMENT_WORKFLOW_PLAN.md](/home/ubuntu/dosh/docs/plans/CASH_MANAGEMENT_WORKFLOW_PLAN.md), including generalised account transfers, expense default account routing, and investment account tracking.

@@ -914,3 +914,98 @@ def test_adding_scheduled_expense_to_future_only_applies_to_periods_where_due(cl
     detail_3 = client.get(f"/api/periods/{period_3['finperiodid']}").json()
     expenses_3 = {e["expensedesc"] for e in detail_3["expenses"]}
     assert "Quarterly Bill" in expenses_3
+
+
+def test_expense_item_default_account_can_be_non_transaction_account(client, db_session):
+    """An expense item can route to any active account, not just Transaction accounts."""
+    budget = create_budget(db_session)
+    create_income_type(db_session, budgetid=budget.budgetid)
+    # Primary transaction account
+    create_balance_type(db_session, budgetid=budget.budgetid, balancedesc="Main", balance_type="Transaction", is_primary=True)
+    # Savings account
+    create_balance_type(db_session, budgetid=budget.budgetid, balancedesc="Holiday Savings", balance_type="Savings", is_primary=False)
+
+    # Create an expense item routed to the Savings account
+    response = client.post(
+        f"/api/budgets/{budget.budgetid}/expense-items/",
+        json={
+            "expensedesc": "Holiday",
+            "active": True,
+            "freqtype": "Always",
+            "expenseamount": "500.00",
+            "default_account_desc": "Holiday Savings",
+        },
+    )
+    assert response.status_code == 201, response.text
+    assert response.json()["default_account_desc"] == "Holiday Savings"
+
+    # Update the expense item to route to the Transaction account
+    update = client.patch(
+        f"/api/budgets/{budget.budgetid}/expense-items/Holiday",
+        json={"default_account_desc": "Main"},
+    )
+    assert update.status_code == 200, update.text
+    assert update.json()["default_account_desc"] == "Main"
+
+
+def test_create_scheduled_expense_rejects_missing_frequency_value(client, db_session):
+    """Fixed Day of Month and Every N Days require frequency_value on creation."""
+    budget = create_budget(db_session)
+    create_income_type(db_session, budgetid=budget.budgetid)
+
+    fixed_response = client.post(
+        f"/api/budgets/{budget.budgetid}/expense-items/",
+        json={
+            "expensedesc": "Rent",
+            "active": True,
+            "freqtype": "Fixed Day of Month",
+            "expenseamount": "1200.00",
+        },
+    )
+    assert fixed_response.status_code == 422
+    assert "frequency value is required" in fixed_response.json()["detail"].lower()
+
+    every_n_response = client.post(
+        f"/api/budgets/{budget.budgetid}/expense-items/",
+        json={
+            "expensedesc": "Petrol",
+            "active": True,
+            "freqtype": "Every N Days",
+            "expenseamount": "80.00",
+        },
+    )
+    assert every_n_response.status_code == 422
+    assert "frequency value is required" in every_n_response.json()["detail"].lower()
+
+
+def test_create_every_n_days_expense_rejects_missing_effective_date(client, db_session):
+    """Every N Days requires an effective date on creation."""
+    budget = create_budget(db_session)
+    create_income_type(db_session, budgetid=budget.budgetid)
+
+    response = client.post(
+        f"/api/budgets/{budget.budgetid}/expense-items/",
+        json={
+            "expensedesc": "Petrol",
+            "active": True,
+            "freqtype": "Every N Days",
+            "frequency_value": 14,
+            "expenseamount": "80.00",
+        },
+    )
+    assert response.status_code == 422
+    assert "effective date is required" in response.json()["detail"].lower()
+
+
+def test_update_expense_to_scheduled_requires_frequency_value(client, db_session):
+    """Updating an Always expense to Fixed Day of Month requires frequency_value."""
+    budget = create_budget(db_session)
+    create_income_type(db_session, budgetid=budget.budgetid)
+    create_expense_item(db_session, budgetid=budget.budgetid, expensedesc="Rent", freqtype="Always")
+
+    update = client.patch(
+        f"/api/budgets/{budget.budgetid}/expense-items/Rent",
+        json={"freqtype": "Fixed Day of Month"},
+    )
+    assert update.status_code == 422
+    assert "frequency value is required" in update.json()["detail"].lower()

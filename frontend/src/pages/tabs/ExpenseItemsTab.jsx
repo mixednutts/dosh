@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import PropTypes from 'prop-types'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { PlusIcon, PencilIcon, TrashIcon, ChevronUpIcon, ChevronDownIcon, ClockIcon } from '@heroicons/react/24/outline'
+import { PlusIcon, PencilIcon, TrashIcon, ChevronUpIcon, ChevronDownIcon, ClockIcon, QuestionMarkCircleIcon } from '@heroicons/react/24/outline'
 import { format, parseISO, addDays } from 'date-fns'
 import { getExpenseItems, createExpenseItem, updateExpenseItem, deleteExpenseItem, reorderExpenseItems, getBudgetSetupAssessment, getExpenseItemHistory, getBalanceTypes, getBudget } from '../../api/client'
 import Modal from '../../components/Modal'
@@ -14,13 +14,7 @@ import { getNextFixedDayOccurrence } from '../../utils/fixedDayScheduling'
 const emptyForm = {
   expensedesc: '', active: true, freqtype: 'Always',
   frequency_value: '', paytype: 'AUTO', effectivedate: '', expenseamount: '',
-  use_primary_account: true, default_account_desc: '',
-}
-
-function getPrimaryAccountLabel(preference) {
-  if (preference === 'Everyday') return 'Use Primary Everyday Account'
-  if (preference === 'Checking') return 'Use Primary Checking Account'
-  return 'Use Primary Transaction Account'
+  default_account_desc: '',
 }
 
 /**
@@ -54,18 +48,28 @@ function calcNextDue(freqtype, frequencyValue, effectivedate, todayDate = new Da
   return null
 }
 
-function ExpenseItemForm({ initial = emptyForm, isEdit = false, onSubmit, onClose, loading, inUse = false, deactivationImpact = '', balanceTypes = [], accountNamingPreference = 'Transaction' }) {
+function ExpenseItemForm({ initial = emptyForm, isEdit = false, onSubmit, onClose, loading, inUse = false, deactivationImpact = '', balanceTypes = [] }) {
   const [form, setForm] = useState(initial)
+  const [showDebitHelp, setShowDebitHelp] = useState(false)
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
   const formIdPrefix = isEdit ? 'edit-expense-item' : 'create-expense-item'
 
   const isAlways = form.freqtype === 'Always'
   const showDeactivationWarning = inUse && !form.active
-  const transactionAccounts = balanceTypes.filter(bt => bt.balance_type === 'Transaction' && bt.active !== false)
+  const activeAccounts = balanceTypes.filter(bt => bt.active !== false)
+  const primaryAccount = activeAccounts.find(bt => bt.is_primary) || activeAccounts[0] || null
+  const primaryAccountDesc = primaryAccount?.balancedesc || ''
+  const debitAccountValue = form.default_account_desc || primaryAccountDesc
+  const scheduledError = !isAlways && (!form.frequency_value || (form.freqtype === 'Every N Days' && !form.effectivedate))
+    ? (form.freqtype === 'Fixed Day of Month'
+        ? 'Day of month is required for Fixed Day of Month expenses.'
+        : 'Interval and effective date are required for Every N Days expenses.')
+    : ''
 
   return (
     <form onSubmit={e => {
       e.preventDefault()
+      if (scheduledError) return
       onSubmit({
         expensedesc: form.expensedesc,
         active: form.active,
@@ -74,7 +78,7 @@ function ExpenseItemForm({ initial = emptyForm, isEdit = false, onSubmit, onClos
         paytype: isAlways ? 'MANUAL' : (form.paytype || 'MANUAL'),
         effectivedate: isAlways ? null : (form.effectivedate || null),
         expenseamount: Number.parseFloat(form.expenseamount) || 0,
-        default_account_desc: form.use_primary_account ? null : (form.default_account_desc || null),
+        default_account_desc: form.default_account_desc === primaryAccountDesc ? null : (form.default_account_desc || null),
       })
     }} className="space-y-4">
       <ExpenseItemSchedulingFields
@@ -96,43 +100,44 @@ function ExpenseItemForm({ initial = emptyForm, isEdit = false, onSubmit, onClos
         <LocalizedAmountInput id={`${formIdPrefix}-amount`} required min="0" className="input"
           value={form.expenseamount} onChange={value => set('expenseamount', value)} />
       </div>
-      <div className="space-y-2">
-        <label htmlFor={`${formIdPrefix}-primary-account`} className="flex items-start gap-3 text-sm cursor-pointer">
-          <input
-            id={`${formIdPrefix}-primary-account`}
-            type="checkbox"
-            checked={form.use_primary_account}
-            onChange={e => set('use_primary_account', e.target.checked)}
-            className="mt-0.5 rounded border-gray-300 dark:border-gray-600 text-dosh-600 focus:ring-dosh-500"
-          />
-          <span className="font-medium text-gray-800 dark:text-gray-100">{getPrimaryAccountLabel(accountNamingPreference)}</span>
-        </label>
-        {!form.use_primary_account && (
-          <div>
-            <label htmlFor={`${formIdPrefix}-account`} className="label">Account</label>
-            <select
-              id={`${formIdPrefix}-account`}
-              required
-              className="input"
-              value={form.default_account_desc}
-              onChange={e => set('default_account_desc', e.target.value)}
+      <div className="space-y-1">
+        <div className="flex items-center gap-2">
+          <label htmlFor={`${formIdPrefix}-debit-account`} className="label">Debit Account</label>
+          <span className="relative inline-flex">
+            <button
+              type="button"
+              aria-label="More information about debit account"
+              className="text-gray-400 transition-colors hover:text-dosh-600 dark:text-gray-500 dark:hover:text-dosh-300"
+              onMouseEnter={() => setShowDebitHelp(true)}
+              onMouseLeave={() => setShowDebitHelp(false)}
+              onFocus={() => setShowDebitHelp(true)}
+              onBlur={() => setShowDebitHelp(false)}
+              onClick={() => setShowDebitHelp(v => !v)}
             >
-              <option value="">— select —</option>
-              {transactionAccounts.map(bt => (
-                <option key={bt.balancedesc} value={bt.balancedesc}>{bt.balancedesc}</option>
-              ))}
-            </select>
-            {transactionAccounts.length === 0 && (
-              <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">No active transaction accounts available.</p>
+              <QuestionMarkCircleIcon className="h-4 w-4" />
+            </button>
+            {showDebitHelp && (
+              <span className="absolute left-1/2 top-6 z-10 w-56 -translate-x-1/2 rounded-lg bg-gray-900 px-3 py-2 text-xs font-normal text-white shadow-lg dark:bg-gray-700">
+                The account where the expense amount will be deducted from.  Defaults to the Primary Banking Account.
+              </span>
             )}
-          </div>
+          </span>
+        </div>
+        <select
+          id={`${formIdPrefix}-debit-account`}
+          required
+          className="input"
+          value={debitAccountValue}
+          onChange={e => set('default_account_desc', e.target.value === primaryAccountDesc ? '' : e.target.value)}
+        >
+          {activeAccounts.map(bt => (
+            <option key={bt.balancedesc} value={bt.balancedesc}>{bt.balancedesc}</option>
+          ))}
+        </select>
+        {activeAccounts.length === 0 && (
+          <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">No active accounts available.</p>
         )}
       </div>
-      {isAlways && (
-        <p className="text-xs text-dosh-600 dark:text-dosh-400 bg-dosh-50 dark:bg-dosh-900/20 rounded px-3 py-2">
-          "Always" — this expense is included in every budget cycle at the set amount, regardless of dates, so it must stay MANUAL.
-        </p>
-      )}
       <label htmlFor={`${formIdPrefix}-active`} className="flex items-start gap-3 text-sm cursor-pointer">
         <input id={`${formIdPrefix}-active`} type="checkbox" checked={form.active} onChange={e => set('active', e.target.checked)}
           className="rounded border-gray-300 dark:border-gray-600 text-dosh-600 focus:ring-dosh-500" />
@@ -146,6 +151,9 @@ function ExpenseItemForm({ initial = emptyForm, isEdit = false, onSubmit, onClos
           {deactivationImpact}
         </div>
       )}
+      {scheduledError && (
+        <p className="text-sm text-red-600">{scheduledError}</p>
+      )}
       {isEdit && (
         <p className="text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded px-3 py-2">
           Saving changes to frequency, amount, or dates will automatically apply a revision and update budget amounts on future unlocked budget cycles.
@@ -153,7 +161,7 @@ function ExpenseItemForm({ initial = emptyForm, isEdit = false, onSubmit, onClos
       )}
       <div className="flex justify-end gap-2 pt-2">
         <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
-        <button type="submit" className="btn-primary" disabled={loading}>
+        <button type="submit" className="btn-primary" disabled={loading || !!scheduledError}>
           {loading ? 'Saving…' : 'Save'}
         </button>
       </div>
@@ -370,7 +378,6 @@ export default function ExpenseItemsTab({ budgetId }) {
               paytype: modal.item.paytype ?? '',
               effectivedate: modal.item.effectivedate ? format(parseISO(modal.item.effectivedate), 'yyyy-MM-dd') : '',
               expenseamount: modal.item.expenseamount ?? '',
-              use_primary_account: !modal.item.default_account_desc,
               default_account_desc: modal.item.default_account_desc || '',
             } : emptyForm}
             isEdit={modal.mode === 'edit'}
@@ -380,7 +387,6 @@ export default function ExpenseItemsTab({ budgetId }) {
             onClose={() => setModal(null)}
             loading={create.isPending || update.isPending}
             balanceTypes={balanceTypes}
-            accountNamingPreference={budget?.account_naming_preference || 'Transaction'}
           />
         </Modal>
       )}

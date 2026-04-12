@@ -10,14 +10,23 @@ _No unreleased changes yet._
 
 - **Generalised Account Transfers**: Transfers are no longer limited to savings accounts. The `savings-transfer` endpoint has been replaced with `account-transfer`, allowing money to be moved between any two active accounts. Transfer income lines are now named `Transfer: {source} to {destination}` for unambiguous ledger tracking.
 - **Transfer Balance Validation**: New committed-amount validation ensures a source account can absorb a transfer before the line is created or before additional transactions are recorded. For unpaid lines, validation uses `max(budgetamount, actualamount)`; for paid lines, it uses `actualamount`.
-- **Expense Default Account Routing**: Expense items can now store a `default_account_desc` in budget setup. When recording an expense transaction, users can select which active transaction account to debit, defaulting to the item's configured account and falling back to the primary account.
+- **Expense Default Account Routing**: Expense items can now store a `default_account_desc` in budget setup. When recording an expense transaction, users can select which active account to debit, defaulting to the item's configured account and falling back to the primary account.
 - **Investment Account Tracking**: Investment transactions now expose `affected_account_desc` in the API and display the linked cash account in the transaction list.
+
+### Fixed
+
+- Fixed expense-item debit account selection so any active account (including non-Transaction accounts such as Savings) can be chosen, removing the previous Transaction-only restriction.
+- Fixed the expense-item account selector UI in Budget Setup and Period Detail to use a single "Debit Account" picklist with a helper tooltip, defaulting to the primary account.
+- Fixed missing interval validation for scheduled expenses: `Fixed Day of Month` and `Every N Days` now require `frequency_value` on both creation and update, and `Every N Days` also requires an effective date.
+- Fixed the `Always` scheduling helper text placement so it appears between Frequency Type and Pay Type for clearer context.
 
 ### Engineering
 
 - Added Alembic migration `e4f5a6b7c8d9` to add `default_account_desc` to `expenseitems`.
 - Added Alembic migration `f1a2b3c4d5e6` to backfill `default_account_desc` for existing expense items and `affected_account_desc` for existing expense, transfer, and investment transactions.
 - Added backend regression coverage for generalised transfer validation (`test_account_transfer_validation.py`) and expense entry account routing (`test_expense_entry_account_routing.py`).
+- Added backend regression coverage for scheduled-expense field validation (`test_budget_setup_workflows.py`).
+- Added frontend regression coverage for debit-account defaulting and scheduled-expense interval validation (`ExpenseItemsTab.test.jsx`).
 - Full gap-analysis reconciliation script run inside the Docker container returned zero anomalies.
 
 ## 0.3.4-alpha | released | 2026-04-12

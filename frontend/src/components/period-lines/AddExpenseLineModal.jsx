@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import PropTypes from 'prop-types'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { QuestionMarkCircleIcon } from '@heroicons/react/24/outline'
 import { getExpenseItems, createExpenseItem, addExpenseToPeriod, getBalanceTypes, getBudget } from '../../api/client'
 import AmountExpressionInput from '../AmountExpressionInput'
 import ExpenseItemSchedulingFields from '../ExpenseItemSchedulingFields'
@@ -20,8 +21,8 @@ export function AddExpenseLineModal({ periodId, budgetId, existingDescs, onClose
   const [newFreqVal, setNewFreqVal] = useState('')
   const [newPaytype, setNewPaytype] = useState('AUTO')
   const [newEffDate, setNewEffDate] = useState('')
-  const [usePrimaryAccount, setUsePrimaryAccount] = useState(true)
   const [defaultAccountDesc, setDefaultAccountDesc] = useState('')
+  const [showDebitHelp, setShowDebitHelp] = useState(false)
 
   const { data: expenseItems = [] } = useQuery({
     queryKey: ['expense-items', budgetId],
@@ -49,8 +50,19 @@ export function AddExpenseLineModal({ periodId, budgetId, existingDescs, onClose
     onError: err => setError(err.response?.data?.detail ?? 'Failed'),
   })
 
+  const activeAccounts = balanceTypes.filter(bt => bt.active !== false)
+  const primaryAccount = activeAccounts.find(bt => bt.is_primary) || activeAccounts[0] || null
+  const primaryAccountDesc = primaryAccount?.balancedesc || ''
+
+  const scheduledError = mode === 'new' && newFreqtype !== 'Always' && (!newFreqVal || (newFreqtype === 'Every N Days' && !newEffDate))
+    ? (newFreqtype === 'Fixed Day of Month'
+        ? 'Day of month is required for Fixed Day of Month expenses.'
+        : 'Interval and effective date are required for Every N Days expenses.')
+    : ''
+
   const handleSubmit = async e => {
     e.preventDefault(); setError('')
+    if (scheduledError) { setError(scheduledError); return }
     try {
       const resolvedValue = getResolvedAmountValue(resolvedAmount, 0)
       if (resolvedValue == null) { setError('Enter a valid budget amount'); return }
@@ -64,7 +76,7 @@ export function AddExpenseLineModal({ periodId, budgetId, existingDescs, onClose
           paytype: newFreqtype === 'Always' ? 'MANUAL' : (newPaytype || 'MANUAL'),
           effectivedate: newFreqtype === 'Always' ? null : (newEffDate || null),
           expenseamount: resolvedValue,
-          default_account_desc: usePrimaryAccount ? null : (defaultAccountDesc || null),
+          default_account_desc: defaultAccountDesc === primaryAccountDesc ? null : (defaultAccountDesc || null),
         })
         addToperiod.mutate({ budgetid: budgetId, expensedesc: newDesc.trim(), budgetamount: resolvedValue, scope, note: note || null })
       } else {
@@ -109,39 +121,51 @@ export function AddExpenseLineModal({ periodId, budgetId, existingDescs, onClose
             effectivedate={newEffDate}
             onEffectivedateChange={setNewEffDate}
           />
-          <label htmlFor="add-expense-primary-account" className="flex items-start gap-3 text-sm cursor-pointer">
-            <input
-              id="add-expense-primary-account"
-              type="checkbox"
-              checked={usePrimaryAccount}
-              onChange={e => setUsePrimaryAccount(e.target.checked)}
-              className="mt-0.5 rounded border-gray-300 dark:border-gray-600 text-dosh-600 focus:ring-dosh-500"
-            />
-            <span className="font-medium text-gray-800 dark:text-gray-100">
-              {budget?.account_naming_preference === 'Everyday' ? 'Use Primary Everyday Account' :
-               budget?.account_naming_preference === 'Checking' ? 'Use Primary Checking Account' :
-               'Use Primary Transaction Account'}
-            </span>
-          </label>
-          {!usePrimaryAccount && (
-            <div>
-              <label htmlFor="add-expense-account" className="label">Account</label>
-              <select
-                id="add-expense-account"
-                required
-                className="input"
-                value={defaultAccountDesc}
-                onChange={e => setDefaultAccountDesc(e.target.value)}
-              >
-                <option value="">— select —</option>
-                {balanceTypes
-                  .filter(bt => bt.balance_type === 'Transaction' && bt.active !== false)
-                  .map(bt => (
-                    <option key={bt.balancedesc} value={bt.balancedesc}>{bt.balancedesc}</option>
-                  ))}
-              </select>
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <label htmlFor="add-expense-debit-account" className="label">Debit Account</label>
+              <span className="relative inline-flex">
+                <button
+                  type="button"
+                  aria-label="More information about debit account"
+                  className="text-gray-400 transition-colors hover:text-dosh-600 dark:text-gray-500 dark:hover:text-dosh-300"
+                  onMouseEnter={() => setShowDebitHelp(true)}
+                  onMouseLeave={() => setShowDebitHelp(false)}
+                  onFocus={() => setShowDebitHelp(true)}
+                  onBlur={() => setShowDebitHelp(false)}
+                  onClick={() => setShowDebitHelp(v => !v)}
+                >
+                  <QuestionMarkCircleIcon className="h-4 w-4" />
+                </button>
+                {showDebitHelp && (
+                  <span className="absolute left-1/2 top-6 z-10 w-56 -translate-x-1/2 rounded-lg bg-gray-900 px-3 py-2 text-xs font-normal text-white shadow-lg dark:bg-gray-700">
+                    The account where the expense amount will be deducted from.  Defaults to the Primary Banking Account.
+                  </span>
+                )}
+              </span>
             </div>
-          )}
+            {(() => {
+              const debitAccountValue = defaultAccountDesc || primaryAccountDesc
+              return (
+                <>
+                  <select
+                    id="add-expense-debit-account"
+                    required
+                    className="input"
+                    value={debitAccountValue}
+                    onChange={e => setDefaultAccountDesc(e.target.value === primaryAccountDesc ? '' : e.target.value)}
+                  >
+                    {activeAccounts.map(bt => (
+                      <option key={bt.balancedesc} value={bt.balancedesc}>{bt.balancedesc}</option>
+                    ))}
+                  </select>
+                  {activeAccounts.length === 0 && (
+                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">No active accounts available.</p>
+                  )}
+                </>
+              )
+            })()}
+          </div>
         </div>
       )}
       <div>

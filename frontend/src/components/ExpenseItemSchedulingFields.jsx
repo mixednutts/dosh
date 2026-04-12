@@ -74,6 +74,11 @@ export default function ExpenseItemSchedulingFields({
           />
         </div>
       </div>
+      {isAlways && (
+        <p className="text-xs text-dosh-600 dark:text-dosh-400 bg-dosh-50 dark:bg-dosh-900/20 rounded px-3 py-2">
+          ALWAYS will include this expense item in every budget cycle.  As it contains no schedule the Pay Type is defined as MANUAL.
+        </p>
+      )}
       <div className={`grid gap-2 ${isAlways ? 'grid-cols-1' : 'grid-cols-2'}`}>
         <div>
           <label className="label" htmlFor={`${formIdPrefix}-pay-type`}>Pay Type</label>
