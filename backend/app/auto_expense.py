@@ -179,6 +179,7 @@ def process_auto_expenses_for_period(finperiodid: int, db: Session, *, run_date:
                 note=f"Auto expense created for due date {due_day.date().isoformat()}",
                 entrydate=run_day,
                 dedupe_key=dedupe_key,
+                account_desc=item.default_account_desc,
             )
             if tx is None:
                 result.skipped_count += 1

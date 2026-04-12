@@ -74,13 +74,18 @@ def test_transfer_backed_income_transactions_preserve_transfer_ledger_behavior(c
     finperiodid = active_period["finperiodid"]
 
     transfer_create = client.post(
-        f"/api/periods/{finperiodid}/savings-transfer",
-        json={"budgetid": budget.budgetid, "balancedesc": "Rainy Day", "amount": "75.00"},
+        f"/api/periods/{finperiodid}/account-transfer",
+        json={
+            "budgetid": budget.budgetid,
+            "source_account": "Rainy Day",
+            "destination_account": "Main Account",
+            "amount": "75.00",
+        },
     )
     assert transfer_create.status_code == 201, transfer_create.text
 
     transfer_tx = client.post(
-        f"/api/periods/{finperiodid}/income/Transfer%20from%20Rainy%20Day/transactions/",
+        f"/api/periods/{finperiodid}/income/Transfer%3A%20Rainy%20Day%20to%20Main%20Account/transactions/",
         json={"amount": "75.00", "note": "Moved to cover bills"},
     )
     assert transfer_tx.status_code == 201, transfer_tx.text

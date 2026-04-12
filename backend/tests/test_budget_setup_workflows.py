@@ -217,7 +217,7 @@ def test_generation_succeeds_without_investment_lines_even_when_auto_surplus_is_
     assert len(payload["balances"]) == 1
 
 
-def test_single_account_scenario_rejects_savings_transfer_without_savings_account(client, db_session):
+def test_single_account_scenario_rejects_transfer_when_destination_missing(client, db_session):
     budget = create_budget(db_session)
     create_income_type(db_session, budgetid=budget.budgetid)
     create_expense_item(db_session, budgetid=budget.budgetid)
@@ -242,11 +242,16 @@ def test_single_account_scenario_rejects_savings_transfer_without_savings_accoun
     )[0]
 
     transfer_attempt = client.post(
-        f"/api/periods/{active_period['finperiodid']}/savings-transfer",
-        json={"budgetid": budget.budgetid, "balancedesc": "Main Account", "amount": "50.00"},
+        f"/api/periods/{active_period['finperiodid']}/account-transfer",
+        json={
+            "budgetid": budget.budgetid,
+            "source_account": "Main Account",
+            "destination_account": "Rainy Day",
+            "amount": "50.00",
+        },
     )
-    assert transfer_attempt.status_code == 422
-    assert "not a savings account" in transfer_attempt.json()["detail"].lower()
+    assert transfer_attempt.status_code == 404
+    assert "destination account not found" in transfer_attempt.json()["detail"].lower()
 
 
 def test_generation_requires_a_primary_account_when_expense_tracking_is_configured(client, db_session):
@@ -735,13 +740,18 @@ def test_mixed_accounts_scenario_routes_movements_to_linked_accounts(client, db_
     assert investment_tx.status_code == 201, investment_tx.text
 
     transfer_create = client.post(
-        f"/api/periods/{active_period['finperiodid']}/savings-transfer",
-        json={"budgetid": budget.budgetid, "balancedesc": "Rainy Day", "amount": "75.00"},
+        f"/api/periods/{active_period['finperiodid']}/account-transfer",
+        json={
+            "budgetid": budget.budgetid,
+            "source_account": "Rainy Day",
+            "destination_account": "Main Account",
+            "amount": "75.00",
+        },
     )
     assert transfer_create.status_code == 201, transfer_create.text
 
     transfer_actual = client.patch(
-        f"/api/periods/{active_period['finperiodid']}/income/Transfer%20from%20Rainy%20Day",
+        f"/api/periods/{active_period['finperiodid']}/income/Transfer%3A%20Rainy%20Day%20to%20Main%20Account",
         json={"actualamount": "75.00"},
     )
     assert transfer_actual.status_code == 200, transfer_actual.text

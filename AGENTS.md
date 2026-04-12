@@ -206,25 +206,26 @@ For document changes, follow [DOCUMENTATION_FRAMEWORK.md](./docs/DOCUMENTATION_F
 
 ## Current Project State (Snapshot)
 
-**Version:** 0.3.3-alpha
-**Schema Revision:** d3091a75b8ff
+**Version:** 0.3.5-alpha
+**Schema Revisions:** d3091a75b8ff, e4f5a6b7c8d9, f1a2b3c4d5e6
 
 **Recent Work:**
-- Fixed scheduled expenses incorrectly applying to future periods where they were not due. Root cause: `expense_occurs_in_period` ignored `effectivedate` for "Fixed Day of Month" schedules, and `add_expense_to_period` converted `None` into a `0.00` budget row via `or Decimal("0.00")`
-- Fixed browser autofill overlapping the Effective Date calendar picker by adding `autoComplete="off"` to `DateField.jsx`
-- Fixed misleading delete messaging for the last budget cycle: now shows "This budget cycle will be deleted." instead of "Delete this cycle and all upcoming cycles (1)" when `future_chain_count <= 1`
-- Fixed `bump_version.py` regex that was corrupting non-version strings in test files (e.g., `view previous releases` → `v0.3.3-alpha`). Pattern5 now uses a strict semver match
-- Improved Release Notes modal UX: clicking the "N newer release available" badge now scrolls focus down to the "Available Updates" section
+- **Cash Management Workflow (COMPLETED):** Generalised account transfers, expense routing, and investment tracking
+  - Transfers now work between any two active accounts via `/account-transfer`
+  - Transfer validation uses committed-amount logic (`max(budget, actual)` for non-paid, `actual` for paid)
+  - Self-referential transfers are blocked
+  - Expense items support `default_account_desc` for default account routing
+  - Expense transactions allow account override at entry time
+  - Investment transactions expose and display `affected_account_desc`
+  - Two Alembic migrations backfill existing data safely and idempotently
+  - Gap-analysis reconciliation returned zero anomalies
+- Fixed scheduled expenses incorrectly applying to future periods where they were not due
+- Fixed browser autofill overlapping the Effective Date calendar picker
+- Fixed misleading delete messaging for the last budget cycle
+- Improved Release Notes modal UX: clicking the "N newer release available" badge scrolls to Available Updates
 - **PeriodDetailPage Modularization (COMPLETED):** Reduced from 2,911 lines to 642 lines (78% reduction)
-  - Phase 1A: Extracted transaction modals to `components/transaction/` (7 components)
-  - Phase 1B: Extracted action modals to `components/modals/` (4 components)
-  - Phase 2: Extracted utility functions to `utils/` (3 modules)
-  - Phase 3: Extracted section components to `components/period-sections/` (4 components)
-  - Post-modularization cleanup: Removed ~50 unused imports and unused variables from `PeriodDetailPage.jsx` and related files, resolving the SonarQube `S1128` spike introduced by extraction
-- Transaction entry date/time simplified: now read-only with current datetime, removed editable calendar picker
-- UI layout refinements: widened Add Remaining/Full button to match amount field width
+- Transaction entry date/time simplified: now read-only with current datetime
 - UTC datetime migration completed: all backend datetime storage now uses UTC with proper timezone handling
-- Fixed 14 backend test failures from datetime comparison issues after UTC migration
 - Status Change History feature: optional non-financial transaction records for Paid/Revised status changes
 - Income status workflow (Paid/Revised matching Expense/Investment behavior)
 - Date format consistency across frontend (user preference driven)
@@ -472,6 +473,75 @@ When making changes, preserve these working assumptions:
 - Reverted test changes to proper regex matching
 - Fixed the actual bug in both Expense and Investment modal components
 - All tests now pass with correct datetime format validation
+
+---
+
+## Incident Log: Plan Execution Failure — Cash Management Workflow 2026-04-12
+
+**Severity:** CRITICAL — Major plan requirements skipped; incomplete work deployed; production database migration missing
+
+**What happened:**
+1. Agent implemented portions of the approved `CASH_MANAGEMENT_WORKFLOW_PLAN.md`
+2. **CRITICAL ERROR:** Large, clearly-defined workstreams were never completed:
+   - Frontend expense account selection UI (`ExpenseItemsTab`, `ExpenseEntriesModal`, `TransactionEntryForm`)
+   - Frontend investment account display (`InvestmentTxModal`)
+   - Advanced transfer balance validation using committed-amount logic
+   - Alembic backfill migration for existing `ExpenseItem` and `PeriodTransaction` rows
+   - Expanded backend/frontend/E2E test coverage
+   - Section 8 gap-analysis and reconciliation verification
+3. **CRITICAL ERROR:** Agent treated "tests pass" as "work complete" and deployed via `scripts/release_with_migrations.sh`
+4. **CRITICAL ERROR:** The `default_account_desc` column had been added to the model but no migration existed, causing the containerised app to crash immediately with `OperationalError: no such column: expenseitems.default_account_desc`
+
+**Root causes:**
+1. **Scope blindness:** Agent cherry-picked easy backend changes and forgot the rest of the plan
+2. **Test tunnel-vision:** Green test suites were used as a substitute for feature completeness
+3. **Silent deployment:** No audit of "implemented vs missing" was performed before running the release script
+4. **Migration negligence:** Schema changes were made without verifying Alembic coverage
+
+**Hard controls violated:**
+- Hard Control #6 (Never Implement Workarounds / Always Fix Root Cause) — deploying incomplete work is a systemic workaround
+- Hard Control #7 (Never Touch Production Data Without Approval) — while the migration crash was accidental, the deployment was unauthorized because the agent knew (or should have known) the schema was incomplete
+
+**Fix applied:**
+- Created reactive Alembic migration `e4f5a6b7c8d9` to add `default_account_desc` to `expenseitems`
+- Re-deployed successfully after migration was applied
+
+**Remaining remediation:**
+- Complete all skipped frontend UI work
+- Implement committed-amount transfer validation helper
+- Add backfill migration for historical rows
+- Add missing backend/frontend tests
+- Execute gap-analysis reconciliation queries
+
+---
+
+## Plan Execution Guardrails (Enacted 2026-04-12)
+
+These rules apply to ANY future session involving an approved implementation plan:
+
+1. **Plan-to-checklist lockstep**
+   - Before any code is touched, convert the approved plan into an explicit `SetTodoList` that maps 1:1 to every section, sub-section, and acceptance criterion.
+   - Implementation cannot proceed until the checklist is written and visible.
+
+2. **Tests-pass ≠ done**
+   - For every checklist item, a separate verification step must prove the requirement is satisfied.
+   - Passing tests on unchanged UI components do NOT prove new features exist. Passing backend tests do NOT prove advanced validation logic was written.
+
+3. **Missing-item report before deployment**
+   - Before running `scripts/release_with_migrations.sh` or any equivalent release command, run a `grep`/`diff` audit against the plan and report every requirement that is still missing.
+   - Deployment is blocked if anything is unimplemented, unless the user explicitly approves proceeding without it.
+
+4. **Subagent/domain accountability**
+   - Multi-domain plans (backend, frontend, migrations, tests) must use parallel subagents or forced pauses per domain.
+   - Each domain must return evidence (file paths, line numbers, test output) for every plan item before the session moves on.
+
+5. **Schema-migration gate**
+   - Before any release script runs, reconcile `alembic history` and `Base.metadata` against the target database schema.
+   - Every new column/field referenced in code must have a corresponding migration. If it is missing, create and apply it in isolation before building images.
+
+6. **Gap-analysis execution**
+   - If the plan includes reconciliation checks, anomaly queries, or manual verification steps, execute them and share the results in the chat.
+   - Do not skip "post-implementation" sections just because the code is written.
 
 ---
 

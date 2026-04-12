@@ -74,6 +74,10 @@ Recent progress worth carrying forward:
 - the frontend Docker image now uses Node 20 and the frontend dependency tree is currently clean on `npm audit`
 - a dev-only `Create Demo Budget` flow now exists from the budget-create modal and is controlled through shared Docker Compose `DEV_MODE` gating across frontend and backend
 - the seeded demo budget now includes historical close-outs, a live current cycle, upcoming cycles, linked savings and investment setup, and budget-health-relevant activity rather than neutral placeholder transactions
+- account transfers are now generalised: any active account can be a transfer source or destination, with committed-amount balance validation and self-referential transfer blocking
+- expense items now support a `default_account_desc` for routing, with transaction-level account override and fallback to the primary account
+- investment transactions now expose and display their linked cash account (`affected_account_desc`)
+- two Alembic migrations backfill existing expense defaults and transaction account data safely and idempotently
 
 ## Activity Model
 
@@ -534,9 +538,11 @@ Dosh tracks balances and transactions already, but the product still needs an ex
 
 Status:
 
-- `Next`
+- `Completed`
 
-- define how cash position should be reviewed during an active period
+- `Completed`: generalise the savings-transfer endpoint to `account-transfer`, allowing any active account as source or destination
+- `Completed`: add committed-amount transfer validation using `max(budget, actual)` for non-paid lines and `actual` for paid lines
+- `Completed`: block self-referential transfers at the API level
 - define what Dosh means by available cash, committed cash, and reserved cash
 - clarify the relationship between account balances, planned spending, savings transfers, and investment allocations
 
@@ -544,8 +550,11 @@ Status:
 
 Status:
 
-- `Next`
+- `Completed`
 
+- `Completed`: add `default_account_desc` to `ExpenseItem` so setup can define which account an expense debits by default
+- `Completed`: add transaction-level `account_desc` override for expense entries so users can route individual transactions to the correct account
+- `Completed`: expose `affected_account_desc` on investment transactions so users can see which cash account was debited
 - define a cash management summary model for current-period use
 - add views for available cash, committed outflows, and near-term obligations
 - design the first cash management review surface before adding more balance-related UI fragments
@@ -554,7 +563,7 @@ Status:
 
 Status:
 
-- `Later`
+- `Active`
 
 - make it easier to see which money is free to use versus already spoken for
 - identify the practical actions a user should take when cash pressure appears
@@ -688,6 +697,7 @@ Status:
 - `Completed`: fix misleading delete messaging for the last budget cycle so trailing cycles show "This budget cycle will be deleted." instead of "Delete this cycle and all upcoming cycles (1)"
 - `Completed`: hide Setup Assessment messaging on the Budget Setup page once any budget cycle exists for the budget
 - `Completed`: fix newly added active accounts not appearing in existing budget cycle details by backfilling `PeriodBalance` rows for current and future periods when an active account is created (closed and pending-closure periods are intentionally skipped)
+- `Completed`: fix transfer income line prefix so new transfers use `Transfer: {source} to {destination}` and legacy `Transfer from ` descriptions continue to parse correctly for backward compatibility
 
 #### Activity Group: Enhancements
 
@@ -725,6 +735,8 @@ Status:
 - extend backend and frontend coverage around close-out, carry-forward, and delete continuity
 - `Completed`: add dedicated migration coverage for clean Alembic upgrade and upgrade from a pre-feature SQLite snapshot, alongside focused Auto Expense backend and period-detail frontend regression coverage
 - `Completed`: add localisation regression coverage for budget preference validation, `Intl`-based formatting across representative locales, masked amount input, calculator behavior, and touched high-traffic surfaces
+- `Completed`: add backend regression coverage for generalised account-transfer validation, including committed-amount logic for paid and non-paid lines (`test_account_transfer_validation.py`)
+- `Completed`: add backend regression coverage for expense entry account routing, including default-account fallback and transaction-level override (`test_expense_entry_account_routing.py`)
 - future setup and workflow testing should expand beyond the original `1 transaction + 1 savings` assumption
 - bookmark named scenarios such as `Single Account` and `Multi Transaction` so future sessions can deliberately test differing account shapes rather than relying on one default personal setup model
 - consider adding a richer demo-validation checklist or smoke flow once more reporting and reconciliation surfaces exist

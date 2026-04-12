@@ -375,6 +375,7 @@ class ExpenseItemBase(BaseModel):
     effectivedate: Optional[datetime] = None
     expenseamount: Decimal = Decimal("0.00")
     sort_order: int = 0
+    default_account_desc: Optional[str] = None
 
     @field_validator("freqtype")
     @classmethod
@@ -403,12 +404,14 @@ class ExpenseItemUpdate(BaseModel):
     effectivedate: Optional[datetime] = None
     expenseamount: Optional[Decimal] = None
     sort_order: Optional[int] = None
+    default_account_desc: Optional[str] = None
     bump_revision: bool = False
 
 
 class ExpenseItemOut(ExpenseItemBase):
     budgetid: int
     revisionnum: int
+    default_account_desc: Optional[str] = None
     model_config = {"from_attributes": True}
 
 
@@ -635,9 +638,10 @@ class AddIncomeToPeriodRequest(BaseModel):
         return v
 
 
-class SavingsTransferRequest(BaseModel):
+class AccountTransferRequest(BaseModel):
     budgetid: int
-    balancedesc: str
+    source_account: str
+    destination_account: str
     amount: Decimal
 
 
@@ -754,6 +758,7 @@ class InvestmentTxOut(BaseModel):
     budget_before_amount: Optional[Decimal] = None
     budget_after_amount: Optional[Decimal] = None
     revisionnum: Optional[int] = None
+    affected_account_desc: Optional[str] = None
     model_config = {"from_attributes": True}
 
 
@@ -821,6 +826,7 @@ class ExpenseEntryCreate(BaseModel):
     amount: Decimal
     note: Optional[str] = None
     entrydate: Optional[datetime] = None
+    account_desc: Optional[str] = None
 
 
 class ExpenseEntryOut(BaseModel):
@@ -838,6 +844,7 @@ class ExpenseEntryOut(BaseModel):
     budget_before_amount: Optional[Decimal] = None
     budget_after_amount: Optional[Decimal] = None
     revisionnum: Optional[int] = None
+    affected_account_desc: Optional[str] = None
     model_config = {"from_attributes": True}
 
 

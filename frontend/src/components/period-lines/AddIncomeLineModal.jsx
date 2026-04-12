@@ -1,14 +1,16 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import PropTypes from 'prop-types'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getIncomeTypes, getBalanceTypes, createIncomeType, addIncomeToPeriod, savingsTransfer } from '../../api/client'
+import { getIncomeTypes, getBalanceTypes, createIncomeType, addIncomeToPeriod, accountTransfer } from '../../api/client'
 import AmountExpressionInput from '../AmountExpressionInput'
 import { getResolvedAmountValue } from '../../utils/transactionHelpers'
 
 export function AddIncomeLineModal({ periodId, budgetId, existingDescs, onClose }) {
   const qc = useQueryClient()
-  const [mode, setMode] = useState('existing') // 'existing' | 'new' | 'savings'
+  const [mode, setMode] = useState('existing') // 'existing' | 'new' | 'transfer'
   const [selected, setSelected] = useState('')
+  const [sourceAccount, setSourceAccount] = useState('')
+  const [destinationAccount, setDestinationAccount] = useState('')
   const [amount, setAmount] = useState('')
   const [resolvedAmount, setResolvedAmount] = useState({ value: null, state: 'empty' })
   const [scope, setScope] = useState('oneoff')
@@ -26,18 +28,19 @@ export function AddIncomeLineModal({ periodId, budgetId, existingDescs, onClose 
   const { data: balanceTypes = [] } = useQuery({
     queryKey: ['balance-types', budgetId],
     queryFn: () => getBalanceTypes(budgetId),
-    enabled: mode === 'new' || mode === 'savings',
+    enabled: mode === 'new' || mode === 'transfer',
   })
 
   const available = incomeTypes.filter(i => !existingDescs.includes(i.incomedesc))
 
-  // Savings accounts not yet transferred in this period
-  const savingsAccounts = balanceTypes.filter(bt =>
-    bt.balance_type === 'Savings' &&
-    !existingDescs.includes(`Transfer from ${bt.balancedesc}`)
-  )
+  const primaryAccount = balanceTypes.find(bt => bt.is_primary)
+  const activeAccounts = balanceTypes.filter(bt => bt.active !== false)
 
-  const currentList = mode === 'savings' ? savingsAccounts : available
+  useEffect(() => {
+    if (mode === 'transfer' && primaryAccount && !destinationAccount) {
+      setDestinationAccount(primaryAccount.balancedesc)
+    }
+  }, [mode, primaryAccount, destinationAccount])
 
   const createItem = useMutation({ mutationFn: data => createIncomeType(budgetId, data) })
 
@@ -52,7 +55,7 @@ export function AddIncomeLineModal({ periodId, budgetId, existingDescs, onClose 
   })
 
   const addTransfer = useMutation({
-    mutationFn: data => savingsTransfer(periodId, data),
+    mutationFn: data => accountTransfer(periodId, data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['period', periodId] }); onClose() },
     onError: err => setError(err.response?.data?.detail ?? 'Failed to record transfer'),
   })
@@ -62,11 +65,18 @@ export function AddIncomeLineModal({ periodId, budgetId, existingDescs, onClose 
   const handleSubmit = async e => {
     e.preventDefault(); setError('')
     try {
-      if (mode === 'savings') {
+      if (mode === 'transfer') {
         const resolvedValue = getResolvedAmountValue(resolvedAmount, 0)
         if (resolvedValue == null) { setError('Enter a valid budget amount'); return }
-        if (!selected) { setError('Select a savings account'); return }
-        addTransfer.mutate({ budgetid: budgetId, balancedesc: selected, amount: resolvedValue })
+        if (!sourceAccount) { setError('Select a source account'); return }
+        if (!destinationAccount) { setError('Select a destination account'); return }
+        if (sourceAccount === destinationAccount) { setError('Source and destination cannot be the same'); return }
+        addTransfer.mutate({
+          budgetid: budgetId,
+          source_account: sourceAccount,
+          destination_account: destinationAccount,
+          amount: resolvedValue,
+        })
         return
       }
 
@@ -94,11 +104,18 @@ export function AddIncomeLineModal({ periodId, budgetId, existingDescs, onClose 
     }
   }
 
+  const transferExists = (source, dest) =>
+    existingDescs.includes(`Transfer: ${source} to ${dest}`)
+
+  const canAddTransfer = activeAccounts.length >= 2 && activeAccounts.some(
+    src => activeAccounts.some(dest => src.balancedesc !== dest.balancedesc && !transferExists(src.balancedesc, dest.balancedesc))
+  )
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="flex rounded-md border border-gray-200 dark:border-gray-700 overflow-hidden text-sm">
-        {[['existing', 'Existing income'], ['new', 'New income'], ['savings', 'Transfer from Savings']].map(([val, label]) => (
-          <button key={val} type="button" onClick={() => { setMode(val); setSelected(''); setAmount(''); setError('') }}
+        {[['existing', 'Existing income'], ['new', 'New income'], ['transfer', 'Transfer from Account']].map(([val, label]) => (
+          <button key={val} type="button" onClick={() => { setMode(val); setSelected(''); setSourceAccount(''); setDestinationAccount(''); setAmount(''); setError('') }}
             className={`flex-1 py-1.5 font-medium transition-colors ${mode === val ? 'bg-dosh-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400'}`}>
             {label}
           </button>
@@ -129,24 +146,61 @@ export function AddIncomeLineModal({ periodId, budgetId, existingDescs, onClose 
             </label>
           </div>
         </div>
+      ) : mode === 'transfer' ? (
+        <div className="space-y-3">
+          {activeAccounts.length < 2 ? (
+            <p className="text-sm text-gray-500 italic">At least two active accounts are required to record a transfer.</p>
+          ) : !canAddTransfer ? (
+            <p className="text-sm text-gray-500 italic">All possible account transfers already exist in this budget cycle.</p>
+          ) : (
+            <>
+              <div>
+                <label className="label" htmlFor="add-transfer-source">From Account</label>
+                <select
+                  id="add-transfer-source"
+                  required
+                  className="input"
+                  value={sourceAccount}
+                  onChange={e => setSourceAccount(e.target.value)}
+                >
+                  <option value="">— select —</option>
+                  {activeAccounts.map(bt => (
+                    <option key={bt.balancedesc} value={bt.balancedesc}>{bt.balancedesc}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="label" htmlFor="add-transfer-destination">To Account</label>
+                <select
+                  id="add-transfer-destination"
+                  required
+                  className="input"
+                  value={destinationAccount}
+                  onChange={e => setDestinationAccount(e.target.value)}
+                >
+                  <option value="">— select —</option>
+                  {activeAccounts
+                    .filter(bt => bt.balancedesc !== sourceAccount && !transferExists(sourceAccount, bt.balancedesc))
+                    .map(bt => (
+                      <option key={bt.balancedesc} value={bt.balancedesc}>{bt.balancedesc}</option>
+                    ))}
+                </select>
+              </div>
+            </>
+          )}
+        </div>
       ) : (
         <div>
-          <label className="label" htmlFor="add-income-existing-select">{mode === 'savings' ? 'Savings Account' : 'Income Source'}</label>
-          {currentList.length === 0
-            ? <p className="text-sm text-gray-500 italic">
-                {mode === 'savings' ? 'No savings accounts available. Add a Savings account in budget settings.' : 'All income sources already in this budget cycle. Use "New income".'}
-              </p>
+          <label className="label" htmlFor="add-income-existing-select">Income Source</label>
+          {available.length === 0
+            ? <p className="text-sm text-gray-500 italic">All income sources already in this budget cycle. Use "New income".</p>
             : <select id="add-income-existing-select" required className="input" value={selected} onChange={e => {
                 setSelected(e.target.value)
-                if (mode !== 'savings') {
-                  const it = incomeTypes.find(i => i.incomedesc === e.target.value)
-                  if (it) setAmount(String(it.amount))
-                }
+                const it = incomeTypes.find(i => i.incomedesc === e.target.value)
+                if (it) setAmount(String(it.amount))
               }}>
                 <option value="">— select —</option>
-                {mode === 'savings'
-                  ? currentList.map(bt => <option key={bt.balancedesc} value={bt.balancedesc}>{bt.balancedesc}</option>)
-                  : currentList.map(i => <option key={i.incomedesc} value={i.incomedesc}>{i.incomedesc}</option>)}
+                {available.map(i => <option key={i.incomedesc} value={i.incomedesc}>{i.incomedesc}</option>)}
               </select>}
         </div>
       )}
@@ -164,13 +218,13 @@ export function AddIncomeLineModal({ periodId, budgetId, existingDescs, onClose 
           className="input w-full"
         />
       </div>
-      {mode !== 'savings' && (
+      {mode !== 'transfer' && (
         <div>
           <label className="label" htmlFor="add-income-note">Comment / Note</label>
           <textarea id="add-income-note" className="input w-full resize-none" rows={3} value={note} onChange={e => setNote(e.target.value)} placeholder="Why are you adding this line?" />
         </div>
       )}
-      {mode !== 'savings' && (
+      {mode !== 'transfer' && (
         <div>
           <p className="label">Include in</p>
           <div className="space-y-1.5 mt-1">
@@ -186,7 +240,13 @@ export function AddIncomeLineModal({ periodId, budgetId, existingDescs, onClose 
       {error && <p className="text-sm text-red-600">{error}</p>}
       <div className="flex justify-end gap-2">
         <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
-        <button type="submit" className="btn-primary" disabled={isPending || (mode !== 'new' && currentList.length === 0)}>{isPending ? 'Adding…' : 'Add'}</button>
+        <button
+          type="submit"
+          className="btn-primary"
+          disabled={isPending || (mode === 'existing' && available.length === 0) || (mode === 'transfer' && (activeAccounts.length < 2 || !canAddTransfer))}
+        >
+          {isPending ? 'Adding…' : 'Add'}
+        </button>
       </div>
     </form>
   )

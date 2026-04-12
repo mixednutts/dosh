@@ -305,6 +305,39 @@ Maintenance notes:
 
 - should remain focused on health design direction rather than become a duplicate implementation log
 
+### CASH_MANAGEMENT_WORKFLOW_PLAN.md
+
+Document:
+
+- [CASH_MANAGEMENT_WORKFLOW_PLAN.md](/home/ubuntu/dosh/docs/plans/CASH_MANAGEMENT_WORKFLOW_PLAN.md)
+
+Document type:
+
+- domain or workflow plan
+
+Primary purpose:
+
+- define cash management workflow rules for generalised transfers, expense routing, investment tracking, and balance validation
+
+Primary source-of-truth scope:
+
+- account transfer generalisation rules
+- committed-amount validation logic
+- expense default account and transaction override behavior
+- investment transaction account tracking rules
+- migration backfill expectations for cash-management schema changes
+
+Key relationships:
+
+- informs `Cash Management` roadmap items in [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md)
+- referenced by [CHANGES.md](/home/ubuntu/dosh/docs/CHANGES.md) and [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) for test coverage expectations
+- complements [SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md](/home/ubuntu/dosh/docs/plans/SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md) for multi-account setup safety
+
+Maintenance notes:
+
+- should be updated when transfer, expense routing, or investment tracking behavior changes materially
+- should remain the canonical design reference for cash-management workflow decisions
+
 ### INCOME_TRANSACTIONS_UNIFICATION_AND_LEGACY_LEDGER_CLEANUP_PLAN.md
 
 Document:

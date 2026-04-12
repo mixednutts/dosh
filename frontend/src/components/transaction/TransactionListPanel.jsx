@@ -25,6 +25,7 @@ function getTransactionListContent({ isLoading, items, emptyLabel, maxHeightClas
                 {getPrimaryText(item, amount)}
               </p>
               {item.note && <p className="truncate text-xs text-gray-500 dark:text-gray-400">{item.note}</p>}
+              {item.affected_account_desc && <p className="truncate text-xs text-gray-500 dark:text-gray-400">{item.affected_account_desc}</p>}
               <p className="text-xs text-gray-400">{formatters.fmtDateTime(item.entrydate, 'medium')}</p>
             </div>
             {!locked && item.entry_kind !== 'budget_adjustment' && item.entry_kind !== 'status_change' && (

@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException
 from sqlalchemy.orm import Session
 from ..api_docs import DbSession, error_responses
 from ..cycle_constants import CLOSED, PAID
-from ..models import FinancialPeriod, PeriodExpense, PeriodTransaction
+from ..models import FinancialPeriod, PeriodExpense, PeriodTransaction, ExpenseItem, BalanceType
 from ..schemas import ExpenseEntryCreate, ExpenseEntryOut
 from ..transaction_ledger import build_expense_tx, get_primary_account_desc, sync_period_state
 
@@ -28,6 +28,7 @@ def _to_expense_entry_out(tx: PeriodTransaction) -> ExpenseEntryOut:
         budget_before_amount=getattr(tx, "budget_before_amount", None),
         budget_after_amount=getattr(tx, "budget_after_amount", None),
         revisionnum=getattr(tx, "revisionnum", None),
+        affected_account_desc=getattr(tx, "affected_account_desc", None),
     )
 
 
@@ -84,6 +85,19 @@ def add_entry(
     if not get_primary_account_desc(pe.budgetid, db):
         raise HTTPException(422, "Set one account as the primary account before recording expense activity.")
 
+    account_desc = None
+    if payload.account_desc:
+        bt = db.get(BalanceType, (pe.budgetid, payload.account_desc))
+        if not bt:
+            raise HTTPException(404, "Account not found")
+        if not bt.active:
+            raise HTTPException(422, "Account is not active")
+        account_desc = payload.account_desc
+    else:
+        expense_item = db.get(ExpenseItem, (pe.budgetid, expensedesc))
+        if expense_item and expense_item.default_account_desc:
+            account_desc = expense_item.default_account_desc
+
     entry = build_expense_tx(
         finperiodid,
         pe.budgetid,
@@ -92,6 +106,7 @@ def add_entry(
         db,
         note=payload.note,
         entrydate=payload.entrydate,
+        account_desc=account_desc,
     )
     sync_period_state(finperiodid, db)
     db.commit()

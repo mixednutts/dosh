@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import PropTypes from 'prop-types'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getExpenseEntries, addExpenseEntry, deleteExpenseEntry } from '../../api/client'
+import { getExpenseEntries, addExpenseEntry, deleteExpenseEntry, getBalanceTypes, getExpenseItems } from '../../api/client'
 import { useFormatters } from '../useFormatters'
 import { TransactionWorkflowModal } from './TransactionWorkflowModal'
 import { getTransactionModalConfig, buildTransactionSubmitHandler } from '../../utils/transactionHelpers'
@@ -16,6 +16,7 @@ export function ExpenseEntriesModal({ periodId, budgetId, expensedesc, budgetamo
   const [entrydate, setEntrydate] = useState('')
   const [type, setType] = useState(defaultType)
   const [error, setError] = useState('')
+  const [selectedAccount, setSelectedAccount] = useState('')
 
   useEffect(() => {
     setEntrydate(formatters.fmtDateTime(new Date()))
@@ -25,6 +26,26 @@ export function ExpenseEntriesModal({ periodId, budgetId, expensedesc, budgetamo
     queryKey: ['expense-entries', periodId, expensedesc],
     queryFn: () => getExpenseEntries(periodId, expensedesc),
   })
+
+  const { data: balanceTypes = [] } = useQuery({
+    queryKey: ['balance-types', budgetId],
+    queryFn: () => getBalanceTypes(budgetId),
+  })
+
+  const { data: expenseItems = [] } = useQuery({
+    queryKey: ['expense-items', budgetId],
+    queryFn: () => getExpenseItems(budgetId),
+  })
+
+  const primaryAccount = balanceTypes.find(bt => bt.is_primary)
+  const expenseItem = expenseItems.find(e => e.expensedesc === expensedesc)
+  const defaultAccount = expenseItem?.default_account_desc || primaryAccount?.balancedesc || ''
+
+  useEffect(() => {
+    if (defaultAccount && !selectedAccount) {
+      setSelectedAccount(defaultAccount)
+    }
+  }, [defaultAccount, selectedAccount])
 
   const add = useMutation({
     mutationFn: data => addExpenseEntry(periodId, expensedesc, data),
@@ -55,6 +76,7 @@ export function ExpenseEntriesModal({ periodId, budgetId, expensedesc, budgetamo
     type,
     note,
     toMutationAmount: config.toMutationAmount,
+    extraPayload: { account_desc: selectedAccount || null },
   })
 
   const runningTotal = entries.filter(entry => entry.entry_kind !== 'budget_adjustment').reduce((s, e) => s + Number(e.amount), 0)
@@ -83,6 +105,9 @@ export function ExpenseEntriesModal({ periodId, budgetId, expensedesc, budgetamo
       onDelete={entryId => remove.mutate(entryId)}
       onClose={onClose}
       totalValue={runningTotal}
+      accounts={balanceTypes.filter(bt => bt.active !== false)}
+      selectedAccount={selectedAccount}
+      setSelectedAccount={setSelectedAccount}
     />
   )
 }

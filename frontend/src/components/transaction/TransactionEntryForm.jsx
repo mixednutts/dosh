@@ -23,6 +23,9 @@ export function TransactionEntryForm({
   isPending,
   onClose,
   actualAmount,
+  accounts = null,
+  selectedAccount = '',
+  setSelectedAccount = () => {},
 }) {
   const formatters = useFormatters()
   if (locked) {
@@ -84,6 +87,23 @@ export function TransactionEntryForm({
           </button>
         ))}
       </div>
+      {kind === 'expense' && accounts && accounts.length > 0 && (
+        <div>
+          <label htmlFor="transaction-account-expense" className="label">Account</label>
+          <select
+            id="transaction-account-expense"
+            required
+            disabled={locked}
+            className="input"
+            value={selectedAccount}
+            onChange={e => setSelectedAccount(e.target.value)}
+          >
+            {accounts.map(acc => (
+              <option key={acc.balancedesc} value={acc.balancedesc}>{acc.balancedesc}</option>
+            ))}
+          </select>
+        </div>
+      )}
       {/* Grid layout: Amount | [Quick Fill] | Note/Date */}
       <div className={`grid gap-2 ${showQuickFill ? 'grid-cols-[0.5fr_0.5fr_1fr]' : 'grid-cols-[0.7fr_1.3fr]'}`}>
         {/* Column 1: Amount - spans full height (Note + Date stacked) */}
@@ -170,4 +190,9 @@ TransactionEntryForm.propTypes = {
   isPending: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
   actualAmount: PropTypes.oneOfType([PropTypes.number, PropTypes.string]).isRequired,
+  accounts: PropTypes.arrayOf(PropTypes.shape({
+    balancedesc: PropTypes.string.isRequired,
+  })),
+  selectedAccount: PropTypes.string,
+  setSelectedAccount: PropTypes.func,
 }

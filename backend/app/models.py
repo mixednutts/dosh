@@ -133,6 +133,7 @@ class ExpenseItem(Base):
     effectivedate = Column(UTCDateTime)
     expenseamount = Column(Numeric(10, 2), default=0)
     sort_order = Column(Integer, default=0, nullable=False)
+    default_account_desc = Column(String, nullable=True)
 
     budget = relationship("Budget", back_populates="expense_items")
     period_expenses = relationship("PeriodExpense", back_populates="expense_item")

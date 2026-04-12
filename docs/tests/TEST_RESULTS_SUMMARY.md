@@ -4,6 +4,55 @@ This document records meaningful automated test results from major working sessi
 
 It exists separately from [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) so the strategy can stay stable while future sessions still have a record of what was actually run and verified.
 
+## Latest Session: Cash Management Workflow — Generalised Transfers, Expense Routing, And Investment Tracking
+
+This session implemented the cash management workflow defined in [CASH_MANAGEMENT_WORKFLOW_PLAN.md](/home/ubuntu/dosh/docs/plans/CASH_MANAGEMENT_WORKFLOW_PLAN.md), including generalised account transfers, expense default account routing, and investment account tracking.
+
+### Verification
+
+```bash
+cd /home/ubuntu/dosh/backend
+.venv/bin/pytest tests/ -q
+```
+
+Result:
+
+- Full backend suite: **136 passed** (was 125; +11 new tests across `test_account_transfer_validation.py` and `test_expense_entry_account_routing.py`)
+- No regressions introduced
+
+```bash
+cd /home/ubuntu/dosh/frontend
+npm test
+```
+
+Result:
+
+- Full frontend suite: **168 passed** (was 167; +1 new test), 16 test suites
+- No regressions introduced
+
+### Deployment Verification
+
+```bash
+cd /home/ubuntu/dosh
+INCLUDE_OVERRIDE=true bash scripts/release_with_migrations.sh
+curl -sS http://127.0.0.1:3080/api/health
+```
+
+Result:
+
+- Backend container rebuilt and restarted successfully
+- Frontend container rebuilt and restarted successfully
+- Health endpoint returned `{"status":"ok","app":"Dosh"}`
+- Version endpoint returned `0.3.5-alpha`
+
+### Migration Verification
+
+- Alembic revision `e4f5a6b7c8d9` applied successfully (adds `default_account_desc` to `expenseitems`)
+- Alembic revision `f1a2b3c4d5e6` applied successfully (backfills `ExpenseItem` defaults and `PeriodTransaction` account data)
+- Gap-analysis reconciliation script run inside Docker container returned zero anomalies
+
+---
+
 ## Latest Session: Budget Setup Assessment Visibility And New Account Period Balance Backfill
 
 This session verified fixes for two issues: hiding the Setup Assessment card once budget cycles exist, and ensuring newly created active accounts appear in existing cycle Account Balances.

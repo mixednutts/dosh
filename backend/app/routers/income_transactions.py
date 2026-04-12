@@ -17,7 +17,7 @@ router = APIRouter(
 
 
 def _transaction_source(incomedesc: str) -> str:
-    return "transfer" if incomedesc.startswith(TRANSFER_PREFIX) else "income"
+    return "transfer" if incomedesc.startswith((TRANSFER_PREFIX, "Transfer: ")) else "income"
 
 
 def _to_income_tx_out(tx: PeriodTransaction) -> IncomeTxOut:

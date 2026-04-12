@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import PropTypes from 'prop-types'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getExpenseItems, createExpenseItem, addExpenseToPeriod } from '../../api/client'
+import { getExpenseItems, createExpenseItem, addExpenseToPeriod, getBalanceTypes, getBudget } from '../../api/client'
 import AmountExpressionInput from '../AmountExpressionInput'
 import ExpenseItemSchedulingFields from '../ExpenseItemSchedulingFields'
 import { getResolvedAmountValue } from '../../utils/transactionHelpers'
@@ -20,10 +20,24 @@ export function AddExpenseLineModal({ periodId, budgetId, existingDescs, onClose
   const [newFreqVal, setNewFreqVal] = useState('')
   const [newPaytype, setNewPaytype] = useState('AUTO')
   const [newEffDate, setNewEffDate] = useState('')
+  const [usePrimaryAccount, setUsePrimaryAccount] = useState(true)
+  const [defaultAccountDesc, setDefaultAccountDesc] = useState('')
 
   const { data: expenseItems = [] } = useQuery({
     queryKey: ['expense-items', budgetId],
     queryFn: () => getExpenseItems(budgetId),
+  })
+
+  const { data: balanceTypes = [] } = useQuery({
+    queryKey: ['balance-types', budgetId],
+    queryFn: () => getBalanceTypes(budgetId),
+    enabled: mode === 'new',
+  })
+
+  const { data: budget } = useQuery({
+    queryKey: ['budget', budgetId],
+    queryFn: () => getBudget(budgetId),
+    enabled: mode === 'new',
   })
 
   const available = expenseItems.filter(e => !existingDescs.includes(e.expensedesc))
@@ -50,6 +64,7 @@ export function AddExpenseLineModal({ periodId, budgetId, existingDescs, onClose
           paytype: newFreqtype === 'Always' ? 'MANUAL' : (newPaytype || 'MANUAL'),
           effectivedate: newFreqtype === 'Always' ? null : (newEffDate || null),
           expenseamount: resolvedValue,
+          default_account_desc: usePrimaryAccount ? null : (defaultAccountDesc || null),
         })
         addToperiod.mutate({ budgetid: budgetId, expensedesc: newDesc.trim(), budgetamount: resolvedValue, scope, note: note || null })
       } else {
@@ -80,19 +95,54 @@ export function AddExpenseLineModal({ periodId, budgetId, existingDescs, onClose
               </select>}
         </div>
       ) : (
-        <ExpenseItemSchedulingFields
-          formIdPrefix="add-expense"
-          description={newDesc}
-          onDescriptionChange={setNewDesc}
-          freqtype={newFreqtype}
-          onFreqtypeChange={setNewFreqtype}
-          frequencyValue={newFreqVal}
-          onFrequencyValueChange={setNewFreqVal}
-          paytype={newPaytype}
-          onPaytypeChange={setNewPaytype}
-          effectivedate={newEffDate}
-          onEffectivedateChange={setNewEffDate}
-        />
+        <div className="space-y-4">
+          <ExpenseItemSchedulingFields
+            formIdPrefix="add-expense"
+            description={newDesc}
+            onDescriptionChange={setNewDesc}
+            freqtype={newFreqtype}
+            onFreqtypeChange={setNewFreqtype}
+            frequencyValue={newFreqVal}
+            onFrequencyValueChange={setNewFreqVal}
+            paytype={newPaytype}
+            onPaytypeChange={setNewPaytype}
+            effectivedate={newEffDate}
+            onEffectivedateChange={setNewEffDate}
+          />
+          <label htmlFor="add-expense-primary-account" className="flex items-start gap-3 text-sm cursor-pointer">
+            <input
+              id="add-expense-primary-account"
+              type="checkbox"
+              checked={usePrimaryAccount}
+              onChange={e => setUsePrimaryAccount(e.target.checked)}
+              className="mt-0.5 rounded border-gray-300 dark:border-gray-600 text-dosh-600 focus:ring-dosh-500"
+            />
+            <span className="font-medium text-gray-800 dark:text-gray-100">
+              {budget?.account_naming_preference === 'Everyday' ? 'Use Primary Everyday Account' :
+               budget?.account_naming_preference === 'Checking' ? 'Use Primary Checking Account' :
+               'Use Primary Transaction Account'}
+            </span>
+          </label>
+          {!usePrimaryAccount && (
+            <div>
+              <label htmlFor="add-expense-account" className="label">Account</label>
+              <select
+                id="add-expense-account"
+                required
+                className="input"
+                value={defaultAccountDesc}
+                onChange={e => setDefaultAccountDesc(e.target.value)}
+              >
+                <option value="">— select —</option>
+                {balanceTypes
+                  .filter(bt => bt.balance_type === 'Transaction' && bt.active !== false)
+                  .map(bt => (
+                    <option key={bt.balancedesc} value={bt.balancedesc}>{bt.balancedesc}</option>
+                  ))}
+              </select>
+            </div>
+          )}
+        </div>
       )}
       <div>
         <label className="label" htmlFor="add-expense-amount">Budget Amount ($)</label>

@@ -28,6 +28,9 @@ export function TransactionWorkflowModal({
   onDelete,
   onClose,
   totalValue = null,
+  accounts = null,
+  selectedAccount = '',
+  setSelectedAccount = () => {},
 }) {
   const formatters = useFormatters()
   const config = getTransactionModalConfig(kind)
@@ -78,6 +81,9 @@ export function TransactionWorkflowModal({
           isPending={isPending}
           onClose={onClose}
           actualAmount={actualAmount}
+          accounts={accounts}
+          selectedAccount={selectedAccount}
+          setSelectedAccount={setSelectedAccount}
         />
       )}
     </div>
@@ -107,4 +113,9 @@ TransactionWorkflowModal.propTypes = {
   onDelete: PropTypes.func.isRequired,
   onClose: PropTypes.func.isRequired,
   totalValue: PropTypes.number,
+  accounts: PropTypes.arrayOf(PropTypes.shape({
+    balancedesc: PropTypes.string.isRequired,
+  })),
+  selectedAccount: PropTypes.string,
+  setSelectedAccount: PropTypes.func,
 }

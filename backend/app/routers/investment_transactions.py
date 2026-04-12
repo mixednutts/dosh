@@ -36,6 +36,7 @@ def _to_investment_tx_out(tx: PeriodTransaction) -> InvestmentTxOut:
         budget_before_amount=getattr(tx, "budget_before_amount", None),
         budget_after_amount=getattr(tx, "budget_after_amount", None),
         revisionnum=getattr(tx, "revisionnum", None),
+        affected_account_desc=getattr(tx, "affected_account_desc", None),
     )
 
 

@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime as dt, timezone
 from decimal import Decimal
 
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from .models import (
@@ -155,6 +156,7 @@ def build_expense_tx(
     legacy_table: str | None = None,
     legacy_id: int | None = None,
     dedupe_key: str | None = None,
+    account_desc: str | None = None,
 ):
     amount = _rounded(_as_decimal(amount))
     expense = (
@@ -177,7 +179,7 @@ def build_expense_tx(
             tx_type=tx_type,
             source_key=expensedesc,
             source_label=expensedesc,
-            affected_account_desc=get_primary_account_desc(budgetid, db),
+            affected_account_desc=account_desc or get_primary_account_desc(budgetid, db),
             line_status=getattr(expense, "status", None),
         ),
         amount=amount,
@@ -189,6 +191,66 @@ def build_expense_tx(
         legacy_id=legacy_id,
         dedupe_key=dedupe_key,
     )
+
+
+def _parse_transfer_accounts(incomedesc: str, budgetid: int, db: Session) -> tuple[str | None, str | None]:
+    """Parse source and destination accounts from a transfer income line name.
+
+    Supports current format: "Transfer: {source} to {destination}"
+    Supports legacy format: "Transfer from {source}"
+    Supports intermediate format: "Transfer from {source} to {destination}"
+    """
+    # Current format
+    if incomedesc.startswith("Transfer: "):
+        remainder = incomedesc[len("Transfer: "):]
+        if " to " in remainder:
+            source_account, destination_account = remainder.split(" to ", 1)
+            return source_account, destination_account
+        return remainder, get_primary_account_desc(budgetid, db)
+
+    if not incomedesc.startswith(TRANSFER_PREFIX):
+        return None, None
+    remainder = incomedesc[len(TRANSFER_PREFIX):]
+    if " to " in remainder:
+        source_account, destination_account = remainder.split(" to ", 1)
+        return source_account, destination_account
+    # Legacy format: destination was implicitly the primary transaction account
+    return remainder, get_primary_account_desc(budgetid, db)
+
+
+def validate_transfer_against_source_account(
+    finperiodid: int,
+    budgetid: int,
+    source_account: str,
+    incremental_amount: Decimal,
+    db: Session,
+    *,
+    existing_line: "PeriodIncome | None" = None,
+) -> None:
+    """Validate that a source account can absorb a transfer commitment.
+
+    At line-creation time, pass ``existing_line=None`` and
+    ``incremental_amount`` equal to the requested budget amount.
+    At transaction-recording time, pass the existing ``PeriodIncome`` line
+    and ``incremental_amount`` equal to the new transaction amount.
+    """
+    pb = db.get(PeriodBalance, (finperiodid, source_account))
+    if not pb:
+        raise HTTPException(404, "Source account has no balance record for this period")
+
+    if existing_line is None:
+        committed = _as_decimal(incremental_amount)
+    else:
+        actual = Decimal(str(existing_line.actualamount or 0))
+        budget = Decimal(str(existing_line.budgetamount or 0))
+        new_actual = actual + _as_decimal(incremental_amount)
+        if existing_line.status == "Paid":
+            committed = new_actual
+        else:
+            committed = budget if budget > new_actual else new_actual
+
+    if Decimal(str(pb.closing_amount or 0)) < committed:
+        raise HTTPException(422, "Source account does not have sufficient balance for this transfer")
 
 
 def build_income_tx(
@@ -205,7 +267,17 @@ def build_income_tx(
     dedupe_key: str | None = None,
 ):
     amount = _rounded(_as_decimal(amount))
-    if incomedesc.startswith(TRANSFER_PREFIX):
+    if incomedesc.startswith((TRANSFER_PREFIX, "Transfer: ")):
+        source_account, destination_account = _parse_transfer_accounts(incomedesc, budgetid, db)
+        existing_line = db.get(PeriodIncome, (finperiodid, incomedesc))
+        validate_transfer_against_source_account(
+            finperiodid,
+            budgetid,
+            source_account,
+            amount,
+            db,
+            existing_line=existing_line,
+        )
         return add_period_transaction(
             db,
             PeriodTransactionContext(
@@ -215,8 +287,8 @@ def build_income_tx(
                 tx_type=TX_TYPE_TRANSFER,
                 source_key=incomedesc,
                 source_label=incomedesc,
-                affected_account_desc=get_primary_account_desc(budgetid, db),
-                related_account_desc=incomedesc[len(TRANSFER_PREFIX):],
+                affected_account_desc=destination_account,
+                related_account_desc=source_account,
             ),
             amount=amount,
             note=note,
@@ -429,7 +501,7 @@ def expense_amount_from_ledger(finperiodid: int, budgetid: int, expensedesc: str
 
 
 def income_amount_from_ledger(finperiodid: int, budgetid: int, incomedesc: str, db: Session) -> Decimal:
-    source = "transfer" if incomedesc.startswith(TRANSFER_PREFIX) else "income"
+    source = "transfer" if incomedesc.startswith((TRANSFER_PREFIX, "Transfer: ")) else "income"
     rows = (
         db.query(PeriodTransaction)
         .filter(

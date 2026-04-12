@@ -3,7 +3,7 @@ import PropTypes from 'prop-types'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { PlusIcon, PencilIcon, TrashIcon, ChevronUpIcon, ChevronDownIcon, ClockIcon } from '@heroicons/react/24/outline'
 import { format, parseISO, addDays } from 'date-fns'
-import { getExpenseItems, createExpenseItem, updateExpenseItem, deleteExpenseItem, reorderExpenseItems, getBudgetSetupAssessment, getExpenseItemHistory } from '../../api/client'
+import { getExpenseItems, createExpenseItem, updateExpenseItem, deleteExpenseItem, reorderExpenseItems, getBudgetSetupAssessment, getExpenseItemHistory, getBalanceTypes, getBudget } from '../../api/client'
 import Modal from '../../components/Modal'
 import SetupItemHistoryModal from '../../components/SetupItemHistoryModal'
 import ExpenseItemSchedulingFields from '../../components/ExpenseItemSchedulingFields'
@@ -14,6 +14,13 @@ import { getNextFixedDayOccurrence } from '../../utils/fixedDayScheduling'
 const emptyForm = {
   expensedesc: '', active: true, freqtype: 'Always',
   frequency_value: '', paytype: 'AUTO', effectivedate: '', expenseamount: '',
+  use_primary_account: true, default_account_desc: '',
+}
+
+function getPrimaryAccountLabel(preference) {
+  if (preference === 'Everyday') return 'Use Primary Everyday Account'
+  if (preference === 'Checking') return 'Use Primary Checking Account'
+  return 'Use Primary Transaction Account'
 }
 
 /**
@@ -47,13 +54,14 @@ function calcNextDue(freqtype, frequencyValue, effectivedate, todayDate = new Da
   return null
 }
 
-function ExpenseItemForm({ initial = emptyForm, isEdit = false, onSubmit, onClose, loading, inUse = false, deactivationImpact = '' }) {
+function ExpenseItemForm({ initial = emptyForm, isEdit = false, onSubmit, onClose, loading, inUse = false, deactivationImpact = '', balanceTypes = [], accountNamingPreference = 'Transaction' }) {
   const [form, setForm] = useState(initial)
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
   const formIdPrefix = isEdit ? 'edit-expense-item' : 'create-expense-item'
 
   const isAlways = form.freqtype === 'Always'
   const showDeactivationWarning = inUse && !form.active
+  const transactionAccounts = balanceTypes.filter(bt => bt.balance_type === 'Transaction' && bt.active !== false)
 
   return (
     <form onSubmit={e => {
@@ -66,6 +74,7 @@ function ExpenseItemForm({ initial = emptyForm, isEdit = false, onSubmit, onClos
         paytype: isAlways ? 'MANUAL' : (form.paytype || 'MANUAL'),
         effectivedate: isAlways ? null : (form.effectivedate || null),
         expenseamount: Number.parseFloat(form.expenseamount) || 0,
+        default_account_desc: form.use_primary_account ? null : (form.default_account_desc || null),
       })
     }} className="space-y-4">
       <ExpenseItemSchedulingFields
@@ -86,6 +95,38 @@ function ExpenseItemForm({ initial = emptyForm, isEdit = false, onSubmit, onClos
         <label htmlFor={`${formIdPrefix}-amount`} className="label">Amount <span className="text-red-500">*</span></label>
         <LocalizedAmountInput id={`${formIdPrefix}-amount`} required min="0" className="input"
           value={form.expenseamount} onChange={value => set('expenseamount', value)} />
+      </div>
+      <div className="space-y-2">
+        <label htmlFor={`${formIdPrefix}-primary-account`} className="flex items-start gap-3 text-sm cursor-pointer">
+          <input
+            id={`${formIdPrefix}-primary-account`}
+            type="checkbox"
+            checked={form.use_primary_account}
+            onChange={e => set('use_primary_account', e.target.checked)}
+            className="mt-0.5 rounded border-gray-300 dark:border-gray-600 text-dosh-600 focus:ring-dosh-500"
+          />
+          <span className="font-medium text-gray-800 dark:text-gray-100">{getPrimaryAccountLabel(accountNamingPreference)}</span>
+        </label>
+        {!form.use_primary_account && (
+          <div>
+            <label htmlFor={`${formIdPrefix}-account`} className="label">Account</label>
+            <select
+              id={`${formIdPrefix}-account`}
+              required
+              className="input"
+              value={form.default_account_desc}
+              onChange={e => set('default_account_desc', e.target.value)}
+            >
+              <option value="">— select —</option>
+              {transactionAccounts.map(bt => (
+                <option key={bt.balancedesc} value={bt.balancedesc}>{bt.balancedesc}</option>
+              ))}
+            </select>
+            {transactionAccounts.length === 0 && (
+              <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">No active transaction accounts available.</p>
+            )}
+          </div>
+        )}
       </div>
       {isAlways && (
         <p className="text-xs text-dosh-600 dark:text-dosh-400 bg-dosh-50 dark:bg-dosh-900/20 rounded px-3 py-2">
@@ -143,6 +184,14 @@ export default function ExpenseItemsTab({ budgetId }) {
   const { data: setupAssessment } = useQuery({
     queryKey: ['budget-setup-assessment', budgetId],
     queryFn: () => getBudgetSetupAssessment(budgetId),
+  })
+  const { data: balanceTypes = [] } = useQuery({
+    queryKey: ['balance-types', budgetId],
+    queryFn: () => getBalanceTypes(budgetId),
+  })
+  const { data: budget } = useQuery({
+    queryKey: ['budget', budgetId],
+    queryFn: () => getBudget(budgetId),
   })
   const historyQuery = useQuery({
     queryKey: ['expense-item-history', budgetId, historyItem?.expensedesc],
@@ -321,6 +370,8 @@ export default function ExpenseItemsTab({ budgetId }) {
               paytype: modal.item.paytype ?? '',
               effectivedate: modal.item.effectivedate ? format(parseISO(modal.item.effectivedate), 'yyyy-MM-dd') : '',
               expenseamount: modal.item.expenseamount ?? '',
+              use_primary_account: !modal.item.default_account_desc,
+              default_account_desc: modal.item.default_account_desc || '',
             } : emptyForm}
             isEdit={modal.mode === 'edit'}
             inUse={modal.item ? expenseUsageByDesc[modal.item.expensedesc]?.in_use === true : false}
@@ -328,6 +379,8 @@ export default function ExpenseItemsTab({ budgetId }) {
             onSubmit={handleSubmit}
             onClose={() => setModal(null)}
             loading={create.isPending || update.isPending}
+            balanceTypes={balanceTypes}
+            accountNamingPreference={budget?.account_naming_preference || 'Transaction'}
           />
         </Modal>
       )}

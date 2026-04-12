@@ -273,6 +273,9 @@ The following setup-shape combinations are currently covered by automated tests.
 | `Multiple Investment Lines` | more than one investment with exactly one primary | keep primary selection unique and allocate auto-surplus only to the primary line | backend |
 | `Primary Investment Reassigned` | multiple investments with primary line changed before generation | route future auto-surplus allocation to the new primary investment | backend |
 | `Missing Period Investment Reference` | no generated period investment line for attempted downstream activity | fail clearly when dependent investment activity is attempted | backend |
+| `Multi Transaction With Expense Routing` | 2 transaction accounts with expense item default set to non-primary | route expense transactions to the selected account and fall back to primary when unset | backend + frontend |
+| `Generalised Account Transfer` | any two active accounts (including non-savings) as source and destination | create transfer income lines, validate against source balance, block self-referential transfers, and record transfer transactions with correct account pair | backend + frontend |
+| `Investment Linked Account Display` | investment item with `linked_account_desc` set | return and display `affected_account_desc` on investment transactions | backend + frontend |
 | `Demo Seeded Budget` | baseline personal setup with linked savings and primary investment plus historical, current, and upcoming cycles | dev-only seeded budget creation stays additive, remains gated by shared dev mode, and produces meaningful budget-health signals | backend + frontend |
 
 Notes:

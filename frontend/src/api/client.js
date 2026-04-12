@@ -126,8 +126,8 @@ export const addExpenseToPeriod = (periodId, data) =>
   api.post(`/periods/${periodId}/add-expense`, data).then(r => r.data)
 export const addIncomeToPeriod = (periodId, data) =>
   api.post(`/periods/${periodId}/add-income`, data).then(r => r.data)
-export const savingsTransfer = (periodId, data) =>
-  api.post(`/periods/${periodId}/savings-transfer`, data).then(r => r.data)
+export const accountTransfer = (periodId, data) =>
+  api.post(`/periods/${periodId}/account-transfer`, data).then(r => r.data)
 export const deletePeriodForce = (periodId, force = false) =>
   api.delete(`/periods/${periodId}?force=${force}`)
 export const reorderPeriodExpenses = (periodId, items) =>

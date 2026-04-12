@@ -15,7 +15,7 @@ jest.mock('../api/client', () => ({
   createIncomeType: jest.fn(),
   addExpenseToPeriod: jest.fn(),
   addIncomeToPeriod: jest.fn(),
-  savingsTransfer: jest.fn(),
+  accountTransfer: jest.fn(),
   getExpenseItems: jest.fn(),
   getIncomeTypes: jest.fn(),
   createExpenseItem: jest.fn(),
@@ -831,6 +831,8 @@ describe('PeriodDetailPage', () => {
   it('submits resolved expressions for expense transactions', async () => {
     client.getExpenseEntries.mockResolvedValue([])
     client.addExpenseEntry.mockResolvedValue({})
+    client.getBalanceTypes.mockResolvedValue([{ balancedesc: 'Main Account', balance_type: 'Transaction', is_primary: true, active: true }])
+    client.getExpenseItems.mockResolvedValue([{ expensedesc: 'Rent', default_account_desc: null }])
     client.getBudget.mockResolvedValue({
       budgetid: 1,
       budgetowner: 'Alex',
@@ -891,6 +893,7 @@ describe('PeriodDetailPage', () => {
         amount: 275,
         note: 'Part payment',
         entrydate: expect.any(String),
+        account_desc: 'Main Account',
       })
     })
   })

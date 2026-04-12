@@ -51,13 +51,18 @@ def test_period_transactions_drive_balance_movement_and_balance_transaction_view
     assert investment_tx.status_code == 201, investment_tx.text
 
     transfer_create = client.post(
-        f"/api/periods/{active_period['finperiodid']}/savings-transfer",
-        json={"budgetid": budget.budgetid, "balancedesc": "Rainy Day", "amount": "75.00"},
+        f"/api/periods/{active_period['finperiodid']}/account-transfer",
+        json={
+            "budgetid": budget.budgetid,
+            "source_account": "Rainy Day",
+            "destination_account": "Main Account",
+            "amount": "75.00",
+        },
     )
     assert transfer_create.status_code == 201, transfer_create.text
 
     transfer_actual = client.patch(
-        f"/api/periods/{active_period['finperiodid']}/income/Transfer%20from%20Rainy%20Day",
+        f"/api/periods/{active_period['finperiodid']}/income/Transfer%3A%20Rainy%20Day%20to%20Main%20Account",
         json={"actualamount": "75.00"},
     )
     assert transfer_actual.status_code == 200, transfer_actual.text
@@ -147,13 +152,18 @@ def test_locked_active_cycle_still_allows_actuals_and_transactions(client, db_se
     assert investment_tx.status_code == 201, investment_tx.text
 
     transfer_create = client.post(
-        f"/api/periods/{active_period['finperiodid']}/savings-transfer",
-        json={"budgetid": budget.budgetid, "balancedesc": "Rainy Day", "amount": "75.00"},
+        f"/api/periods/{active_period['finperiodid']}/account-transfer",
+        json={
+            "budgetid": budget.budgetid,
+            "source_account": "Rainy Day",
+            "destination_account": "Main Account",
+            "amount": "75.00",
+        },
     )
     assert transfer_create.status_code == 201, transfer_create.text
 
     transfer_actual = client.patch(
-        f"/api/periods/{active_period['finperiodid']}/income/Transfer%20from%20Rainy%20Day",
+        f"/api/periods/{active_period['finperiodid']}/income/Transfer%3A%20Rainy%20Day%20to%20Main%20Account",
         json={"actualamount": "75.00"},
     )
     assert transfer_actual.status_code == 200, transfer_actual.text

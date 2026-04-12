@@ -172,7 +172,7 @@ export function getTransactionModalConfig(kind) {
   return configs[kind]
 }
 
-export function buildTransactionSubmitHandler({ resolvedAmount, setError, mutate, type, note, toMutationAmount }) {
+export function buildTransactionSubmitHandler({ resolvedAmount, setError, mutate, type, note, toMutationAmount, extraPayload = {} }) {
   return event => {
     event.preventDefault()
     const amountValue = getResolvedAmountValue(resolvedAmount, 0.01)
@@ -181,6 +181,6 @@ export function buildTransactionSubmitHandler({ resolvedAmount, setError, mutate
       return
     }
     setError('')
-    mutate({ amount: toMutationAmount(type, amountValue), note: note || null, entrydate: new Date().toISOString() })
+    mutate({ amount: toMutationAmount(type, amountValue), note: note || null, entrydate: new Date().toISOString(), ...extraPayload })
   }
 }

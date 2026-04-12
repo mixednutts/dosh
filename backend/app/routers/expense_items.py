@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException
 from sqlalchemy.orm import Session
 from ..auto_expense import normalize_expense_paytype
 from ..api_docs import DbSession, error_responses
-from ..models import Budget, ExpenseItem, FinancialPeriod, PeriodExpense, PeriodTransaction
+from ..models import Budget, BalanceType, ExpenseItem, FinancialPeriod, PeriodExpense, PeriodTransaction
 from ..schemas import ExpenseItemCreate, ExpenseItemOut, ExpenseItemUpdate, ExpenseItemReorderRequest, SetupHistoryOut
 from ..period_logic import expense_occurs_in_period
 from ..setup_assessment import expense_assessment
@@ -24,6 +24,18 @@ def _get_budget_or_404(budgetid: int, db: Session) -> Budget:
     if not budget:
         raise HTTPException(404, "Budget not found")
     return budget
+
+
+def _validate_default_account_desc(budgetid: int, account_desc: str | None, db: Session) -> None:
+    if account_desc is None:
+        return
+    bt = db.get(BalanceType, (budgetid, account_desc))
+    if not bt:
+        raise HTTPException(404, f'Account "{account_desc}" not found')
+    if not bt.active:
+        raise HTTPException(422, f'Account "{account_desc}" is not active')
+    if bt.balance_type != "Transaction":
+        raise HTTPException(422, f'Account "{account_desc}" must be a Transaction account')
 
 
 def _get_expense_or_404(budgetid: int, expensedesc: str, db: Session) -> ExpenseItem:
@@ -118,6 +130,7 @@ def create_expense_item(budgetid: int, payload: ExpenseItemCreate, db: DbSession
     if existing:
         raise HTTPException(409, "Expense item with this description already exists")
     data = payload.model_dump()
+    _validate_default_account_desc(budgetid, data.get("default_account_desc"), db)
     data["paytype"] = _normalized_paytype_or_422(
         budgetid=budgetid,
         expensedesc=payload.expensedesc,
@@ -146,6 +159,8 @@ def update_expense_item(
 ):
     ei = _get_expense_or_404(budgetid, expensedesc, db)
     data = payload.model_dump(exclude_none=True)
+    if "default_account_desc" in data:
+        _validate_default_account_desc(budgetid, data["default_account_desc"], db)
     if "paytype" in data or "freqtype" in data or "frequency_value" in data or "effectivedate" in data:
         data["paytype"] = _normalized_paytype_or_422(
             budgetid=budgetid,

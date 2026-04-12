@@ -12,6 +12,8 @@ jest.mock('../api/client', () => ({
   reorderExpenseItems: jest.fn(),
   getExpenseItemHistory: jest.fn(),
   getBudgetSetupAssessment: jest.fn(),
+  getBalanceTypes: jest.fn(),
+  getBudget: jest.fn(),
 }))
 
 jest.mock('../components/Modal', () => ({ title, children }) => (
@@ -37,6 +39,8 @@ describe('ExpenseItemsTab', () => {
       investment_items: [],
     })
     client.getExpenseItemHistory.mockResolvedValue({ item_desc: 'Rent', category: 'expense', current_revisionnum: 0, entries: [] })
+    client.getBalanceTypes.mockResolvedValue([])
+    client.getBudget.mockResolvedValue({ account_naming_preference: 'Transaction' })
   })
 
   afterEach(() => {
@@ -133,7 +137,7 @@ describe('ExpenseItemsTab', () => {
     fireEvent.change(amountInput, { target: { value: '1300' } })
 
     // Active checkbox should be enabled (not disabled)
-    const activeToggle = screen.getAllByRole('checkbox')[1]
+    const activeToggle = screen.getByRole('checkbox', { name: /^Active/i })
     expect(activeToggle.disabled).toBe(false)
     
     // Warning should appear when unchecking the active toggle
@@ -151,6 +155,7 @@ describe('ExpenseItemsTab', () => {
       expect(client.updateExpenseItem).toHaveBeenCalledWith(1, 'Rent', expect.objectContaining({
         expenseamount: 1300,
         active: true,
+        default_account_desc: null,
       }))
     })
   })
@@ -259,6 +264,7 @@ describe('ExpenseItemsTab', () => {
         paytype: 'AUTO',
         effectivedate: '2026-04-01',
         expenseamount: 85.5,
+        default_account_desc: null,
       })
     })
   })
@@ -396,6 +402,45 @@ describe('ExpenseItemsTab', () => {
     fireEvent.click(deleteButton)
     await waitFor(() => {
       expect(client.deleteExpenseItem).toHaveBeenCalledWith(1, 'Fuel')
+    })
+  })
+
+  it('allows selecting a default transaction account for an expense item', async () => {
+    client.getExpenseItems.mockResolvedValue([])
+    client.createExpenseItem.mockResolvedValue({})
+    client.getBalanceTypes.mockResolvedValue([
+      { balancedesc: 'Main Account', balance_type: 'Transaction', is_primary: true, active: true },
+      { balancedesc: 'Joint Account', balance_type: 'Transaction', is_primary: false, active: true },
+    ])
+    client.getBudget.mockResolvedValue({ account_naming_preference: 'Transaction' })
+
+    renderWithProviders(<ExpenseItemsTab budgetId={1} />)
+
+    fireEvent.click(await screen.findByText('Add Expense Item'))
+
+    fireEvent.change(screen.getByLabelText(/Description/i), {
+      target: { value: 'Groceries' },
+    })
+    fireEvent.change(screen.getByLabelText(/Amount/i), {
+      target: { value: '200' },
+    })
+
+    // Uncheck "Use Primary Transaction Account"
+    const primaryCheckbox = screen.getByRole('checkbox', { name: /Use Primary Transaction Account/i })
+    fireEvent.click(primaryCheckbox)
+
+    // Account dropdown should appear
+    const accountSelect = screen.getByRole('combobox', { name: /^Account$/i })
+    fireEvent.change(accountSelect, { target: { value: 'Joint Account' } })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => {
+      expect(client.createExpenseItem).toHaveBeenCalledWith(1, expect.objectContaining({
+        expensedesc: 'Groceries',
+        expenseamount: 200,
+        default_account_desc: 'Joint Account',
+      }))
     })
   })
 })

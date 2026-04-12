@@ -48,7 +48,7 @@ from ..schemas import (
     PeriodIncomeActualUpdate, PeriodExpenseActualUpdate,
     PeriodIncomeAddActual, PeriodExpenseAddActual,
     AddExpenseToPeriodRequest, AddIncomeToPeriodRequest,
-    SavingsTransferRequest,
+    AccountTransferRequest,
     PeriodBalanceOut, PeriodExpenseReorderRequest, PeriodInvestmentOut,
     PeriodExpenseStatusUpdate, PeriodIncomeStatusUpdate, PeriodExpenseBudgetUpdate, PeriodLineBudgetAdjustRequest,
     PeriodCloseoutPreviewOut, PeriodCloseoutRequest, PeriodDeleteOptionsOut,
@@ -67,6 +67,7 @@ from ..transaction_ledger import (
     build_status_change_tx,
     get_primary_account_desc,
     sync_period_state,
+    validate_transfer_against_source_account,
 )
 from .expense_items import update_expense_item as update_expense_item_setup
 
@@ -1000,6 +1001,8 @@ def update_expense_actual(
     _assert_primary_account_configured(period.budgetid, db, action="recording expense activity")
     old_actual = Decimal(str(pe.actualamount or 0))
     delta = payload.actualamount - old_actual
+    expense_item = db.get(ExpenseItem, (period.budgetid, expensedesc))
+    account_desc = expense_item.default_account_desc if expense_item else None
     build_expense_tx(
         finperiodid,
         period.budgetid,
@@ -1009,6 +1012,7 @@ def update_expense_actual(
         is_system=True,
         system_reason="expense_actual_set",
         note="System adjustment from direct expense actual update",
+        account_desc=account_desc,
     )
     sync_period_state(finperiodid, db)
     db.commit()
@@ -1039,6 +1043,8 @@ def add_expense_actual(
         raise HTTPException(404, "Period expense entry not found")
     _assert_expense_not_paid(pe)
     _assert_primary_account_configured(period.budgetid, db, action="recording expense activity")
+    expense_item = db.get(ExpenseItem, (period.budgetid, expensedesc))
+    account_desc = expense_item.default_account_desc if expense_item else None
     build_expense_tx(
         finperiodid,
         period.budgetid,
@@ -1048,6 +1054,7 @@ def add_expense_actual(
         is_system=True,
         system_reason="expense_actual_add",
         note="System adjustment from direct expense actual addition",
+        account_desc=account_desc,
     )
     sync_period_state(finperiodid, db)
     db.commit()
@@ -1259,29 +1266,43 @@ def add_income_to_period(
 
 # ── Savings transfer ──────────────────────────────────────────────────────────
 
-@router.post("/{finperiodid}/savings-transfer", response_model=PeriodIncomeOut, status_code=201, responses=error_responses(404, 409, 422, 423))
-def savings_transfer(
+@router.post("/{finperiodid}/account-transfer", response_model=PeriodIncomeOut, status_code=201, responses=error_responses(404, 409, 422, 423))
+def account_transfer(
     finperiodid: int,
-    payload: SavingsTransferRequest,
+    payload: AccountTransferRequest,
     db: DbSession,
 ):
     period = _get_period_or_404(finperiodid, db)
     _assert_not_closed(period)
 
-    bt = db.get(BalanceType, (payload.budgetid, payload.balancedesc))
-    if not bt:
-        raise HTTPException(404, "Account not found")
-    if bt.balance_type != 'Savings':
-        raise HTTPException(422, "Account is not a savings account")
+    if payload.source_account == payload.destination_account:
+        raise HTTPException(422, "Source and destination account cannot be the same")
 
-    pb = db.get(PeriodBalance, (finperiodid, payload.balancedesc))
-    if not pb:
-        raise HTTPException(404, "Account has no balance record for this period")
+    source_bt = db.get(BalanceType, (payload.budgetid, payload.source_account))
+    if not source_bt:
+        raise HTTPException(404, "Source account not found")
+    if not source_bt.active:
+        raise HTTPException(422, "Source account is not active")
 
-    incomedesc = f"Transfer from {payload.balancedesc}"
+    dest_bt = db.get(BalanceType, (payload.budgetid, payload.destination_account))
+    if not dest_bt:
+        raise HTTPException(404, "Destination account not found")
+    if not dest_bt.active:
+        raise HTTPException(422, "Destination account is not active")
+
+    incomedesc = f"Transfer: {payload.source_account} to {payload.destination_account}"
     existing = db.get(PeriodIncome, (finperiodid, incomedesc))
     if existing:
-        raise HTTPException(409, "A transfer from this account already exists in this period")
+        raise HTTPException(409, "A transfer between these accounts already exists in this period")
+
+    # Validate source account can absorb the requested transfer amount
+    validate_transfer_against_source_account(
+        finperiodid,
+        payload.budgetid,
+        payload.source_account,
+        payload.amount,
+        db,
+    )
 
     pi = PeriodIncome(
         finperiodid=finperiodid,

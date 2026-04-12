@@ -37,6 +37,95 @@ For the implemented export-shape plan that now defines budget-cycle export behav
 
 For the implemented Auto Expense workflow rules, scheduler behavior, migration expectations, and AUTO/MANUAL eligibility constraints introduced this session, read [AUTO_EXPENSE_PLAN.md](/home/ubuntu/dosh/docs/plans/AUTO_EXPENSE_PLAN.md).
 
+For the cash management workflow plan that defines generalised transfers, expense routing, investment tracking, and balance validation, read [CASH_MANAGEMENT_WORKFLOW_PLAN.md](/home/ubuntu/dosh/docs/plans/CASH_MANAGEMENT_WORKFLOW_PLAN.md).
+
+## Latest Session: Cash Management Workflow — Generalised Transfers, Expense Routing, And Investment Tracking
+
+This session implemented the cash management workflow improvements defined in [CASH_MANAGEMENT_WORKFLOW_PLAN.md](/home/ubuntu/dosh/docs/plans/CASH_MANAGEMENT_WORKFLOW_PLAN.md). The work generalised account transfers, added expense default account selection, enabled transaction-level account routing, and hardened investment transaction account tracking.
+
+### Generalised Account Transfers
+
+**What changed:**
+- Renamed backend endpoint `POST /periods/{finperiodid}/savings-transfer` to `POST /periods/{finperiodid}/account-transfer`
+- Removed the hard `balance_type == 'Savings'` restriction so any active account can be a transfer source or destination
+- Added `source_account` and `destination_account` fields to the transfer payload
+- Blocked self-referential transfers (source == destination) with a 422 error
+- Transfer income lines are now created with the name `Transfer: {source} to {destination}`
+- Updated `_parse_transfer_accounts` in `transaction_ledger.py` to support both the legacy `Transfer from ` prefix and the new `Transfer: ` prefix for backward compatibility
+- Updated `build_income_tx` and `_transaction_source` to recognise the new `Transfer: ` prefix so transfer transactions are recorded with `source="transfer"`
+
+**Why:**
+- The previous savings-only transfer model was too restrictive for users with multiple transaction accounts or cash accounts
+- Generalising the endpoint supports any account-to-account movement while keeping the existing ledger-backed balance model
+
+**Validation:**
+- Added `validate_transfer_against_source_account()` in `transaction_ledger.py` using committed-amount logic
+- At line-creation time, validates the source account can absorb the requested budget amount
+- At transaction-recording time, validates the incremental amount against the source account's current closing balance
+- For non-paid lines, committed amount = `max(budgetamount, actualamount)`
+- For paid lines, committed amount = `actualamount`
+
+### Expense Default Account + Transaction Account Selection
+
+**What changed:**
+- Added `default_account_desc` nullable column to `ExpenseItem` (model, schemas, create/update/out)
+- Budget setup expense modals now allow selecting a default account; when "Use Primary Account" is checked, the field stores `null`
+- `build_expense_tx()` now accepts an optional `account_desc` parameter with fallback chain: payload override → item default → primary account
+- `ExpenseEntryCreate` schema now accepts optional `account_desc`
+- `expense_entries.py` validates and applies the transaction-level account override
+- `ExpenseEntriesModal` and `TransactionEntryForm` render an account selector defaulting to the expense item's `default_account_desc`
+- `TransactionListPanel` now shows `affected_account_desc` for expense and investment transactions
+
+**Why:**
+- Previously all expenses debited the primary transaction account with no way to route to other accounts
+- This change supports multi-account budgets while preserving the primary-account fallback for simplicity
+
+### Investment Transaction Account Tracking
+
+**What changed:**
+- Added `affected_account_desc` to `InvestmentTxOut` schema
+- Updated `investment_transactions.py` router to return `tx.affected_account_desc`
+- Frontend investment transaction modal now displays the linked cash account for each transaction
+
+**Why:**
+- Investment transactions already tracked the linked account in the ledger, but it was not visible to users
+- Surfacing the account improves transparency and supports reconciliation workflows
+
+### Schema Migrations
+
+**What changed:**
+- Alembic migration `e4f5a6b7c8d9_add_default_account_desc_to_expenseitems` adds the `default_account_desc` column
+- Alembic migration `f1a2b3c4d5e6_backfill_transaction_accounts_and_expense_defaults` backfills:
+  - `ExpenseItem.default_account_desc` → primary transaction account
+  - `PeriodTransaction.affected_account_desc` for `expense` rows → from matching `ExpenseItem`
+  - `PeriodTransaction.affected_account_desc` for `transfer` rows → primary transaction account
+  - `PeriodTransaction.affected_account_desc` for `investment` rows → `InvestmentItem.linked_account_desc` or primary account
+
+**Verification:**
+- Gap-analysis reconciliation script run inside the Docker container returned zero anomalies
+- Local Docker deployment healthy with both migrations applied
+
+### Testing
+
+**New backend tests:**
+- `test_account_transfer_validation.py`: covers cash-account transfer, inactive account rejection, balance rejection, duplicate rejection, committed-amount validation for non-paid and paid lines
+- `test_expense_entry_account_routing.py`: covers routing to selected non-primary account, fallback to primary, and rejection of unknown account (422)
+
+**Updated backend tests:**
+- `test_income_transactions.py`, `test_transactions_and_balances.py`, `test_budget_setup_workflows.py`: updated transfer description references and endpoint URLs
+
+**Test results:**
+- Full backend suite: **136 passed**
+- Full frontend suite: **168 passed**
+
+### Deployment
+
+- Deployed via `scripts/release_with_migrations.sh` with `docker-compose.override.yml`
+- Health endpoint returned `{"status":"ok","app":"Dosh"}`
+- Version endpoint returned `0.3.5-alpha`
+
+---
+
 ## Latest Session: Budget Setup Assessment Visibility And New Account Period Balance Backfill
 
 This session fixed two issues in the budget setup and period balance area.
