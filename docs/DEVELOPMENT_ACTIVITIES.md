@@ -298,6 +298,22 @@ Cross-links:
 - Quality > Test Coverage
 - Quality > Bugs
 
+#### Activity Group: Inter-Period Expense Movement
+
+Status:
+
+- `Next`
+
+- add ability to move an unrecipted (nil transaction) expense from the budget cycle detail page to the next period, provided the next period is not locked
+- determine whether this should create a zero-budget suppression in the current period or shift the budget amount forward
+- ensure moved expenses preserve their setup linkage and do not break period totals or carry-forward calculations
+- add appropriate guards so only expenses with no recorded transactions can be moved
+
+Cross-links:
+
+- Cash Management
+- Quality > UX/UI
+
 ### 4. Setup Assessment And Protected Configuration
 
 Roadmap alignment:
