@@ -15,7 +15,7 @@ from .period_logic import expense_occurs_in_period, fixed_day_occurrence_for_mon
 from datetime import timezone
 from .time_utils import app_now
 from .transaction_ledger import build_expense_tx, get_primary_account_desc, sync_period_state
-from .cycle_management import cycle_stage
+from .cycle_management import cycle_stage, refresh_all_lifecycle_states
 
 _scheduler_lock = Lock()
 _scheduler_started = False
@@ -220,6 +220,12 @@ def _auto_expense_scheduler_loop() -> None:
         now = app_now()
         today = now.date()
         if last_run_date != today:
+            try:
+                with SessionLocal() as db:
+                    refresh_all_lifecycle_states(db)
+                    db.commit()
+            except Exception:
+                pass
             try:
                 process_daily_auto_expenses(run_date=now)
             except Exception:

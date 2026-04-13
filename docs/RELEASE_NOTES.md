@@ -2,8 +2,11 @@
 
 ## Unreleased
 
+## 0.3.9-alpha | released | 2026-04-13
+
 ### Fixed
 
+- Fixed budget cycles remaining stuck as "Planned" after their start date passes. Cycle stage is now derived from actual dates rather than relying solely on the stored status, and the daily scheduler refreshes lifecycle states to keep the database in sync.
 - Fixed investment and expense budget totals on the period detail page so the total row correctly sums the budgeted amounts rather than substituting actuals for paid lines.
 
 ## 0.3.8-alpha | released | 2026-04-13

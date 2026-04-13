@@ -3,7 +3,7 @@ FROM python:3.12-slim
 
 # Set the working directory to /app
 WORKDIR /app
-ENV APP_VERSION=0.3.8-alpha
+ENV APP_VERSION=0.3.9-alpha
 
 # Copy the current directory contents into the container at /app
 COPY . /app

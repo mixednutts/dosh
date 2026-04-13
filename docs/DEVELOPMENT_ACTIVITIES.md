@@ -272,6 +272,7 @@ Status:
 - strengthen the handoff from `ACTIVE` to `CLOSED` to next `ACTIVE`
 - `Completed`: distinguish stored lifecycle state from derived user-facing cycle stage so `Pending Closure` can exist without weakening close-out integrity
 - `Completed`: allow multiple overdue open cycles while preserving a single `Current` cycle and aligned carry-forward continuity
+- `Completed`: derive cycle stage (`CURRENT`/`PENDING_CLOSURE`/`PLANNED`) from actual period dates rather than blindly trusting persisted `cycle_status`, ensuring stale status values do not mislead the UI when a new cycle start date passes
 
 #### Activity Group: Close-Out Experience
 
@@ -723,6 +724,7 @@ Status:
 - `Completed`: fixed missing `BalanceType` import in `investment_transactions.py` that caused a `NameError` on transaction submit
 - `Completed`: fixed account detail text wrapping in `InvestmentSection.jsx` to prevent truncation with long account names
 - `Completed`: fix investment and expense budget totals on the period detail page so the total row correctly sums budgeted amounts rather than substituting actuals for paid lines
+- `Completed`: fix budget cycle lifecycle state not refreshing automatically when a new cycle start date passes; `cycle_stage()` now derives `CURRENT`/`PENDING_CLOSURE`/`PLANNED` from actual dates rather than blindly trusting the persisted `cycle_status`, and the daily auto-expense scheduler now refreshes all lifecycle states before processing expenses
 
 Cross-links:
 

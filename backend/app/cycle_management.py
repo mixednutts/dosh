@@ -45,12 +45,16 @@ def cycle_status(period: FinancialPeriod) -> str:
 def cycle_stage(period: FinancialPeriod) -> str:
     if getattr(period, "closed_at", None) is not None or cycle_status(period) == CLOSED:
         return CLOSED
-    if cycle_status(period) == PLANNED:
-        return PLANNED
 
     now = utc_now()
-    # Ensure period.enddate has timezone info for comparison
+    # Ensure dates have timezone info for comparison
+    startdate = period.startdate if period.startdate.tzinfo else period.startdate.replace(tzinfo=timezone.utc)
     enddate = period.enddate if period.enddate.tzinfo else period.enddate.replace(tzinfo=timezone.utc)
+
+    # Period is planned if it hasn't started yet
+    if startdate > now:
+        return PLANNED
+
     # enddate is local midnight of the last day; the period is current through the entire last day
     if enddate + timedelta(days=1) <= now:
         return PENDING_CLOSURE_STAGE
@@ -195,6 +199,15 @@ def assign_period_lifecycle_states(budgetid: int, db: Session) -> None:
             period.cycle_status = ACTIVE
         else:
             period.cycle_status = PLANNED
+
+
+def refresh_all_lifecycle_states(db: Session) -> None:
+    """Recalculate and persist lifecycle states for all budgets."""
+    from .models import Budget
+
+    budget_ids = [budget_id for (budget_id,) in db.query(Budget.budgetid).all()]
+    for budget_id in budget_ids:
+        assign_period_lifecycle_states(budget_id, db)
 
 
 def create_next_cycle(period: FinancialPeriod, budget: Budget, db: Session) -> FinancialPeriod:
