@@ -59,18 +59,11 @@ def _rounded(value: Decimal) -> Decimal:
 
 
 def _is_frozen_period(period: FinancialPeriod) -> bool:
-    """A period is frozen if it is CLOSED or PENDING_CLOSURE."""
+    """A period is frozen only if it is CLOSED (snapshotted at close-out)."""
     if getattr(period, "closed_at", None) is not None:
         return True
     status = getattr(period, "cycle_status", None)
-    if status == CLOSED:
-        return True
-    if status == PLANNED:
-        return False
-    now = dt.now(timezone.utc)
-    enddate = period.enddate if period.enddate.tzinfo else period.enddate.replace(tzinfo=timezone.utc)
-    # enddate is local midnight of the last day; the period is open through the entire last day
-    return enddate + timedelta(days=1) <= now
+    return status == CLOSED
 
 
 def compute_dynamic_period_balances(

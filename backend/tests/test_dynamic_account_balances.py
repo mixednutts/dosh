@@ -567,3 +567,62 @@ def test_gap_analysis_zero_anomalies(client, db_session):
                 })
 
     assert anomalies == [], f"Found anomalies: {anomalies}"
+
+
+def test_pending_closure_periods_not_treated_as_frozen_anchors(client, db_session):
+    """
+    Regression test: PENDING_CLOSURE periods must NOT anchor dynamic balance calculations.
+    
+    The bug: _is_frozen_period() incorrectly treated PENDING_CLOSURE periods as frozen,
+    causing dynamic balance calculation to use their stored (stale) closing amounts as
+    anchors instead of computing from BalanceType.opening_balance.
+    """
+    from datetime import timedelta
+    from app.models import Budget, FinancialPeriod, BalanceType, PeriodBalance
+    from app.transaction_ledger import compute_dynamic_period_balances
+    
+    setup = create_minimum_budget_setup(db_session)
+    budget = setup["budget"]
+    
+    # Set up a specific opening balance for the balance type
+    bt = db_session.get(BalanceType, (budget.budgetid, "Main Account"))
+    bt.opening_balance = Decimal("1000.00")
+    db_session.commit()
+    
+    # Create two periods: one in the past (will be PENDING_CLOSURE), one current
+    start = utc_now().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=30)
+    periods = generate_periods(client, budgetid=budget.budgetid, startdate=start, count=2)
+    
+    period_1_id = periods[0]["finperiodid"]
+    period_2_id = periods[1]["finperiodid"]
+    
+    # Update stored PeriodBalance for period 1 with a DIFFERENT value than BalanceType.opening_balance
+    # This simulates the state where a period was created when BalanceType had a different opening_balance
+    pb1 = db_session.get(PeriodBalance, (period_1_id, "Main Account"))
+    pb1.opening_amount = Decimal("5000.00")  # Different from BalanceType.opening_balance
+    pb1.closing_amount = Decimal("5000.00")  # No transactions, so closing = opening
+    db_session.commit()
+    
+    # Force period 1 to be PENDING_CLOSURE by setting its dates in the past
+    p1 = db_session.get(FinancialPeriod, period_1_id)
+    p1.startdate = start - timedelta(days=14)
+    p1.enddate = start - timedelta(days=1)
+    p1.cycle_status = "ACTIVE"  # Will be derived as PENDING_CLOSURE by cycle_stage
+    db_session.commit()
+    
+    # Verify period 1 is indeed PENDING_CLOSURE
+    from app.cycle_management import cycle_stage
+    assert cycle_stage(p1) == "PENDING_CLOSURE", f"Expected PENDING_CLOSURE, got {cycle_stage(p1)}"
+    
+    # Now compute dynamic balances for period 2
+    # The bug would cause it to use period 1's stored closing (5000.00) as the base
+    # The fix should cause it to compute from BalanceType.opening_balance (1000.00)
+    dynamic_balances = compute_dynamic_period_balances(period_2_id, db_session, max_forward_cycles=10)
+    
+    assert dynamic_balances is not None, "Dynamic balances should not exceed forward limit"
+    
+    main_account_balance = next(b for b in dynamic_balances if b.balancedesc == "Main Account")
+    
+    # With the fix, opening should be 1000.00 (from BalanceType), not 5000.00 (from period 1's stored closing)
+    assert Decimal(main_account_balance.opening_amount) == Decimal("1000.00"), \
+        f"Expected opening=1000.00 (from BalanceType), got {main_account_balance.opening_amount}"

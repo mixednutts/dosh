@@ -596,6 +596,10 @@ These rules apply to ANY future session involving an approved implementation pla
 - The local `dosh.db` file is NOT the production database
 - Migrations must run INSIDE the container: `docker exec dosh-backend alembic ...`
 - Never copy local files to Docker volumes: `sudo cp ... /var/lib/docker/volumes/...`
+- **ALWAYS use `INCLUDE_OVERRIDE=true` when running `release_with_migrations.sh`** - the production environment requires `docker-compose.override.yml` for Traefik networking and HTTPS configuration:
+  ```bash
+  INCLUDE_OVERRIDE=true ./scripts/release_with_migrations.sh
+  ```
 
 **The only rule during work:** NEVER commit (hard control #1)
 
