@@ -117,6 +117,14 @@ class BudgetBase(BaseModel):
     currency: str = "AUD"
     timezone: str = "Australia/Sydney"
     date_format: str = "medium"
+    max_forward_balance_cycles: int = 10
+
+    @field_validator("max_forward_balance_cycles")
+    @classmethod
+    def validate_max_forward_balance_cycles(cls, v: int) -> int:
+        if v < 1 or v > 50:
+            raise ValueError("max_forward_balance_cycles must be between 1 and 50")
+        return v
 
     @field_validator("budget_frequency")
     @classmethod
@@ -185,6 +193,16 @@ class BudgetUpdate(BaseModel):
     auto_expense_enabled: Optional[bool] = None
     auto_expense_offset_days: Optional[int] = None
     record_line_status_changes: Optional[bool] = None
+    max_forward_balance_cycles: Optional[int] = None
+
+    @field_validator("max_forward_balance_cycles")
+    @classmethod
+    def validate_optional_max_forward_balance_cycles(cls, v: Optional[int]) -> Optional[int]:
+        if v is None:
+            return v
+        if v < 1 or v > 50:
+            raise ValueError("max_forward_balance_cycles must be between 1 and 50")
+        return v
 
     @field_validator(
         "acceptable_expense_overrun_pct",
@@ -286,6 +304,7 @@ class BudgetOut(BudgetBase):
     auto_expense_enabled: bool = False
     auto_expense_offset_days: int = 0
     record_line_status_changes: bool = False
+    max_forward_balance_cycles: int = 10
     model_config = {"from_attributes": True}
 
 

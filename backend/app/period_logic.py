@@ -16,6 +16,17 @@ def _ensure_utc(value: datetime) -> datetime:
     return value
 
 
+def normalize_budget_date(value: datetime | None, budget_timezone: str) -> datetime | None:
+    """Interpret a naive datetime as local midnight in the budget timezone, returning UTC."""
+    from zoneinfo import ZoneInfo
+    if value is None:
+        return None
+    if value.tzinfo is not None:
+        return value.astimezone(timezone.utc)
+    local = value.replace(tzinfo=ZoneInfo(budget_timezone))
+    return local.astimezone(timezone.utc)
+
+
 FREQ_DAYS = {
     "Weekly": 7,
     "Fortnightly": 14,
@@ -31,20 +42,34 @@ def parse_budget_frequency_days(budget_frequency: str) -> Optional[int]:
     return int(match.group("days"))
 
 
-def calc_period_end(startdate: datetime, budget_frequency: str) -> datetime:
-    """Return the inclusive end date for a period given start + frequency."""
+def calc_period_end(startdate: datetime, budget_frequency: str, budget_timezone: str = "UTC") -> datetime:
+    """Return the inclusive end date for a period given start + frequency.
+
+    The returned datetime is local midnight in the budget timezone, expressed as UTC.
+    """
+    from zoneinfo import ZoneInfo
+    tz = ZoneInfo(budget_timezone)
+    if startdate.tzinfo is None:
+        local_start = startdate.replace(tzinfo=tz)
+    else:
+        local_start = startdate.astimezone(tz)
+    local_start = local_start.replace(hour=0, minute=0, second=0, microsecond=0)
+
     if budget_frequency == "Weekly":
-        return startdate + timedelta(days=6)
+        local_end = local_start + timedelta(days=6)
     elif budget_frequency == "Fortnightly":
-        return startdate + timedelta(days=13)
+        local_end = local_start + timedelta(days=13)
     elif budget_frequency == "Monthly":
-        # end = last day of the same month as startdate
-        next_month = startdate + relativedelta(months=1)
-        return next_month.replace(day=1) - timedelta(days=1)
-    custom_days = parse_budget_frequency_days(budget_frequency)
-    if custom_days is not None:
-        return startdate + timedelta(days=custom_days - 1)
-    raise ValueError(f"Unknown budget_frequency: {budget_frequency}")
+        next_month = local_start + relativedelta(months=1)
+        local_end = next_month.replace(day=1) - timedelta(days=1)
+    else:
+        custom_days = parse_budget_frequency_days(budget_frequency)
+        if custom_days is not None:
+            local_end = local_start + timedelta(days=custom_days - 1)
+        else:
+            raise ValueError(f"Unknown budget_frequency: {budget_frequency}")
+
+    return local_end.replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
 
 
 def periods_overlap(start1: datetime, end1: datetime, start2: datetime, end2: datetime) -> bool:

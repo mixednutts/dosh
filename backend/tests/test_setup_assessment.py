@@ -4,7 +4,7 @@ from app.setup_assessment import budget_setup_assessment
 from app.models import FinancialPeriod, PeriodBalance, PeriodTransaction
 from app.time_utils import utc_now
 
-from .factories import create_balance_type, create_budget, create_expense_item, create_income_type, create_investment_item, generate_periods
+from .factories import create_balance_type, create_budget, create_expense_item, create_income_type, create_investment_item, generate_periods, local_midnight_utc
 
 
 def test_setup_assessment_reports_blocking_primary_account_gap(client, db_session):
@@ -82,7 +82,7 @@ def test_setup_assessment_marks_generated_primary_account_as_in_use(client, db_s
     create_income_type(db_session, budgetid=budget.budgetid)
     create_expense_item(db_session, budgetid=budget.budgetid)
     create_balance_type(db_session, budgetid=budget.budgetid, balancedesc="Main Account", is_primary=True)
-    startdate = utc_now().replace(hour=0, minute=0, second=0, microsecond=0)
+    startdate = local_midnight_utc(utc_now())
     period = FinancialPeriod(
         budgetid=budget.budgetid,
         startdate=startdate,

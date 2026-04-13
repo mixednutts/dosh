@@ -206,10 +206,21 @@ For document changes, follow [DOCUMENTATION_FRAMEWORK.md](./docs/DOCUMENTATION_F
 
 ## Current Project State (Snapshot)
 
-**Version:** 0.3.6-alpha
-**Schema Revisions:** d3091a75b8ff, e4f5a6b7c8d9, f1a2b3c4d5e6
+**Version:** 0.3.7-alpha
+**Schema Revisions:** d3091a75b8ff, e4f5a6b7c8d9, f1a2b3c4d5e6, b10a29f14a8f, 559cbaa1dce7
 
 **Recent Work:**
+- **Dynamic Account Balance Calculation (COMPLETED):** Implemented dynamic balance computation from last frozen anchor with forward-cycle limit
+  - Added `compute_dynamic_period_balances()`, propagation via `sync_period_state`, and `max_forward_balance_cycles` setting (default 10, range 1-50)
+  - Integrated into API endpoints with 204 response for limit exceeded; frontend banner and settings UI added
+  - Added 16 backend tests and 3 frontend tests; deployed successfully to local Docker with override
+- **Period Date Boundary Fix (COMPLETED):** Fixed timezone-aware period start/end storage and inclusive end-date behavior
+  - Period dates now stored as local midnight in the budget timezone, expressed as UTC
+  - `effectivedate` on expense and investment items follows the same rule
+  - Created Alembic migration `559cbaa1dce7` to shift existing production data
+  - End-of-period comparisons use `enddate + 1 day` so cycles remain current through the entire last day
+- **Frontend Balance Refresh Fix (COMPLETED):** Fixed stale account balances after transaction entry
+  - All relevant mutations now invalidate `['period-balances', id]` alongside `['period', id]`
 - **Period Detail UI Unification (COMPLETED):** Unified table layouts, transfer income labels, and CSS alignment across Income, Expense, Investment, and Account Balances sections
   - All period-detail tables now share identical `<colgroup>` column widths for consistent alignment
   - Transfer income lines display "Transfer from {source}" with the destination account in the Account column
@@ -240,7 +251,7 @@ For document changes, follow [DOCUMENTATION_FRAMEWORK.md](./docs/DOCUMENTATION_F
 - **Demo Data Update:** Seeded demo budget now covers cash-flow account routing, scheduled expenses (Fixed Day of Month and Every N Days), and AUTO/MANUAL payment types for realistic walkthroughs
 
 **Active Focus Areas:**
-- Testing infrastructure hardening (all 121 backend tests passing, 164 frontend tests passing)
+- Testing infrastructure hardening (all 155 backend tests passing, 176 frontend tests passing)
 - Documentation framework compliance
 - Release process reliability
 - SonarQube maintainability follow-through (props validation, cognitive complexity, form-label accessibility)
@@ -313,6 +324,8 @@ These rules are current product invariants unless deliberately revisited:
 - income generation now uses the stored income-source amount directly; the retired `isfixed` concept should not be reintroduced
 - carry-forward should only be created from close-out of the prior cycle, not from simple future-cycle generation
 - budget adjustments for income, expense, and investment lines now live in `PeriodTransaction` as `BUDGETADJ` history and must stay excluded from actual and balance calculations
+- period `startdate` and `enddate` are stored as **local midnight in the budget's timezone**, expressed as UTC (e.g. Sydney midnight = 14:00 UTC the previous day). End-of-period comparisons use `enddate + timedelta(days=1)` so the period remains current through the entire last day.
+- `effectivedate` on expense and investment items follows the same rule: stored as local midnight in the budget timezone, expressed as UTC
 
 ---
 

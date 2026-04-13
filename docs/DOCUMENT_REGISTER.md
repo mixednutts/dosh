@@ -338,6 +338,38 @@ Maintenance notes:
 - should be updated when transfer, expense routing, or investment tracking behavior changes materially
 - should remain the canonical design reference for cash-management workflow decisions
 
+### DYNAMIC_ACCOUNT_BALANCE_CALCULATION_PLAN.md
+
+Document:
+
+- [DYNAMIC_ACCOUNT_BALANCE_CALCULATION_PLAN.md](/home/ubuntu/dosh/docs/plans/DYNAMIC_ACCOUNT_BALANCE_CALCULATION_PLAN.md)
+
+Document type:
+
+- domain or workflow plan
+
+Primary purpose:
+
+- define dynamic account balance calculation rules anchored to closed cycles, with configurable forward-calculation limits and stale-data protection
+
+Primary source-of-truth scope:
+
+- frozen anchor rules for closed/pending-closure cycles
+- dynamic balance computation for open cycles
+- forward-calculation limit configuration and UX
+- stored-value propagation and defensive validation behavior
+
+Key relationships:
+
+- informs balance-display and transfer-validation roadmap work in [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md)
+- referenced by [CHANGES.md](/home/ubuntu/dosh/docs/CHANGES.md) and [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) for test coverage expectations
+- complements [CASH_MANAGEMENT_WORKFLOW_PLAN.md](/home/ubuntu/dosh/docs/plans/CASH_MANAGEMENT_WORKFLOW_PLAN.md) for account-balance consistency
+
+Maintenance notes:
+
+- should be updated when balance calculation, propagation, or limit behavior changes materially
+- should remain the canonical design reference for dynamic balance decisions
+
 ### INCOME_TRANSACTIONS_UNIFICATION_AND_LEGACY_LEDGER_CLEANUP_PLAN.md
 
 Document:

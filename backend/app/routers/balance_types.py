@@ -1,16 +1,17 @@
 from decimal import Decimal
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response
 from sqlalchemy.orm import Session
 from ..api_docs import DbSession, error_responses
-from ..cycle_management import recalculate_budget_chain, cycle_stage
-from ..cycle_constants import CURRENT_STAGE, PLANNED
+from ..cycle_management import recalculate_budget_chain, cycle_stage, cycle_status
+from ..cycle_constants import CLOSED, CURRENT_STAGE, PLANNED
 from ..models import Budget, BalanceType, PeriodBalance, FinancialPeriod
 from ..schemas import (
     BalanceTypeCreate, BalanceTypeOut, BalanceTypeUpdate,
     PeriodBalanceOut, PeriodBalanceUpdate,
 )
 from ..setup_assessment import account_assessment
+from ..transaction_ledger import compute_dynamic_period_balances
 
 router = APIRouter(prefix="/budgets/{budgetid}/balance-types", tags=["balance-types"])
 period_router = APIRouter(prefix="/periods", tags=["period-balances"])
@@ -225,6 +226,15 @@ def list_period_balances(finperiodid: int, db: DbSession):
     period = db.get(FinancialPeriod, finperiodid)
     if not period:
         raise HTTPException(404, "Period not found")
+
+    if cycle_status(period) != CLOSED:
+        budget = db.get(Budget, period.budgetid)
+        max_cycles = budget.max_forward_balance_cycles if budget else 10
+        dynamic_balances = compute_dynamic_period_balances(finperiodid, db, max_forward_cycles=max_cycles)
+        if dynamic_balances is None:
+            return Response(status_code=204)
+        return dynamic_balances
+
     rows = db.query(PeriodBalance).filter(PeriodBalance.finperiodid == finperiodid).all()
     # Enrich with balance_type label
     out = []

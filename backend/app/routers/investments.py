@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from ..api_docs import DbSession, error_responses
 from ..models import Budget, InvestmentItem
 from ..schemas import InvestmentItemCreate, InvestmentItemOut, InvestmentItemUpdate, SetupHistoryOut
+from ..period_logic import normalize_budget_date
 from ..setup_assessment import investment_assessment
 from ..setup_history import (
     build_changed_fields,
@@ -58,13 +59,16 @@ def list_investment_items(budgetid: int, db: DbSession):
 
 @router.post("/", response_model=InvestmentItemOut, status_code=201, responses=error_responses(404, 409, 422))
 def create_investment_item(budgetid: int, payload: InvestmentItemCreate, db: DbSession):
-    _get_budget_or_404(budgetid, db)
+    budget = _get_budget_or_404(budgetid, db)
     existing = db.get(InvestmentItem, (budgetid, payload.investmentdesc))
     if existing:
         raise HTTPException(409, "Investment item with this description already exists")
     if payload.is_primary and not payload.active:
         raise HTTPException(422, "Primary investment items must be active")
-    item = InvestmentItem(budgetid=budgetid, revisionnum=0, **payload.model_dump())
+    data = payload.model_dump()
+    if data.get("effectivedate") is not None:
+        data["effectivedate"] = normalize_budget_date(data["effectivedate"], budget.timezone)
+    item = InvestmentItem(budgetid=budgetid, revisionnum=0, **data)
     if item.is_primary:
         _clear_other_primary_investments(budgetid, item.investmentdesc, db)
     db.add(item)
@@ -81,7 +85,10 @@ def update_investment_item(
     if not item:
         raise HTTPException(404, "Investment item not found")
     _assert_investment_edit_allowed(budgetid, investmentdesc, db)
+    budget = _get_budget_or_404(budgetid, db)
     updates = payload.model_dump(exclude_none=True)
+    if "effectivedate" in updates and updates["effectivedate"] is not None:
+        updates["effectivedate"] = normalize_budget_date(updates["effectivedate"], budget.timezone)
     revision_fields = {"planned_amount"}
     changed_fields = build_changed_fields(item, updates, revision_fields)
     is_revision = bool(changed_fields)

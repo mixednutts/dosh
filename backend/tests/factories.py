@@ -1,11 +1,21 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
+from zoneinfo import ZoneInfo
 
 from sqlalchemy.orm import Session
 
 from app.models import BalanceType, Budget, ExpenseItem, IncomeType, InvestmentItem
+
+
+def local_midnight_utc(value: datetime, timezone_str: str = "Australia/Sydney") -> datetime:
+    """Convert a naive or aware datetime to local midnight in the given timezone, expressed as UTC."""
+    if value.tzinfo is None:
+        local = value.replace(tzinfo=ZoneInfo(timezone_str))
+    else:
+        local = value.astimezone(ZoneInfo(timezone_str))
+    return local.replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
 
 
 def create_budget(

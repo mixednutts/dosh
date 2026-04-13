@@ -31,6 +31,7 @@ export function InvestmentTxModal({ periodId, investmentdesc, openingValue, clos
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['investment-tx', periodId, investmentdesc] })
       qc.invalidateQueries({ queryKey: ['period', periodId] })
+      qc.invalidateQueries({ queryKey: ['period-balances', periodId] })
       setAmount('')
       setResolvedAmount({ value: null, state: 'empty' })
       setNote('')
@@ -45,6 +46,7 @@ export function InvestmentTxModal({ periodId, investmentdesc, openingValue, clos
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['investment-tx', periodId, investmentdesc] })
       qc.invalidateQueries({ queryKey: ['period', periodId] })
+      qc.invalidateQueries({ queryKey: ['period-balances', periodId] })
     },
   })
 

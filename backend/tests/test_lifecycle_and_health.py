@@ -8,7 +8,7 @@ from app.cycle_management import assign_period_lifecycle_states
 from app.models import FinancialPeriod
 from app.time_utils import utc_now
 
-from .factories import create_minimum_budget_setup, generate_periods
+from .factories import create_minimum_budget_setup, generate_periods, local_midnight_utc
 
 
 def test_trailing_active_cycle_with_recorded_activity_cannot_be_deleted(client, db_session):
@@ -41,7 +41,7 @@ def test_trailing_active_cycle_with_recorded_activity_cannot_be_deleted(client, 
 def test_assign_period_lifecycle_states_normalizes_multiple_active_periods(db_session):
     setup = create_minimum_budget_setup(db_session)
     budget = setup["budget"]
-    now = utc_now().replace(hour=0, minute=0, second=0, microsecond=0)
+    now = local_midnight_utc(utc_now())
 
     first = FinancialPeriod(
         budgetid=budget.budgetid,

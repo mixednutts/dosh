@@ -55,7 +55,7 @@ from ..schemas import (
     PeriodInvestmentStatusUpdate, PeriodTransactionOut, PeriodExpensePayTypeUpdate,
     AutoExpenseRunResultOut,
 )
-from ..period_logic import calc_period_end, periods_overlap, expense_occurs_in_period
+from ..period_logic import calc_period_end, expense_occurs_in_period, normalize_budget_date, periods_overlap
 from ..setup_assessment import budget_setup_assessment
 from ..setup_history import next_supported_revisionnum
 from ..time_utils import app_now_naive
@@ -65,6 +65,7 @@ from ..transaction_ledger import (
     build_expense_tx,
     build_income_tx,
     build_status_change_tx,
+    compute_dynamic_period_balances,
     get_primary_account_desc,
     sync_period_state,
     validate_transfer_against_source_account,
@@ -322,13 +323,22 @@ def _load_period_detail_components(period: FinancialPeriod, db: Session) -> dict
         .filter(PeriodInvestment.finperiodid == finperiodid)
         .all()
     )
-    balance_rows = db.query(PeriodBalance).filter(PeriodBalance.finperiodid == finperiodid).all()
-    enriched_balances = []
-    for pb in balance_rows:
-        bt = db.get(BalanceType, (pb.budgetid, pb.balancedesc))
-        balance = PeriodBalanceOut.model_validate(pb)
-        balance.balance_type = bt.balance_type if bt else None
-        enriched_balances.append(balance)
+    if cycle_status(period) != CLOSED:
+        budget = db.get(Budget, period.budgetid)
+        max_cycles = budget.max_forward_balance_cycles if budget else 10
+        dynamic_balances = compute_dynamic_period_balances(finperiodid, db, max_forward_cycles=max_cycles)
+        if dynamic_balances is not None:
+            enriched_balances = dynamic_balances
+        else:
+            enriched_balances = []
+    else:
+        balance_rows = db.query(PeriodBalance).filter(PeriodBalance.finperiodid == finperiodid).all()
+        enriched_balances = []
+        for pb in balance_rows:
+            bt = db.get(BalanceType, (pb.budgetid, pb.balancedesc))
+            balance = PeriodBalanceOut.model_validate(pb)
+            balance.balance_type = bt.balance_type if bt else None
+            enriched_balances.append(balance)
 
     income_out = _enrich_incomes(incomes, db)
     expense_out = _enrich_expenses(expenses, db)
@@ -540,12 +550,8 @@ def _pick_auto_surplus_investment(investment_items: list[InvestmentItem]) -> Opt
     return None
 
 
-def _normalize_period_datetime(value: datetime) -> datetime:
-    from datetime import timezone
-    # Normalize to midnight, ensuring UTC timezone for consistency
-    if value.tzinfo is None:
-        value = value.replace(tzinfo=timezone.utc)
-    return value.replace(hour=0, minute=0, second=0, microsecond=0)
+def _normalize_period_datetime(value: datetime, budget_timezone: str) -> datetime:
+    return normalize_budget_date(value, budget_timezone)
 
 
 # ── Generate ──────────────────────────────────────────────────────────────────
@@ -588,11 +594,11 @@ def generate_period(payload: PeriodGenerateRequest, db: DbSession):
     ).all()
     auto_surplus_target = _pick_auto_surplus_investment(investment_items) if budget.auto_add_surplus_to_investment else None
 
-    current_start = _normalize_period_datetime(payload.startdate)
+    current_start = _normalize_period_datetime(payload.startdate, budget.timezone)
     last_period = None
 
     for _i in range(max(1, payload.count)):
-        current_end = calc_period_end(current_start, budget.budget_frequency)
+        current_end = calc_period_end(current_start, budget.budget_frequency, budget.timezone)
 
         # Overlap check against all existing periods (including flushed ones from prior iterations)
         existing = db.query(FinancialPeriod).filter(

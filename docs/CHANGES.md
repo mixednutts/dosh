@@ -39,6 +39,41 @@ For the implemented Auto Expense workflow rules, scheduler behavior, migration e
 
 For the cash management workflow plan that defines generalised transfers, expense routing, investment tracking, and balance validation, read [CASH_MANAGEMENT_WORKFLOW_PLAN.md](/home/ubuntu/dosh/docs/plans/CASH_MANAGEMENT_WORKFLOW_PLAN.md).
 
+## Latest Session: Dynamic Account Balances, Timezone-Aware Period Dates, And Balance Refresh Fix
+
+This session implemented dynamic account balance calculation for open budget cycles, fixed a timezone-related period end-date boundary bug, and resolved a frontend query-invalidation issue that caused stale account balances after transaction entry.
+
+### What changed
+
+- **Dynamic account balance calculation:**
+  - Added `compute_dynamic_period_balances()` in `backend/app/transaction_ledger.py` to compute balances from the last frozen anchor (closed or pending-closure cycle) rather than relying solely on stored `PeriodBalance` rows.
+  - Added `max_forward_balance_cycles` to the `Budget` model (default 10, valid range 1-50) with backend validation and a frontend settings control in `SettingsTab.jsx`.
+  - Integrated dynamic balances into the period-detail API (`_load_period_detail_components`) and the balance-list API (`list_period_balances`), returning HTTP 204 No Content when the forward limit is exceeded.
+  - Added a `limitExceeded` banner in `BalanceSection.jsx` that displays when planned cycles exceed the allowed forward-calculation limit.
+  - Updated `sync_period_state()` to call `propagate_balance_changes_from_period()` so stored balances stay synchronized for cycles within the limit.
+  - Used dynamic recomputation as a defensive guard in `validate_transfer_against_source_account()` to protect against stale stored closing balances.
+
+- **Timezone-aware period date boundaries:**
+  - Fixed a root-cause bug where `period.enddate` was stored as UTC midnight regardless of the budget's configured timezone, causing periods in positive-offset timezones (e.g. `Australia/Sydney`) to expire hours before the actual local end of day.
+  - Added `normalize_budget_date()` in `backend/app/period_logic.py` to interpret naive frontend dates as local midnight in the budget timezone and convert to UTC.
+  - Updated `calc_period_end()` to preserve the local-midnight time component.
+  - Updated period generation (`routers/periods.py`), next-cycle creation (`cycle_management.py`), and lifecycle checks (`cycle_stage`, `_is_frozen_period`, `_is_active_period`) to use `enddate + timedelta(days=1)` so the period remains current through the entire last day.
+  - Normalized `effectivedate` storage for expense and investment items to follow the same local-midnight-in-UTC rule.
+  - Created Alembic migration `559cbaa1dce7` to shift existing `financialperiods.startdate/enddate`, `expenseitems.effectivedate`, and `investmentitems.effectivedate` values from UTC midnight to budget-local midnight in UTC.
+
+- **Frontend balance refresh fix:**
+  - Identified that all mutations affecting transactions, entries, budgets, and line items were invalidating `['period', id]` but not `['period-balances', id]`, leaving the Account Balances section stale until a page refresh.
+  - Added `qc.invalidateQueries({ queryKey: ['period-balances', ...] })` to every relevant mutation in `PeriodDetailPage.jsx`, `AddExpenseLineModal.jsx`, `AddIncomeLineModal.jsx`, `ExpenseEntriesModal.jsx`, `IncomeTransactionsModal.jsx`, `InvestmentTxModal.jsx`, and `CloseoutModal.jsx`.
+
+### Verification
+
+- Full backend suite: **155 passed**
+- Full frontend suite: **176 passed**
+- Docker Compose deployment via `scripts/release_with_migrations.sh` with `INCLUDE_OVERRIDE=true` completed successfully; health check passed
+- Alembic migration `559cbaa1dce7` applied successfully to the production database in the Docker container
+
+---
+
 ## Latest Session: Period Detail UI — Unified Tables, Transfer Labels, And CSS Alignment
 
 This session focused on unifying the period-detail page table layouts, improving transfer income readability, and fixing a CSS conflict that was causing column width misalignment.

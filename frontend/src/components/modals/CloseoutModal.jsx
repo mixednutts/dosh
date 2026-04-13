@@ -20,6 +20,7 @@ export function CloseoutModal({ periodId, onClose }) {
     mutationFn: () => closeOutPeriod(periodId, { comments, goals, create_next_cycle: createNextCycle }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['period', periodId] })
+      qc.invalidateQueries({ queryKey: ['period-balances', periodId] })
       qc.invalidateQueries({ queryKey: ['periods'] })
       qc.invalidateQueries({ queryKey: ['period-summaries'] })
       qc.invalidateQueries({ queryKey: ['budgets'] })

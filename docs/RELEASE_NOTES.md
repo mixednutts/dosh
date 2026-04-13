@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+## 0.3.7-alpha | released | 2026-04-13
+
+### Added
+
+- **Dynamic Account Balance Calculation**: Account balances for open budget cycles are now computed dynamically from the last frozen cycle (closed or pending closure), rather than relying only on stored values. This ensures balance accuracy when transactions are recorded across multiple open cycles.
+- **Forward Calculation Limit**: Added a budget setting to control how many planned cycles Dosh will calculate balances for (default 10, adjustable from 1 to 50). If the limit is exceeded, the balance section shows a clear banner instead of stale or misleading numbers.
+
+### Fixed
+
+- **Period End-Date Boundaries**: Fixed a timezone bug where budget cycles in timezones ahead of UTC (such as Australia/Sydney) could expire before the actual local end of day. Period start and end dates now correctly represent midnight in the budget's timezone.
+- **Live Balance Updates**: Account balances on the period detail page now refresh immediately after recording income, expense, investment, or transfer transactions, without requiring a page refresh or focus change.
+
 ## 0.3.6-alpha | released | 2026-04-13
 
 ### Improved

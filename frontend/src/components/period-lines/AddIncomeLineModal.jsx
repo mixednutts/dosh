@@ -48,6 +48,7 @@ export function AddIncomeLineModal({ periodId, budgetId, existingDescs, onClose 
     mutationFn: data => addIncomeToPeriod(periodId, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['period', periodId] })
+      qc.invalidateQueries({ queryKey: ['period-balances', periodId] })
       qc.invalidateQueries({ queryKey: ['income-types', budgetId] })
       onClose()
     },
@@ -56,7 +57,7 @@ export function AddIncomeLineModal({ periodId, budgetId, existingDescs, onClose 
 
   const addTransfer = useMutation({
     mutationFn: data => accountTransfer(periodId, data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['period', periodId] }); onClose() },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['period', periodId] }); qc.invalidateQueries({ queryKey: ['period-balances', periodId] }); onClose() },
     onError: err => setError(err.response?.data?.detail ?? 'Failed to record transfer'),
   })
 

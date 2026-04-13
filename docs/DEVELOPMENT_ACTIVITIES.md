@@ -78,6 +78,10 @@ Recent progress worth carrying forward:
 - expense items now support a `default_account_desc` for routing, with transaction-level account override and fallback to the primary account
 - investment transactions now expose and display their linked cash account (`affected_account_desc`)
 - two Alembic migrations backfill existing expense defaults and transaction account data safely and idempotently
+- dynamic account balance calculation now computes balances from the last frozen anchor (closed or pending-closure cycle) for open cycles, with a configurable `max_forward_balance_cycles` limit (default 10, range 1-50) and a 204 response when the limit is exceeded
+- balance propagation now triggers automatically after transaction recording and syncs stored values for cycles within the forward limit
+- period start and end dates are now stored as local midnight in the budget timezone (expressed as UTC), fixing boundary issues where cycles expired early for positive-offset timezones
+- `effectivedate` on expense and investment items follows the same timezone-aware midnight rule
 
 ## Activity Model
 
@@ -589,6 +593,10 @@ Status:
 - identify which existing balance and transaction data can support cash position summaries without duplicating logic
 - add tests around cash-position calculations once the workflow definition is settled
 - document the intended review loop for checking cash, adjusting plan, and closing out the period
+- `Completed`: implement dynamic account balance calculation from the last frozen anchor with configurable forward-calculation limits and stale-data protection via `compute_dynamic_period_balances()`
+- `Completed`: add `max_forward_balance_cycles` budget setting (default 10, range 1-50) with backend validation and frontend settings UI
+- `Completed`: return HTTP 204 No Content when the forward limit is exceeded, with a frontend banner explaining the calculation limit
+- `Completed`: integrate dynamic balances into period detail and transfer validation so non-closed periods use live computed balances when stored values would be stale
 
 Cross-links:
 
@@ -724,6 +732,8 @@ Status:
   - `Completed`: relocate the `Always` scheduling helper text between Frequency Type and Pay Type fields for clearer context
   - `Completed`: verify and protect pay-type editability for existing scheduled expense items with a regression test
   - `Completed`: enforce `frequency_value` presence for `Fixed Day of Month` and `Every N Days` expenses in both backend validation and frontend form submission, preventing expenses from being saved with no interval set
+- `Completed`: fix period end-date boundary bug where periods ending on the current day were classified as `PENDING_CLOSURE` instead of `CURRENT` because `enddate` was stored as UTC midnight and compared directly against `utc_now()`; comparisons now use `enddate + 1 day` so the period remains current through the entire last day
+- `Completed`: fix frontend stale balances after transaction entry by invalidating the `period-balances` query key on all mutations that affect income, expense, investment, transfers, and close-out workflows
 
 Cross-links:
 
@@ -767,6 +777,8 @@ Status:
 - `Completed`: add localisation regression coverage for budget preference validation, `Intl`-based formatting across representative locales, masked amount input, calculator behavior, and touched high-traffic surfaces
 - `Completed`: add backend regression coverage for generalised account-transfer validation, including committed-amount logic for paid and non-paid lines (`test_account_transfer_validation.py`)
 - `Completed`: add backend regression coverage for expense entry account routing, including default-account fallback and transaction-level override (`test_expense_entry_account_routing.py`)
+- `Completed`: add backend regression coverage for dynamic account balance calculation, including frozen-anchor behavior, forward-limit handling, balance propagation, and limit-exceeded responses (`test_dynamic_account_balances.py`)
+- `Completed`: add frontend regression coverage for the balance-calculation-limit banner in `BalanceSection.test.jsx`
 - future setup and workflow testing should expand beyond the original `1 transaction + 1 savings` assumption
 - bookmark named scenarios such as `Single Account` and `Multi Transaction` so future sessions can deliberately test differing account shapes rather than relying on one default personal setup model
 - consider adding a richer demo-validation checklist or smoke flow once more reporting and reconciliation surfaces exist

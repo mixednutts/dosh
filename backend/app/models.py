@@ -44,6 +44,7 @@ class Budget(Base):
     auto_expense_enabled = Column(Boolean, nullable=False, default=False)
     auto_expense_offset_days = Column(Integer, nullable=False, default=0)
     record_line_status_changes = Column(Boolean, nullable=False, default=False)
+    max_forward_balance_cycles = Column(Integer, nullable=False, default=10)
 
     periods = relationship("FinancialPeriod", back_populates="budget", cascade="all, delete-orphan")
     income_types = relationship("IncomeType", back_populates="budget", cascade="all, delete-orphan")

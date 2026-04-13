@@ -51,7 +51,8 @@ def cycle_stage(period: FinancialPeriod) -> str:
     now = utc_now()
     # Ensure period.enddate has timezone info for comparison
     enddate = period.enddate if period.enddate.tzinfo else period.enddate.replace(tzinfo=timezone.utc)
-    if enddate < now:
+    # enddate is local midnight of the last day; the period is current through the entire last day
+    if enddate + timedelta(days=1) <= now:
         return PENDING_CLOSURE_STAGE
     return CURRENT_STAGE
 
@@ -198,7 +199,7 @@ def assign_period_lifecycle_states(budgetid: int, db: Session) -> None:
 
 def create_next_cycle(period: FinancialPeriod, budget: Budget, db: Session) -> FinancialPeriod:
     startdate = period.enddate + timedelta(days=1)
-    enddate = calc_period_end(startdate, budget.budget_frequency)
+    enddate = calc_period_end(startdate, budget.budget_frequency, budget.timezone)
     next_period = FinancialPeriod(
         budgetid=budget.budgetid,
         startdate=startdate,
@@ -293,6 +294,7 @@ def create_next_cycle(period: FinancialPeriod, budget: Budget, db: Session) -> F
 
 
 def build_closeout_preview(period: FinancialPeriod, budget: Budget, db: Session) -> dict:
+    sync_period_state(period.finperiodid, db)
     periods = ordered_budget_periods(period.budgetid, db)
     current, future, historical = lifecycle_groups(periods)
     health = _build_current_period_check(budget, current or [period], future, historical)
@@ -305,7 +307,7 @@ def build_closeout_preview(period: FinancialPeriod, budget: Budget, db: Session)
         "totals": {key: str(value) for key, value in totals.items()},
         "health": health,
         "next_cycle_exists": next_period is not None,
-        "can_close_early": utc_now() <= (period.enddate if period.enddate.tzinfo else period.enddate.replace(tzinfo=timezone.utc)),
+        "can_close_early": utc_now() <= (period.enddate if period.enddate.tzinfo else period.enddate.replace(tzinfo=timezone.utc)) + timedelta(days=1),
     }
 
 

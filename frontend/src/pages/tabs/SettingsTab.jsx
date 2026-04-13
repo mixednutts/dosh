@@ -58,6 +58,12 @@ export default function SettingsTab({ budgetId, budget }) {
     saveSettings.mutate({ auto_expense_offset_days: Number.isNaN(parsed) ? 0 : parsed })
   }
 
+  const handleMaxForwardCyclesChange = value => {
+    const parsed = Number.parseInt(value, 10)
+    const clamped = Number.isNaN(parsed) ? 10 : Math.max(1, Math.min(50, parsed))
+    saveSettings.mutate({ max_forward_balance_cycles: clamped })
+  }
+
   return (
     <div className="space-y-6 max-w-lg">
       <div className="card p-5">
@@ -264,6 +270,26 @@ export default function SettingsTab({ budgetId, budget }) {
         </div>
 
         <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-800/50">
+          <label htmlFor="max-forward-balance-cycles" className="label">Maximum Forward Balance Calculation Cycles</label>
+          <input
+            id="max-forward-balance-cycles"
+            type="number"
+            min="1"
+            max="50"
+            className="input max-w-32"
+            value={budget?.max_forward_balance_cycles ?? 10}
+            disabled={saveSettings.isPending}
+            onChange={e => handleMaxForwardCyclesChange(e.target.value)}
+          />
+          <p className="mt-2 text-gray-600 dark:text-gray-400">
+            Controls how many planned budget cycles Dosh will calculate account balances for dynamically.
+          </p>
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            Larger values may impact performance. Minimum 1, maximum 50.
+          </p>
+        </div>
+
+        <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-800/50">
           <label htmlFor="account-naming-preference" className="label">Preferred Primary Account Naming</label>
           <select
             id="account-naming-preference"
@@ -303,5 +329,6 @@ SettingsTab.propTypes = {
     date_format: PropTypes.string,
     auto_expense_enabled: PropTypes.bool,
     auto_expense_offset_days: PropTypes.number,
+    max_forward_balance_cycles: PropTypes.number,
   }),
 }

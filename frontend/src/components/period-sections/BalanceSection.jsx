@@ -5,8 +5,23 @@ export function BalanceSection({
   balances,
   formatters,
   onViewTransactions,
+  limitExceeded = false,
 }) {
   const fmt = formatters.fmt
+
+  if (limitExceeded) {
+    return (
+      <div className="card">
+        <div className="px-4 py-6 text-center text-sm text-gray-600 dark:text-gray-400">
+          The Planned budget cycles exceeds allowed limits for forward calculation.
+          <br />
+          <span className="text-xs text-gray-500">
+            Adjust the limit in Budget Settings if needed.
+          </span>
+        </div>
+      </div>
+    )
+  }
 
   if (balances.length === 0) return null
 
@@ -91,4 +106,5 @@ BalanceSection.propTypes = {
   balances: PropTypes.array.isRequired,
   formatters: PropTypes.object.isRequired,
   onViewTransactions: PropTypes.func.isRequired,
+  limitExceeded: PropTypes.bool,
 }

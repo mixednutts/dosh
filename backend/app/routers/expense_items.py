@@ -6,7 +6,7 @@ from ..auto_expense import normalize_expense_paytype
 from ..api_docs import DbSession, error_responses
 from ..models import Budget, BalanceType, ExpenseItem, FinancialPeriod, PeriodExpense, PeriodTransaction
 from ..schemas import ExpenseItemCreate, ExpenseItemOut, ExpenseItemUpdate, ExpenseItemReorderRequest, SetupHistoryOut
-from ..period_logic import expense_occurs_in_period
+from ..period_logic import expense_occurs_in_period, normalize_budget_date
 from ..setup_assessment import expense_assessment
 from ..setup_history import (
     build_changed_fields,
@@ -136,7 +136,7 @@ def reorder_expense_items(budgetid: int, payload: ExpenseItemReorderRequest, db:
 
 @router.post("/", response_model=ExpenseItemOut, status_code=201, responses=error_responses(404, 409))
 def create_expense_item(budgetid: int, payload: ExpenseItemCreate, db: DbSession):
-    _get_budget_or_404(budgetid, db)
+    budget = _get_budget_or_404(budgetid, db)
     existing = db.get(ExpenseItem, (budgetid, payload.expensedesc))
     if existing:
         raise HTTPException(409, "Expense item with this description already exists")
@@ -150,6 +150,8 @@ def create_expense_item(budgetid: int, payload: ExpenseItemCreate, db: DbSession
         payload_data=data,
         db=db,
     )
+    if data.get("effectivedate") is not None:
+        data["effectivedate"] = normalize_budget_date(data["effectivedate"], budget.timezone)
     ei = ExpenseItem(budgetid=budgetid, revisionnum=0, **data)
     db.add(ei)
     db.commit()
@@ -170,6 +172,7 @@ def update_expense_item(
     budgetid: int, expensedesc: str, payload: ExpenseItemUpdate, db: DbSession
 ):
     ei = _get_expense_or_404(budgetid, expensedesc, db)
+    budget = _get_budget_or_404(budgetid, db)
     data = payload.model_dump(exclude_none=True)
     if "default_account_desc" in data:
         _validate_default_account_desc(budgetid, data["default_account_desc"], db)
@@ -182,6 +185,8 @@ def update_expense_item(
             payload_data=data,
             db=db,
         )
+    if "effectivedate" in data and data["effectivedate"] is not None:
+        data["effectivedate"] = normalize_budget_date(data["effectivedate"], budget.timezone)
     # Deactivation is always allowed; it only affects future cycle generation.
     # Existing cycles retain the expense line until manually removed.
     bump = data.pop("bump_revision", False)

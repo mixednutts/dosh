@@ -24,6 +24,7 @@ def test_clean_database_upgrade_reaches_head_and_has_budget_preference_columns(t
     assert "timezone" in budget_columns
     assert "date_format" in budget_columns
     assert "record_line_status_changes" in budget_columns
+    assert "max_forward_balance_cycles" in budget_columns
 
 
 def test_auto_expense_upgrade_normalizes_invalid_legacy_auto_rows(build_pre_feature_db):
@@ -34,7 +35,7 @@ def test_auto_expense_upgrade_normalizes_invalid_legacy_auto_rows(build_pre_feat
     with sqlite3.connect(db_path) as connection:
         budget_row = connection.execute(
             """
-            SELECT auto_expense_enabled, auto_expense_offset_days, locale, currency, timezone, date_format
+            SELECT auto_expense_enabled, auto_expense_offset_days, locale, currency, timezone, date_format, max_forward_balance_cycles
             FROM budgets
             LIMIT 1
             """
@@ -50,7 +51,7 @@ def test_auto_expense_upgrade_normalizes_invalid_legacy_auto_rows(build_pre_feat
         )
 
     assert current_revision(db_path) == HEAD_REVISION
-    assert budget_row == (0, 0, "en-AU", "AUD", "Australia/Sydney", "medium")
+    assert budget_row == (0, 0, "en-AU", "AUD", "Australia/Sydney", "medium", 10)
     assert expense_paytypes["Scheduled Auto"] == "AUTO"
     assert expense_paytypes["Always Auto"] == "MANUAL"
     assert expense_paytypes["Missing Schedule Auto"] == "MANUAL"

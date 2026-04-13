@@ -7,8 +7,7 @@ from app.budget_health import build_budget_health_payload
 from app.models import Budget, FinancialPeriod, PeriodExpense, PeriodIncome
 from app.time_utils import utc_now
 
-from .factories import create_budget, create_expense_item, create_income_type
-from .factories import create_balance_type
+from .factories import create_budget, create_balance_type, create_expense_item, create_income_type, local_midnight_utc
 
 
 def _seed_historical_period(
@@ -113,7 +112,7 @@ def test_budget_health_momentum_improves_when_recent_closed_periods_overspend_le
     budget = create_budget(db_session)
     create_income_type(db_session, budgetid=budget.budgetid)
     create_expense_item(db_session, budgetid=budget.budgetid)
-    now = utc_now().replace(hour=0, minute=0, second=0, microsecond=0)
+    now = local_midnight_utc(utc_now())
 
     _seed_historical_period(
         db_session,

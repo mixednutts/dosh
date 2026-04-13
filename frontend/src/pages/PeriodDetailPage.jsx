@@ -6,7 +6,7 @@ import {
   ArrowDownTrayIcon,
 } from '@heroicons/react/24/outline'
 import {
-  getPeriodDetail, getBudget, setPeriodLock, getPeriodsForBudget,
+  getPeriodDetail, getBudget, setPeriodLock, getPeriodsForBudget, getPeriodBalances,
   reorderPeriodExpenses,
   setPeriodExpenseStatus, updatePeriodExpenseBudget, removePeriodExpense,
   updatePeriodInvestmentBudget, removePeriodIncome, updatePeriodIncomeBudget, setPeriodIncomeStatus,
@@ -83,6 +83,11 @@ export default function PeriodDetailPage() {
   const { fmt, fmtDate, fmtDateRange } = formatters
 
   const { data, isLoading, isError } = useQuery({ queryKey: ['period', id], queryFn: () => getPeriodDetail(id) })
+  const { data: balancesData } = useQuery({
+    queryKey: ['period-balances', id],
+    queryFn: () => getPeriodBalances(id),
+    enabled: !!id,
+  })
   const { data: budget } = useQuery({
     queryKey: ['budget', data?.period?.budgetid],
     queryFn: () => getBudget(data.period.budgetid),
@@ -94,8 +99,8 @@ export default function PeriodDetailPage() {
     enabled: !!data?.period?.budgetid,
   })
 
-  const lock = useMutation({ mutationFn: islocked => setPeriodLock(id, islocked), onSuccess: () => qc.invalidateQueries({ queryKey: ['period', id] }) })
-  const setExpenseStatus = useMutation({ mutationFn: ({ desc, status, revisionComment = null }) => setPeriodExpenseStatus(id, desc, status, revisionComment), onSuccess: () => qc.invalidateQueries({ queryKey: ['period', id] }) })
+  const lock = useMutation({ mutationFn: islocked => setPeriodLock(id, islocked), onSuccess: () => { qc.invalidateQueries({ queryKey: ['period', id] }); qc.invalidateQueries({ queryKey: ['period-balances', id] }) } })
+  const setExpenseStatus = useMutation({ mutationFn: ({ desc, status, revisionComment = null }) => setPeriodExpenseStatus(id, desc, status, revisionComment), onSuccess: () => { qc.invalidateQueries({ queryKey: ['period', id] }); qc.invalidateQueries({ queryKey: ['period-balances', id] }) } })
   const updateExpensePayType = useMutation({
     mutationFn: ({ desc, paytype }) => updatePeriodExpensePayType(id, desc, paytype),
     onMutate: () => {
@@ -104,6 +109,7 @@ export default function PeriodDetailPage() {
     onSuccess: () => {
       setAutoExpenseFeedback(null)
       qc.invalidateQueries({ queryKey: ['period', id] })
+      qc.invalidateQueries({ queryKey: ['period-balances', id] })
       qc.invalidateQueries({ queryKey: ['expense-items', data?.period?.budgetid] })
     },
     onError: (error, variables) => setExpensePayTypeWarning({
@@ -115,6 +121,7 @@ export default function PeriodDetailPage() {
     mutationFn: () => runPeriodAutoExpenses(id),
     onSuccess: result => {
       qc.invalidateQueries({ queryKey: ['period', id] })
+      qc.invalidateQueries({ queryKey: ['period-balances', id] })
       setAutoExpenseFeedback({
         tone: 'success',
         text: result.created_count > 0
@@ -124,13 +131,13 @@ export default function PeriodDetailPage() {
     },
     onError: error => setAutoExpenseFeedback({ tone: 'error', text: error?.response?.data?.detail || 'Unable to run Auto Expense right now.' }),
   })
-  const setInvestmentStatus = useMutation({ mutationFn: ({ desc, status, revisionComment = null }) => setPeriodInvestmentStatus(id, desc, status, revisionComment), onSuccess: () => qc.invalidateQueries({ queryKey: ['period', id] }) })
-  const setIncomeStatus = useMutation({ mutationFn: ({ desc, status, revisionComment = null }) => setPeriodIncomeStatus(id, desc, status, revisionComment), onSuccess: () => qc.invalidateQueries({ queryKey: ['period', id] }) })
-  const editIncomeBudget = useMutation({ mutationFn: ({ desc, data }) => updatePeriodIncomeBudget(id, desc, data), onSuccess: () => qc.invalidateQueries({ queryKey: ['period', id] }) })
-  const editExpenseBudget = useMutation({ mutationFn: ({ desc, data }) => updatePeriodExpenseBudget(id, desc, data), onSuccess: () => qc.invalidateQueries({ queryKey: ['period', id] }) })
-  const deleteExpenseLine = useMutation({ mutationFn: desc => removePeriodExpense(id, desc), onSuccess: () => qc.invalidateQueries({ queryKey: ['period', id] }) })
-  const deleteIncomeLine = useMutation({ mutationFn: desc => removePeriodIncome(id, desc), onSuccess: () => qc.invalidateQueries({ queryKey: ['period', id] }) })
-  const editInvBudget = useMutation({ mutationFn: ({ desc, data }) => updatePeriodInvestmentBudget(id, desc, data), onSuccess: () => qc.invalidateQueries({ queryKey: ['period', id] }) })
+  const setInvestmentStatus = useMutation({ mutationFn: ({ desc, status, revisionComment = null }) => setPeriodInvestmentStatus(id, desc, status, revisionComment), onSuccess: () => { qc.invalidateQueries({ queryKey: ['period', id] }); qc.invalidateQueries({ queryKey: ['period-balances', id] }) } })
+  const setIncomeStatus = useMutation({ mutationFn: ({ desc, status, revisionComment = null }) => setPeriodIncomeStatus(id, desc, status, revisionComment), onSuccess: () => { qc.invalidateQueries({ queryKey: ['period', id] }); qc.invalidateQueries({ queryKey: ['period-balances', id] }) } })
+  const editIncomeBudget = useMutation({ mutationFn: ({ desc, data }) => updatePeriodIncomeBudget(id, desc, data), onSuccess: () => { qc.invalidateQueries({ queryKey: ['period', id] }); qc.invalidateQueries({ queryKey: ['period-balances', id] }) } })
+  const editExpenseBudget = useMutation({ mutationFn: ({ desc, data }) => updatePeriodExpenseBudget(id, desc, data), onSuccess: () => { qc.invalidateQueries({ queryKey: ['period', id] }); qc.invalidateQueries({ queryKey: ['period-balances', id] }) } })
+  const deleteExpenseLine = useMutation({ mutationFn: desc => removePeriodExpense(id, desc), onSuccess: () => { qc.invalidateQueries({ queryKey: ['period', id] }); qc.invalidateQueries({ queryKey: ['period-balances', id] }) } })
+  const deleteIncomeLine = useMutation({ mutationFn: desc => removePeriodIncome(id, desc), onSuccess: () => { qc.invalidateQueries({ queryKey: ['period', id] }); qc.invalidateQueries({ queryKey: ['period-balances', id] }) } })
+  const editInvBudget = useMutation({ mutationFn: ({ desc, data }) => updatePeriodInvestmentBudget(id, desc, data), onSuccess: () => { qc.invalidateQueries({ queryKey: ['period', id] }); qc.invalidateQueries({ queryKey: ['period-balances', id] }) } })
 
   // Reset local drag-reorder when server data refreshes
   useEffect(() => { setLocalExpenses(null) }, [data])
@@ -149,7 +156,9 @@ export default function PeriodDetailPage() {
   if (isError) return <p className="text-red-500 p-4">Failed to load budget cycle. <Link to="/budgets" className="underline">Back to Budgets</Link></p>
   if (!data) return <p className="text-gray-500">Budget cycle not found.</p>
 
-  const { incomes, balances = [], investments = [] } = data
+  const { incomes, investments = [] } = data
+  const balances = balancesData ?? data.balances ?? []
+  const balancesLimitExceeded = balancesData === undefined && data.balances?.length === 0
   const expenses = localExpenses ?? data.expenses
 
   // Compute previous and next period IDs for navigation
@@ -453,6 +462,7 @@ export default function PeriodDetailPage() {
 
       <BalanceSection
         balances={balances}
+        limitExceeded={balancesLimitExceeded}
         formatters={formatters}
         onViewTransactions={(b) => setBalanceModal({ balancedesc: b.balancedesc, movementAmount: b.movement_amount ?? 0 })}
       />
