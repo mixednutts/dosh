@@ -122,7 +122,7 @@ Interpretation rules:
 Roadmap-to-activity mapping:
 
 - `Beta Release > Close Out Process` is currently implemented through `Period Close Out`, plus supporting `Setup Assessment And Protected Configuration` and `Quality > Test Coverage`
-- `Beta Release > Cash Management` is currently implemented through `Cash Management`, with supporting work expected from `Quality > UX/UI` and `Quality > Test Coverage`
+- `Beta Release > Cash Management` is complete for beta
 - `Beta Release > Localisation` is implemented for app-wide regional formatting, amount input, supported-option governance, and non-translation best-practice hardening through `Localisation and Regional Fit`; full text translation remains outside beta scope
 - `Beta Release > Budget Health Engine` is currently implemented through `Budget Health`, with supporting work from `Quality > Test Coverage` and demo-data maintenance
 - `Beta Release > Maintainability` is currently implemented primarily through `Quality > Reliability`, `Quality > Consistency`, and the release and migration policy documents
@@ -552,7 +552,11 @@ Roadmap alignment:
 
 - `Beta Release > Cash Management`
 
-Dosh tracks balances and transactions already, but the product still needs an explicit cash management workflow that helps users decide what cash is available, what is committed, and what needs attention next.
+Status:
+
+- `Completed` for beta
+
+The core cash management model is now in place: generalised account transfers, committed-amount validation, expense and investment account routing, and dynamic balance calculation from frozen anchors with configurable forward limits and explicit limit-exceeded signaling.
 
 #### Activity Group: Cash Model Definition
 
@@ -564,8 +568,7 @@ Status:
 - `Completed`: add committed-amount transfer validation using `max(budget, actual)` for non-paid lines and `actual` for paid lines
 - `Completed`: block self-referential transfers at the API level
 - `Completed`: investment transactions now properly debit a source account and credit the linked account via `source_account_desc` and two-sided ledger handling in `build_investment_tx` and `account_delta_for_transaction`
-- define what Dosh means by available cash, committed cash, and reserved cash
-- clarify the relationship between account balances, planned spending, savings transfers, and investment allocations
+- `Completed`: define the relationship between account balances, planned spending, savings transfers, and investment allocations
 
 #### Activity Group: Cash Summary and Review Surfaces
 
@@ -577,28 +580,9 @@ Status:
 - `Completed`: add transaction-level `account_desc` override for expense entries so users can route individual transactions to the correct account
 - `Completed`: expose `affected_account_desc` on investment transactions so users can see which cash account was debited
 - `Completed`: investment transactions allow transaction-time debit account override via `account_desc` in `InvestmentTxCreate`, with the modal defaulting to the item's configured source account
-- define a cash management summary model for current-period use
-- add views for available cash, committed outflows, and near-term obligations
-- design the first cash management review surface before adding more balance-related UI fragments
-
-#### Activity Group: Cash Pressure Signals and Validation
-
-Status:
-
-- `Active`
-
-- make it easier to see which money is free to use versus already spoken for
-- identify the practical actions a user should take when cash pressure appears
-- surface warnings for low available cash, upcoming large expenses, or transfer timing pressure
-- map how savings transfers and investment contributions should affect the user's perceived cash position
-- decide which calculations belong in backend summary endpoints versus frontend presentation
-- identify which existing balance and transaction data can support cash position summaries without duplicating logic
-- add tests around cash-position calculations once the workflow definition is settled
-- document the intended review loop for checking cash, adjusting plan, and closing out the period
-- `Completed`: implement dynamic account balance calculation from the last frozen anchor with configurable forward-calculation limits and stale-data protection via `compute_dynamic_period_balances()`
-- `Completed`: add `max_forward_balance_cycles` budget setting (default 10, range 1-50) with backend validation and frontend settings UI
-- `Completed`: return explicit limit-exceeded signal (`200 []` + `X-Balances-Limit-Exceeded: true` header, plus `balances_limit_exceeded` flag in period detail) instead of HTTP 204, so the frontend banner uses a reliable explicit flag rather than inferring state from an empty array
 - `Completed`: integrate dynamic balances into period detail and transfer validation so non-closed periods use live computed balances when stored values would be stale
+- `Completed`: add `max_forward_balance_cycles` budget setting (default 10, range 1-50) with backend validation and frontend settings UI
+- `Completed`: return explicit limit-exceeded signal (`200 []` + `X-Balances-Limit-Exceeded: true` header, plus `balances_limit_exceeded` flag in period detail) instead of HTTP 204
 
 Cross-links:
 
@@ -816,6 +800,7 @@ Status:
 - `Completed`: harden backend release-notes parsing by replacing the regex-based header parser with bounded string parsing and dedicated regression coverage after the regex DoS exposure was flagged
 - `Completed`: align Dosh to a GitHub-managed release-tagging and release-publishing workflow that creates official Git tags from validated version bumps on `main`, publishes GitHub Releases from validated repo release content, and feeds the in-app release-notes view through the backend GitHub Releases client; the repository workflows, protected `main` SonarQube gate, first remote `v0.1.3-alpha` tag, and first published GitHub Release are now in place, and the app now resolves `current_release` successfully from the published GitHub Release; use [GITHUB_RELEASE_MANAGEMENT_WORKFLOW_PLAN.md](/home/ubuntu/dosh/docs/plans/GITHUB_RELEASE_MANAGEMENT_WORKFLOW_PLAN.md) and [GITHUB_RELEASE_RUNBOOK.md](/home/ubuntu/dosh/docs/GITHUB_RELEASE_RUNBOOK.md) as the current references
 - `Completed`: deploy the schema-changing localisation release through the migration-aware Compose script, verify live schema revisions `9b7f3c2d1a4e` and `c4d8e6f1a2b3`, then fix and redeploy the post-deploy budgets-page refresh crash caused by a missing `formatDateRange` dependency in the pending-closure list; follow-up date-format migration `c4d8e6f1a2b3` is part of the same `0.3.0-alpha` release scope
+- implement a standardized logging output utilizing syslog logging naming conventions for backend services, ensuring consistent severity levels, structured context, and operational observability across containerized deployments
 
 #### Activity Group: Consistency
 
@@ -853,11 +838,10 @@ If we want a practical order of work rather than just a thematic roadmap, this i
 1. Reconciliation > Closed-Cycle Reconciliation Handoff: design the correction path for closed cycles and close remaining write-path gaps.
 2. Reporting and Analysis > Reporting Foundations: add a reporting summary endpoint that rolls up period and ledger data.
 3. Reporting and Analysis > Reporting Foundations: surface a budget-level reporting card set in the frontend.
-4. Cash Management > Cash Model Definition and Cash Summary And Review Surfaces: define the workflow and first summary model for available, committed, and reserved cash.
-5. Budget Health > Personalisation and Evidence Language plus Quality > Test Coverage: refine health personalisation and add supporting tests.
-6. Quality > Reliability: clean up deployment or deprecation warnings and address the outstanding `axios` audit advisory.
-7. Quality > UX/UI and Bugs: review period-detail, sidebar, and budget-summary polish after real use and close the small remaining UI defects.
-8. Export and Backup > Export Scope and Format plus Backup and Restore Design: define the first export and backup scope, including format and restore expectations.
+4. Budget Health > Personalisation and Evidence Language plus Quality > Test Coverage: refine health personalisation and add supporting tests.
+5. Quality > Reliability: clean up deployment or deprecation warnings and address the outstanding `axios` audit advisory.
+6. Quality > UX/UI and Bugs: review period-detail, sidebar, and budget-summary polish after real use and close the small remaining UI defects.
+7. Export and Backup > Export Scope and Format plus Backup and Restore Design: define the first export and backup scope, including format and restore expectations.
 
 ## Implementation Notes To Preserve
 
@@ -873,8 +857,6 @@ To avoid duplicating the canonical roadmap entries above, use these sections as 
 - `Reconciliation > Closed-Cycle Reconciliation Handoff`
 - `Reporting and Analysis > Reporting Foundations`
 - `Localisation and Regional Fit > Terminology and Regional Behavior`
-- `Cash Management > Cash Model Definition`
-- `Cash Management > Cash Summary and Review Surfaces`
 - `Budget Health > Personalisation and Evidence Language`
 - `Budget Health > Demo Data Alignment`
 - `Quality > UX/UI`
@@ -897,13 +879,12 @@ If we want a practical order of work rather than just a thematic roadmap, this i
 1. Design the reconciliation handoff for closed cycles and close remaining write-path gaps.
 2. Add a reporting summary endpoint that rolls up period and ledger data.
 3. Surface a budget-level reporting card set in the frontend.
-4. Define the cash management workflow and the first summary model for available, committed, and reserved cash.
-5. Add tests and cleanup around health personalisation and current-period threshold behavior.
-6. Clean up remaining deployment and backend deprecation warnings from startup hooks and timestamp usage.
-7. Address the outstanding `axios` audit advisory deliberately rather than bundling it into unrelated feature work.
-8. Review sidebar and budget-summary polish after real use, especially around future first-class sections.
-9. Define the first export and backup scope, including format and restore expectations.
-10. Revisit summary-card customization only after the current period-detail card set feels stable in real use.
+4. Add tests and cleanup around health personalisation and current-period threshold behavior.
+5. Clean up remaining deployment and backend deprecation warnings from startup hooks and timestamp usage.
+6. Address the outstanding `axios` audit advisory deliberately rather than bundling it into unrelated feature work.
+7. Review sidebar and budget-summary polish after real use, especially around future first-class sections.
+8. Define the first export and backup scope, including format and restore expectations.
+9. Revisit summary-card customization only after the current period-detail card set feels stable in real use.
 
 ## Guardrails For Future Work
 

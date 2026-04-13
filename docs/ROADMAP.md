@@ -65,6 +65,11 @@ Includes:
 - cash pressure visibility and guidance
 - alignment with balances, planned spending, savings, and investments
 
+Status:
+
+- completed for beta: generalised account transfers, committed-amount validation, expense and investment account routing, dynamic balance calculation from frozen anchors with configurable forward limits, and explicit limit-exceeded signaling
+- cash pressure visibility and guidance remains outside beta scope
+
 ### 3. Localisation
 
 Goal:
@@ -119,6 +124,7 @@ Includes:
 - backup and rollback confidence
 - CI and quality-gate follow-through
 - deployment and startup reliability
+- standardized logging output utilizing syslog logging naming conventions
 
 ## Phase 2
 
