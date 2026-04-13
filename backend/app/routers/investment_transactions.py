@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from ..api_docs import DbSession, error_responses
 from ..cycle_constants import CLOSED, PAID
 from ..models import (
-    FinancialPeriod, PeriodInvestment,
+    BalanceType, FinancialPeriod, InvestmentItem, PeriodInvestment,
     PeriodTransaction,
 )
 from ..schemas import InvestmentTxCreate, InvestmentTxOut
@@ -83,6 +83,17 @@ def add_transaction(
     pi = _get_period_investment(finperiodid, investmentdesc, db)
     _assert_investment_not_paid(pi)
 
+    item = db.get(InvestmentItem, (pi.budgetid, investmentdesc))
+    account_desc = payload.account_desc
+    if account_desc:
+        bt = db.get(BalanceType, (pi.budgetid, account_desc))
+        if not bt:
+            raise HTTPException(422, f'Account "{account_desc}" does not exist for this budget')
+        if not bt.active:
+            raise HTTPException(422, f'Account "{account_desc}" is inactive')
+    elif item and not item.source_account_desc:
+        raise HTTPException(422, "Investment item does not have a debit account configured. Set one in Budget Setup before recording transactions.")
+
     tx = build_investment_tx(
         finperiodid,
         pi.budgetid,
@@ -92,6 +103,7 @@ def add_transaction(
         note=payload.note,
         linked_incomedesc=payload.linked_incomedesc,
         entrydate=payload.entrydate,
+        account_desc=account_desc,
     )
     sync_period_state(finperiodid, db)
     db.commit()

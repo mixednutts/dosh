@@ -681,6 +681,7 @@ class InvestmentItemBase(BaseModel):
     initial_value: Decimal = Decimal("0.00")
     planned_amount: Decimal = Decimal("0.00")
     linked_account_desc: Optional[str] = None
+    source_account_desc: Optional[str] = None
     is_primary: bool = False
 
 
@@ -694,6 +695,7 @@ class InvestmentItemUpdate(BaseModel):
     initial_value: Optional[Decimal] = None
     planned_amount: Optional[Decimal] = None
     linked_account_desc: Optional[str] = None
+    source_account_desc: Optional[str] = None
     is_primary: Optional[bool] = None
 
 
@@ -715,6 +717,7 @@ class PeriodInvestmentOut(BaseModel):
     actualamount: Decimal = Decimal("0")
     remaining_amount: Decimal = Decimal("0")
     linked_account_desc: Optional[str] = None
+    source_account_desc: Optional[str] = None
     revision_snapshot: int = 0
     status: str = "Current"
     revision_comment: Optional[str] = None
@@ -759,6 +762,7 @@ class InvestmentTxCreate(BaseModel):
     note: Optional[str] = None
     linked_incomedesc: Optional[str] = None
     entrydate: Optional[datetime] = None
+    account_desc: Optional[str] = None
 
 
 class InvestmentTxOut(BaseModel):
@@ -918,6 +922,7 @@ class PeriodDetailOut(BaseModel):
     expenses: list[PeriodExpenseOut]
     investments: list[PeriodInvestmentOut] = []
     balances: list[PeriodBalanceOut] = []
+    balances_limit_exceeded: bool = False
     projected_savings: Decimal = Decimal("0")
     closeout_snapshot: Optional[PeriodCloseoutSnapshotOut] = None
 

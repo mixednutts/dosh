@@ -125,6 +125,7 @@ def test_investment_budget_adjustment_updates_setup_and_future_unlocked_periods_
 
     investment_item = db_session.get(InvestmentItem, (budget.budgetid, "Emergency Fund"))
     investment_item.linked_account_desc = "Main Account"
+    investment_item.source_account_desc = "Main Account"
     db_session.commit()
 
     periods = generate_periods(

@@ -68,8 +68,10 @@ export function InvestmentSection({
                     <span className={`font-medium ${remaining >= 0 ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'}`}>{fmt(remaining)}</span>
                   </td>
                   <td className="table-cell-muted text-sm">
-                    {inv.linked_account_desc ? (
-                      <span className="text-purple-600 dark:text-purple-400">{inv.linked_account_desc}</span>
+                    {inv.source_account_desc || inv.linked_account_desc ? (
+                      <span className="text-purple-600 dark:text-purple-400 whitespace-normal break-words">
+                        {inv.source_account_desc ? `${inv.source_account_desc} →` : ''} {inv.linked_account_desc || ''}
+                      </span>
                     ) : (
                       <span className="text-gray-300 dark:text-gray-600">—</span>
                     )}
@@ -84,20 +86,20 @@ export function InvestmentSection({
                       />
                       <ActionIconButton
                         disabled={closed || inv.status === 'Paid'}
-                        onClick={() => setInvestmentModal({ investmentdesc: inv.investmentdesc, openingValue: inv.opening_value, closingValue: inv.closing_value, budgetedAmount: inv.budgeted_amount, defaultType: 'increase' })}
+                        onClick={() => setInvestmentModal({ investmentdesc: inv.investmentdesc, openingValue: inv.opening_value, closingValue: inv.closing_value, budgetedAmount: inv.budgeted_amount, sourceAccountDesc: inv.source_account_desc, linkedAccountDesc: inv.linked_account_desc, defaultType: 'increase' })}
                         title="Add investment transaction"
                         tone="dosh"
                         icon={PlusIcon}
                       />
                       <ActionIconButton
                         disabled={closed || inv.status === 'Paid'}
-                        onClick={() => setInvestmentModal({ investmentdesc: inv.investmentdesc, openingValue: inv.opening_value, closingValue: inv.closing_value, budgetedAmount: inv.budgeted_amount, defaultType: 'decrease' })}
+                        onClick={() => setInvestmentModal({ investmentdesc: inv.investmentdesc, openingValue: inv.opening_value, closingValue: inv.closing_value, budgetedAmount: inv.budgeted_amount, sourceAccountDesc: inv.source_account_desc, linkedAccountDesc: inv.linked_account_desc, defaultType: 'decrease' })}
                         title="Add subtraction/withdrawal"
                         tone="danger"
                         icon={MinusIcon}
                       />
                       <ActionIconButton
-                        onClick={() => setInvestmentModal({ investmentdesc: inv.investmentdesc, openingValue: inv.opening_value, closingValue: inv.closing_value, budgetedAmount: inv.budgeted_amount, defaultType: 'increase', readOnly: true })}
+                        onClick={() => setInvestmentModal({ investmentdesc: inv.investmentdesc, openingValue: inv.opening_value, closingValue: inv.closing_value, budgetedAmount: inv.budgeted_amount, sourceAccountDesc: inv.source_account_desc, linkedAccountDesc: inv.linked_account_desc, defaultType: 'increase', readOnly: true })}
                         title="View transactions"
                         icon={ListBulletIcon}
                       />

@@ -715,6 +715,7 @@ def test_mixed_accounts_scenario_routes_movements_to_linked_accounts(client, db_
             "active": True,
             "initial_value": "0.00",
             "linked_account_desc": "Brokerage Cash",
+            "source_account_desc": "Main Account",
             "is_primary": True,
         },
     )
@@ -759,7 +760,7 @@ def test_mixed_accounts_scenario_routes_movements_to_linked_accounts(client, db_
     balances_response = client.get(f"/api/periods/{active_period['finperiodid']}/balances")
     assert balances_response.status_code == 200, balances_response.text
     balances = {row["balancedesc"]: row for row in balances_response.json()}
-    assert Decimal(balances["Main Account"]["movement_amount"]) == Decimal("1075.00")
+    assert Decimal(balances["Main Account"]["movement_amount"]) == Decimal("925.00")
     assert Decimal(balances["Brokerage Cash"]["movement_amount"]) == Decimal("150.00")
     assert Decimal(balances["Rainy Day"]["movement_amount"]) == Decimal("-75.00")
 

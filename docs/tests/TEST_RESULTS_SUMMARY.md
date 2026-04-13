@@ -4,6 +4,54 @@ This document records meaningful automated test results from major working sessi
 
 It exists separately from [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) so the strategy can stay stable while future sessions still have a record of what was actually run and verified.
 
+## Latest Session: Investment Transaction Hardening, Dynamic Balance Limit UX, And Modal Polish
+
+This session hardened investment transactions into proper two-sided ledger movements, improved the dynamic balance limit-exceeded experience, and fixed small UI defects.
+
+### Verification
+
+```bash
+cd /home/ubuntu/dosh/backend
+.venv/bin/python -m pytest tests/ -q
+```
+
+Result:
+
+- Full backend suite: **155 passed**
+- No regressions introduced
+
+```bash
+cd /home/ubuntu/dosh/frontend
+CI=true npm test -- --watchAll=false --runInBand
+```
+
+Result:
+
+- Full frontend suite: **176 passed**
+- No regressions introduced
+
+### Deployment Verification
+
+```bash
+cd /home/ubuntu/dosh
+INCLUDE_OVERRIDE=true ./scripts/release_with_migrations.sh
+curl -sS http://127.0.0.1:3080/api/health
+```
+
+Result:
+
+- Backend container rebuilt and restarted successfully
+- Frontend container rebuilt and restarted successfully
+- Health endpoint returned `{"status":"ok","app":"Dosh"}`
+- Version endpoint returned `0.3.8-alpha`
+
+### Migration Verification
+
+- Alembic revision `4bf1bf54b0bb` applied successfully (adds `source_account_desc` to `investmentitems` and `periodinvestments`)
+- Production data cleanup script removed 17 orphaned incomplete investment transactions and recalculated affected periods
+
+---
+
 ## Latest Session: Cash Management Workflow — Bug Remediation And Scheduled Expense Validation
 
 This session fixed issues arising from the Cash Management workflow changes: expense-item debit account selection was restricted to Transaction accounts, the account selector UI was inconsistent, and scheduled expenses could be saved without a required interval or effective date.

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from sqlalchemy.orm import Session
 from ..api_docs import DbSession, error_responses
-from ..models import Budget, InvestmentItem
+from ..models import BalanceType, Budget, InvestmentItem
 from ..schemas import InvestmentItemCreate, InvestmentItemOut, InvestmentItemUpdate, SetupHistoryOut
 from ..period_logic import normalize_budget_date
 from ..setup_assessment import investment_assessment
@@ -47,6 +47,16 @@ def _assert_investment_delete_allowed(budgetid: int, investmentdesc: str, db: Se
         raise HTTPException(422, f'Investment line "{investmentdesc}" is in use and cannot be deleted. {"; ".join(assessment["reasons"])}.')
 
 
+def _assert_account_exists(budgetid: int, balancedesc: str | None, db: Session, field_name: str) -> None:
+    if balancedesc is None:
+        return
+    bt = db.get(BalanceType, (budgetid, balancedesc))
+    if not bt:
+        raise HTTPException(422, f'{field_name} "{balancedesc}" does not exist for this budget')
+    if not bt.active:
+        raise HTTPException(422, f'{field_name} "{balancedesc}" is inactive')
+
+
 @router.get("/", response_model=list[InvestmentItemOut], responses=error_responses(404))
 def list_investment_items(budgetid: int, db: DbSession):
     _get_budget_or_404(budgetid, db)
@@ -65,6 +75,8 @@ def create_investment_item(budgetid: int, payload: InvestmentItemCreate, db: DbS
         raise HTTPException(409, "Investment item with this description already exists")
     if payload.is_primary and not payload.active:
         raise HTTPException(422, "Primary investment items must be active")
+    _assert_account_exists(budgetid, payload.linked_account_desc, db, "Linked account")
+    _assert_account_exists(budgetid, payload.source_account_desc, db, "Source account")
     data = payload.model_dump()
     if data.get("effectivedate") is not None:
         data["effectivedate"] = normalize_budget_date(data["effectivedate"], budget.timezone)
@@ -98,6 +110,10 @@ def update_investment_item(
     if next_is_primary and not next_active:
         raise HTTPException(422, "Primary investment items must be active")
 
+    if "linked_account_desc" in updates:
+        _assert_account_exists(budgetid, updates["linked_account_desc"], db, "Linked account")
+    if "source_account_desc" in updates:
+        _assert_account_exists(budgetid, updates["source_account_desc"], db, "Source account")
     for field, value in updates.items():
         setattr(item, field, value)
     if is_revision:

@@ -1807,6 +1807,7 @@ describe('PeriodDetailPage', () => {
       expect(client.addInvestmentTransaction).toHaveBeenCalledWith(66, 'Emergency Fund', {
         amount: 50,
         note: 'Adjusted contribution',
+        account_desc: null,
         entrydate: expect.any(String),
       })
     })

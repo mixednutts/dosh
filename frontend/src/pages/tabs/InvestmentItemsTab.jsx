@@ -10,7 +10,7 @@ import LocalizedAmountInput from '../../components/LocalizedAmountInput'
 import { useLocalisation } from '../../components/LocalisationContext'
 import { getBalanceTypeLabel } from '../../utils/accountNaming'
 
-const emptyForm = { investmentdesc: '', active: true, effectivedate: '', initial_value: '', planned_amount: '', linked_account_desc: '', is_primary: false }
+const emptyForm = { investmentdesc: '', active: true, effectivedate: '', initial_value: '', planned_amount: '', linked_account_desc: '', source_account_desc: '', is_primary: false }
 
 function InvestmentForm({ initial = emptyForm, isEdit = false, onSubmit, onClose, loading, balanceTypes = [], structureLocked = false, lockReasons = [], accountNamingPreference = 'Transaction' }) {
   const [form, setForm] = useState(initial)
@@ -26,6 +26,7 @@ function InvestmentForm({ initial = emptyForm, isEdit = false, onSubmit, onClose
         initial_value: Number.parseFloat(form.initial_value) || 0,
         planned_amount: Number.parseFloat(form.planned_amount) || 0,
         linked_account_desc: form.linked_account_desc || null,
+        source_account_desc: form.source_account_desc || null,
         is_primary: !!form.is_primary,
       })
     }} className="space-y-4">
@@ -51,7 +52,17 @@ function InvestmentForm({ initial = emptyForm, isEdit = false, onSubmit, onClose
         <input id={`${formIdPrefix}-effective-date`} disabled={structureLocked} type="date" className="input" value={form.effectivedate} onChange={e => set('effectivedate', e.target.value)} />
       </div>
       <div>
-        <label htmlFor={`${formIdPrefix}-linked-account`} className="label">Linked Account</label>
+        <label htmlFor={`${formIdPrefix}-source-account`} className="label">Debit Account</label>
+        <select id={`${formIdPrefix}-source-account`} disabled={structureLocked} className="input" value={form.source_account_desc} onChange={e => set('source_account_desc', e.target.value)}>
+          <option value="">— none —</option>
+          {balanceTypes.map(bt => (
+            <option key={bt.balancedesc} value={bt.balancedesc}>{bt.balancedesc}{bt.balance_type ? ` (${getBalanceTypeLabel(bt.balance_type, accountNamingPreference)})` : ''}</option>
+          ))}
+        </select>
+        <p className="text-xs text-gray-400 mt-1">Transactions will debit this account by default. You can override it when recording transactions.</p>
+      </div>
+      <div>
+        <label htmlFor={`${formIdPrefix}-linked-account`} className="label">Destination Account</label>
         <select id={`${formIdPrefix}-linked-account`} disabled={structureLocked} className="input" value={form.linked_account_desc} onChange={e => set('linked_account_desc', e.target.value)}>
           <option value="">— none —</option>
           {balanceTypes.map(bt => (
@@ -195,8 +206,10 @@ export default function InvestmentItemsTab({ budgetId, budget }) {
                 {item.is_primary && (
                   <span className="ml-2 badge-blue">Primary</span>
                 )}
-                {item.linked_account_desc && (
-                  <span className="ml-2 text-xs text-purple-600 dark:text-purple-400">→ {item.linked_account_desc}</span>
+                {(item.source_account_desc || item.linked_account_desc) && (
+                  <span className="ml-2 text-xs text-purple-600 dark:text-purple-400">
+                    {item.source_account_desc ? `${item.source_account_desc} →` : ''} {item.linked_account_desc || ''}
+                  </span>
                 )}
               </div>
               <div className="flex items-center gap-2">
@@ -226,6 +239,7 @@ export default function InvestmentItemsTab({ budgetId, budget }) {
               initial_value: modal.item.initial_value ?? '',
               planned_amount: modal.item.planned_amount ?? '',
               linked_account_desc: modal.item.linked_account_desc ?? '',
+              source_account_desc: modal.item.source_account_desc ?? '',
               is_primary: !!modal.item.is_primary,
             } : emptyForm}
             isEdit={modal.mode === 'edit'}
@@ -264,6 +278,7 @@ InvestmentForm.propTypes = {
     initial_value: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
     planned_amount: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
     linked_account_desc: PropTypes.string,
+    source_account_desc: PropTypes.string,
     is_primary: PropTypes.bool,
   }),
   isEdit: PropTypes.bool,

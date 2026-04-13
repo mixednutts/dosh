@@ -158,7 +158,7 @@ export default function PeriodDetailPage() {
 
   const { incomes, investments = [] } = data
   const balances = balancesData ?? data.balances ?? []
-  const balancesLimitExceeded = balancesData === undefined && data.balances?.length === 0
+  const balancesLimitExceeded = data.balances_limit_exceeded === true
   const expenses = localExpenses ?? data.expenses
 
   // Compute previous and next period IDs for navigation
@@ -576,10 +576,13 @@ export default function PeriodDetailPage() {
         <Modal title={`Transactions — ${investmentModal.investmentdesc}`} onClose={() => setInvestmentModal(null)} size="lg">
           <InvestmentTxModal
             periodId={id}
+            budgetId={data?.period?.budgetid}
             investmentdesc={investmentModal.investmentdesc}
             openingValue={investmentModal.openingValue}
             closingValue={investmentModal.closingValue}
             budgetedAmount={investmentModal.budgetedAmount}
+            sourceAccount={investmentModal.sourceAccountDesc}
+            destinationAccount={investmentModal.linkedAccountDesc}
             locked={!!(investmentModal.readOnly || closed)}
             readOnly={!!investmentModal.readOnly}
             defaultType={investmentModal.defaultType ?? 'increase'}

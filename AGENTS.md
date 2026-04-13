@@ -206,8 +206,8 @@ For document changes, follow [DOCUMENTATION_FRAMEWORK.md](./docs/DOCUMENTATION_F
 
 ## Current Project State (Snapshot)
 
-**Version:** 0.3.7-alpha
-**Schema Revisions:** d3091a75b8ff, e4f5a6b7c8d9, f1a2b3c4d5e6, b10a29f14a8f, 559cbaa1dce7
+**Version:** 0.3.8-alpha
+**Schema Revisions:** d3091a75b8ff, e4f5a6b7c8d9, f1a2b3c4d5e6, b10a29f14a8f, 559cbaa1dce7, 4bf1bf54b0bb
 
 **Recent Work:**
 - **Dynamic Account Balance Calculation (COMPLETED):** Implemented dynamic balance computation from last frozen anchor with forward-cycle limit
@@ -248,6 +248,15 @@ For document changes, follow [DOCUMENTATION_FRAMEWORK.md](./docs/DOCUMENTATION_F
 - Date format consistency across frontend (user preference driven)
 - Release management automation (recovery workflows, version bump script)
 - SonarQube workflow artifact retrieval updated to fetch the latest completed run regardless of success or failure, ensuring failed workflow artifacts are accessible for diagnosis
+- **Investment Transaction Modal UI/UX Hardening (COMPLETED):** Fixed investment transactions to be proper two-sided movements with selectable debit account override
+  - Added `source_account_desc` to `InvestmentItem` and `PeriodInvestment`; `build_investment_tx` now debits source and credits linked account
+  - `InvestmentTxCreate` accepts optional `account_desc` for transaction-time account override; modal shows selectable "Debit Account" dropdown
+  - `account_delta_for_transaction` treats investments as proper two-sided movements
+  - Added Alembic migration `4bf1bf54b0bb` to add `source_account_desc` to investment items
+  - Cleaned up 17 orphaned incomplete investment transactions from production database and recalculated affected periods
+- **Dynamic Balance Limit Exceeded UX (COMPLETED):** Replaced HTTP 204 with `200 []` + `X-Balances-Limit-Exceeded: true` header, and added `balances_limit_exceeded` flag to `PeriodDetailOut`
+  - Frontend uses explicit flag instead of fragile heuristic for limit-exceeded banner
+- Fixed account detail text wrapping in `InvestmentSection.jsx` to prevent truncation
 - **Demo Data Update:** Seeded demo budget now covers cash-flow account routing, scheduled expenses (Fixed Day of Month and Every N Days), and AUTO/MANUAL payment types for realistic walkthroughs
 
 **Active Focus Areas:**

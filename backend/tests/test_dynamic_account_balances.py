@@ -240,8 +240,18 @@ def test_stored_values_propagate_after_investment_transaction(client, db_session
         type(setup["investment_item"]),
         (budget.budgetid, "Emergency Fund"),
     )
-    emergency.linked_account_desc = "Main Account"
+    emergency.linked_account_desc = "Savings"
+    emergency.source_account_desc = "Main Account"
     db_session.commit()
+
+    create_balance_type(
+        db_session,
+        budgetid=budget.budgetid,
+        balancedesc="Savings",
+        opening_balance=Decimal("500.00"),
+        balance_type="Savings",
+        is_primary=False,
+    )
 
     start = utc_now().replace(hour=0, minute=0, second=0, microsecond=0)
     periods = generate_periods(client, budgetid=budget.budgetid, startdate=start, count=2)
@@ -254,9 +264,11 @@ def test_stored_values_propagate_after_investment_transaction(client, db_session
     )
     assert response.status_code == 201, response.text
 
-    # Investment transactions credit the linked account
-    pb = db_session.get(PeriodBalance, (second_id, "Main Account"))
-    assert Decimal(pb.opening_amount) == Decimal("1100.00")
+    # Investment debits source account and credits linked account
+    pb_main = db_session.get(PeriodBalance, (second_id, "Main Account"))
+    assert Decimal(pb_main.opening_amount) == Decimal("900.00")
+    pb_savings = db_session.get(PeriodBalance, (second_id, "Savings"))
+    assert Decimal(pb_savings.opening_amount) == Decimal("600.00")
 
 
 def test_transfer_validation_uses_fresh_closing_amount(client, db_session):
@@ -353,7 +365,8 @@ def test_all_transaction_entry_points_leave_no_stale_balances(client, db_session
         type(setup["investment_item"]),
         (budget.budgetid, "Emergency Fund"),
     )
-    emergency.linked_account_desc = "Main Account"
+    emergency.linked_account_desc = "Savings"
+    emergency.source_account_desc = "Main Account"
     db_session.commit()
 
     create_balance_type(
@@ -403,26 +416,26 @@ def test_all_transaction_entry_points_leave_no_stale_balances(client, db_session
     )
 
     # Compute expected first-cycle closing manually
-    # Main Account: 1000 + 100 + 50 - 30 + 10 (investment credit) + 20 = 1150
-    # Savings: 500 - 20 = 480
+    # Main Account: 1000 + 100 + 50 - 30 - 10 (investment debit) + 20 = 1130
+    # Savings: 500 + 10 (investment credit) - 20 = 490
     first_balances = _get_balances(client, first_id)
-    assert Decimal(first_balances["Main Account"]["closing_amount"]) == Decimal("1150.00")
-    assert Decimal(first_balances["Savings"]["closing_amount"]) == Decimal("480.00")
+    assert Decimal(first_balances["Main Account"]["closing_amount"]) == Decimal("1130.00")
+    assert Decimal(first_balances["Savings"]["closing_amount"]) == Decimal("490.00")
 
     # Second and third cycles should have fresh stored values
     for pid in [second_id, third_id]:
         pb_main = db_session.get(PeriodBalance, (pid, "Main Account"))
         pb_savings = db_session.get(PeriodBalance, (pid, "Savings"))
-        assert Decimal(pb_main.opening_amount) == Decimal("1150.00")
-        assert Decimal(pb_savings.opening_amount) == Decimal("480.00")
+        assert Decimal(pb_main.opening_amount) == Decimal("1130.00")
+        assert Decimal(pb_savings.opening_amount) == Decimal("490.00")
 
         # API should also return the same values
         api_balances = _get_balances(client, pid)
-        assert Decimal(api_balances["Main Account"]["opening_amount"]) == Decimal("1150.00")
-        assert Decimal(api_balances["Savings"]["opening_amount"]) == Decimal("480.00")
+        assert Decimal(api_balances["Main Account"]["opening_amount"]) == Decimal("1130.00")
+        assert Decimal(api_balances["Savings"]["opening_amount"]) == Decimal("490.00")
 
 
-def test_forward_limit_returns_204_no_content(client, db_session):
+def test_forward_limit_returns_200_with_limit_exceeded_header(client, db_session):
     setup = create_minimum_budget_setup(db_session)
     budget = setup["budget"]
 
@@ -434,8 +447,13 @@ def test_forward_limit_returns_204_no_content(client, db_session):
     # So it exceeds the limit
     cycle_12_id = periods[11]["finperiodid"]
     response = client.get(f"/api/periods/{cycle_12_id}/balances")
-    assert response.status_code == 204
-    assert response.text == ""
+    assert response.status_code == 200
+    assert response.json() == []
+    assert response.headers.get("X-Balances-Limit-Exceeded") == "true"
+
+    # Period detail should also report the limit exceeded
+    detail = client.get(f"/api/periods/{cycle_12_id}").json()
+    assert detail["balances_limit_exceeded"] is True
 
 
 def test_forward_limit_allows_within_limit(client, db_session):
@@ -470,12 +488,18 @@ def test_forward_limit_respects_custom_budget_setting(client, db_session):
     # Cycle 6 exceeds limit of 5
     cycle_6_id = periods[5]["finperiodid"]
     response = client.get(f"/api/periods/{cycle_6_id}/balances")
-    assert response.status_code == 204
+    assert response.status_code == 200
+    assert response.json() == []
+    assert response.headers.get("X-Balances-Limit-Exceeded") == "true"
+
+    detail = client.get(f"/api/periods/{cycle_6_id}").json()
+    assert detail["balances_limit_exceeded"] is True
 
     # Cycle 5 is within limit
     cycle_5_id = periods[4]["finperiodid"]
     response = client.get(f"/api/periods/{cycle_5_id}/balances")
     assert response.status_code == 200
+    assert response.headers.get("X-Balances-Limit-Exceeded") is None
 
 
 def test_gap_analysis_zero_anomalies(client, db_session):

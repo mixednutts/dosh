@@ -26,6 +26,8 @@ export function TransactionEntryForm({
   accounts = null,
   selectedAccount = '',
   setSelectedAccount = () => {},
+  sourceAccount = null,
+  destinationAccount = null,
 }) {
   const formatters = useFormatters()
   if (locked) {
@@ -87,6 +89,26 @@ export function TransactionEntryForm({
           </button>
         ))}
       </div>
+      {kind === 'investment' && accounts && accounts.length > 0 && (
+        <div>
+          <label htmlFor="transaction-account-investment" className="label">Debit Account</label>
+          <select
+            id="transaction-account-investment"
+            required
+            disabled={locked}
+            className="input"
+            value={selectedAccount}
+            onChange={e => setSelectedAccount(e.target.value)}
+          >
+            {accounts.map(acc => (
+              <option key={acc.balancedesc} value={acc.balancedesc}>{acc.balancedesc}</option>
+            ))}
+          </select>
+          {destinationAccount && (
+            <p className="text-xs text-gray-400 mt-1">Credit Account: {destinationAccount}</p>
+          )}
+        </div>
+      )}
       {kind === 'expense' && accounts && accounts.length > 0 && (
         <div>
           <label htmlFor="transaction-account-expense" className="label">Account</label>
@@ -195,4 +217,6 @@ TransactionEntryForm.propTypes = {
   })),
   selectedAccount: PropTypes.string,
   setSelectedAccount: PropTypes.func,
+  sourceAccount: PropTypes.string,
+  destinationAccount: PropTypes.string,
 }

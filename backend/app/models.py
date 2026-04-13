@@ -230,6 +230,8 @@ class InvestmentItem(Base):
     planned_amount = Column(Numeric(10, 2), default=0)
     # optional link to an account balance (contributions credited to that account)
     linked_account_desc = Column(String, nullable=True)
+    # source cash account that contributions are debited from
+    source_account_desc = Column(String, nullable=True)
     is_primary = Column(Boolean, default=False, nullable=False)
     revisionnum = Column(Integer, default=0, nullable=False)
 

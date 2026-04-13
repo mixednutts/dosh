@@ -15,7 +15,8 @@ def test_period_transactions_drive_balance_movement_and_balance_transaction_view
     salary = db_session.get(IncomeType, (budget.budgetid, "Salary"))
     salary.linked_account = "Main Account"
     emergency_fund = db_session.get(InvestmentItem, (budget.budgetid, "Emergency Fund"))
-    emergency_fund.linked_account_desc = "Main Account"
+    emergency_fund.linked_account_desc = "Rainy Day"
+    emergency_fund.source_account_desc = "Main Account"
     create_balance_type(
         db_session,
         budgetid=budget.budgetid,
@@ -73,10 +74,10 @@ def test_period_transactions_drive_balance_movement_and_balance_transaction_view
 
     main_account = balances["Main Account"]
     rainy_day = balances["Rainy Day"]
-    assert Decimal(main_account["movement_amount"]) == Decimal("925.00")
-    assert Decimal(main_account["closing_amount"]) == Decimal("1925.00")
-    assert Decimal(rainy_day["movement_amount"]) == Decimal("-75.00")
-    assert Decimal(rainy_day["closing_amount"]) == Decimal("425.00")
+    assert Decimal(main_account["movement_amount"]) == Decimal("825.00")
+    assert Decimal(main_account["closing_amount"]) == Decimal("1825.00")
+    assert Decimal(rainy_day["movement_amount"]) == Decimal("-25.00")
+    assert Decimal(rainy_day["closing_amount"]) == Decimal("475.00")
 
     main_account_txs = client.get(
         f"/api/periods/{active_period['finperiodid']}/balances/Main%20Account/transactions"
@@ -96,9 +97,11 @@ def test_period_transactions_drive_balance_movement_and_balance_transaction_view
     )
     assert rainy_day_txs.status_code == 200, rainy_day_txs.text
     rainy_day_payload = rainy_day_txs.json()
-    assert len(rainy_day_payload) == 1
-    assert rainy_day_payload[0]["source"] == "transfer"
-    assert rainy_day_payload[0]["related_account_desc"] == "Rainy Day"
+    assert len(rainy_day_payload) == 2
+    transfer_tx = next(tx for tx in rainy_day_payload if tx["source"] == "transfer")
+    investment_tx = next(tx for tx in rainy_day_payload if tx["source"] == "investment")
+    assert transfer_tx["related_account_desc"] == "Rainy Day"
+    assert investment_tx["affected_account_desc"] == "Rainy Day"
 
 
 def test_locked_active_cycle_still_allows_actuals_and_transactions(client, db_session):
@@ -108,7 +111,8 @@ def test_locked_active_cycle_still_allows_actuals_and_transactions(client, db_se
     salary = db_session.get(IncomeType, (budget.budgetid, "Salary"))
     salary.linked_account = "Main Account"
     emergency_fund = db_session.get(InvestmentItem, (budget.budgetid, "Emergency Fund"))
-    emergency_fund.linked_account_desc = "Main Account"
+    emergency_fund.linked_account_desc = "Rainy Day"
+    emergency_fund.source_account_desc = "Main Account"
     create_balance_type(
         db_session,
         budgetid=budget.budgetid,
@@ -172,8 +176,8 @@ def test_locked_active_cycle_still_allows_actuals_and_transactions(client, db_se
     assert balances_response.status_code == 200, balances_response.text
     balances = {row["balancedesc"]: row for row in balances_response.json()}
 
-    assert Decimal(balances["Main Account"]["movement_amount"]) == Decimal("925.00")
-    assert Decimal(balances["Rainy Day"]["movement_amount"]) == Decimal("-75.00")
+    assert Decimal(balances["Main Account"]["movement_amount"]) == Decimal("825.00")
+    assert Decimal(balances["Rainy Day"]["movement_amount"]) == Decimal("-25.00")
 
 
 def test_creating_active_balance_type_creates_period_balances_for_existing_periods(client, db_session):

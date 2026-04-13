@@ -3,7 +3,7 @@ from __future__ import annotations
 from decimal import Decimal
 
 from app.cycle_constants import CARRIED_FORWARD_DESC
-from app.models import FinancialPeriod, PeriodCloseoutSnapshot, PeriodIncome
+from app.models import FinancialPeriod, PeriodCloseoutSnapshot, PeriodIncome, InvestmentItem
 from app.time_utils import utc_now
 
 from .factories import create_minimum_budget_setup, generate_periods
@@ -12,6 +12,11 @@ from .factories import create_minimum_budget_setup, generate_periods
 def test_closeout_preview_and_closeout_persist_snapshot_and_carry_forward(client, db_session):
     setup = create_minimum_budget_setup(db_session)
     budget = setup["budget"]
+    emergency_fund = db_session.get(InvestmentItem, (budget.budgetid, "Emergency Fund"))
+    emergency_fund.linked_account_desc = "Main Account"
+    emergency_fund.source_account_desc = "Main Account"
+    db_session.commit()
+
     periods = generate_periods(
         client,
         budgetid=budget.budgetid,

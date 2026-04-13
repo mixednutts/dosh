@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+## 0.3.8-alpha | released | 2026-04-13
+
+### Added
+
+- **Investment Debit Account Override**: Investment transactions now allow selecting which active account to debit at transaction time. The modal defaults to the investment item's configured source account and shows the linked credit account read-only.
+- **Two-Sided Investment Ledger**: Investment transactions are now proper two-sided movements: the source account is debited and the linked cash account is credited.
+
+### Improved
+
+- **Dynamic Balance Limit UX**: When the forward-calculation limit is exceeded, the balance endpoint now returns `200 []` with an explicit `X-Balances-Limit-Exceeded` header, and the period detail includes a `balances_limit_exceeded` flag. The frontend banner uses this explicit signal instead of inferring state from an empty array.
+
+### Fixed
+
+- Fixed missing `BalanceType` import in `investment_transactions.py` that caused a server error on submit.
+- Fixed long account names truncating in the investment section table by allowing text to wrap naturally.
+
 ## 0.3.7-alpha | released | 2026-04-13
 
 ### Added

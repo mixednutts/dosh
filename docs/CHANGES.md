@@ -39,6 +39,48 @@ For the implemented Auto Expense workflow rules, scheduler behavior, migration e
 
 For the cash management workflow plan that defines generalised transfers, expense routing, investment tracking, and balance validation, read [CASH_MANAGEMENT_WORKFLOW_PLAN.md](/home/ubuntu/dosh/docs/plans/CASH_MANAGEMENT_WORKFLOW_PLAN.md).
 
+## Latest Session: Investment Transaction Hardening, Dynamic Balance Limit UX, And Modal Polish
+
+This session hardened investment transactions into proper two-sided ledger movements, improved the dynamic balance limit-exceeded experience, and fixed small UI defects in the investment modal and table display.
+
+### What changed
+
+- **Investment two-sided transaction fix:**
+  - Added `source_account_desc` to `InvestmentItem` (and `PeriodInvestment`) to record which account should be debited when an investment transaction is recorded.
+  - Updated `build_investment_tx` in `transaction_ledger.py` to debit `related_account_desc` (the source account) and credit `affected_account_desc` (the linked cash account).
+  - Updated `account_delta_for_transaction` so investments now properly decrease the source account and increase the linked account by the transaction amount.
+  - Created Alembic migration `4bf1bf54b0bb_add_source_account_desc_to_investment_items`.
+
+- **Investment transaction-time account override:**
+  - `InvestmentTxCreate` schema now accepts an optional `account_desc` field.
+  - The investment transaction modal (`InvestmentTxModal.jsx`) fetches active balance types and presents a selectable "Debit Account" dropdown, defaulting to the investment item's configured `source_account_desc`.
+  - The "Credit Account" is shown read-only below the dropdown for clarity.
+  - `investment_transactions.py` validates the override and falls back to `item.source_account_desc`, rejecting the transaction if neither is configured.
+
+- **Dynamic balance limit exceeded UX:**
+  - `GET /api/periods/{id}/balances` now returns `200 []` with an `X-Balances-Limit-Exceeded: true` header instead of HTTP 204 No Content.
+  - `PeriodDetailOut` now includes `balances_limit_exceeded: bool = False`.
+  - The frontend `BalanceSection.jsx` banner now uses the explicit flag instead of inferring limit-exceeded state from an empty array.
+
+- **Production data cleanup:**
+  - Ran `delete_invalid_investment_transactions.py` inside the Docker container.
+  - Removed 17 orphaned incomplete investment transactions that lacked proper two-sided ledger representation.
+  - Recalculated affected periods `1, 9, 12, 13, 14, 15, 19` after cleanup.
+  - Database backup preserved at `/app/data/backups/dosh-invalid-investment-cleanup-20260413-125959.db`.
+
+- **UI polish:**
+  - Added `whitespace-normal break-words` to `InvestmentSection.jsx` account display to prevent long account names from truncating.
+  - Added missing `BalanceType` import to `investment_transactions.py` that caused a `NameError` on submit.
+
+### Verification
+
+- Full backend suite: **155 passed**
+- Full frontend suite: **176 passed**
+- Docker Compose deployment via `scripts/release_with_migrations.sh` with `INCLUDE_OVERRIDE=true` completed successfully; health check passed
+- Alembic migration `4bf1bf54b0bb` applied successfully to the production database in the Docker container
+
+---
+
 ## Latest Session: Dynamic Account Balances, Timezone-Aware Period Dates, And Balance Refresh Fix
 
 This session implemented dynamic account balance calculation for open budget cycles, fixed a timezone-related period end-date boundary bug, and resolved a frontend query-invalidation issue that caused stale account balances after transaction entry.

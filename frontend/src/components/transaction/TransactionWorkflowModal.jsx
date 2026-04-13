@@ -31,6 +31,8 @@ export function TransactionWorkflowModal({
   accounts = null,
   selectedAccount = '',
   setSelectedAccount = () => {},
+  sourceAccount = null,
+  destinationAccount = null,
 }) {
   const formatters = useFormatters()
   const config = getTransactionModalConfig(kind)
@@ -84,6 +86,8 @@ export function TransactionWorkflowModal({
           accounts={accounts}
           selectedAccount={selectedAccount}
           setSelectedAccount={setSelectedAccount}
+          sourceAccount={sourceAccount}
+          destinationAccount={destinationAccount}
         />
       )}
     </div>
@@ -118,4 +122,6 @@ TransactionWorkflowModal.propTypes = {
   })),
   selectedAccount: PropTypes.string,
   setSelectedAccount: PropTypes.func,
+  sourceAccount: PropTypes.string,
+  destinationAccount: PropTypes.string,
 }

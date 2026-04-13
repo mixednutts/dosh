@@ -563,6 +563,7 @@ Status:
 - `Completed`: generalise the savings-transfer endpoint to `account-transfer`, allowing any active account as source or destination
 - `Completed`: add committed-amount transfer validation using `max(budget, actual)` for non-paid lines and `actual` for paid lines
 - `Completed`: block self-referential transfers at the API level
+- `Completed`: investment transactions now properly debit a source account and credit the linked account via `source_account_desc` and two-sided ledger handling in `build_investment_tx` and `account_delta_for_transaction`
 - define what Dosh means by available cash, committed cash, and reserved cash
 - clarify the relationship between account balances, planned spending, savings transfers, and investment allocations
 
@@ -575,6 +576,7 @@ Status:
 - `Completed`: add `default_account_desc` to `ExpenseItem` so setup can define which account an expense debits by default
 - `Completed`: add transaction-level `account_desc` override for expense entries so users can route individual transactions to the correct account
 - `Completed`: expose `affected_account_desc` on investment transactions so users can see which cash account was debited
+- `Completed`: investment transactions allow transaction-time debit account override via `account_desc` in `InvestmentTxCreate`, with the modal defaulting to the item's configured source account
 - define a cash management summary model for current-period use
 - add views for available cash, committed outflows, and near-term obligations
 - design the first cash management review surface before adding more balance-related UI fragments
@@ -595,7 +597,7 @@ Status:
 - document the intended review loop for checking cash, adjusting plan, and closing out the period
 - `Completed`: implement dynamic account balance calculation from the last frozen anchor with configurable forward-calculation limits and stale-data protection via `compute_dynamic_period_balances()`
 - `Completed`: add `max_forward_balance_cycles` budget setting (default 10, range 1-50) with backend validation and frontend settings UI
-- `Completed`: return HTTP 204 No Content when the forward limit is exceeded, with a frontend banner explaining the calculation limit
+- `Completed`: return explicit limit-exceeded signal (`200 []` + `X-Balances-Limit-Exceeded: true` header, plus `balances_limit_exceeded` flag in period detail) instead of HTTP 204, so the frontend banner uses a reliable explicit flag rather than inferring state from an empty array
 - `Completed`: integrate dynamic balances into period detail and transfer validation so non-closed periods use live computed balances when stored values would be stale
 
 Cross-links:
@@ -734,6 +736,8 @@ Status:
   - `Completed`: enforce `frequency_value` presence for `Fixed Day of Month` and `Every N Days` expenses in both backend validation and frontend form submission, preventing expenses from being saved with no interval set
 - `Completed`: fix period end-date boundary bug where periods ending on the current day were classified as `PENDING_CLOSURE` instead of `CURRENT` because `enddate` was stored as UTC midnight and compared directly against `utc_now()`; comparisons now use `enddate + 1 day` so the period remains current through the entire last day
 - `Completed`: fix frontend stale balances after transaction entry by invalidating the `period-balances` query key on all mutations that affect income, expense, investment, transfers, and close-out workflows
+- `Completed`: fixed missing `BalanceType` import in `investment_transactions.py` that caused a `NameError` on transaction submit
+- `Completed`: fixed account detail text wrapping in `InvestmentSection.jsx` to prevent truncation with long account names
 
 Cross-links:
 
@@ -779,6 +783,8 @@ Status:
 - `Completed`: add backend regression coverage for expense entry account routing, including default-account fallback and transaction-level override (`test_expense_entry_account_routing.py`)
 - `Completed`: add backend regression coverage for dynamic account balance calculation, including frozen-anchor behavior, forward-limit handling, balance propagation, and limit-exceeded responses (`test_dynamic_account_balances.py`)
 - `Completed`: add frontend regression coverage for the balance-calculation-limit banner in `BalanceSection.test.jsx`
+- `Completed`: updated backend tests around dynamic balances, transactions, close-out, and budget setup to account for investment two-sided movement and balance-limit flag behavior
+- `Completed`: updated frontend tests in `InvestmentItemsTab.test.jsx` and `PeriodDetailPage.test.jsx` for investment account override and modal behavior
 - future setup and workflow testing should expand beyond the original `1 transaction + 1 savings` assumption
 - bookmark named scenarios such as `Single Account` and `Multi Transaction` so future sessions can deliberately test differing account shapes rather than relying on one default personal setup model
 - consider adding a richer demo-validation checklist or smoke flow once more reporting and reconciliation surfaces exist

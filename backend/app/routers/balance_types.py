@@ -232,7 +232,7 @@ def list_period_balances(finperiodid: int, db: DbSession):
         max_cycles = budget.max_forward_balance_cycles if budget else 10
         dynamic_balances = compute_dynamic_period_balances(finperiodid, db, max_forward_cycles=max_cycles)
         if dynamic_balances is None:
-            return Response(status_code=204)
+            return Response(content="[]", headers={"X-Balances-Limit-Exceeded": "true"})
         return dynamic_balances
 
     rows = db.query(PeriodBalance).filter(PeriodBalance.finperiodid == finperiodid).all()

@@ -529,6 +529,7 @@ def build_investment_tx(
     note: str | None = None,
     entrydate: dt | None = None,
     linked_incomedesc: str | None = None,
+    account_desc: str | None = None,
     legacy_table: str | None = None,
     legacy_id: int | None = None,
     dedupe_key: str | None = None,
@@ -549,6 +550,7 @@ def build_investment_tx(
             source_key=investmentdesc,
             source_label=investmentdesc,
             affected_account_desc=item.linked_account_desc if item else None,
+            related_account_desc=account_desc or (item.source_account_desc if item else None),
             linked_incomedesc=linked_incomedesc,
             line_status=getattr(investment, "status", None),
         ),
@@ -732,7 +734,14 @@ def account_delta_for_transaction(tx: PeriodTransaction, balancedesc: str) -> De
     amount = _as_decimal(tx.amount)
     if tx.source == "expense":
         return -amount if tx.affected_account_desc == balancedesc else Decimal("0.00")
-    if tx.source in {"income", "investment", "balance"}:
+    if tx.source == "investment":
+        delta = Decimal("0.00")
+        if tx.affected_account_desc == balancedesc:
+            delta += amount
+        if tx.related_account_desc == balancedesc:
+            delta -= amount
+        return delta
+    if tx.source in {"income", "balance"}:
         return amount if tx.affected_account_desc == balancedesc else Decimal("0.00")
     if tx.source == "transfer":
         delta = Decimal("0.00")

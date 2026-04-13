@@ -4,7 +4,7 @@ from datetime import timedelta
 from decimal import Decimal
 
 from app.cycle_constants import CARRIED_FORWARD_DESC
-from app.models import FinancialPeriod, PeriodIncome
+from app.models import FinancialPeriod, InvestmentItem, PeriodIncome
 from app.transaction_ledger import PeriodTransactionContext, build_budget_adjustment_tx
 from app.time_utils import utc_now
 
@@ -46,6 +46,11 @@ def test_middle_cycle_requires_future_chain_delete(client, db_session):
 def test_delete_and_regenerate_trailing_cycle_recomputes_carried_forward(client, db_session):
     setup = create_minimum_budget_setup(db_session)
     budget = setup["budget"]
+    emergency_fund = db_session.get(InvestmentItem, (budget.budgetid, "Emergency Fund"))
+    emergency_fund.linked_account_desc = "Main Account"
+    emergency_fund.source_account_desc = "Main Account"
+    db_session.commit()
+
     periods = generate_periods(
         client,
         budgetid=budget.budgetid,

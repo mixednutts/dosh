@@ -216,7 +216,7 @@ def _enrich_expenses(expenses: list[PeriodExpense], db: Session) -> list[PeriodE
 
 
 def _enrich_investments(investments: list, db) -> list[PeriodInvestmentOut]:
-    """Attach linked_account_desc and compute remaining_amount."""
+    """Attach linked_account_desc, source_account_desc and compute remaining_amount."""
     from ..models import InvestmentItem as InvItem
     out = []
     for pi in investments:
@@ -224,6 +224,7 @@ def _enrich_investments(investments: list, db) -> list[PeriodInvestmentOut]:
         d = PeriodInvestmentOut.model_validate(pi)
         if ii:
             d.linked_account_desc = ii.linked_account_desc
+            d.source_account_desc = ii.source_account_desc
         d.status = getattr(pi, "status", WORKING) or WORKING
         if d.status == PAID:
             d.remaining_amount = Decimal("0")
@@ -323,6 +324,7 @@ def _load_period_detail_components(period: FinancialPeriod, db: Session) -> dict
         .filter(PeriodInvestment.finperiodid == finperiodid)
         .all()
     )
+    balances_limit_exceeded = False
     if cycle_status(period) != CLOSED:
         budget = db.get(Budget, period.budgetid)
         max_cycles = budget.max_forward_balance_cycles if budget else 10
@@ -331,6 +333,7 @@ def _load_period_detail_components(period: FinancialPeriod, db: Session) -> dict
             enriched_balances = dynamic_balances
         else:
             enriched_balances = []
+            balances_limit_exceeded = True
     else:
         balance_rows = db.query(PeriodBalance).filter(PeriodBalance.finperiodid == finperiodid).all()
         enriched_balances = []
@@ -352,6 +355,7 @@ def _load_period_detail_components(period: FinancialPeriod, db: Session) -> dict
         "expenses": expense_out,
         "investments": investment_out,
         "balances": enriched_balances,
+        "balances_limit_exceeded": balances_limit_exceeded,
         "projected_savings": _projected_savings(period_status, investment_budget, investment_actual),
     }
 
@@ -873,6 +877,7 @@ def get_period_detail(finperiodid: int, db: DbSession):
         expenses=detail["expenses"],
         investments=detail["investments"],
         balances=detail["balances"],
+        balances_limit_exceeded=detail.get("balances_limit_exceeded", False),
         projected_savings=detail["projected_savings"],
         closeout_snapshot=period.closeout_snapshot,
     )

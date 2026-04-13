@@ -63,6 +63,9 @@ describe('InvestmentItemsTab', () => {
     fireEvent.change(selects[0], {
       target: { value: 'Savings' },
     })
+    fireEvent.change(selects[1], {
+      target: { value: 'Savings' },
+    })
 
     const toggles = screen.getAllByRole('checkbox')
     fireEvent.click(toggles[1])
@@ -76,6 +79,7 @@ describe('InvestmentItemsTab', () => {
         initial_value: 500,
         planned_amount: 0,
         linked_account_desc: 'Savings',
+        source_account_desc: 'Savings',
         is_primary: true,
       })
     })
@@ -103,6 +107,7 @@ describe('InvestmentItemsTab', () => {
         initial_value: 0,
         planned_amount: 0,
         linked_account_desc: null,
+        source_account_desc: null,
         is_primary: false,
       })
     })
@@ -145,6 +150,9 @@ describe('InvestmentItemsTab', () => {
     fireEvent.change(selects[0], {
       target: { value: 'Broker Cash' },
     })
+    fireEvent.change(selects[1], {
+      target: { value: 'Investments' },
+    })
 
     const toggles = screen.getAllByRole('checkbox')
     fireEvent.click(toggles[1])
@@ -157,7 +165,8 @@ describe('InvestmentItemsTab', () => {
         effectivedate: '2026-08-15',
         initial_value: 1500,
         planned_amount: 0,
-        linked_account_desc: 'Broker Cash',
+        linked_account_desc: 'Investments',
+        source_account_desc: 'Broker Cash',
         is_primary: true,
       })
     })
@@ -194,6 +203,7 @@ describe('InvestmentItemsTab', () => {
         initial_value: 0,
         planned_amount: 0,
         linked_account_desc: null,
+        source_account_desc: null,
         is_primary: true,
       })
     })
@@ -279,7 +289,9 @@ describe('InvestmentItemsTab', () => {
     )
 
     fireEvent.click(await screen.findByText('Add Investment'))
-    expect(await screen.findByRole('option', { name: 'Daily Spending (Everyday)' })).toBeTruthy()
+    const selects = screen.getAllByRole('combobox')
+    expect(selects[0].querySelector('option[value="Daily Spending"]')).toBeTruthy()
+    expect(selects[1].querySelector('option[value="Daily Spending"]')).toBeTruthy()
   })
 
   it('shows history details for an investment line', async () => {
