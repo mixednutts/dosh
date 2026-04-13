@@ -212,9 +212,9 @@ export default function PeriodDetailPage() {
   }
   const totalIncomeBudget    = incomes.reduce((s, i) => s + Number(i.budgetamount), 0)
   const totalIncomeActual    = incomes.reduce((s, i) => s + Number(i.actualamount), 0)
-  const effectiveExpenseBudget = expenses.reduce((s, e) => s + Number(e.status === 'Paid' ? e.actualamount : e.budgetamount), 0)
+  const effectiveExpenseBudget = expenses.reduce((s, e) => s + Number(e.budgetamount), 0)
   const totalExpenseActual   = expenses.reduce((s, e) => s + Number(e.actualamount), 0)
-  const effectiveInvestmentBudget = investments.reduce((s, inv) => s + Number(inv.status === 'Paid' ? inv.actualamount : inv.budgeted_amount ?? 0), 0)
+  const effectiveInvestmentBudget = investments.reduce((s, inv) => s + Number(inv.budgeted_amount ?? 0), 0)
   const totalInvestmentActual = investments.reduce((s, inv) => s + Number(inv.actualamount ?? 0), 0)
   const totalInvestmentRemaining = investments.reduce((s, inv) => s + getPositiveRemainingValue(inv.remaining_amount), 0)
   const totalExpenseRemaining = expenses.reduce((s, e) => s + getPositiveRemainingValue(e.remaining_amount), 0)

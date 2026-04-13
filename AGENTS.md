@@ -257,6 +257,7 @@ For document changes, follow [DOCUMENTATION_FRAMEWORK.md](./docs/DOCUMENTATION_F
 - **Dynamic Balance Limit Exceeded UX (COMPLETED):** Replaced HTTP 204 with `200 []` + `X-Balances-Limit-Exceeded: true` header, and added `balances_limit_exceeded` flag to `PeriodDetailOut`
   - Frontend uses explicit flag instead of fragile heuristic for limit-exceeded banner
 - Fixed account detail text wrapping in `InvestmentSection.jsx` to prevent truncation
+- Fixed investment and expense budget totals on the period detail page so the total row correctly sums budgeted amounts rather than substituting actuals for paid lines
 - **Demo Data Update:** Seeded demo budget now covers cash-flow account routing, scheduled expenses (Fixed Day of Month and Every N Days), and AUTO/MANUAL payment types for realistic walkthroughs
 
 **Active Focus Areas:**

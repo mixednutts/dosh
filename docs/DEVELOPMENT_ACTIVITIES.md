@@ -738,6 +738,7 @@ Status:
 - `Completed`: fix frontend stale balances after transaction entry by invalidating the `period-balances` query key on all mutations that affect income, expense, investment, transfers, and close-out workflows
 - `Completed`: fixed missing `BalanceType` import in `investment_transactions.py` that caused a `NameError` on transaction submit
 - `Completed`: fixed account detail text wrapping in `InvestmentSection.jsx` to prevent truncation with long account names
+- `Completed`: fix investment and expense budget totals on the period detail page so the total row correctly sums budgeted amounts rather than substituting actuals for paid lines
 
 Cross-links:
 

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Fixed
+
+- Fixed investment and expense budget totals on the period detail page so the total row correctly sums the budgeted amounts rather than substituting actuals for paid lines.
+
 ## 0.3.8-alpha | released | 2026-04-13
 
 ### Added

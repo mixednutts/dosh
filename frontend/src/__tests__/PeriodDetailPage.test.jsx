@@ -2719,7 +2719,7 @@ describe('PeriodDetailPage', () => {
 
     const totalInvestmentsRow = screen.getByText('Total Investments').closest('tr')
     expect(totalInvestmentsRow).toBeTruthy()
-    expect(totalInvestmentsRow.textContent).toContain('$175.00')
+    expect(totalInvestmentsRow.textContent).toContain('$150.00')
     expect(totalInvestmentsRow.textContent).toContain('$155.00')
     expect(totalInvestmentsRow.textContent).toContain('$20.00')
 
