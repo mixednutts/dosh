@@ -5,6 +5,7 @@
 ### Fixed
 
 - Fixed critical bug where `PENDING_CLOSURE` periods were incorrectly treated as frozen anchors for dynamic balance calculation, causing account balances to display wildly incorrect values after a period's end date passed.
+- Fixed expense transaction modal not defaulting to the expense item's configured debit account (`default_account_desc`). The account dropdown now correctly initializes to the configured default instead of defaulting to the first account in the list.
 
 ## 0.3.9-alpha | released | 2026-04-13
 

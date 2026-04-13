@@ -37,15 +37,21 @@ export function ExpenseEntriesModal({ periodId, budgetId, expensedesc, budgetamo
     queryFn: () => getExpenseItems(budgetId),
   })
 
-  const primaryAccount = balanceTypes.find(bt => bt.is_primary)
-  const expenseItem = expenseItems.find(e => e.expensedesc === expensedesc)
-  const defaultAccount = expenseItem?.default_account_desc || primaryAccount?.balancedesc || ''
+  const primaryAccount = balanceTypes.find(bt => bt.is_primary && bt.balance_type === 'Transaction')
 
   useEffect(() => {
-    if (defaultAccount && !selectedAccount) {
-      setSelectedAccount(defaultAccount)
+    setSelectedAccount('')
+  }, [expensedesc])
+
+  useEffect(() => {
+    const item = expenseItems.find(e => e.expensedesc === expensedesc)
+    if (item && !selectedAccount) {
+      const account = item.default_account_desc || primaryAccount?.balancedesc || ''
+      if (account) {
+        setSelectedAccount(account)
+      }
     }
-  }, [defaultAccount, selectedAccount])
+  }, [expenseItems, expensedesc, primaryAccount, selectedAccount])
 
   const add = useMutation({
     mutationFn: data => addExpenseEntry(periodId, expensedesc, data),

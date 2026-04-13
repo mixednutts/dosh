@@ -758,6 +758,7 @@ Status:
 - `Completed`: add regression coverage for budget-adjustment history, carry-forward-on-close-out timing, and direct paid-to-revised workflow behavior
 - `Completed`: add dedicated frontend regression coverage for dashboard current-cycle summaries, personalisation autosave and validation behavior, and inline amount-cell edit behavior after Sonar coverage surfaced those areas as under-tested
 - `Completed`: add regression test for `PENDING_CLOSURE` periods not being treated as frozen anchors in dynamic balance calculation
+- `Completed`: fix and add test coverage for expense transaction modal defaulting to the expense item's configured debit account
 - `Completed`: extend SonarQube follow-through coverage in `PeriodDetailPage.test.jsx`, `AmountExpressionInput.test.jsx`, and the new backend router suite [test_period_router_guards.py](/home/ubuntu/dosh/backend/tests/test_period_router_guards.py) while keeping the work behavior-first rather than metric-only
 - keep new feature work under a test-with-change discipline rather than treating testing as a later cleanup phase
 - extend Playwright from the current happy-path lifecycle smoke into reconciliation, correction, and broader scenario-shaped flows
