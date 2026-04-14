@@ -524,6 +524,34 @@ When making changes, preserve these working assumptions:
 
 ---
 
+## Incident Log: Release Notes Desync — Git Workflow Failure 2026-04-14
+
+**Severity:** SEVERE — CI/CD pipeline blocked; release tag creation failed
+
+**What happened:**
+1. `backend/app/version.py` was bumped to `0.4.1-alpha`
+2. `docs/RELEASE_NOTES.md` still had all `0.4.1-alpha` changes under `## Unreleased` with no dedicated `## 0.4.1-alpha | released | YYYY-MM-DD` entry
+3. GitHub `auto-tag-on-version-bump` workflow failed during `scripts/release_management.py validate --ref "$HEAD_SHA" --require-release-entry`
+4. Error: `docs/RELEASE_NOTES.md does not contain an entry for version 0.4.1-alpha.` (exit code 2)
+
+**Root causes:**
+1. **Process gap:** Version bump and release-notes cutover were not performed atomically
+2. **Validation skipped:** The local validation command (`python scripts/release_management.py validate --ref WORKTREE --require-release-entry`) was not run before pushing to `main`
+3. **Release-notes discipline drift:** Changes accumulated under `## Unreleased` without the final cutover step required by the local-first release workflow
+
+**Hard controls violated:**
+- Hard Control #6 (Never Implement Workarounds / Always Fix Root Cause) — treating an incomplete release cutover as acceptable is a systemic workaround
+
+**Fix applied:**
+- Moved `0.4.1-alpha` content from `## Unreleased` to a proper `## 0.4.1-alpha | released | 2026-04-14` entry in `docs/RELEASE_NOTES.md`
+
+**Prevention for future:**
+- ALWAYS run `python scripts/release_management.py validate --ref WORKTREE --require-release-entry` before pushing a version bump
+- ALWAYS verify that `docs/RELEASE_NOTES.md` contains a released entry matching `backend/app/version.py` before considering a release ready
+- NEVER push version-bump changes without the matching release-notes cutover
+
+---
+
 ## Plan Execution Guardrails (Enacted 2026-04-12)
 
 These rules apply to ANY future session involving an approved implementation plan:

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.4.1-alpha | released | 2026-04-14
+
 ### Changed
 
 - Removed legacy personalisation sliders from the Personalisation tab. Metric cards are now the single source of truth, with an inline View/Edit toggle for formula details and scale-aware personalisation controls.
