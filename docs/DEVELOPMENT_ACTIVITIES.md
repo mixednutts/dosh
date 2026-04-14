@@ -451,6 +451,21 @@ Status:
 - decide whether some health evidence lines should mirror the personalisation wording more closely
 - keep the personalisation section lightweight rather than turning it into an intimidating settings panel
 
+#### Activity Group: Terminology and Model Alignment
+
+Status:
+
+- `Next`
+
+- rename the health-engine "Personalisation" concept to "Thresholds & Tolerances" on the frontend and "Threshold" on the backend to accurately reflect that these values are metric inputs (thresholds/benchmarks) consumed during scoring, not post-calculation adjustments
+- backend renames: `HealthPersonalisationDefinition` → `HealthThresholdDefinition`, `BudgetMetricPersonalisation` → `BudgetMetricThreshold`, `personalisation_key` → `threshold_key`, `default_personalisation_key` → `default_threshold_key`
+- frontend renames: update `PersonalisationTab` labels, headings, and helper copy from "Personalisation" to "Thresholds & Tolerances"
+- API renames: update router paths, schema names, and request/response shapes (e.g., `/health-thresholds`, `BudgetMetricThresholdIn`) to match the new backend naming
+- seed and migration alignment: update `health_engine_seed.py` catalog keys/names and verify Alembic migration independence from the rename (decide whether to add a data-only migration or handle via startup seed refresh)
+- update tests: backend tests referencing personalisation tables/keys, frontend `PersonalisationTab.test.jsx` labels, and API client tests
+- update documentation: `DEVELOPMENT_ACTIVITIES.md`, `CHANGES.md`, `BUDGET_HEALTH_ENGINE_PLAN.md`, and `AGENTS.md` references to personalisation
+- decide whether the `planning_stability` metric should use its threshold value in actual scoring logic (today `revision_threshold` is stored but ignored in `execute_planning_stability`) or if the threshold should be removed for that metric
+
 #### Activity Group: Test Coverage
 
 Status:
