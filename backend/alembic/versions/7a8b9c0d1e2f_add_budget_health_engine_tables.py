@@ -49,14 +49,14 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint('scale_key')
     )
 
-    op.create_table('healthpersonalisationdefinitions',
-        sa.Column('personalisation_key', sa.String(), nullable=False),
+    op.create_table('healththresholddefinitions',
+        sa.Column('threshold_key', sa.String(), nullable=False),
         sa.Column('name', sa.String(), nullable=False),
         sa.Column('description', sa.Text(), nullable=True),
         sa.Column('scale_key', sa.String(), nullable=False),
         sa.Column('default_value_json', sa.Text(), nullable=False, server_default='{}'),
         sa.ForeignKeyConstraint(['scale_key'], ['healthscales.scale_key'], ),
-        sa.PrimaryKeyConstraint('personalisation_key')
+        sa.PrimaryKeyConstraint('threshold_key')
     )
 
     op.create_table('healthmetrictemplates',
@@ -66,12 +66,12 @@ def upgrade() -> None:
         sa.Column('scope', sa.String(), nullable=False),
         sa.Column('formula_expression', sa.Text(), nullable=False),
         sa.Column('formula_data_sources_json', sa.Text(), nullable=False),
-        sa.Column('default_personalisation_key', sa.String(), nullable=True),
+        sa.Column('default_threshold_key', sa.String(), nullable=True),
         sa.Column('scoring_logic_json', sa.Text(), nullable=False),
         sa.Column('evidence_template_json', sa.Text(), nullable=False),
         sa.Column('drill_down_enabled', sa.Boolean(), nullable=True, server_default='0'),
         sa.Column('is_system', sa.Boolean(), nullable=True, server_default='0'),
-        sa.ForeignKeyConstraint(['default_personalisation_key'], ['healthpersonalisationdefinitions.personalisation_key'], ),
+        sa.ForeignKeyConstraint(['default_threshold_key'], ['healththresholddefinitions.threshold_key'], ),
         sa.PrimaryKeyConstraint('template_key')
     )
 
@@ -92,13 +92,13 @@ def upgrade() -> None:
         sa.Column('scope', sa.String(), nullable=False),
         sa.Column('formula_expression', sa.Text(), nullable=False),
         sa.Column('formula_data_sources_json', sa.Text(), nullable=False),
-        sa.Column('personalisation_key', sa.String(), nullable=True),
+        sa.Column('threshold_key', sa.String(), nullable=True),
         sa.Column('scoring_logic_json', sa.Text(), nullable=False),
         sa.Column('evidence_template_json', sa.Text(), nullable=False),
         sa.Column('drill_down_enabled', sa.Boolean(), nullable=True, server_default='0'),
         sa.Column('created_at', sa.DateTime(), nullable=True),
         sa.ForeignKeyConstraint(['budgetid'], ['budgets.budgetid'], ),
-        sa.ForeignKeyConstraint(['personalisation_key'], ['healthpersonalisationdefinitions.personalisation_key'], ),
+        sa.ForeignKeyConstraint(['threshold_key'], ['healththresholddefinitions.threshold_key'], ),
         sa.ForeignKeyConstraint(['template_key'], ['healthmetrictemplates.template_key'], ),
         sa.PrimaryKeyConstraint('metric_id')
     )
@@ -173,15 +173,15 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint('budgetid')
     )
 
-    op.create_table('budgetmetricpersonalisations',
+    op.create_table('budgetmetricthresholds',
         sa.Column('budgetid', sa.Integer(), nullable=False),
         sa.Column('metric_id', sa.Integer(), nullable=False),
-        sa.Column('personalisation_key', sa.String(), nullable=False),
+        sa.Column('threshold_key', sa.String(), nullable=False),
         sa.Column('value_json', sa.Text(), nullable=False),
         sa.Column('updated_at', sa.DateTime(), nullable=True),
         sa.ForeignKeyConstraint(['budgetid'], ['budgets.budgetid'], ),
         sa.ForeignKeyConstraint(['metric_id'], ['healthmetrics.metric_id'], ),
-        sa.ForeignKeyConstraint(['personalisation_key'], ['healthpersonalisationdefinitions.personalisation_key'], ),
+        sa.ForeignKeyConstraint(['threshold_key'], ['healththresholddefinitions.threshold_key'], ),
         sa.PrimaryKeyConstraint('budgetid', 'metric_id')
     )
 
@@ -213,7 +213,7 @@ def upgrade() -> None:
 def downgrade() -> None:
     # Drop tables in reverse order of creation
     op.drop_table('periodhealthresults')
-    op.drop_table('budgetmetricpersonalisations')
+    op.drop_table('budgetmetricthresholds')
     op.drop_table('budgethealthsummaries')
     op.drop_table('budgethealthmatrixitems')
     op.drop_table('budgethealthmatrices')
@@ -223,7 +223,7 @@ def downgrade() -> None:
     op.drop_table('healthmetrics')
     op.drop_table('healthmatrixtemplates')
     op.drop_table('healthmetrictemplates')
-    op.drop_table('healthpersonalisationdefinitions')
+    op.drop_table('healththresholddefinitions')
     op.drop_table('healthscales')
     op.drop_table('healthdatasources')
     

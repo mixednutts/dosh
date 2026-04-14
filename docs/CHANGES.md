@@ -4,6 +4,30 @@ This document captures the key product and implementation changes made during re
 
 It is intended to complement [README.md](/home/ubuntu/dosh/README.md), not replace it.
 
+## Latest Session: Fix Empty Health Metric Data After Threshold Terminology Refactor
+
+This session fixed a critical bug introduced in `0.4.3-alpha` where the Budget Health Engine was returning empty/null health payloads, causing the Budgets page to show blank placeholder circles instead of actual health scores and navigation.
+
+### What changed
+
+- **Bug fix (SQLAlchemy model alignment):**
+  - Fixed `backend/app/models.py` so `HealthThresholdDefinition`, `HealthMetricTemplate`, `HealthMetric`, and `BudgetMetricThreshold` reference the correct renamed table names (`healththresholddefinitions`, `budgetmetricthresholds`) and column names (`threshold_key`). Previously the models still pointed to the old `personalisation` table/column names, which no longer existed after the `0.4.3-alpha` migration, causing all health threshold lookups to fail silently.
+
+- **Bug fix (migration alignment for fresh installs):**
+  - Updated `backend/alembic/versions/7a8b9c0d1e2f_add_budget_health_engine_tables.py` to create tables using the new `threshold_*` names directly, ensuring fresh database installs are consistent with the renamed model layer.
+
+- **Bug fix (idempotent rename migration):**
+  - Updated `backend/alembic/versions/009297f69b52_rename_personalisation_to_threshold.py` to be idempotent: it now checks whether old tables/columns still exist before attempting renames. This prevents migration failures on both upgraded and fresh databases.
+
+### Verification
+
+- Full backend suite: **184 passed**
+- Full frontend suite: **198 passed**
+- Deployed to local Docker container with overrides and smoke-tested
+- Verified `/api/budgets/{id}/health` returns fully populated health payload with `overall_score`, `pillars`, `current_period_check`, and `momentum_status`
+
+---
+
 ## Purpose
 
 This document is the running product and implementation history for Dosh.

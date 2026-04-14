@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 0.4.4-alpha | released | 2026-04-14
+
+### Fixed
+
+- Fixed a bug where the Budget Health Engine returned empty data after the terminology refactor, causing blank health circles on the budget summary page.
+- Aligned SQLAlchemy models and Alembic migrations so health threshold tables are correctly named for both fresh installs and upgrades.
+
 ## 0.4.3-alpha | released | 2026-04-14
 
 - Renamed the budget setup "Personalisation" section to "Thresholds & Tolerances" so health metric settings are described more accurately.

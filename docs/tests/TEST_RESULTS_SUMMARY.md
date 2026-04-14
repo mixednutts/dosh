@@ -4,6 +4,51 @@ This document records meaningful automated test results from major working sessi
 
 It exists separately from [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) so the strategy can stay stable while future sessions still have a record of what was actually run and verified.
 
+## Latest Session: Fix Empty Health Metric Data After Threshold Terminology Refactor
+
+This session fixed a critical bug where the Budget Health Engine returned empty/null payloads after the `0.4.3-alpha` terminology refactor, causing blank health indicators on the budget summary page.
+
+### Verification
+
+```bash
+cd /home/ubuntu/dosh/backend
+.venv/bin/python -m pytest tests/ -q
+```
+
+Result:
+
+- Full backend suite: **184 passed**
+- No regressions introduced
+- Migration tests (`test_auto_expense_migration.py`): clean upgrade to head and legacy upgrade both pass
+
+```bash
+cd /home/ubuntu/dosh/frontend
+npx jest --runInBand --watchAll=false
+```
+
+Result:
+
+- Full frontend suite: **198 passed** (18 test suites)
+- No regressions introduced
+
+### Deployment Verification
+
+```bash
+cd /home/ubuntu/dosh
+INCLUDE_OVERRIDE=true ./scripts/release_with_migrations.sh
+curl -sS http://127.0.0.1:3080/api/health
+```
+
+Result:
+
+- Backend container rebuilt and restarted successfully
+- Frontend container rebuilt and restarted successfully
+- Health endpoint returned `{"status":"ok","app":"Dosh"}`
+- Version endpoint returned `0.4.4-alpha`
+- `/api/budgets/{id}/health` returned fully populated health payload with `overall_score`, `pillars`, `current_period_check`, and `momentum_status`
+
+---
+
 ## Latest Session: Budget Health Endpoint and Modal Fix
 
 This session fixed two production issues: Budget Health data was not loading on the Budget Dashboard, and the Current Budget Cycle Check Details modal crashed to a black screen.

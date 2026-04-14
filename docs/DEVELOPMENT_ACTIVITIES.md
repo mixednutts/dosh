@@ -464,6 +464,7 @@ Status:
 - `Completed`: seed and migration alignment: updated `health_engine_seed.py` catalog keys/names and added Alembic migration `009297f69b52_rename_personalisation_to_threshold.py`
 - `Completed`: updated tests: backend tests referencing personalisation tables/keys, frontend `PersonalisationTab.test.jsx` labels, and API client tests
 - `Completed`: updated documentation: `DEVELOPMENT_ACTIVITIES.md`, `CHANGES.md`, `BUDGET_HEALTH_ENGINE_PLAN.md`, and `AGENTS.md` references to personalisation
+- `Fixed (0.4.4-alpha)`: corrected a model-migration mismatch where `backend/app/models.py` still referenced the old `personalisation` table names after the migration renamed them to `threshold_*`. This caused the health engine to query non-existent tables, resulting in empty health payloads and blank UI placeholders on the budget summary page. The fix aligned models, fresh-install migration, and upgrade migration to the same `threshold_*` naming.
 - `Decision`: keep the `revision_sensitivity` threshold for `planning_stability` for now; the threshold is stored and surfaced in evidence but does not yet directly modulate scoring tolerance. A future session may decide to integrate it or remove it if it remains unused.
 
 #### Activity Group: Test Coverage

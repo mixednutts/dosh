@@ -383,8 +383,8 @@ class HealthScaleOption(Base):
 
 
 class HealthThresholdDefinition(Base):
-    __tablename__ = "healthpersonalisationdefinitions"
-    threshold_key = Column("personalisation_key", String, primary_key=True)
+    __tablename__ = "healththresholddefinitions"
+    threshold_key = Column(String, primary_key=True)
     name = Column(String, nullable=False)
     description = Column(Text)
     scale_key = Column(String, ForeignKey("healthscales.scale_key"), nullable=False)
@@ -400,7 +400,7 @@ class HealthMetricTemplate(Base):
     scope = Column(String, nullable=False)
     formula_expression = Column(Text, nullable=False)
     formula_data_sources_json = Column(Text, nullable=False)
-    default_threshold_key = Column("default_personalisation_key", String, ForeignKey("healthpersonalisationdefinitions.personalisation_key"), nullable=True)
+    default_threshold_key = Column(String, ForeignKey("healththresholddefinitions.threshold_key"), nullable=True)
     scoring_logic_json = Column(Text, nullable=False)
     evidence_template_json = Column(Text, nullable=False)
     drill_down_enabled = Column(Boolean, default=False)
@@ -417,7 +417,7 @@ class HealthMetric(Base):
     scope = Column(String, nullable=False)
     formula_expression = Column(Text, nullable=False)
     formula_data_sources_json = Column(Text, nullable=False)
-    threshold_key = Column("personalisation_key", String, ForeignKey("healthpersonalisationdefinitions.personalisation_key"), nullable=True)
+    threshold_key = Column(String, ForeignKey("healththresholddefinitions.threshold_key"), nullable=True)
     scoring_logic_json = Column(Text, nullable=False)
     evidence_template_json = Column(Text, nullable=False)
     drill_down_enabled = Column(Boolean, default=False)
@@ -475,10 +475,10 @@ class BudgetHealthMatrixItem(Base):
 
 
 class BudgetMetricThreshold(Base):
-    __tablename__ = "budgetmetricpersonalisations"
+    __tablename__ = "budgetmetricthresholds"
     budgetid = Column(Integer, ForeignKey("budgets.budgetid"), primary_key=True)
     metric_id = Column(Integer, ForeignKey("healthmetrics.metric_id"), primary_key=True)
-    threshold_key = Column("personalisation_key", String, ForeignKey("healthpersonalisationdefinitions.personalisation_key"), nullable=False)
+    threshold_key = Column(String, ForeignKey("healththresholddefinitions.threshold_key"), nullable=False)
     value_json = Column(Text, nullable=False)
     updated_at = Column(UTCDateTime, default=lambda: dt.now(timezone.utc))
 
