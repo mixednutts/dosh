@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.4.3-alpha | released | 2026-04-14
+
 - Renamed the budget setup "Personalisation" section to "Thresholds & Tolerances" so health metric settings are described more accurately.
 - Updated health engine language from "personalisation" to "threshold" throughout the app for clearer scoring inputs.
 
