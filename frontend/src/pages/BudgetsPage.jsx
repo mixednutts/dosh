@@ -887,6 +887,8 @@ function BudgetStats({ budgetId, budgetName, periods = [], currentPeriodDetail, 
 
 function CurrentPeriodCheckModal({ budget, assessment, evaluatedAt, onClose }) {
   const { formatDateTime, timezone } = useLocalisation()
+  const evidence = assessment.evidence || []
+  const drillDown = assessment.drill_down || []
   return (
     <Modal title={`Current Budget Cycle Check — ${budget.description || 'Untitled Budget'}`} onClose={onClose} size="lg">
       <div className="space-y-5">
@@ -907,13 +909,13 @@ function CurrentPeriodCheckModal({ budget, assessment, evaluatedAt, onClose }) {
 
         <section className="space-y-3 rounded-lg border border-gray-200 bg-white px-4 py-4 dark:border-gray-700 dark:bg-gray-900">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{assessment.title}</h3>
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{assessment.title || 'Current Period Check'}</h3>
             <span className={`h-3.5 w-3.5 rounded-full ${healthDotClass(assessment.status)}`} />
             <span className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Score {assessment.score}</span>
           </div>
           <div className="space-y-2">
-            {assessment.evidence.map(item => (
-              <div key={`${assessment.key}-${item.label}`} className="rounded-md border border-gray-100 bg-gray-50 px-3 py-2 dark:border-gray-800 dark:bg-gray-800/80">
+            {evidence.map((item, idx) => (
+              <div key={`${assessment.key || 'cpc'}-${item.label || idx}`} className="rounded-md border border-gray-100 bg-gray-50 px-3 py-2 dark:border-gray-800 dark:bg-gray-800/80">
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{item.label}</p>
                   <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{item.value}</p>
@@ -925,10 +927,10 @@ function CurrentPeriodCheckModal({ budget, assessment, evaluatedAt, onClose }) {
               </div>
             ))}
           </div>
-          {assessment.drill_down && assessment.drill_down.length > 0 ? (
+          {drillDown.length > 0 ? (
             <div className="rounded-md border border-gray-100 bg-gray-50 px-3 py-2 dark:border-gray-800 dark:bg-gray-800/80">
               <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Quick Links</p>
-              <DrillDownLinks items={assessment.drill_down} />
+              <DrillDownLinks items={drillDown} />
             </div>
           ) : null}
         </section>

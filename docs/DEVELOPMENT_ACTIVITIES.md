@@ -410,6 +410,7 @@ Status:
 - `Completed`: added `health_tone` selector (`supportive`/`factual`/`friendly`) to budget settings and health evidence rendering
 - `Completed`: updated `BudgetsPage.jsx` to consume the engine health endpoint and render contextual drill-down links in health modals
 - `Completed`: removed the legacy fixed health endpoint implementation and consolidated all health traffic through the engine
+- `Fixed (0.4.2-alpha)`: corrected the frontend `getBudgetHealth` API path from `/health-engine` to `/health` so the dashboard health card loads correctly
 
 #### Activity Group: Scoring and Momentum
 
@@ -433,6 +434,7 @@ Status:
 - `Completed`: align the overall budget health detail view with the dedicated current-period health check so the active-period story does not conflict between the two surfaces
 - `Completed`: refactored `current_period_check` executor to use `formula_result` (live period surplus) rather than re-querying period lines
 - `Completed`: migrated closeout preview health scoring to use the engine directly
+- `Fixed (0.4.2-alpha)`: aligned the `current_period_check` payload shape (`details` → `evidence`) with the frontend modal contract to prevent the Current Budget Cycle Check modal from crashing
 
 #### Activity Group: Personalisation and Evidence Language
 

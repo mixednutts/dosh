@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 0.4.2-alpha | released | 2026-04-14
+
+### Fixed
+
+- Corrected the Budget Health API path in the frontend client so the dashboard health card loads properly.
+- Fixed the `current_period_check` payload shape in the health engine runner so the Current Budget Cycle Check modal no longer crashes with a black screen.
+- Added defensive fallbacks in the Current Period Check modal for missing evidence and drill-down data.
+
 ## 0.4.1-alpha | released | 2026-04-14
 
 ### Changed

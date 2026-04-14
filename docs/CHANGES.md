@@ -39,6 +39,30 @@ For the implemented Auto Expense workflow rules, scheduler behavior, migration e
 
 For the cash management workflow plan that defines generalised transfers, expense routing, investment tracking, and balance validation, read [CASH_MANAGEMENT_WORKFLOW_PLAN.md](/home/ubuntu/dosh/docs/plans/CASH_MANAGEMENT_WORKFLOW_PLAN.md).
 
+## Latest Session: Budget Health Endpoint and Modal Fix
+
+This session fixed two issues discovered after the `0.4.1-alpha` release: Budget Health data was not loading on the Budget Dashboard, and opening the Current Budget Cycle Check Details modal caused a black screen.
+
+### What changed
+
+- **Bug fix (frontend API path):**
+  - Fixed `getBudgetHealth` in `frontend/src/api/client.js` to call `/budgets/${id}/health` instead of the non-existent `/budgets/${id}/health-engine`. This restored health data loading on the dashboard.
+
+- **Bug fix (backend payload shape):**
+  - Fixed `evaluate_budget_health` in `backend/app/health_engine/runner.py` so the `current_period_check` object returns `evidence` (array of `{label, value}` objects) instead of `details`. This aligned the backend payload with the frontend `CurrentPeriodCheckModal` expectations.
+
+- **Resilience improvement (frontend):**
+  - Added defensive fallbacks in `frontend/src/pages/BudgetsPage.jsx` (`CurrentPeriodCheckModal`) for `assessment.evidence` and `assessment.drill_down` to prevent future crashes if data is ever missing.
+
+### Verification
+
+- Frontend tests (`BudgetsPage`, `Dashboard`): **12 passed**
+- Backend health-engine tests: **22 passed**
+- Backend smoke tests (`test_app_smoke.py`): **11 passed**
+- Deployed to local Docker container with overrides and verified in the browser
+
+---
+
 ## Latest Session: SonarQube Quality Gate Follow-Through
 
 This session addressed failing SonarQube quality gate conditions on `main`: a reliability bug in the Budget Health Engine runner and insufficient new-code coverage on recently added health matrix and API client surfaces.

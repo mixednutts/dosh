@@ -262,11 +262,10 @@ def evaluate_budget_health(
             "score": int(sum(r["score"] * r["weight"] for r in current_metrics) / sum(r["weight"] for r in current_metrics)) if current_metrics else 50,
             "status": _health_status(int(sum(r["score"] * r["weight"] for r in current_metrics) / sum(r["weight"] for r in current_metrics))) if current_metrics else "Watch",
             "summary": current_metrics[0]["summary"] if current_metrics else "Current period evaluation complete.",
-            "details": [
+            "evidence": [
                 {
                     "label": m["name"],
                     "value": str(m["score"]),
-                    "status": m["status"],
                 }
                 for m in current_metrics
             ],

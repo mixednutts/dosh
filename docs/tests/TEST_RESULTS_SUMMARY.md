@@ -4,6 +4,50 @@ This document records meaningful automated test results from major working sessi
 
 It exists separately from [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) so the strategy can stay stable while future sessions still have a record of what was actually run and verified.
 
+## Latest Session: Budget Health Endpoint and Modal Fix
+
+This session fixed two production issues: Budget Health data was not loading on the Budget Dashboard, and the Current Budget Cycle Check Details modal crashed to a black screen.
+
+### Verification
+
+```bash
+cd /home/ubuntu/dosh/backend
+.venv/bin/python -m pytest tests/test_app_smoke.py -v
+```
+
+Result:
+
+- Backend smoke tests: **11 passed**
+- No regressions introduced
+
+```bash
+cd /home/ubuntu/dosh/backend
+.venv/bin/python -m pytest tests/test_health_engine.py -v
+```
+
+Result:
+
+- Health-engine tests: **22 passed**
+- No regressions introduced
+
+```bash
+cd /home/ubuntu/dosh/frontend
+npm test -- --watchAll=false --testPathPatterns="BudgetsPage|Dashboard"
+```
+
+Result:
+
+- Frontend targeted tests: **12 passed** (2 test suites)
+- No regressions introduced
+
+### What changed
+
+- Fixed `getBudgetHealth` API path in `frontend/src/api/client.js` (`/health-engine` → `/health`)
+- Fixed `current_period_check` payload shape in `backend/app/health_engine/runner.py` (`details` → `evidence`)
+- Added defensive fallbacks in `frontend/src/pages/BudgetsPage.jsx` (`CurrentPeriodCheckModal`)
+
+---
+
 ## Latest Session: SonarQube Quality Gate Follow-Through
 
 This session addressed failing SonarQube quality gate conditions: a reliability bug in the Budget Health Engine runner and insufficient new-code coverage on health matrix and API client surfaces.

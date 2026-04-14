@@ -31,7 +31,7 @@ export const getReleaseNotes = () => api.get('/release-notes').then(r => r.data)
 // ── Budgets ──────────────────────────────────────────────────────────────────
 export const getBudgets = () => api.get('/budgets/').then(r => r.data)
 export const getBudget = id => api.get(`/budgets/${id}`).then(r => r.data)
-export const getBudgetHealth = id => api.get(`/budgets/${id}/health-engine`).then(r => r.data)
+export const getBudgetHealth = id => api.get(`/budgets/${id}/health`).then(r => r.data)
 export const getBudgetHealthMatrix = id => api.get(`/budgets/${id}/health-matrix/`).then(r => r.data)
 export const getHealthDataSources = id => api.get(`/budgets/${id}/health-matrix/data-sources`).then(r => r.data)
 export const getHealthPersonalisationDefinitions = id => api.get(`/budgets/${id}/health-matrix/definitions`).then(r => r.data)
