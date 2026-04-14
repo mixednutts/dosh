@@ -43,9 +43,9 @@ describe('PersonalisationTab', () => {
         scoring_sensitivity: 50,
         is_enabled: true,
         display_order: 0,
-        personalisation_key: null,
-        personalisation_value: null,
-        personalisation_scale: null,
+        threshold_key: null,
+        threshold_value: null,
+        threshold_scale: null,
       },
       {
         metric_id: 102,
@@ -59,9 +59,9 @@ describe('PersonalisationTab', () => {
         scoring_sensitivity: 30,
         is_enabled: true,
         display_order: 1,
-        personalisation_key: 'threshold',
-        personalisation_value: 0.8,
-        personalisation_scale: {
+        threshold_key: 'threshold',
+        threshold_value: 0.8,
+        threshold_scale: {
           scale_key: 'percentage_0_100',
           scale_type: 'integer_range',
           min_value: 0,
@@ -181,23 +181,23 @@ describe('PersonalisationTab', () => {
     })
   })
 
-  it('allows editing the personalisation value of a metric', async () => {
+  it('allows editing the threshold value of a metric', async () => {
     renderWithProviders(<PersonalisationTab budgetId={1} budget={budget} />)
 
     await screen.findByText('Custom Metric')
     const viewEditButtons = screen.getAllByRole('button', { name: 'View / Edit' })
     fireEvent.click(viewEditButtons[1])
 
-    const persLabel = await screen.findByText('Personalisation: threshold')
-    expect(persLabel).toBeTruthy()
+    const thresholdLabel = await screen.findByText('Threshold: threshold')
+    expect(thresholdLabel).toBeTruthy()
 
     // The percentage slider should be visible
     const slider = screen.getByLabelText('Value')
     fireEvent.change(slider, { target: { value: '95' } })
 
     await waitFor(() => {
-      expect(api.patch).toHaveBeenCalledWith('/budgets/1/health-matrix/personalisation/102', {
-        personalisation_key: 'threshold',
+      expect(api.patch).toHaveBeenCalledWith('/budgets/1/health-matrix/thresholds/102', {
+        threshold_key: 'threshold',
         value: 95,
       })
     })

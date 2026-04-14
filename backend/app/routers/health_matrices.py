@@ -12,11 +12,11 @@ from ..models import (
     Budget,
     BudgetHealthMatrix,
     BudgetHealthMatrixItem,
-    BudgetMetricPersonalisation,
+    BudgetMetricThreshold,
     HealthDataSource,
     HealthMetric,
     HealthMetricTemplate,
-    HealthPersonalisationDefinition,
+    HealthThresholdDefinition,
     HealthScale,
 )
 
@@ -38,8 +38,8 @@ def _serialize_scale(scale: HealthScale | None) -> dict | None:
     }
 
 
-def _parse_personalisation_value(value_json: str, scale_type: str | None) -> int | float | str | None:
-    """Parse a personalisation value from JSON based on scale type."""
+def _parse_threshold_value(value_json: str, scale_type: str | None) -> int | float | str | None:
+    """Parse a threshold value from JSON based on scale type."""
     try:
         raw = json.loads(value_json)
     except json.JSONDecodeError:
@@ -57,7 +57,7 @@ def _parse_personalisation_value(value_json: str, scale_type: str | None) -> int
 
 @router.get("/", responses=error_responses(404))
 def get_budget_health_matrix(budgetid: int, db: DbSession):
-    """Get the active health matrix for a budget, including items and personalisations."""
+    """Get the active health matrix for a budget, including items and thresholds."""
     budget = db.get(Budget, budgetid)
     if not budget:
         raise HTTPException(404, "Budget not found")
@@ -73,9 +73,9 @@ def get_budget_health_matrix(budgetid: int, db: DbSession):
         .all()
     )
 
-    pers_defs = {
-        p.personalisation_key: p
-        for p in db.query(HealthPersonalisationDefinition).all()
+    threshold_defs = {
+        t.threshold_key: t
+        for t in db.query(HealthThresholdDefinition).all()
     }
 
     result_items = []
@@ -84,16 +84,16 @@ def get_budget_health_matrix(budgetid: int, db: DbSession):
         if not metric:
             continue
 
-        pers_value = None
-        pers_def = None
-        if metric.personalisation_key:
-            pers_def = pers_defs.get(metric.personalisation_key)
-            bmp = db.query(BudgetMetricPersonalisation).filter_by(
+        threshold_value = None
+        threshold_def = None
+        if metric.threshold_key:
+            threshold_def = threshold_defs.get(metric.threshold_key)
+            bmt = db.query(BudgetMetricThreshold).filter_by(
                 budgetid=budgetid, metric_id=metric.metric_id
             ).first()
-            if bmp:
-                scale_type = pers_def.scale.scale_type if pers_def and pers_def.scale else None
-                pers_value = _parse_personalisation_value(bmp.value_json, scale_type)
+            if bmt:
+                scale_type = threshold_def.scale.scale_type if threshold_def and threshold_def.scale else None
+                threshold_value = _parse_threshold_value(bmt.value_json, scale_type)
 
         result_items.append({
             "matrix_item_id": f"{item.matrix_id}-{item.metric_id}",
@@ -108,9 +108,9 @@ def get_budget_health_matrix(budgetid: int, db: DbSession):
             "scoring_sensitivity": item.scoring_sensitivity,
             "is_enabled": item.is_enabled,
             "display_order": item.display_order,
-            "personalisation_key": metric.personalisation_key,
-            "personalisation_value": pers_value,
-            "personalisation_scale": _serialize_scale(pers_def.scale) if pers_def else None,
+            "threshold_key": metric.threshold_key,
+            "threshold_value": threshold_value,
+            "threshold_scale": _serialize_scale(threshold_def.scale) if threshold_def else None,
         })
 
     return {
@@ -122,13 +122,13 @@ def get_budget_health_matrix(budgetid: int, db: DbSession):
 
 
 @router.get("/definitions", responses=error_responses(404))
-def get_personalisation_definitions(budgetid: int, db: DbSession):
-    """Get all available personalisation definitions with their scales."""
+def get_threshold_definitions(budgetid: int, db: DbSession):
+    """Get all available threshold definitions with their scales."""
     budget = db.get(Budget, budgetid)
     if not budget:
         raise HTTPException(404, "Budget not found")
 
-    definitions = db.query(HealthPersonalisationDefinition).all()
+    definitions = db.query(HealthThresholdDefinition).all()
     result = []
     for d in definitions:
         try:
@@ -136,7 +136,7 @@ def get_personalisation_definitions(budgetid: int, db: DbSession):
         except json.JSONDecodeError:
             default_value = d.default_value_json
         result.append({
-            "personalisation_key": d.personalisation_key,
+            "threshold_key": d.threshold_key,
             "name": d.name,
             "description": d.description,
             "default_value": default_value,
@@ -179,14 +179,14 @@ def update_matrix_item(
     return {"ok": True}
 
 
-@router.patch("/personalisation/{metric_id}", responses=error_responses(404, 400))
-def update_metric_personalisation(
+@router.patch("/thresholds/{metric_id}", responses=error_responses(404, 400))
+def update_metric_threshold(
     budgetid: int,
     metric_id: int,
     payload: dict,
     db: DbSession,
 ):
-    """Update the personalisation value for a metric in this budget's matrix."""
+    """Update the threshold value for a metric in this budget's matrix."""
     budget = db.get(Budget, budgetid)
     if not budget:
         raise HTTPException(404, "Budget not found")
@@ -195,18 +195,18 @@ def update_metric_personalisation(
     if not metric:
         raise HTTPException(404, "Metric not found")
 
-    personalisation_key = payload.get("personalisation_key") or metric.personalisation_key
+    threshold_key = payload.get("threshold_key") or metric.threshold_key
     value = payload.get("value")
 
-    if not personalisation_key:
-        raise HTTPException(400, "No personalisation key defined for this metric")
+    if not threshold_key:
+        raise HTTPException(400, "No threshold key defined for this metric")
 
-    pers_def = db.query(HealthPersonalisationDefinition).filter_by(
-        personalisation_key=personalisation_key
+    threshold_def = db.query(HealthThresholdDefinition).filter_by(
+        threshold_key=threshold_key
     ).first()
 
-    if pers_def and pers_def.scale:
-        scale = pers_def.scale
+    if threshold_def and threshold_def.scale:
+        scale = threshold_def.scale
         if scale.scale_type in ("integer_range", "decimal_range", "money") and value is not None:
             try:
                 num_value = float(value)
@@ -217,22 +217,22 @@ def update_metric_personalisation(
             except ValueError:
                 raise HTTPException(400, "Invalid numeric value")
 
-    bmp = db.query(BudgetMetricPersonalisation).filter_by(
+    bmt = db.query(BudgetMetricThreshold).filter_by(
         budgetid=budgetid, metric_id=metric_id
     ).first()
 
-    if bmp:
-        bmp.value_json = json.dumps(value)
-        bmp.personalisation_key = personalisation_key
-        bmp.updated_at = datetime.now(timezone.utc)
+    if bmt:
+        bmt.value_json = json.dumps(value)
+        bmt.threshold_key = threshold_key
+        bmt.updated_at = datetime.now(timezone.utc)
     else:
-        bmp = BudgetMetricPersonalisation(
+        bmt = BudgetMetricThreshold(
             budgetid=budgetid,
             metric_id=metric_id,
-            personalisation_key=personalisation_key,
+            threshold_key=threshold_key,
             value_json=json.dumps(value),
         )
-        db.add(bmp)
+        db.add(bmt)
 
     db.commit()
     return {"ok": True}
@@ -271,7 +271,7 @@ def create_custom_metric(
     - scope: str (OVERALL | CURRENT_PERIOD | BOTH)
     - formula_expression: str (e.g., "live_period_surplus / total_budgeted_income")
     - data_sources: list[str] (source_keys referenced in formula)
-    - personalisation_key: str (optional)
+    - threshold_key: str (optional)
     """
     budget = db.get(Budget, budgetid)
     if not budget:
@@ -281,7 +281,7 @@ def create_custom_metric(
     scope = payload.get("scope", "OVERALL")
     formula = payload.get("formula_expression", "").strip()
     data_sources = payload.get("data_sources", [])
-    personalisation_key = payload.get("personalisation_key")
+    threshold_key = payload.get("threshold_key")
 
     if not name:
         raise HTTPException(400, "Metric name is required")
@@ -298,12 +298,12 @@ def create_custom_metric(
         if missing:
             raise HTTPException(400, f"Unknown data sources: {missing}")
 
-    if personalisation_key:
-        pers_def = db.query(HealthPersonalisationDefinition).filter_by(
-            personalisation_key=personalisation_key
+    if threshold_key:
+        threshold_def = db.query(HealthThresholdDefinition).filter_by(
+            threshold_key=threshold_key
         ).first()
-        if not pers_def:
-            raise HTTPException(400, f"Unknown personalisation key: {personalisation_key}")
+        if not threshold_def:
+            raise HTTPException(400, f"Unknown threshold key: {threshold_key}")
 
     from ..health_engine.formula_evaluator import evaluate_formula
     dummy_values = {k: Decimal(1) for k in data_sources}
@@ -320,7 +320,7 @@ def create_custom_metric(
         scope=scope,
         formula_expression=formula,
         formula_data_sources_json=json.dumps(data_sources),
-        personalisation_key=personalisation_key,
+        threshold_key=threshold_key,
         scoring_logic_json=json.dumps({"type": "custom_metric_v1"}),
         evidence_template_json=json.dumps({
             "supportive": f"{name} looks good.",
@@ -377,7 +377,7 @@ def remove_matrix_item(
 
     db.delete(item)
 
-    db.query(BudgetMetricPersonalisation).filter_by(
+    db.query(BudgetMetricThreshold).filter_by(
         budgetid=budgetid, metric_id=metric_id
     ).delete()
 

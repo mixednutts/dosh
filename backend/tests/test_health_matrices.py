@@ -48,9 +48,9 @@ def test_update_matrix_item(client, db_session):
     assert matrix.is_enabled is False
 
 
-def test_update_metric_personalisation(client, db_session):
+def test_update_metric_threshold(client, db_session):
     budget = create_budget(db_session)
-    from app.models import BudgetHealthMatrix, HealthMetric, HealthPersonalisationDefinition, HealthScale
+    from app.models import BudgetHealthMatrix, HealthMetric, HealthThresholdDefinition, HealthScale
     bhm = db_session.query(BudgetHealthMatrix).filter_by(budgetid=budget.budgetid, is_active=True).first()
     matrix_item = (
         db_session.query(BudgetHealthMatrixItem)
@@ -64,19 +64,19 @@ def test_update_metric_personalisation(client, db_session):
         scale = HealthScale(scale_key="test_scale", name="Test Scale")
         db_session.add(scale)
         db_session.commit()
-    db_session.add(HealthPersonalisationDefinition(
-        personalisation_key="test_pers_key",
+    db_session.add(HealthThresholdDefinition(
+        threshold_key="test_threshold_key",
         name="Test",
         description="Test",
         scale_key=scale.scale_key,
         default_value_json="0",
     ))
     db_session.commit()
-    metric.personalisation_key = "test_pers_key"
+    metric.threshold_key = "test_threshold_key"
     db_session.commit()
 
     response = client.patch(
-        f"/api/budgets/{budget.budgetid}/health-matrix/personalisation/{metric_id}",
+        f"/api/budgets/{budget.budgetid}/health-matrix/thresholds/{metric_id}",
         json={"value": 42.0},
     )
     assert response.status_code == 200

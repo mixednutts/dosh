@@ -16,21 +16,21 @@ from app.models import (
     Budget,
     BudgetHealthMatrix,
     BudgetHealthMatrixItem,
-    BudgetMetricPersonalisation,
+    BudgetMetricThreshold,
     HealthDataSource,
     HealthDataSourceParameter,
     HealthMetric,
     HealthMetricTemplate,
     HealthMatrixTemplate,
     HealthMatrixTemplateItem,
-    HealthPersonalisationDefinition,
+    HealthThresholdDefinition,
     HealthScale,
     HealthScaleOption,
 )
 
 
 def seed_catalogs(db: Session) -> None:
-    """Seed HealthDataSource, HealthScale, and HealthPersonalisationDefinition catalogs."""
+    """Seed HealthDataSource, HealthScale, and HealthThresholdDefinition catalogs."""
 
     # --- HealthDataSource ---
     sources = [
@@ -180,45 +180,45 @@ def seed_catalogs(db: Session) -> None:
         if not existing:
             db.add(option)
 
-    # --- HealthPersonalisationDefinition ---
-    personalisations = [
-        HealthPersonalisationDefinition(
-            personalisation_key="acceptable_expense_overrun_pct",
+    # --- HealthThresholdDefinition ---
+    thresholds = [
+        HealthThresholdDefinition(
+            threshold_key="acceptable_expense_overrun_pct",
             name="Acceptable Expense Overrun",
             description="Percentage of expense overrun considered acceptable before health impact.",
             scale_key="percentage_0_100",
             default_value_json=json.dumps(10),
         ),
-        HealthPersonalisationDefinition(
-            personalisation_key="comfortable_surplus_buffer_pct",
+        HealthThresholdDefinition(
+            threshold_key="comfortable_surplus_buffer_pct",
             name="Comfortable Surplus Buffer",
             description="Minimum surplus percentage that feels comfortable.",
             scale_key="percentage_0_100",
             default_value_json=json.dumps(5),
         ),
-        HealthPersonalisationDefinition(
-            personalisation_key="maximum_deficit_amount",
+        HealthThresholdDefinition(
+            threshold_key="maximum_deficit_amount",
             name="Maximum Deficit Amount",
             description="Largest deficit amount tolerated before major health impact.",
             scale_key="dollar_amount",
             default_value_json=json.dumps(None),
         ),
-        HealthPersonalisationDefinition(
-            personalisation_key="revision_sensitivity",
+        HealthThresholdDefinition(
+            threshold_key="revision_sensitivity",
             name="Revision Sensitivity",
             description="How strongly budget revisions should affect stability scoring.",
             scale_key="ten_scale_1_10",
             default_value_json=json.dumps(5),
         ),
-        HealthPersonalisationDefinition(
-            personalisation_key="savings_priority",
+        HealthThresholdDefinition(
+            threshold_key="savings_priority",
             name="Savings Priority",
             description="Importance placed on savings contributions in overall health.",
             scale_key="ten_scale_1_10",
             default_value_json=json.dumps(5),
         ),
-        HealthPersonalisationDefinition(
-            personalisation_key="period_criticality_bias",
+        HealthThresholdDefinition(
+            threshold_key="period_criticality_bias",
             name="Period Criticality Bias",
             description="How much timing within the period amplifies health concerns.",
             scale_key="ten_scale_1_10",
@@ -226,12 +226,12 @@ def seed_catalogs(db: Session) -> None:
         ),
     ]
 
-    for pers in personalisations:
-        existing = db.query(HealthPersonalisationDefinition).filter_by(
-            personalisation_key=pers.personalisation_key
+    for threshold in thresholds:
+        existing = db.query(HealthThresholdDefinition).filter_by(
+            threshold_key=threshold.threshold_key
         ).first()
         if not existing:
-            db.add(pers)
+            db.add(threshold)
 
     db.flush()
 
@@ -248,7 +248,7 @@ def create_standard_templates(db: Session) -> HealthMatrixTemplate:
             scope="OVERALL",
             formula_expression="income_source_count + active_expense_count + future_period_count",
             formula_data_sources_json=json.dumps(["income_source_count", "active_expense_count", "future_period_count"]),
-            default_personalisation_key=None,
+            default_threshold_key=None,
             scoring_logic_json=json.dumps({"type": "setup_health_v1"}),
             evidence_template_json=json.dumps({
                 "supportive": "Your budget setup looks solid with the current income, expenses, and period coverage.",
@@ -265,7 +265,7 @@ def create_standard_templates(db: Session) -> HealthMatrixTemplate:
             scope="OVERALL",
             formula_expression="historical_overrun_ratio",
             formula_data_sources_json=json.dumps(["historical_overrun_ratio"]),
-            default_personalisation_key="acceptable_expense_overrun_pct",
+            default_threshold_key="acceptable_expense_overrun_pct",
             scoring_logic_json=json.dumps({"type": "budget_discipline_v1"}),
             evidence_template_json=json.dumps({
                 "supportive": "Your historical spending discipline is tracking well.",
@@ -282,7 +282,7 @@ def create_standard_templates(db: Session) -> HealthMatrixTemplate:
             scope="BOTH",
             formula_expression="revised_line_count",
             formula_data_sources_json=json.dumps(["revised_line_count"]),
-            default_personalisation_key="revision_sensitivity",
+            default_threshold_key="revision_sensitivity",
             scoring_logic_json=json.dumps({"type": "planning_stability_v1"}),
             evidence_template_json=json.dumps({
                 "supportive": "Your plan has remained stable with minimal revisions.",
@@ -299,7 +299,7 @@ def create_standard_templates(db: Session) -> HealthMatrixTemplate:
             scope="CURRENT_PERIOD",
             formula_expression="live_period_surplus + total_budgeted_income * 0",
             formula_data_sources_json=json.dumps(["live_period_surplus", "total_budgeted_income"]),
-            default_personalisation_key="maximum_deficit_amount",
+            default_threshold_key="maximum_deficit_amount",
             scoring_logic_json=json.dumps({"type": "current_period_check_v1"}),
             evidence_template_json=json.dumps({
                 "supportive": "This period is tracking along well with the current plan.",
@@ -356,14 +356,14 @@ def create_standard_templates(db: Session) -> HealthMatrixTemplate:
 
 
 def migrate_existing_budgets(db: Session) -> None:
-    """Create BudgetHealthMatrix, HealthMetric instances, and personalisations for every existing budget."""
+    """Create BudgetHealthMatrix, HealthMetric instances, and thresholds for every existing budget."""
 
     matrix_template = db.query(HealthMatrixTemplate).filter_by(template_key="standard_budget_health").first()
     if not matrix_template:
         raise RuntimeError("Standard Budget Health matrix template must be seeded before migrating budgets.")
 
     metric_templates = {mt.template_key: mt for mt in db.query(HealthMetricTemplate).all()}
-    pers_definitions = {pd.personalisation_key: pd for pd in db.query(HealthPersonalisationDefinition).all()}
+    threshold_definitions = {td.threshold_key: td for td in db.query(HealthThresholdDefinition).all()}
 
     budgets = db.query(Budget).all()
     for budget in budgets:
@@ -400,7 +400,7 @@ def migrate_existing_budgets(db: Session) -> None:
                 scope=mt.scope,
                 formula_expression=mt.formula_expression,
                 formula_data_sources_json=mt.formula_data_sources_json,
-                personalisation_key=mt.default_personalisation_key,
+                threshold_key=mt.default_threshold_key,
                 scoring_logic_json=mt.scoring_logic_json,
                 evidence_template_json=mt.evidence_template_json,
                 drill_down_enabled=mt.drill_down_enabled,
@@ -417,22 +417,22 @@ def migrate_existing_budgets(db: Session) -> None:
                 is_enabled=True,
             ))
 
-            # Migrate budget-level personalisation columns into BudgetMetricPersonalisation rows
-            _migrate_budget_personalisation(db, budget, metric, pers_definitions)
+            # Migrate budget-level threshold columns into BudgetMetricThreshold rows
+            _migrate_budget_thresholds(db, budget, metric, threshold_definitions)
 
     db.flush()
 
 
-def _migrate_budget_personalisation(
+def _migrate_budget_thresholds(
     db: Session,
     budget: Budget,
     metric: HealthMetric,
-    pers_definitions: dict,
+    threshold_definitions: dict,
 ) -> None:
-    """Map legacy Budget slider columns to per-metric personalisation rows.
+    """Map legacy Budget slider columns to per-metric threshold rows.
 
-    Note: Each metric can only have ONE personalisation value (composite PK on budgetid+metric_id).
-    For current_period_check, we only migrate maximum_deficit_amount as the primary personalisation.
+    Note: Each metric can only have ONE threshold value (composite PK on budgetid+metric_id).
+    For current_period_check, we only migrate maximum_deficit_amount as the primary threshold.
     """
 
     mapping: dict[str, dict[str, Any]] = {
@@ -446,30 +446,30 @@ def _migrate_budget_personalisation(
         "current_period_check": {
             "maximum_deficit_amount": budget.maximum_deficit_amount,
             # Note: period_criticality_bias is intentionally excluded - each metric can only have
-            # one personalisation value due to composite PK on (budgetid, metric_id)
+            # one threshold value due to composite PK on (budgetid, metric_id)
         },
     }
 
     template_key = metric.template_key or ""
-    # Only take the first personalisation for this metric (schema only allows one per metric)
+    # Only take the first threshold for this metric (schema only allows one per metric)
     metric_mapping = mapping.get(template_key, {})
-    for pers_key, value in metric_mapping.items():
+    for threshold_key, value in metric_mapping.items():
         if value is None:
             continue
-        pers_def = pers_definitions.get(pers_key)
-        if not pers_def:
+        threshold_def = threshold_definitions.get(threshold_key)
+        if not threshold_def:
             continue
-        existing = db.query(BudgetMetricPersonalisation).filter_by(
+        existing = db.query(BudgetMetricThreshold).filter_by(
             budgetid=budget.budgetid, metric_id=metric.metric_id
         ).first()
         if not existing:
-            db.add(BudgetMetricPersonalisation(
+            db.add(BudgetMetricThreshold(
                 budgetid=budget.budgetid,
                 metric_id=metric.metric_id,
-                personalisation_key=pers_key,
+                threshold_key=threshold_key,
                 value_json=json.dumps(str(value) if isinstance(value, Decimal) else value),
             ))
-        # Only insert the first personalisation for this metric
+        # Only insert the first threshold for this metric
         break
 
 
@@ -480,7 +480,7 @@ def create_default_matrix_for_budget(db: Session, budget: Budget) -> BudgetHealt
         raise RuntimeError("Standard Budget Health matrix template must be seeded before creating budgets.")
 
     metric_templates = {mt.template_key: mt for mt in db.query(HealthMetricTemplate).all()}
-    pers_definitions = {pd.personalisation_key: pd for pd in db.query(HealthPersonalisationDefinition).all()}
+    threshold_definitions = {td.threshold_key: td for td in db.query(HealthThresholdDefinition).all()}
 
     matrix = BudgetHealthMatrix(
         budgetid=budget.budgetid,
@@ -509,7 +509,7 @@ def create_default_matrix_for_budget(db: Session, budget: Budget) -> BudgetHealt
             scope=mt.scope,
             formula_expression=mt.formula_expression,
             formula_data_sources_json=mt.formula_data_sources_json,
-            personalisation_key=mt.default_personalisation_key,
+            threshold_key=mt.default_threshold_key,
             scoring_logic_json=mt.scoring_logic_json,
             evidence_template_json=mt.evidence_template_json,
             drill_down_enabled=mt.drill_down_enabled,
@@ -526,7 +526,7 @@ def create_default_matrix_for_budget(db: Session, budget: Budget) -> BudgetHealt
             is_enabled=True,
         ))
 
-        _migrate_budget_personalisation(db, budget, metric, pers_definitions)
+        _migrate_budget_thresholds(db, budget, metric, threshold_definitions)
 
     db.flush()
     return matrix

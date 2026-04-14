@@ -50,7 +50,7 @@ def test_execute_setup_health_perfect_score() -> None:
         budget=None,
         period=None,
         formula_result=Decimal("3"),
-        personalisation_value=None,
+        threshold_value=None,
         scoring_sensitivity=50,
         tone="factual",
         source_values={
@@ -70,7 +70,7 @@ def test_execute_setup_health_zero_score() -> None:
         budget=None,
         period=None,
         formula_result=Decimal("0"),
-        personalisation_value=None,
+        threshold_value=None,
         scoring_sensitivity=50,
         tone="factual",
         source_values={
@@ -89,7 +89,7 @@ def test_execute_budget_discipline_no_overrun() -> None:
         budget=None,
         period=None,
         formula_result=Decimal("0"),
-        personalisation_value=Decimal("10"),
+        threshold_value=Decimal("10"),
         scoring_sensitivity=50,
         tone="factual",
     )
@@ -103,7 +103,7 @@ def test_execute_budget_discipline_overrun_within_threshold() -> None:
         budget=None,
         period=None,
         formula_result=Decimal("0.05"),  # 5% overrun
-        personalisation_value=Decimal("10"),
+        threshold_value=Decimal("10"),
         scoring_sensitivity=50,
         tone="factual",
     )
@@ -117,7 +117,7 @@ def test_execute_budget_discipline_overrun_beyond_threshold() -> None:
         budget=None,
         period=None,
         formula_result=Decimal("0.20"),  # 20% overrun
-        personalisation_value=Decimal("10"),
+        threshold_value=Decimal("10"),
         scoring_sensitivity=50,
         tone="factual",
     )
@@ -130,7 +130,7 @@ def test_execute_planning_stability_zero_revisions() -> None:
         budget=None,
         period=None,
         formula_result=Decimal("0"),
-        personalisation_value=Decimal("50"),
+        threshold_value=Decimal("50"),
         scoring_sensitivity=50,
         tone="friendly",
     )
@@ -144,7 +144,7 @@ def test_execute_planning_stability_multiple_revisions() -> None:
         budget=None,
         period=None,
         formula_result=Decimal("5"),
-        personalisation_value=Decimal("50"),
+        threshold_value=Decimal("50"),
         scoring_sensitivity=50,
         tone="factual",
     )
@@ -159,7 +159,7 @@ def test_execute_current_period_check_surplus() -> None:
         budget=None,
         period=period,
         formula_result=Decimal("200"),
-        personalisation_value=Decimal("50"),
+        threshold_value=Decimal("50"),
         scoring_sensitivity=50,
         tone="factual",
         source_values={"total_budgeted_income": Decimal("1000")},
@@ -175,7 +175,7 @@ def test_execute_current_period_check_deficit_within_tolerance() -> None:
         budget=None,
         period=period,
         formula_result=Decimal("-30"),
-        personalisation_value=Decimal("50"),
+        threshold_value=Decimal("50"),
         scoring_sensitivity=50,
         tone="factual",
         source_values={"total_budgeted_income": Decimal("1000")},
@@ -190,7 +190,7 @@ def test_execute_current_period_check_deficit_beyond_tolerance() -> None:
         budget=None,
         period=period,
         formula_result=Decimal("-200"),
-        personalisation_value=Decimal("50"),
+        threshold_value=Decimal("50"),
         scoring_sensitivity=50,
         tone="factual",
         source_values={"total_budgeted_income": Decimal("1000")},
@@ -204,7 +204,7 @@ def test_execute_current_period_check_no_period() -> None:
         budget=None,
         period=None,
         formula_result=Decimal("0"),
-        personalisation_value=None,
+        threshold_value=None,
         scoring_sensitivity=50,
         tone="factual",
     )

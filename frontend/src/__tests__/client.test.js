@@ -81,7 +81,7 @@ describe('budget and health client helpers', () => {
 
     mockInstance.get.mockResolvedValue({ data: { score: 80 } })
     const result = await getBudgetHealth(1)
-    expect(mockInstance.get).toHaveBeenCalledWith('/budgets/1/health-engine')
+    expect(mockInstance.get).toHaveBeenCalledWith('/budgets/1/health')
     expect(result).toEqual({ score: 80 })
   })
 
@@ -105,7 +105,7 @@ describe('budget and health client helpers', () => {
     mockInstance.delete.mockResolvedValue({ data: { ok: true } })
     const {
       updateMatrixItem,
-      updateMetricPersonalisation,
+      updateMetricThreshold,
       createCustomMetric,
       removeMatrixItem,
     } = require('../api/client')
@@ -113,8 +113,8 @@ describe('budget and health client helpers', () => {
     await updateMatrixItem(1, 2, { weight: 0.5 })
     expect(mockInstance.patch).toHaveBeenCalledWith('/budgets/1/health-matrix/items/2', { weight: 0.5 })
 
-    await updateMetricPersonalisation(1, 2, { value: 10 })
-    expect(mockInstance.patch).toHaveBeenCalledWith('/budgets/1/health-matrix/personalisation/2', { value: 10 })
+    await updateMetricThreshold(1, 2, { value: 10 })
+    expect(mockInstance.patch).toHaveBeenCalledWith('/budgets/1/health-matrix/thresholds/2', { value: 10 })
 
     const metric = await createCustomMetric(1, { name: 'M' })
     expect(mockInstance.post).toHaveBeenCalledWith('/budgets/1/health-matrix/metrics', { name: 'M' })

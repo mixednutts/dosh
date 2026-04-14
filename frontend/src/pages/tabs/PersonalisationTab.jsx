@@ -5,11 +5,11 @@ import {
   updateBudget,
   getBudgetHealthMatrix,
   getHealthDataSources,
-  getHealthPersonalisationDefinitions,
+  getHealthThresholdDefinitions,
   createCustomMetric,
   removeMatrixItem,
   updateMatrixItem,
-  updateMetricPersonalisation,
+  updateMetricThreshold,
 } from '../../api/client'
 import LocalizedAmountInput from '../../components/LocalizedAmountInput'
 
@@ -104,7 +104,7 @@ function CurrencyInput({ value, onChange, label, helper }) {
   )
 }
 
-function PersonalisationControl({ scale, value, onChange }) {
+function ThresholdControl({ scale, value, onChange }) {
   if (!scale) {
     return (
       <input
@@ -153,21 +153,21 @@ function PersonalisationControl({ scale, value, onChange }) {
 function MatrixItemCard({
   item,
   onUpdate,
-  onUpdatePersonalisation,
+  onUpdateThreshold,
   onRemove,
   allowRemove,
 }) {
   const [localWeight, setLocalWeight] = useState(item.weight)
   const [localSensitivity, setLocalSensitivity] = useState(item.scoring_sensitivity)
   const [localEnabled, setLocalEnabled] = useState(item.is_enabled)
-  const [localPers, setLocalPers] = useState(item.personalisation_value)
+  const [localThreshold, setLocalThreshold] = useState(item.threshold_value)
   const [isExpanded, setIsExpanded] = useState(false)
 
   useEffect(() => {
     setLocalWeight(item.weight)
     setLocalSensitivity(item.scoring_sensitivity)
     setLocalEnabled(item.is_enabled)
-    setLocalPers(item.personalisation_value)
+    setLocalThreshold(item.threshold_value)
   }, [item])
 
   const commitWeight = () => {
@@ -187,9 +187,9 @@ function MatrixItemCard({
     onUpdate({ is_enabled: next })
   }
 
-  const commitPers = nextValue => {
-    setLocalPers(nextValue)
-    onUpdatePersonalisation({ personalisation_key: item.personalisation_key, value: nextValue })
+  const commitThreshold = nextValue => {
+    setLocalThreshold(nextValue)
+    onUpdateThreshold({ threshold_key: item.threshold_key, value: nextValue })
   }
 
   const isCustom = !item.template_key
@@ -298,15 +298,15 @@ function MatrixItemCard({
             </div>
           </div>
 
-          {item.personalisation_key && (
+          {item.threshold_key && (
             <div className="rounded-md border border-gray-200 bg-gray-50/50 p-3 dark:border-gray-700 dark:bg-gray-800/40">
               <p className="text-xs font-medium text-gray-700 dark:text-gray-200">
-                Personalisation: {item.personalisation_key}
+                Threshold: {item.threshold_key}
               </p>
-              <PersonalisationControl
-                scale={item.personalisation_scale}
-                value={localPers}
-                onChange={commitPers}
+              <ThresholdControl
+                scale={item.threshold_scale}
+                value={localThreshold}
+                onChange={commitThreshold}
               />
             </div>
           )}
@@ -479,7 +479,7 @@ export default function PersonalisationTab({ budgetId, budget }) {
 
   const definitionsQuery = useQuery({
     queryKey: ['health-definitions', budgetId],
-    queryFn: () => getHealthPersonalisationDefinitions(budgetId),
+    queryFn: () => getHealthThresholdDefinitions(budgetId),
     enabled: !!budgetId,
   })
 
@@ -491,8 +491,8 @@ export default function PersonalisationTab({ budgetId, budget }) {
     },
   })
 
-  const updatePersonalisationMutation = useMutation({
-    mutationFn: ({ metricId, data }) => updateMetricPersonalisation(budgetId, metricId, data),
+  const updateThresholdMutation = useMutation({
+    mutationFn: ({ metricId, data }) => updateMetricThreshold(budgetId, metricId, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['health-matrix', budgetId] })
       qc.invalidateQueries({ queryKey: ['budget-health', budgetId] })
@@ -602,7 +602,7 @@ export default function PersonalisationTab({ budgetId, budget }) {
                 key={item.metric_id}
                 item={item}
                 onUpdate={data => updateMatrixItemMutation.mutate({ metricId: item.metric_id, data })}
-                onUpdatePersonalisation={data => updatePersonalisationMutation.mutate({ metricId: item.metric_id, data })}
+                onUpdateThreshold={data => updateThresholdMutation.mutate({ metricId: item.metric_id, data })}
                 onRemove={() => removeMatrixItemMutation.mutate(item.metric_id)}
                 allowRemove={!item.template_key}
               />
@@ -637,7 +637,7 @@ CurrencyInput.propTypes = {
   helper: PropTypes.string,
 }
 
-PersonalisationControl.propTypes = {
+ThresholdControl.propTypes = {
   scale: PropTypes.shape({
     scale_type: PropTypes.string,
     min_value: PropTypes.number,
@@ -659,9 +659,9 @@ MatrixItemCard.propTypes = {
     weight: PropTypes.number.isRequired,
     scoring_sensitivity: PropTypes.number.isRequired,
     is_enabled: PropTypes.bool.isRequired,
-    personalisation_key: PropTypes.string,
-    personalisation_value: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
-    personalisation_scale: PropTypes.shape({
+    threshold_key: PropTypes.string,
+    threshold_value: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+    threshold_scale: PropTypes.shape({
       scale_type: PropTypes.string,
       min_value: PropTypes.number,
       max_value: PropTypes.number,
@@ -669,7 +669,7 @@ MatrixItemCard.propTypes = {
     }),
   }).isRequired,
   onUpdate: PropTypes.func.isRequired,
-  onUpdatePersonalisation: PropTypes.func.isRequired,
+  onUpdateThreshold: PropTypes.func.isRequired,
   onRemove: PropTypes.func.isRequired,
   allowRemove: PropTypes.bool,
 }

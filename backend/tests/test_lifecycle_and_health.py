@@ -95,7 +95,7 @@ def test_closeout_health_snapshot_stays_historical_after_budget_preference_chang
     active_period = next(period for period in periods if period["cycle_status"] == "ACTIVE")
 
     # Create a small deficit (income 2500, expense 2600) so the score is sensitive
-    # to the maximum-deficit personalisation threshold.
+    # to the maximum-deficit threshold.
     expense_budget_update = client.patch(
         f"/api/periods/{active_period['finperiodid']}/expense/Rent/budget",
         json={"budgetamount": "2600.00", "scope": "current", "note": "Test adjustment"},
@@ -115,7 +115,7 @@ def test_closeout_health_snapshot_stays_historical_after_budget_preference_chang
     stored_snapshot = json.loads(closeout_payload["closeout_snapshot"]["health_snapshot_json"])
     assert stored_snapshot == preview_health
 
-    # Tighten the maximum-deficit personalisation via the new health matrix API
+    # Tighten the maximum-deficit threshold via the new health matrix API
     # so live health drops while the historical closeout snapshot remains frozen.
     matrix_response = client.get(f"/api/budgets/{budget.budgetid}/health-matrix")
     assert matrix_response.status_code == 200, matrix_response.text
@@ -124,11 +124,11 @@ def test_closeout_health_snapshot_stays_historical_after_budget_preference_chang
         item["metric_id"] for item in matrix["items"] if item["template_key"] == "current_period_check"
     )
 
-    pers_update = client.patch(
-        f"/api/budgets/{budget.budgetid}/health-matrix/personalisation/{current_period_metric_id}",
+    threshold_update = client.patch(
+        f"/api/budgets/{budget.budgetid}/health-matrix/thresholds/{current_period_metric_id}",
         json={"value_json": "1.00"},
     )
-    assert pers_update.status_code == 200, pers_update.text
+    assert threshold_update.status_code == 200, threshold_update.text
 
     health_response = client.get(f"/api/budgets/{budget.budgetid}/health")
     assert health_response.status_code == 200, health_response.text

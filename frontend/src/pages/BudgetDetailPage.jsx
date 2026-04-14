@@ -19,7 +19,7 @@ const SECTIONS = [
   { id: 'income-types', label: 'Income Sources' },
   { id: 'expense-items', label: 'Expense Items' },
   { id: 'investments', label: 'Investments' },
-  { id: 'personalisation', label: 'Personalisation' },
+  { id: 'personalisation', label: 'Thresholds & Tolerances' },
   { id: 'settings', label: 'Settings' },
 ]
 
@@ -463,7 +463,7 @@ export default function BudgetDetailPage() {
 
       <SectionShell
         id="personalisation"
-        title="Personalisation"
+        title="Thresholds & Tolerances"
         summary="Tell Dosh what feels important to you so the health checks can be a little more aligned with your budgeting style."
         collapsible={COLLAPSIBLE_SECTIONS.has('personalisation')}
         collapsed={collapsedSections.personalisation}

@@ -70,16 +70,16 @@ This session addressed failing SonarQube quality gate conditions on `main`: a re
 ### What changed
 
 - **Bug fix:**
-  - Fixed `python:S3923` in `backend/app/health_engine/runner.py`. The `_load_personalisation_value` function had a conditional that returned `Decimal(str(raw))` on both the true and false branches; the false branch now correctly returns `None` when `raw` is not a numeric-like type.
+  - Fixed `python:S3923` in `backend/app/health_engine/runner.py`. The `_load_threshold_value` function had a conditional that returned `Decimal(str(raw))` on both the true and false branches; the false branch now correctly returns `None` when `raw` is not a numeric-like type.
 
 - **Accessibility improvement:**
-  - Added explicit `htmlFor`/`id` label-to-control associations in `frontend/src/pages/tabs/PersonalisationTab.jsx` for Weight, Scoring Sensitivity, Personalisation, and Metric Builder fields. This addresses `javascript:S6853` findings and improves screen-reader support.
+  - Added explicit `htmlFor`/`id` label-to-control associations in `frontend/src/pages/tabs/PersonalisationTab.jsx` for Weight, Scoring Sensitivity, Threshold, and Metric Builder fields. This addresses `javascript:S6853` findings and improves screen-reader support.
 
 - **Backend test coverage:**
   - Created `backend/tests/test_health_matrices.py` with 9 behavior-first API integration tests covering:
     - Health matrix retrieval (success and 404 paths)
     - Matrix item updates (weight, sensitivity, enablement)
-    - Metric personalisation updates
+    - Metric threshold updates
     - Data source listing
     - Custom metric creation, validation, and removal
 
@@ -88,7 +88,7 @@ This session addressed failing SonarQube quality gate conditions on `main`: a re
     - Matrix loading and display
     - Metric enable/disable toggling
     - Weight and scoring sensitivity changes
-    - Personalisation value editing
+    - Threshold value editing
     - Custom metric removal
     - Metric builder show/hide, creation, and validation errors
     - Load failure error display
@@ -113,15 +113,15 @@ This session addressed failing SonarQube quality gate conditions on `main`: a re
 
 ## Session: Budget Health Engine — Configurable Health System Implementation
 
-This session completed the transition from a fixed budget health implementation to a fully configurable Budget Health Engine with personalization framework, point-in-time snapshots, drill-down capabilities, and metric builder UI.
+This session completed the transition from a fixed budget health implementation to a fully configurable Budget Health Engine with threshold framework, point-in-time snapshots, drill-down capabilities, and metric builder UI.
 
 ### What changed
 
 - **Budget Health Engine Architecture:**
   - Created new `health_engine/` package with safe formula parser, data source executors, metric executors, runner, and period utilities.
-  - Implemented 11 new data models: `HealthDataSource`, `HealthMetricTemplate`, `HealthScale`, `BudgetHealthMatrix`, `BudgetHealthMatrixItem`, `BudgetMetricPersonalisation`, `PeriodHealthResult`, `BudgetHealthSummary`, `HealthPersonalisationDefinition`, `HealthMatrixTemplate`, and supporting relationship tables.
+  - Implemented 11 new data models: `HealthDataSource`, `HealthMetricTemplate`, `HealthScale`, `BudgetHealthMatrix`, `BudgetHealthMatrixItem`, `BudgetMetricThreshold`, `PeriodHealthResult`, `BudgetHealthSummary`, `HealthThresholdDefinition`, `HealthMatrixTemplate`, and supporting relationship tables.
   - Added Alembic migration `7a8b9c0d1e2f_add_budget_health_engine_tables.py` to create all engine tables.
-  - Implemented three-knob design: personalisation (threshold), scoring sensitivity (steepness), and matrix weight (importance).
+  - Implemented three-knob design: threshold (benchmark), scoring sensitivity (steepness), and matrix weight (importance).
 
 - **Engine Execution Layer:**
   - Safe formula evaluation supporting `+`, `-`, `*`, `/`, parentheses, and data source references.
@@ -2515,7 +2515,7 @@ Important direction now in place:
 - the old account type label `Bank` has been replaced by `Transaction` in the product, with existing data updated to match
 - Dosh now supports a budget-level display preference for transaction-style account naming: `Transaction`, `Everyday`, or `Checking`
 - the internal account type model still stays stable even when the user-facing terminology changes
-- the budget setup page now uses in-card headers more consistently, keeps `Personalisation` and `Settings` collapsed by default, and remembers their state for the browser session
+- the budget setup page now uses in-card headers more consistently, keeps `Thresholds & Tolerances` and `Settings` collapsed by default, and remembers their state for the browser session
 - the budget cycles list now uses `Upcoming` instead of `Future`, and the historical section remembers its collapse state for the session
 - the period detail page now surfaces both `Projected Savings` and `Remaining Expenses` in the top summary card set
 - several navigation and sidebar refinements were made to reduce duplicate information and improve visual grouping without changing the underlying route structure
@@ -2546,7 +2546,7 @@ Current behavior:
 - the assessment card now links directly to the budget cycles page when setup is ready
 - the redundant helper card about managing budget cycles from the separate page was removed
 - section descriptions now live inside the card header area rather than above the card
-- `Personalisation` and `Settings` start collapsed, persist their expand or collapse state for the browser session, and now use the same chevron-first affordance pattern as the period listing page
+- `Thresholds & Tolerances` and `Settings` start collapsed, persist their expand or collapse state for the browser session, and now use the same chevron-first affordance pattern as the period listing page
 
 Important product meaning:
 
@@ -2886,7 +2886,7 @@ Budget health is still primarily a live computed feature, but closed cycles now 
 
 Important implication:
 
-- later changes to personalisation settings should not rewrite the close-out story for historical cycles
+- later changes to threshold settings should not rewrite the close-out story for historical cycles
 
 ### 9. Startup schema evolution is again handling current lifecycle additions
 
@@ -3410,9 +3410,9 @@ Important design decision:
 
 - the health engine should expand in one coherent direction rather than splitting into unrelated rule systems
 
-### 34. Budget setup now includes Personalisation above Settings
+### 34. Budget setup now includes Thresholds & Tolerances above Settings
 
-The budget setup page was reorganized so `Personalisation` now sits above `Settings` and has its own top-page navigation tab.
+The budget setup page was reorganized so `Thresholds & Tolerances` now sits above `Settings` and has its own top-page navigation tab.
 
 ### 35. Overall budget health now explicitly includes current-period health
 
@@ -3552,13 +3552,13 @@ Important product decision:
 - keep operational settings separate from health-preference tuning
 - put the more reflective budget-health section above lower-level settings
 
-### 35. Health personalisation is now budget-specific and persistent
+### 35. Health thresholds are now budget-specific and persistent
 
 Budget records now store health preference inputs that influence scoring.
 
 Current behavior:
 
-- personalisation inputs save automatically after change
+- threshold inputs save automatically after change
 - percentage-based controls stay on percentage scales
 - preference-weight controls use a 1-10 presentation
 - a `Default` marker is shown on sliders
@@ -3579,7 +3579,7 @@ Important constraint:
 
 ### 36. Deficit concern logic now supports percentage and dollar thresholds together
 
-The deficit-related personalisation control was clarified and extended so it can use both a percentage threshold and an optional dollar limit.
+The deficit-related threshold control was clarified and extended so it can use both a percentage threshold and an optional dollar limit.
 
 Current behavior:
 
@@ -3599,7 +3599,7 @@ Several rounds of wording changes were made to keep health language supportive a
 
 Current decisions:
 
-- avoid the word `judge` in user-facing health and personalisation copy
+- avoid the word `judge` in user-facing health and threshold copy
 - prefer calm, practical phrasing over formal finance language
 - use `budget health concern` where plain `concern` would be too ambiguous
 - when a control is really about deficit tolerance, say `deficit` rather than leaning on vague `buffer` wording
@@ -3638,7 +3638,7 @@ Current section order:
 3. Income Types
 4. Expense Items
 5. Investments
-6. Personalisation
+6. Thresholds & Tolerances
 7. Settings
 
 Important decisions:
@@ -3753,7 +3753,7 @@ These are active ideas or partially formed directions that may matter in later s
 - Revising an expense may later benefit from a reason code pick list in addition to free-text comments, especially for reporting and close-out analysis.
 - Settings are expected to become a place for user-selected behavior flags and page layout preferences.
 - Settings should remain visible rather than hidden, even if they stay lower priority than core setup steps.
-- Health personalisation may later benefit from a clearer grouped explanation of how percentage and dollar deficit thresholds interact.
+- Health thresholds may later benefit from a clearer grouped explanation of how percentage and dollar deficit thresholds interact.
 - The current health timing preference may later benefit from even more intuitive labels or visuals if users still find the escalation curve hard to interpret.
 
 ### Roadmap Milestone Notes
@@ -3801,7 +3801,7 @@ Useful directions:
 - Review existing future periods for any stale investment budgets produced before the corrected surplus-allocation fix.
 - Consider adding validation or migration help for budgets that enable automatic surplus allocation but do not yet have an active primary investment line.
 - Keep refining naming so `Savings`, `Investment`, and `Primary investment line` are used consistently across setup, summaries, and period detail screens.
-- Add tests around health personalisation, current-period scoring, and the combined percentage/dollar deficit threshold behavior.
+- Add tests around health thresholds, current-period scoring, and the combined percentage/dollar deficit threshold behavior.
 - Replace startup schema mutation for the newer budget personalisation fields with a proper migration path once migrations are introduced.
 
 ## Technical Notes
@@ -3815,7 +3815,7 @@ Useful directions:
 - Active-period transaction reconciliation/backfill now runs during startup migration flow.
 - A host-side SQLite backup was taken before the ledger migration for recovery safety.
 - A budget-level `auto_add_surplus_to_investment` flag now exists.
-- Budget records now also include multiple health personalisation fields, including `maximum_deficit_amount`.
+- Budget records now also include multiple health threshold fields, including `maximum_deficit_amount`.
 - Investment items now have an `is_primary` flag with single-primary enforcement at the API layer.
 - Period summary data now includes cumulative projected savings.
 - Period generation now normalizes incoming dates before overlap checks.
@@ -3837,7 +3837,7 @@ This session pushed Dosh toward:
 - transaction-backed account movement and reconciliation
 - more explainable balances through inline supporting details
 - more actionable current-period health guidance
-- more user-specific health interpretation through budget personalisation
+- more user-specific health interpretation through budget thresholds
 - better preservation of product intent for future sessions
 
 When making future suggestions, prioritize:

@@ -38,10 +38,10 @@ The project is now in the stage where the biggest wins are less about adding iso
 Recent progress worth carrying forward:
 
 - the Budgets page now includes a dedicated current-period health check with its own detail modal and direct link into the active period
-- budget setup now has a `Personalisation` section above `Settings`
-- budget health can now be tuned per budget through persistent personalisation values
+- budget setup now has `Thresholds & Tolerances` above `Settings`
+- budget health can now be tuned per budget through persistent threshold values
 - deficit concern logic now supports both a percentage threshold and an optional dollar threshold
-- budget info and personalisation now autosave quietly instead of relying on save buttons
+- budget info and thresholds now autosave quietly instead of relying on save buttons
 - the overall budget score now explicitly includes the current-period health assessment
 - the Budgets page now shows a current balance summary card with per-account closing balances and total
 - the sidebar is now a focused current-budget workflow nav with compact and collapsible desktop behavior
@@ -387,8 +387,8 @@ Status:
 
 - `Completed`
 
-- `Completed`: created 11 new data models for the Budget Health Engine (`HealthDataSource`, `HealthMetricTemplate`, `HealthScale`, `BudgetHealthMatrix`, `BudgetHealthMatrixItem`, `BudgetMetricPersonalisation`, `PeriodHealthResult`, `BudgetHealthSummary`, `HealthPersonalisationDefinition`, `HealthMatrixTemplate`, and supporting relationship tables)
-- `Completed`: added Alembic migration `7a8b9c0d1e2f_add_budget_health_engine_tables.py` and seeded catalogs (`HealthDataSource`, `HealthScale`, `HealthPersonalisationDefinition`)
+- `Completed`: created 11 new data models for the Budget Health Engine (`HealthDataSource`, `HealthMetricTemplate`, `HealthScale`, `BudgetHealthMatrix`, `BudgetHealthMatrixItem`, `BudgetMetricThreshold`, `PeriodHealthResult`, `BudgetHealthSummary`, `HealthThresholdDefinition`, `HealthMatrixTemplate`, and supporting relationship tables)
+- `Completed`: added Alembic migration `7a8b9c0d1e2f_add_budget_health_engine_tables.py` and seeded catalogs (`HealthDataSource`, `HealthScale`, `HealthThresholdDefinition`)
 - `Completed`: migrated all existing budgets to `BudgetHealthMatrix` instances with default `Standard Budget Health` matrices
 - `Completed`: implemented safe formula parser and engine runner (`health_engine/runner.py`) supporting `+`, `-`, `*`, `/`, parentheses, and data source references
 - `Completed`: implemented code-backed data source executors and metric executors for the four core templates (`setup_health`, `budget_discipline`, `planning_stability`, `current_period_check`)
@@ -403,9 +403,9 @@ Status:
 
 - `Completed`
 
-- `Completed`: removed legacy personalisation sliders from `PersonalisationTab.jsx` and embedded scale-aware personalisation controls directly into each metric card
+- `Completed`: removed legacy threshold sliders from `PersonalisationTab.jsx` and embedded scale-aware threshold controls directly into each metric card
 - `Completed`: added View/Edit toggle to metric cards with formula display and data-source badges
-- `Completed`: added `GET /budgets/{id}/health-matrix/definitions` endpoint to drive scale-aware personalisation UI controls
+- `Completed`: added `GET /budgets/{id}/health-matrix/definitions` endpoint to drive scale-aware threshold UI controls
 - `Completed`: expanded `PersonalisationTab.jsx` to manage matrix items (enable/disable, weight, sensitivity) and custom metric creation
 - `Completed`: added `health_tone` selector (`supportive`/`factual`/`friendly`) to budget settings and health evidence rendering
 - `Completed`: updated `BudgetsPage.jsx` to consume the engine health endpoint and render contextual drill-down links in health modals
@@ -436,35 +436,35 @@ Status:
 - `Completed`: migrated closeout preview health scoring to use the engine directly
 - `Fixed (0.4.2-alpha)`: aligned the `current_period_check` payload shape (`details` → `evidence`) with the frontend modal contract to prevent the Current Budget Cycle Check modal from crashing
 
-#### Activity Group: Personalisation and Evidence Language
+#### Activity Group: Thresholds and Evidence Language
 
 Status:
 
 - `Completed`
 
-- `Completed`: removed legacy personalisation sliders and made metric cards the single source of truth for personalisation
+- `Completed`: removed legacy threshold sliders and made metric cards the single source of truth for thresholds
 - `Completed`: fixed seed data scale for `revision_sensitivity`, `savings_priority`, and `period_criticality_bias` from `percentage_0_100` to `ten_scale_1_10`
-- `Completed`: added backend validation for personalisation values based on scale `min_value`/`max_value`
+- `Completed`: added backend validation for threshold values based on scale `min_value`/`max_value`
 - refine evidence language so it reads naturally in budget terms
 - test and refine personalised threshold behavior
 - make the interaction between deficit percentage and maximum deficit amount clearer
-- decide whether some health evidence lines should mirror the personalisation wording more closely
-- keep the personalisation section lightweight rather than turning it into an intimidating settings panel
+- decide whether some health evidence lines should mirror the threshold wording more closely
+- keep the thresholds section lightweight rather than turning it into an intimidating settings panel
 
 #### Activity Group: Terminology and Model Alignment
 
 Status:
 
-- `Next`
+- `Completed`
 
-- rename the health-engine "Personalisation" concept to "Thresholds & Tolerances" on the frontend and "Threshold" on the backend to accurately reflect that these values are metric inputs (thresholds/benchmarks) consumed during scoring, not post-calculation adjustments
-- backend renames: `HealthPersonalisationDefinition` → `HealthThresholdDefinition`, `BudgetMetricPersonalisation` → `BudgetMetricThreshold`, `personalisation_key` → `threshold_key`, `default_personalisation_key` → `default_threshold_key`
-- frontend renames: update `PersonalisationTab` labels, headings, and helper copy from "Personalisation" to "Thresholds & Tolerances"
-- API renames: update router paths, schema names, and request/response shapes (e.g., `/health-thresholds`, `BudgetMetricThresholdIn`) to match the new backend naming
-- seed and migration alignment: update `health_engine_seed.py` catalog keys/names and verify Alembic migration independence from the rename (decide whether to add a data-only migration or handle via startup seed refresh)
-- update tests: backend tests referencing personalisation tables/keys, frontend `PersonalisationTab.test.jsx` labels, and API client tests
-- update documentation: `DEVELOPMENT_ACTIVITIES.md`, `CHANGES.md`, `BUDGET_HEALTH_ENGINE_PLAN.md`, and `AGENTS.md` references to personalisation
-- decide whether the `planning_stability` metric should use its threshold value in actual scoring logic (today `revision_threshold` is stored but ignored in `execute_planning_stability`) or if the threshold should be removed for that metric
+- `Completed`: renamed the health-engine "Personalisation" concept to "Thresholds & Tolerances" on the frontend and "Threshold" on the backend to accurately reflect that these values are metric inputs (thresholds/benchmarks) consumed during scoring, not post-calculation adjustments
+- `Completed`: backend renames: `HealthPersonalisationDefinition` → `HealthThresholdDefinition`, `BudgetMetricPersonalisation` → `BudgetMetricThreshold`, `personalisation_key` → `threshold_key`, `default_personalisation_key` → `default_threshold_key`
+- `Completed`: frontend renames: updated `PersonalisationTab` labels, headings, and helper copy from "Personalisation" to "Thresholds & Tolerances"
+- `Completed`: API renames: updated router paths, schema names, and request/response shapes to match the new backend naming (e.g., `/health-matrix/thresholds/{metric_id}`)
+- `Completed`: seed and migration alignment: updated `health_engine_seed.py` catalog keys/names and added Alembic migration `009297f69b52_rename_personalisation_to_threshold.py`
+- `Completed`: updated tests: backend tests referencing personalisation tables/keys, frontend `PersonalisationTab.test.jsx` labels, and API client tests
+- `Completed`: updated documentation: `DEVELOPMENT_ACTIVITIES.md`, `CHANGES.md`, `BUDGET_HEALTH_ENGINE_PLAN.md`, and `AGENTS.md` references to personalisation
+- `Decision`: keep the `revision_sensitivity` threshold for `planning_stability` for now; the threshold is stored and surfaced in evidence but does not yet directly modulate scoring tolerance. A future session may decide to integrate it or remove it if it remains unused.
 
 #### Activity Group: Test Coverage
 
@@ -473,8 +473,8 @@ Status:
 - `Completed`
 
 - `Completed`: added dedicated backend unit tests for formula evaluator, all four metric executors, executor registry, `evaluate_period_health`, and `evaluate_budget_health` (`test_health_engine.py`, 22 tests)
-- `Completed`: updated `test_lifecycle_and_health.py` to verify closeout health snapshots remain historical after live personalisation changes
-- `Completed`: updated `PersonalisationTab.test.jsx` to cover new View/Edit toggle, formula display, and scale-aware personalisation controls
+- `Completed`: updated `test_lifecycle_and_health.py` to verify closeout health snapshots remain historical after live threshold changes
+- `Completed`: updated `PersonalisationTab.test.jsx` to cover new View/Edit toggle, formula display, and scale-aware threshold controls
 
 #### Activity Group: Demo Data Alignment
 
@@ -817,13 +817,13 @@ Status:
 - `Active`
 
 - `Completed`: add regression coverage for budget-adjustment history, carry-forward-on-close-out timing, and direct paid-to-revised workflow behavior
-- `Completed`: add dedicated frontend regression coverage for dashboard current-cycle summaries, personalisation autosave and validation behavior, and inline amount-cell edit behavior after Sonar coverage surfaced those areas as under-tested
+- `Completed`: add dedicated frontend regression coverage for dashboard current-cycle summaries, threshold autosave and validation behavior, and inline amount-cell edit behavior after Sonar coverage surfaced those areas as under-tested
 - `Completed`: add regression test for `PENDING_CLOSURE` periods not being treated as frozen anchors in dynamic balance calculation
 - `Completed`: fix and add test coverage for expense transaction modal defaulting to the expense item's configured debit account
 - `Completed`: extend SonarQube follow-through coverage in `PeriodDetailPage.test.jsx`, `AmountExpressionInput.test.jsx`, and the new backend router suite [test_period_router_guards.py](/home/ubuntu/dosh/backend/tests/test_period_router_guards.py) while keeping the work behavior-first rather than metric-only
 - `Completed`: fix reliability bug in `health_engine/runner.py` where a conditional returned the same value regardless of truthiness (`python:S3923`)
-- `Completed`: add dedicated backend API regression coverage for health matrix CRUD and validation (`test_health_matrices.py`), including matrix retrieval, item updates, personalisation updates, custom metric creation, and removal workflows
-- `Completed`: expand frontend test coverage for the health matrix personalisation UI (`PersonalisationTab.test.jsx`), covering metric enablement, weight/sensitivity changes, personalisation editing, custom metric builder validation, and error handling
+- `Completed`: add dedicated backend API regression coverage for health matrix CRUD and validation (`test_health_matrices.py`), including matrix retrieval, item updates, threshold updates, custom metric creation, and removal workflows
+- `Completed`: expand frontend test coverage for the health matrix threshold UI (`PersonalisationTab.test.jsx`), covering metric enablement, weight/sensitivity changes, threshold editing, custom metric builder validation, and error handling
 - `Completed`: expand frontend API client regression coverage (`client.test.js`) for budget health helpers, period-critical workflows (generate, close-out, transfers), expense/investment budget updates, transaction operations, and export filename parsing
 - `Completed`: improve form accessibility in `PersonalisationTab.jsx` by adding explicit `htmlFor`/`id` label associations for Weight, Scoring Sensitivity, Personalisation, and Metric Builder fields
 - keep new feature work under a test-with-change discipline rather than treating testing as a later cleanup phase
@@ -843,7 +843,7 @@ Status:
 - future setup and workflow testing should expand beyond the original `1 transaction + 1 savings` assumption
 - bookmark named scenarios such as `Single Account` and `Multi Transaction` so future sessions can deliberately test differing account shapes rather than relying on one default personal setup model
 - consider adding a richer demo-validation checklist or smoke flow once more reporting and reconciliation surfaces exist
-- add tests and cleanup around health personalisation and current-period threshold behavior
+- add tests and cleanup around health thresholds and current-period threshold behavior
 
 #### Activity Group: Reliability
 
@@ -908,7 +908,7 @@ If we want a practical order of work rather than just a thematic roadmap, this i
 1. Reconciliation > Closed-Cycle Reconciliation Handoff: design the correction path for closed cycles and close remaining write-path gaps.
 2. Reporting and Analysis > Reporting Foundations: add a reporting summary endpoint that rolls up period and ledger data.
 3. Reporting and Analysis > Reporting Foundations: surface a budget-level reporting card set in the frontend.
-4. Budget Health > Personalisation and Evidence Language plus Quality > Test Coverage: refine health personalisation and add supporting tests.
+4. Budget Health > Thresholds and Evidence Language plus Quality > Test Coverage: refine health thresholds and add supporting tests.
 5. Quality > Reliability: clean up deployment or deprecation warnings and address the outstanding `axios` audit advisory.
 6. Quality > UX/UI and Bugs: review period-detail, sidebar, and budget-summary polish after real use and close the small remaining UI defects.
 7. Export and Backup > Export Scope and Format plus Backup and Restore Design: define the first export and backup scope, including format and restore expectations.
@@ -927,7 +927,7 @@ To avoid duplicating the canonical roadmap entries above, use these sections as 
 - `Reconciliation > Closed-Cycle Reconciliation Handoff`
 - `Reporting and Analysis > Reporting Foundations`
 - `Localisation and Regional Fit > Terminology and Regional Behavior`
-- `Budget Health > Personalisation and Evidence Language`
+- `Budget Health > Thresholds and Evidence Language`
 - `Budget Health > Demo Data Alignment`
 - `Quality > UX/UI`
 - `Quality > Bugs`
@@ -949,7 +949,7 @@ If we want a practical order of work rather than just a thematic roadmap, this i
 1. Design the reconciliation handoff for closed cycles and close remaining write-path gaps.
 2. Add a reporting summary endpoint that rolls up period and ledger data.
 3. Surface a budget-level reporting card set in the frontend.
-4. Add tests and cleanup around health personalisation and current-period threshold behavior.
+4. Add tests and cleanup around health thresholds and current-period threshold behavior.
 5. Clean up remaining deployment and backend deprecation warnings from startup hooks and timestamp usage.
 6. Address the outstanding `axios` audit advisory deliberately rather than bundling it into unrelated feature work.
 7. Review sidebar and budget-summary polish after real use, especially around future first-class sections.
@@ -968,7 +968,7 @@ These project rules already emerge clearly from the existing docs and implementa
 - budget health should stay supportive and explainable, not overly authoritative
 - user-facing health and warning messages should use warm, practical, reassuring language rather than clinical finance wording
 - when health preferences assess deficit risk, the wording should say `deficit` clearly rather than implying that zero surplus is itself a problem
-- autosave is preferred for lightweight setup and personalisation edits when validation is simple and failures can be surfaced clearly
+- autosave is preferred for lightweight setup and threshold edits when validation is simple and failures can be surfaced clearly
 - backend and database naming should remain stable unless a change is clearly worth the cost
 - user-facing `Budget Cycle` wording can evolve independently of backend `period` naming when that improves clarity
 - setup validity and downstream protection should be centralized, not rebuilt ad hoc in each page

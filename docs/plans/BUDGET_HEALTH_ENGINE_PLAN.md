@@ -7,7 +7,7 @@ This plan defines the transition from the current fixed health-scoring implement
 The Budget Health Engine is a metrics-driven system that:
 - Computes budget health through independently versioned, reusable metrics
 - Separates metric definitions (stored in DB) from execution logic (code-backed)
-- Supports per-budget, per-metric personalisation and weighting through a dedicated framework
+- Supports per-budget, per-metric threshold configuration and weighting through a dedicated framework
 - Allows users to build custom metrics from pre-built data sources and simple formulas
 - Maintains point-in-time health snapshots for closed periods
 - Provides drill-down from health results to underlying transactions and line items
@@ -30,7 +30,7 @@ The existing implementation in [`budget_health.py`](../../backend/app/budget_hea
 | `planning_stability` | Tracks off-plan activity in current periods | Tied to specific transaction patterns |
 | `current_period_check` | Live-period deficit, tolerance, revision pressure, timing factor | Monolithic, not composable |
 
-**Personalisation:** Six sliders stored directly on the [`Budget`](../../backend/app/models.py) table as columns.
+**Thresholds:** Six sliders stored directly on the [`Budget`](../../backend/app/models.py) table as columns.
 
 **Snapshots:** [`PeriodCloseoutSnapshot`](../../backend/app/models.py) stores a full JSON blob `health_snapshot_json`, making historical querying and metric evolution tracking difficult.
 
@@ -46,8 +46,8 @@ The existing implementation in [`budget_health.py`](../../backend/app/budget_hea
 |---------|------------|
 | **Data Source** | System-level reusable query that extracts raw budget/period data (e.g. `total_expenses`, `budgeted_income`) |
 | **Scale** | System-level reusable scale definition (e.g. `1-100`, `High/Medium/Low`, `Percentage`, `Dollar Value`) |
-| **Personalisation Definition** | Reusable parameter definition referencing a scale (e.g. "Deficit Concern Threshold") |
-| **Metric Template** | Pre-built metric blueprint with formula, data sources, and default personalisation |
+| **Threshold Definition** | Reusable parameter definition referencing a scale (e.g. "Deficit Concern Threshold") |
+| **Metric Template** | Pre-built metric blueprint with formula, data sources, and default threshold |
 | **Health Metric** | A user-created or system metric instance combining data sources, formula, scoring logic, evidence rules, and drill-down config |
 | **Matrix Template** | Reusable template defining a default set of metrics and weights (e.g. "Standard Budget Health") |
 | **Budget Health Matrix** | Per-budget matrix containing the user's chosen metrics, weights, sensitivities, and enablement state |
@@ -129,14 +129,14 @@ class HealthScaleOption(Base):
     option_order = Column(Integer, default=0)
 ```
 
-### HealthPersonalisationDefinition
+### HealthThresholdDefinition
 
-Reusable personalisation parameter definitions.
+Reusable threshold parameter definitions.
 
 ```python
-class HealthPersonalisationDefinition(Base):
-    __tablename__ = "healthpersonalisationdefinitions"
-    personalisation_key = Column(String, primary_key=True)
+class HealthThresholdDefinition(Base):
+    __tablename__ = "healththresholddefinitions"
+    threshold_key = Column(String, primary_key=True)
     name = Column(String, nullable=False)
     description = Column(Text)
     scale_key = Column(String, ForeignKey("healthscales.scale_key"), nullable=False)
@@ -156,7 +156,7 @@ class HealthMetricTemplate(Base):
     scope = Column(String, nullable=False)               # CURRENT_PERIOD | OVERALL | BOTH
     formula_expression = Column(Text, nullable=False)
     formula_data_sources_json = Column(Text, nullable=False)
-    default_personalisation_key = Column(String, ForeignKey("healthpersonalisationdefinitions.personalisation_key"), nullable=True)
+    default_threshold_key = Column(String, ForeignKey("healththresholddefinitions.threshold_key"), nullable=True)
     scoring_logic_json = Column(Text, nullable=False)
     evidence_template_json = Column(Text, nullable=False)
     drill_down_enabled = Column(Boolean, default=False)
@@ -178,7 +178,7 @@ class HealthMetric(Base):
     scope = Column(String, nullable=False)
     formula_expression = Column(Text, nullable=False)
     formula_data_sources_json = Column(Text, nullable=False)
-    personalisation_key = Column(String, ForeignKey("healthpersonalisationdefinitions.personalisation_key"), nullable=True)
+    threshold_key = Column(String, ForeignKey("healththresholddefinitions.threshold_key"), nullable=True)
     scoring_logic_json = Column(Text, nullable=False)
     evidence_template_json = Column(Text, nullable=False)
     drill_down_enabled = Column(Boolean, default=False)
@@ -242,16 +242,16 @@ class BudgetHealthMatrixItem(Base):
     is_enabled = Column(Boolean, default=True)
 ```
 
-### BudgetMetricPersonalisation
+### BudgetMetricThreshold
 
-Per-budget, per-metric actual personalisation values.
+Per-budget, per-metric actual threshold values.
 
 ```python
-class BudgetMetricPersonalisation(Base):
-    __tablename__ = "budgetmetricpersonalisations"
+class BudgetMetricThreshold(Base):
+    __tablename__ = "budgetmetricthresholds"
     budgetid = Column(Integer, ForeignKey("budgets.budgetid"), primary_key=True)
     metric_id = Column(Integer, ForeignKey("healthmetrics.metric_id"), primary_key=True)
-    personalisation_key = Column(String, ForeignKey("healthpersonalisationdefinitions.personalisation_key"), nullable=False)
+    threshold_key = Column(String, ForeignKey("healththresholddefinitions.threshold_key"), nullable=False)
     value_json = Column(Text, nullable=False)
     updated_at = Column(UTCDateTime, default=utc_now)
 ```
@@ -311,8 +311,8 @@ Tone is **presentation-only** and **not versioned**. Historical snapshots store 
 flowchart TB
     subgraph Input
         B[Budget + Periods]
-        P[BudgetMetricPersonalisation]
-        T[HealthTone]
+        T[BudgetMetricThreshold]
+        Tone[HealthTone]
     end
     subgraph Engine
         M[BudgetHealthMatrix]
@@ -324,8 +324,8 @@ flowchart TB
         BHS[BudgetHealthSummary]
     end
     B --> DS
-    P --> HM
     T --> HM
+    Tone --> HM
     M --> HM
     DS --> HM
     HM --> PHR
@@ -335,7 +335,7 @@ flowchart TB
 1. **Matrix Resolution** — Load the budget's `BudgetHealthMatrix` and its enabled `BudgetHealthMatrixItem` rows.
 2. **Data Source Resolution** — For each metric, resolve required `HealthDataSource` entries and execute their Python executors (cached per request).
 3. **Formula Evaluation** — Evaluate the metric's formula expression against data source results using a safe, bounded expression parser (supports `+`, `-`, `*`, `/`, parentheses, and data source references only).
-4. **Metric Execution** — Pass formula result, personalisation value, scoring sensitivity, and tone into the metric's Python executor. Returns `score`, `status`, `summary`, `evidence[]`, and optional `drill_down[]`.
+4. **Metric Execution** — Pass formula result, threshold value, scoring sensitivity, and tone into the metric's Python executor. Returns `score`, `status`, `summary`, `evidence[]`, and optional `drill_down[]`.
 5. **Aggregation** — Compute weighted overall score, momentum from historical periods, and status mappings. Store in `BudgetHealthSummary`.
 6. **Persistence** — For closed periods, write `PeriodHealthResult` rows with `is_snapshot=true`. For live/current periods, return computed results without snapshotting.
 
@@ -347,11 +347,11 @@ Each metric in a budget matrix exposes three independent controls:
 
 | Knob | Where Stored | Purpose | Example |
 |------|--------------|---------|---------|
-| **Personalisation** | `BudgetMetricPersonalisation.value_json` | The threshold/benchmark value | "Acceptable Deficit Amount = $50" |
+| **Threshold** | `BudgetMetricThreshold.value_json` | The threshold/benchmark value | "Acceptable Deficit Amount = $50" |
 | **Scoring Sensitivity** | `BudgetHealthMatrixItem.scoring_sensitivity` | How steeply the metric penalises breaching the threshold | 75 = lose 15 points per $10 over |
 | **Matrix Weight** | `BudgetHealthMatrixItem.weight` | How much this metric contributes to the overall budget health score | 0.25 = 25% of total score |
 
-This keeps personalisations as reusable benchmarks, metrics define how sensitively they react, and matrices define which metrics matter most.
+This keeps thresholds as reusable benchmarks, metrics define how sensitively they react, and matrices define which metrics matter most.
 
 ---
 
@@ -410,7 +410,7 @@ Every implementation session must begin with `update_todo_list` and end with con
 [ ] Create Alembic migration for all engine tables
 [ ] Seed HealthDataSource catalog
 [ ] Seed HealthScale catalog
-[ ] Seed HealthPersonalisationDefinition catalog
+[ ] Seed HealthThresholdDefinition catalog
 [ ] Create HealthMetricTemplate rows for 4 existing components
 [ ] Create HealthMatrixTemplate "Standard Budget Health"
 [ ] Migrate existing budgets to BudgetHealthMatrix instances
@@ -427,14 +427,14 @@ Every implementation session must begin with `update_todo_list` and end with con
    - `ten_scale_1_10`
    - `dollar_amount`
    - `severity_low_med_high`
-4. Seed `HealthPersonalisationDefinition` catalog mapping current sliders to reusable definitions.
+4. Seed `HealthThresholdDefinition` catalog mapping current sliders to reusable definitions.
 5. Create `HealthMetricTemplate` rows for the 4 existing components with formulas referencing data sources.
 6. Create `HealthMatrixTemplate` "Standard Budget Health" containing the 4 metrics with current weights.
 7. For each existing budget:
    - Create a `BudgetHealthMatrix` based on "Standard Budget Health"
    - Create `HealthMetric` instances from the templates
    - Create `BudgetHealthMatrixItem` rows with current weights and `scoring_sensitivity=50`
-   - Migrate existing `Budget` slider columns into `BudgetMetricPersonalisation` rows
+   - Migrate existing `Budget` slider columns into `BudgetMetricThreshold` rows
 8. Add `health_tone` column to `Budget`.
 
 **Phase Completion Criteria:** All Phase A todos marked complete via `update_todo_list`.
@@ -481,7 +481,7 @@ Every implementation session must begin with `update_todo_list` and end with con
 1. Update `BudgetsPage.jsx` to consume the new engine endpoint.
 2. Expand `PersonalisationTab.jsx` to support:
    - Managing matrix items (enable/disable, adjust weight, adjust sensitivity)
-   - Setting per-metric personalisation values
+   - Setting per-metric threshold values
    - Selecting tone preference
 3. Add metric builder UI for creating custom metrics from templates.
 4. Render drill-down links in health modals.
@@ -654,7 +654,7 @@ The new engine tables are additive only until Phase D. If any issues occur in Ph
 
 | Risk | Mitigation |
 |------|------------|
-| **Data migration complexity** | Automated backfill script creates per-budget matrices from "Standard Budget Health" template and migrates slider columns into `BudgetMetricPersonalisation`. |
+| **Data migration complexity** | Automated backfill script creates per-budget matrices from "Standard Budget Health" template and migrates slider columns into `BudgetMetricThreshold`. |
 | **Snapshot integrity** | Keep existing `PeriodCloseoutSnapshot.health_snapshot_json` intact. Only new close-outs write `PeriodHealthResult` rows. |
 | **Unsafe formula evaluation** | Use a restricted expression parser (e.g. `asteval` or custom) allowing only `+`, `-`, `*`, `/`, parentheses, and data source references. |
 | **Engine performance** | Cache data source results per request using `cache_ttl_seconds`. Profile before expanding beyond initial metrics. |
@@ -667,7 +667,7 @@ The new engine tables are additive only until Phase D. If any issues occur in Ph
 
 | Decision | Rationale |
 |----------|-----------|
-| Data sources, scales, and personalisation definitions as system catalogs | Enables easy expansion of the engine without code changes for new scales or parameters |
+| Data sources, scales, and threshold definitions as system catalogs | Enables easy expansion of the engine without code changes for new scales or parameters |
 | Metric templates + per-budget metric instances | Users can customise metrics while preserving original template integrity |
 | Per-budget matrices with per-metric weights and sensitivities | Gives budget owners full control over metric importance and scoring steepness |
 | Safe formula parser for custom metrics | Allows user-defined metric calculations without security risks |
@@ -687,7 +687,7 @@ The new engine tables are additive only until Phase D. If any issues occur in Ph
 - [ ] `/api/budgets/{id}/health-engine` returns a payload equivalent to the legacy endpoint
 - [ ] Close-out persists individual `PeriodHealthResult` snapshot rows per metric
 - [ ] Frontend consumes the new endpoint and renders identical health UI
-- [ ] Personalisation UI reads from and writes to `BudgetMetricPersonalisation`
+- [ ] Threshold UI reads from and writes to `BudgetMetricThreshold`
 - [ ] Tone selector exists and changes messaging without affecting scores
 - [ ] Users can create custom metrics from templates with simple formulas
 - [ ] Legacy endpoint and `Budget` health columns removed after verification

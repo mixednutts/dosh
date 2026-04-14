@@ -2,7 +2,7 @@
 
 Each executor receives:
 - formula_result: Decimal from evaluating the metric's formula
-- personalisation_value: the user's threshold/benchmark value for this metric
+- threshold_value: the user's threshold/benchmark value for this metric
 - scoring_sensitivity: int 0-100 controlling steepness of penalty curves
 - tone: str "supportive" | "factual" | "friendly"
 
@@ -49,7 +49,7 @@ def execute_setup_health(
     budget: Budget,
     period: FinancialPeriod | None,
     formula_result: Decimal,
-    personalisation_value: Decimal | None,
+    threshold_value: Decimal | None,
     scoring_sensitivity: int,
     tone: str,
     source_values: dict[str, Decimal] | None = None,
@@ -110,7 +110,7 @@ def execute_budget_discipline(
     budget: Budget,
     period: FinancialPeriod | None,
     formula_result: Decimal,
-    personalisation_value: Decimal | None,
+    threshold_value: Decimal | None,
     scoring_sensitivity: int,
     tone: str,
     source_values: dict[str, Decimal] | None = None,
@@ -120,7 +120,7 @@ def execute_budget_discipline(
     Measures historical outflow overrun across closed periods.
     Formula result is the average overrun ratio (0 = on budget, positive = overspend).
     """
-    acceptable_overrun_pct = personalisation_value or Decimal("10")
+    acceptable_overrun_pct = threshold_value or Decimal("10")
     sensitivity_factor = Decimal(scoring_sensitivity) / Decimal("50")  # 1.0 at midpoint
 
     overrun_pct = formula_result * Decimal("100")  # Convert ratio to percentage
@@ -166,7 +166,7 @@ def execute_planning_stability(
     budget: Budget,
     period: FinancialPeriod | None,
     formula_result: Decimal,
-    personalisation_value: Decimal | None,
+    threshold_value: Decimal | None,
     scoring_sensitivity: int,
     tone: str,
     source_values: dict[str, Decimal] | None = None,
@@ -176,7 +176,7 @@ def execute_planning_stability(
     Tracks off-plan activity (revised lines) in the current period.
     Formula result is the count of revised lines.
     """
-    revision_threshold = personalisation_value or Decimal("50")
+    revision_threshold = threshold_value or Decimal("50")
     sensitivity_factor = Decimal(scoring_sensitivity) / Decimal("50")
 
     revised_count = int(formula_result)
@@ -220,7 +220,7 @@ def execute_current_period_check(
     budget: Budget,
     period: FinancialPeriod | None,
     formula_result: Decimal,
-    personalisation_value: Decimal | None,
+    threshold_value: Decimal | None,
     scoring_sensitivity: int,
     tone: str,
     source_values: dict[str, Decimal] | None = None,
@@ -246,7 +246,7 @@ def execute_current_period_check(
     total_income = source_values.get("total_budgeted_income", Decimal(0))
 
     # Get max deficit threshold
-    max_deficit = personalisation_value
+    max_deficit = threshold_value
     if max_deficit is None:
         # Default to 10% of income or $50 whichever is larger
         max_deficit = max(total_income * Decimal("0.10"), Decimal("50"))

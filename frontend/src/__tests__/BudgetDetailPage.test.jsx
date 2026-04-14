@@ -310,8 +310,8 @@ describe('BudgetDetailPage', () => {
       path: '/budgets/:budgetId/setup',
     })
 
-    expect(await screen.findByTitle('Expand personalisation')).toBeTruthy()
-    fireEvent.click(screen.getByTitle('Expand personalisation'))
+    expect(await screen.findByTitle('Expand thresholds & tolerances')).toBeTruthy()
+    fireEvent.click(screen.getByTitle('Expand thresholds & tolerances'))
     expect(screen.getByText('Personalisation Tab')).toBeTruthy()
 
     firstRender.unmount()
@@ -321,7 +321,7 @@ describe('BudgetDetailPage', () => {
       path: '/budgets/:budgetId/setup',
     })
 
-    expect(await screen.findByTitle('Collapse personalisation')).toBeTruthy()
+    expect(await screen.findByTitle('Collapse thresholds & tolerances')).toBeTruthy()
     expect(screen.getByText('Personalisation Tab')).toBeTruthy()
   })
 

@@ -234,7 +234,7 @@ class BudgetUpdate(BaseModel):
     @classmethod
     def validate_percentage_preference(cls, v: Optional[int]) -> Optional[int]:
         if v is not None and (v < 0 or v > 100):
-            raise ValueError("Personalisation values must be between 0 and 100")
+            raise ValueError("Threshold values must be between 0 and 100")
         return v
 
     @field_validator("auto_expense_offset_days")

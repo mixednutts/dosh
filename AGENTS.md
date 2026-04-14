@@ -210,9 +210,9 @@ For document changes, follow [DOCUMENTATION_FRAMEWORK.md](./docs/DOCUMENTATION_F
 **Schema Revisions:** d3091a75b8ff, e4f5a6b7c8d9, f1a2b3c4d5e6, b10a29f14a8f, 559cbaa1dce7, 4bf1bf54b0bb, 7a8b9c0d1e2f
 
 **Recent Work:**
-- **Budget Health Engine Refinement (COMPLETED):** Removed legacy personalisation sliders and made metric cards the single source of truth with scale-aware View/Edit controls; refactored `setup_health` and `current_period_check` executors to consume `formula_result` instead of querying the DB directly; migrated closeout preview to use the health engine directly
+- **Budget Health Engine Refinement (COMPLETED):** Removed legacy threshold sliders and made metric cards the single source of truth with scale-aware View/Edit controls; refactored `setup_health` and `current_period_check` executors to consume `formula_result` instead of querying the DB directly; migrated closeout preview to use the health engine directly
 - **Budget Health Engine (COMPLETED):** Transitioned from fixed health implementation to a fully configurable Budget Health Engine
-  - Added 11 new data models (`HealthDataSource`, `HealthMetricTemplate`, `HealthScale`, `BudgetHealthMatrix`, `BudgetHealthMatrixItem`, `BudgetMetricPersonalisation`, `PeriodHealthResult`, `BudgetHealthSummary`, `HealthPersonalisationDefinition`, `HealthMatrixTemplate`, and supporting tables)
+  - Added 11 new data models (`HealthDataSource`, `HealthMetricTemplate`, `HealthScale`, `BudgetHealthMatrix`, `BudgetHealthMatrixItem`, `BudgetMetricThreshold`, `PeriodHealthResult`, `BudgetHealthSummary`, `HealthThresholdDefinition`, `HealthMatrixTemplate`, and supporting tables)
   - Implemented safe formula parser and engine runner (`health_engine/runner.py`) supporting `+`, `-`, `*`, `/`, parentheses, and data source references
   - Added code-backed data source executors and metric executors for the four core templates (`setup_health`, `budget_discipline`, `planning_stability`, `current_period_check`)
   - Added `PeriodHealthResult` persistence so close-out workflows preserve historical health meaning when engine logic evolves
@@ -239,7 +239,7 @@ For document changes, follow [DOCUMENTATION_FRAMEWORK.md](./docs/DOCUMENTATION_F
 - **Demo Data Update:** Seeded demo budget now covers cash-flow account routing, scheduled expenses, and AUTO/MANUAL payment types for realistic walkthroughs
 
 **Active Focus Areas:**
-- Budget Health refinement (personalisation behavior, evidence language, test coverage)
+- Budget Health refinement (threshold behavior, evidence language, test coverage)
 - Testing infrastructure hardening (all 184 backend tests passing, 198 frontend tests passing)
 - Documentation framework compliance
 - Release process reliability
@@ -324,7 +324,7 @@ When making changes, preserve these working assumptions:
 
 - do not treat migration-era ledger backfill as normal recurring product behavior
 - do not weaken ledger trust by introducing manual balance-edit shortcuts
-- do not let future health personalisation rewrite historical closed-cycle meaning
+- do not let future health thresholds rewrite historical closed-cycle meaning
 - do not overload the UI with scoring language users cannot reasonably trust
 - do not assume there is always one transaction account plus one savings account
 - do not reintroduce hard-coded locale, currency, percent, date, or browser-local timezone display formatting when shared localisation helpers already own the behavior

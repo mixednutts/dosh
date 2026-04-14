@@ -77,24 +77,24 @@ def _build_data_source_params(
     return params_map
 
 
-def _load_personalisation_value(
+def _load_threshold_value(
     db: Session,
     budgetid: int,
     metric,
 ) -> Decimal | None:
-    """Load the effective personalisation value for a metric."""
-    from ..models import BudgetMetricPersonalisation, HealthPersonalisationDefinition
+    """Load the effective threshold value for a metric."""
+    from ..models import BudgetMetricThreshold, HealthThresholdDefinition
 
-    if not metric.personalisation_key:
+    if not metric.threshold_key:
         return None
 
-    bmp = db.query(BudgetMetricPersonalisation).filter_by(
+    bmt = db.query(BudgetMetricThreshold).filter_by(
         budgetid=budgetid, metric_id=metric.metric_id
     ).first()
 
-    if bmp:
+    if bmt:
         try:
-            raw = json.loads(bmp.value_json)
+            raw = json.loads(bmt.value_json)
             if raw is None:
                 return None
             return Decimal(str(raw)) if isinstance(raw, (int, float, str, Decimal)) else None
@@ -102,12 +102,12 @@ def _load_personalisation_value(
             pass
 
     # Fall back to definition default
-    pd = db.query(HealthPersonalisationDefinition).filter_by(
-        personalisation_key=metric.personalisation_key
+    td = db.query(HealthThresholdDefinition).filter_by(
+        threshold_key=metric.threshold_key
     ).first()
-    if pd:
+    if td:
         try:
-            raw = json.loads(pd.default_value_json)
+            raw = json.loads(td.default_value_json)
             if raw is None:
                 return None
             return Decimal(str(raw)) if isinstance(raw, (int, float, str, Decimal)) else None
@@ -162,8 +162,8 @@ def evaluate_period_health(
         except Exception:
             formula_result = Decimal(0)
 
-        # Load personalisation
-        personalisation_value = _load_personalisation_value(db, budget.budgetid, metric)
+        # Load threshold
+        threshold_value = _load_threshold_value(db, budget.budgetid, metric)
 
         # Execute metric logic
         executor = get_executor(metric.template_key or "")
@@ -172,7 +172,7 @@ def evaluate_period_health(
             budget=budget,
             period=period,
             formula_result=formula_result,
-            personalisation_value=personalisation_value,
+            threshold_value=threshold_value,
             scoring_sensitivity=item.scoring_sensitivity,
             tone=tone,
             source_values=source_values,
