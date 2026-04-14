@@ -97,7 +97,7 @@ def _load_personalisation_value(
             raw = json.loads(bmp.value_json)
             if raw is None:
                 return None
-            return Decimal(str(raw)) if isinstance(raw, (int, float, str, Decimal)) else Decimal(str(raw))
+            return Decimal(str(raw)) if isinstance(raw, (int, float, str, Decimal)) else None
         except (json.JSONDecodeError, ValueError):
             pass
 

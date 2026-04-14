@@ -39,7 +39,55 @@ For the implemented Auto Expense workflow rules, scheduler behavior, migration e
 
 For the cash management workflow plan that defines generalised transfers, expense routing, investment tracking, and balance validation, read [CASH_MANAGEMENT_WORKFLOW_PLAN.md](/home/ubuntu/dosh/docs/plans/CASH_MANAGEMENT_WORKFLOW_PLAN.md).
 
-## Latest Session: Budget Health Engine — Configurable Health System Implementation
+## Latest Session: SonarQube Quality Gate Follow-Through
+
+This session addressed failing SonarQube quality gate conditions on `main`: a reliability bug in the Budget Health Engine runner and insufficient new-code coverage on recently added health matrix and API client surfaces.
+
+### What changed
+
+- **Bug fix:**
+  - Fixed `python:S3923` in `backend/app/health_engine/runner.py`. The `_load_personalisation_value` function had a conditional that returned `Decimal(str(raw))` on both the true and false branches; the false branch now correctly returns `None` when `raw` is not a numeric-like type.
+
+- **Accessibility improvement:**
+  - Added explicit `htmlFor`/`id` label-to-control associations in `frontend/src/pages/tabs/PersonalisationTab.jsx` for Weight, Scoring Sensitivity, Personalisation, and Metric Builder fields. This addresses `javascript:S6853` findings and improves screen-reader support.
+
+- **Backend test coverage:**
+  - Created `backend/tests/test_health_matrices.py` with 9 behavior-first API integration tests covering:
+    - Health matrix retrieval (success and 404 paths)
+    - Matrix item updates (weight, sensitivity, enablement)
+    - Metric personalisation updates
+    - Data source listing
+    - Custom metric creation, validation, and removal
+
+- **Frontend test coverage:**
+  - Expanded `frontend/src/__tests__/PersonalisationTab.test.jsx` from 3 to 15 tests, covering:
+    - Matrix loading and display
+    - Metric enable/disable toggling
+    - Weight and scoring sensitivity changes
+    - Personalisation value editing
+    - Custom metric removal
+    - Metric builder show/hide, creation, and validation errors
+    - Load failure error display
+    - Health tone selection
+  - Expanded `frontend/src/__tests__/client.test.js` to 12 tests, covering:
+    - `exportPeriod` filename parsing (plain, UTF-8 `filename*`, fallback)
+    - Budget and health helpers (`getBudgets`, `getBudgetHealth`, `createBudget`, `updateBudget`, `updateMatrixItem`, `createCustomMetric`, `removeMatrixItem`)
+    - Period-critical workflows (`generatePeriod`, `closeOutPeriod`, `accountTransfer`)
+    - Expense/investment budget updates and status changes
+    - Income transaction fetch/delete and expense entry add/delete
+
+- **Test configuration:**
+  - Updated `frontend/jest.config.cjs` to include `.test.js` files in `testMatch` so existing and new JS tests are collected for coverage reporting.
+
+### Verification
+
+- Full backend suite: **162 passed**
+- Full frontend suite: **200 passed** (18 test suites)
+- No regressions introduced
+
+---
+
+## Session: Budget Health Engine — Configurable Health System Implementation
 
 This session completed the transition from a fixed budget health implementation to a fully configurable Budget Health Engine with personalization framework, point-in-time snapshots, drill-down capabilities, and metric builder UI.
 

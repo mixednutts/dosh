@@ -786,6 +786,11 @@ Status:
 - `Completed`: add regression test for `PENDING_CLOSURE` periods not being treated as frozen anchors in dynamic balance calculation
 - `Completed`: fix and add test coverage for expense transaction modal defaulting to the expense item's configured debit account
 - `Completed`: extend SonarQube follow-through coverage in `PeriodDetailPage.test.jsx`, `AmountExpressionInput.test.jsx`, and the new backend router suite [test_period_router_guards.py](/home/ubuntu/dosh/backend/tests/test_period_router_guards.py) while keeping the work behavior-first rather than metric-only
+- `Completed`: fix reliability bug in `health_engine/runner.py` where a conditional returned the same value regardless of truthiness (`python:S3923`)
+- `Completed`: add dedicated backend API regression coverage for health matrix CRUD and validation (`test_health_matrices.py`), including matrix retrieval, item updates, personalisation updates, custom metric creation, and removal workflows
+- `Completed`: expand frontend test coverage for the health matrix personalisation UI (`PersonalisationTab.test.jsx`), covering metric enablement, weight/sensitivity changes, personalisation editing, custom metric builder validation, and error handling
+- `Completed`: expand frontend API client regression coverage (`client.test.js`) for budget health helpers, period-critical workflows (generate, close-out, transfers), expense/investment budget updates, transaction operations, and export filename parsing
+- `Completed`: improve form accessibility in `PersonalisationTab.jsx` by adding explicit `htmlFor`/`id` label associations for Weight, Scoring Sensitivity, Personalisation, and Metric Builder fields
 - keep new feature work under a test-with-change discipline rather than treating testing as a later cleanup phase
 - extend Playwright from the current happy-path lifecycle smoke into reconciliation, correction, and broader scenario-shaped flows
 - continue expanding setup-shape consequence coverage where technically valid configuration changes can still weaken later workflows

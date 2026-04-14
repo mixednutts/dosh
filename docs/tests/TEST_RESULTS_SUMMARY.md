@@ -4,7 +4,45 @@ This document records meaningful automated test results from major working sessi
 
 It exists separately from [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) so the strategy can stay stable while future sessions still have a record of what was actually run and verified.
 
-## Latest Session: Budget Health Engine — Configurable Health System Implementation
+## Latest Session: SonarQube Quality Gate Follow-Through
+
+This session addressed failing SonarQube quality gate conditions: a reliability bug in the Budget Health Engine runner and insufficient new-code coverage on health matrix and API client surfaces.
+
+### Verification
+
+```bash
+cd /home/ubuntu/dosh/backend
+.venv/bin/python -m pytest tests/ -q
+```
+
+Result:
+
+- Full backend suite: **162 passed**
+- No regressions introduced
+- New backend coverage: `test_health_matrices.py` (9 tests) covering matrix retrieval, item updates, personalisation updates, custom metric creation/validation, and metric removal
+
+```bash
+cd /home/ubuntu/dosh/frontend
+npm test -- --silent
+```
+
+Result:
+
+- Full frontend suite: **200 passed** (18 test suites)
+- No regressions introduced
+- New/expanded coverage:
+  - `PersonalisationTab.test.jsx` expanded to 15 tests covering matrix item enablement, weight/sensitivity edits, personalisation changes, custom metric builder validation, and load-error handling
+  - `client.test.js` expanded to 12 tests covering export filename parsing, budget health helpers, period-critical workflows, and transaction operations
+
+### What changed
+
+- Fixed `python:S3923` in `backend/app/health_engine/runner.py` (conditional returned same value on both branches)
+- Added `htmlFor`/`id` label associations in `frontend/src/pages/tabs/PersonalisationTab.jsx` to address accessibility findings (`javascript:S6853`)
+- Expanded `frontend/jest.config.cjs` testMatch to include `.test.js` files for full coverage collection
+
+---
+
+## Session: Budget Health Engine — Configurable Health System Implementation
 
 This session completed the transition from a fixed budget health implementation to a fully configurable Budget Health Engine with personalization framework, point-in-time snapshots, drill-down capabilities, and metric builder UI.
 

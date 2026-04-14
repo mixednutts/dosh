@@ -317,15 +317,16 @@ function MatrixItemCard({ item, onUpdate, onUpdatePersonalisation, onRemove, all
 
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <div>
-          <label className="text-xs font-medium text-gray-600 dark:text-gray-300">Weight</label>
+          <label htmlFor={`weight-${item.metric_id}`} className="text-xs font-medium text-gray-600 dark:text-gray-300">Weight</label>
           <div className="flex items-center gap-2">
             <input
+              id={`weight-${item.metric_id}`}
               type="range"
               min={0}
               max={1}
               step={0.05}
               value={localWeight}
-              onChange={e => setLocalWeight(parseFloat(e.target.value))}
+              onChange={e => setLocalWeight(Number.parseFloat(e.target.value))}
               onMouseUp={commitWeight}
               onKeyUp={commitWeight}
               className="w-full accent-dosh-600"
@@ -334,15 +335,16 @@ function MatrixItemCard({ item, onUpdate, onUpdatePersonalisation, onRemove, all
           </div>
         </div>
         <div>
-          <label className="text-xs font-medium text-gray-600 dark:text-gray-300">Scoring Sensitivity</label>
+          <label htmlFor={`sensitivity-${item.metric_id}`} className="text-xs font-medium text-gray-600 dark:text-gray-300">Scoring Sensitivity</label>
           <div className="flex items-center gap-2">
             <input
+              id={`sensitivity-${item.metric_id}`}
               type="range"
               min={0}
               max={100}
               step={1}
               value={localSensitivity}
-              onChange={e => setLocalSensitivity(parseInt(e.target.value, 10))}
+              onChange={e => setLocalSensitivity(Number.parseInt(e.target.value, 10))}
               onMouseUp={commitSensitivity}
               onKeyUp={commitSensitivity}
               className="w-full accent-dosh-600"
@@ -354,9 +356,10 @@ function MatrixItemCard({ item, onUpdate, onUpdatePersonalisation, onRemove, all
 
       {item.personalisation_key && (
         <div className="mt-3">
-          <label className="text-xs font-medium text-gray-600 dark:text-gray-300">Personalisation ({item.personalisation_key})</label>
+          <label htmlFor={`pers-${item.metric_id}`} className="text-xs font-medium text-gray-600 dark:text-gray-300">Personalisation ({item.personalisation_key})</label>
           <div className="flex items-center gap-2">
             <input
+              id={`pers-${item.metric_id}`}
               type="text"
               value={localPers === null || localPers === undefined ? '' : String(localPers)}
               onChange={e => setLocalPers(e.target.value)}
@@ -420,8 +423,9 @@ function MetricBuilderCard({ dataSources, onCreate, onCancel }) {
 
       <div className="space-y-3">
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Name</label>
+          <label htmlFor="metric-builder-name" className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Name</label>
           <input
+            id="metric-builder-name"
             type="text"
             value={name}
             onChange={e => setName(e.target.value)}
@@ -431,8 +435,9 @@ function MetricBuilderCard({ dataSources, onCreate, onCancel }) {
         </div>
 
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Description (optional)</label>
+          <label htmlFor="metric-builder-desc" className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Description (optional)</label>
           <input
+            id="metric-builder-desc"
             type="text"
             value={description}
             onChange={e => setDescription(e.target.value)}
@@ -442,8 +447,9 @@ function MetricBuilderCard({ dataSources, onCreate, onCancel }) {
         </div>
 
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Scope</label>
+          <label htmlFor="metric-builder-scope" className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Scope</label>
           <select
+            id="metric-builder-scope"
             value={scope}
             onChange={e => setScope(e.target.value)}
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900"
@@ -455,8 +461,9 @@ function MetricBuilderCard({ dataSources, onCreate, onCancel }) {
         </div>
 
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Formula</label>
+          <label htmlFor="metric-builder-formula" className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Formula</label>
           <input
+            id="metric-builder-formula"
             type="text"
             value={formula}
             onChange={e => setFormula(e.target.value)}

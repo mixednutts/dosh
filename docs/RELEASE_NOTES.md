@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+### Fixed
+
+- Fixed a reliability bug in the Budget Health Engine runner where a conditional returned the same value regardless of input type.
+- Improved form accessibility in the Personalisation tab by associating labels with their controls.
+
+### Engineering
+
+- Added dedicated backend API regression coverage for health matrix CRUD and validation (`test_health_matrices.py`).
+- Expanded frontend test coverage for the health matrix personalisation UI (`PersonalisationTab.test.jsx`).
+- Expanded frontend API client regression coverage (`client.test.js`) for budget health helpers, period-critical workflows, and export filename parsing.
+- All backend tests passing (162). All frontend tests passing (200).
+
 ## 0.4.0-alpha | released | 2026-04-14
 
 ### Added
