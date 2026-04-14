@@ -118,6 +118,15 @@ class BudgetBase(BaseModel):
     timezone: str = "Australia/Sydney"
     date_format: str = "medium"
     max_forward_balance_cycles: int = 10
+    health_tone: str = "supportive"
+
+    @field_validator("health_tone")
+    @classmethod
+    def validate_health_tone(cls, v: str) -> str:
+        allowed = {"supportive", "factual", "friendly"}
+        if v not in allowed:
+            raise ValueError(f"health_tone must be one of {allowed}")
+        return v
 
     @field_validator("max_forward_balance_cycles")
     @classmethod
@@ -194,6 +203,17 @@ class BudgetUpdate(BaseModel):
     auto_expense_offset_days: Optional[int] = None
     record_line_status_changes: Optional[bool] = None
     max_forward_balance_cycles: Optional[int] = None
+    health_tone: Optional[str] = None
+
+    @field_validator("health_tone")
+    @classmethod
+    def validate_optional_health_tone(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        allowed = {"supportive", "factual", "friendly"}
+        if v not in allowed:
+            raise ValueError(f"health_tone must be one of {allowed}")
+        return v
 
     @field_validator("max_forward_balance_cycles")
     @classmethod
@@ -305,6 +325,7 @@ class BudgetOut(BudgetBase):
     auto_expense_offset_days: int = 0
     record_line_status_changes: bool = False
     max_forward_balance_cycles: int = 10
+    health_tone: str = "supportive"
     model_config = {"from_attributes": True}
 
 

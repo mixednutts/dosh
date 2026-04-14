@@ -1,12 +1,12 @@
 from fastapi import APIRouter, HTTPException
-from ..budget_health import build_budget_health_payload
 from ..api_docs import DbSession, error_responses
 from ..demo_budget import create_standard_demo_budget
+from ..health_engine import evaluate_budget_health
+from ..health_engine_seed import create_default_matrix_for_budget, create_standard_templates, seed_catalogs
 from ..models import Budget
 from ..runtime_settings import dev_mode_enabled
 from ..schemas import (
     BudgetCreate,
-    BudgetHealthOut,
     BudgetOut,
     BudgetSetupAssessmentOut,
     BudgetUpdate,
@@ -29,6 +29,12 @@ def list_budgets(db: DbSession):
 def create_budget(payload: BudgetCreate, db: DbSession):
     budget = Budget(**payload.model_dump())
     db.add(budget)
+    db.commit()
+    db.refresh(budget)
+    # Ensure catalogs and templates exist, then create default matrix for this budget
+    seed_catalogs(db)
+    create_standard_templates(db)
+    create_default_matrix_for_budget(db, budget)
     db.commit()
     db.refresh(budget)
     return budget
@@ -59,9 +65,13 @@ def get_budget(budgetid: int, db: DbSession):
     return budget
 
 
-@router.get("/{budgetid}/health", response_model=BudgetHealthOut, responses=error_responses(404))
+@router.get("/{budgetid}/health", responses=error_responses(404))
 def get_budget_health(budgetid: int, db: DbSession):
-    payload = build_budget_health_payload(db, budgetid)
+    """Budget Health endpoint powered by the Health Engine.
+
+    Returns a health payload computed by the configurable engine.
+    """
+    payload = evaluate_budget_health(db, budgetid)
     if not payload:
         raise HTTPException(404, "Budget not found")
     return payload

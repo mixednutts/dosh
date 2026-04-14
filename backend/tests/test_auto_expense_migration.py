@@ -25,6 +25,7 @@ def test_clean_database_upgrade_reaches_head_and_has_budget_preference_columns(t
     assert "date_format" in budget_columns
     assert "record_line_status_changes" in budget_columns
     assert "max_forward_balance_cycles" in budget_columns
+    assert "health_tone" in budget_columns
 
 
 def test_auto_expense_upgrade_normalizes_invalid_legacy_auto_rows(build_pre_feature_db):

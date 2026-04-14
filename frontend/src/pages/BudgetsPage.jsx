@@ -57,6 +57,57 @@ function formatMomentumDelta(value) {
   return value > 0 ? `+${value}` : `${value}`
 }
 
+function DrillDownLinks({ items }) {
+  if (!items || items.length === 0) return null
+  return (
+    <div className="mt-2 space-y-1">
+      {items.map((item, idx) => {
+        if (item.type === 'period_expense' && item.finperiodid && item.expensedesc) {
+          return (
+            <a
+              key={idx}
+              href={`/periods/${item.finperiodid}?highlight=${encodeURIComponent(item.expensedesc)}`}
+              className="inline-flex items-center gap-1 text-xs font-medium text-dosh-700 hover:underline dark:text-dosh-400"
+            >
+              <span>View {item.label || item.expensedesc}</span>
+              <span aria-hidden>→</span>
+            </a>
+          )
+        }
+        if (item.type === 'period_income' && item.finperiodid && item.incomedesc) {
+          return (
+            <a
+              key={idx}
+              href={`/periods/${item.finperiodid}?highlightIncome=${encodeURIComponent(item.incomedesc)}`}
+              className="inline-flex items-center gap-1 text-xs font-medium text-dosh-700 hover:underline dark:text-dosh-400"
+            >
+              <span>View {item.label || item.incomedesc}</span>
+              <span aria-hidden>→</span>
+            </a>
+          )
+        }
+        if (item.type === 'period_detail' && item.finperiodid) {
+          return (
+            <a
+              key={idx}
+              href={`/periods/${item.finperiodid}`}
+              className="inline-flex items-center gap-1 text-xs font-medium text-dosh-700 hover:underline dark:text-dosh-400"
+            >
+              <span>{item.label || 'View period details'}</span>
+              <span aria-hidden>→</span>
+            </a>
+          )
+        }
+        return (
+          <span key={idx} className="text-xs text-gray-500 dark:text-gray-400">
+            {item.label || 'Related item'}
+          </span>
+        )
+      })}
+    </div>
+  )
+}
+
 function healthStatusLabel(status) {
   if (status === 'Strong') return 'Tracking ok'
   if (status === 'Watch') return 'Check now'
@@ -870,9 +921,16 @@ function CurrentPeriodCheckModal({ budget, assessment, evaluatedAt, onClose }) {
                 {item.detail ? (
                   <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{item.detail}</p>
                 ) : null}
+                {item.drill_down ? <DrillDownLinks items={item.drill_down} /> : null}
               </div>
             ))}
           </div>
+          {assessment.drill_down && assessment.drill_down.length > 0 ? (
+            <div className="rounded-md border border-gray-100 bg-gray-50 px-3 py-2 dark:border-gray-800 dark:bg-gray-800/80">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Quick Links</p>
+              <DrillDownLinks items={assessment.drill_down} />
+            </div>
+          ) : null}
         </section>
       </div>
     </Modal>
@@ -915,16 +973,16 @@ function BudgetHealthModal({ budget, health, onClose }) {
         </div>
 
         {health.pillars.map(pillar => (
-          <section key={pillar.key} className="space-y-3 rounded-lg border border-gray-200 bg-white px-4 py-4 dark:border-gray-700 dark:bg-gray-900">
+          <section key={pillar.key || pillar.name} className="space-y-3 rounded-lg border border-gray-200 bg-white px-4 py-4 dark:border-gray-700 dark:bg-gray-900">
             <div className="flex flex-wrap items-center gap-2">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{pillar.title}</h3>
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{pillar.title || pillar.name}</h3>
               <span className={`h-3.5 w-3.5 rounded-full ${healthDotClass(pillar.status)}`} />
               <span className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Score {pillar.score}</span>
             </div>
             <p className="text-sm text-gray-600 dark:text-gray-300">{pillar.summary}</p>
             <div className="space-y-2">
               {pillar.evidence.map(item => (
-                <div key={`${pillar.key}-${item.label}`} className="rounded-md border border-gray-100 bg-gray-50 px-3 py-2 dark:border-gray-800 dark:bg-gray-800/80">
+                <div key={`${pillar.key || pillar.name}-${item.label}`} className="rounded-md border border-gray-100 bg-gray-50 px-3 py-2 dark:border-gray-800 dark:bg-gray-800/80">
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{item.label}</p>
                     <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{item.value}</p>
@@ -935,6 +993,12 @@ function BudgetHealthModal({ budget, health, onClose }) {
                 </div>
               ))}
             </div>
+            {pillar.drill_down && pillar.drill_down.length > 0 ? (
+              <div className="rounded-md border border-gray-100 bg-gray-50 px-3 py-2 dark:border-gray-800 dark:bg-gray-800/80">
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Quick Links</p>
+                <DrillDownLinks items={pillar.drill_down} />
+              </div>
+            ) : null}
           </section>
         ))}
       </div>

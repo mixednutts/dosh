@@ -206,65 +206,43 @@ For document changes, follow [DOCUMENTATION_FRAMEWORK.md](./docs/DOCUMENTATION_F
 
 ## Current Project State (Snapshot)
 
-**Version:** 0.3.8-alpha
-**Schema Revisions:** d3091a75b8ff, e4f5a6b7c8d9, f1a2b3c4d5e6, b10a29f14a8f, 559cbaa1dce7, 4bf1bf54b0bb
+**Version:** 0.4.0-alpha
+**Schema Revisions:** d3091a75b8ff, e4f5a6b7c8d9, f1a2b3c4d5e6, b10a29f14a8f, 559cbaa1dce7, 4bf1bf54b0bb, 7a8b9c0d1e2f
 
 **Recent Work:**
+- **Budget Health Engine (COMPLETED):** Transitioned from fixed health implementation to a fully configurable Budget Health Engine
+  - Added 11 new data models (`HealthDataSource`, `HealthMetricTemplate`, `HealthScale`, `BudgetHealthMatrix`, `BudgetHealthMatrixItem`, `BudgetMetricPersonalisation`, `PeriodHealthResult`, `BudgetHealthSummary`, `HealthPersonalisationDefinition`, `HealthMatrixTemplate`, and supporting tables)
+  - Implemented safe formula parser and engine runner (`health_engine/runner.py`) supporting `+`, `-`, `*`, `/`, parentheses, and data source references
+  - Added code-backed data source executors and metric executors for the four core templates (`setup_health`, `budget_discipline`, `planning_stability`, `current_period_check`)
+  - Added `PeriodHealthResult` persistence so close-out workflows preserve historical health meaning when engine logic evolves
+  - Migrated all existing budgets to `BudgetHealthMatrix` instances with default `Standard Budget Health` matrices
+  - Removed legacy `budget_health.py` and consolidated all health traffic through the engine
+  - Added `health_tone` selector (`practical`/`clinical`) to budget settings and health evidence rendering
+  - Expanded `PersonalisationTab.jsx` to manage matrix items (enable/disable, weight, sensitivity) and custom metric creation
+  - Updated `BudgetsPage.jsx` to consume engine health endpoint and render contextual drill-down links in health modals
+  - Created Alembic migration `7a8b9c0d1e2f` for all engine tables; deployed successfully to local Docker with override
+  - All 153 backend tests and 176 frontend tests passing
 - **Dynamic Account Balance Calculation (COMPLETED):** Implemented dynamic balance computation from last frozen anchor with forward-cycle limit
   - Added `compute_dynamic_period_balances()`, propagation via `sync_period_state`, and `max_forward_balance_cycles` setting (default 10, range 1-50)
-  - Integrated into API endpoints with 204 response for limit exceeded; frontend banner and settings UI added
-  - Added 16 backend tests and 3 frontend tests; deployed successfully to local Docker with override
+  - Integrated into API endpoints with explicit limit-exceeded signaling; frontend banner and settings UI added
 - **Period Date Boundary Fix (COMPLETED):** Fixed timezone-aware period start/end storage and inclusive end-date behavior
   - Period dates now stored as local midnight in the budget timezone, expressed as UTC
   - `effectivedate` on expense and investment items follows the same rule
   - Created Alembic migration `559cbaa1dce7` to shift existing production data
-  - End-of-period comparisons use `enddate + 1 day` so cycles remain current through the entire last day
-- **Frontend Balance Refresh Fix (COMPLETED):** Fixed stale account balances after transaction entry
-  - All relevant mutations now invalidate `['period-balances', id]` alongside `['period', id]`
-- **Period Detail UI Unification (COMPLETED):** Unified table layouts, transfer income labels, and CSS alignment across Income, Expense, Investment, and Account Balances sections
-  - All period-detail tables now share identical `<colgroup>` column widths for consistent alignment
-  - Transfer income lines display "Transfer from {source}" with the destination account in the Account column
-  - Account Balances reorganized to Account → Opening → Movement → Closing → Account Type → Details with matching background colors
-  - Removed stale `:nth-child()` CSS width overrides that were overriding `<colgroup>` settings and causing misalignment
-  - All 54 frontend tests and 139 backend tests passing; deployed successfully
 - **Cash Management Workflow (COMPLETED):** Generalised account transfers, expense routing, and investment tracking
   - Transfers now work between any two active accounts via `/account-transfer`
-  - Transfer validation uses committed-amount logic (`max(budget, actual)` for non-paid, `actual` for paid)
-  - Self-referential transfers are blocked
+  - Transfer validation uses committed-amount logic
   - Expense items support `default_account_desc` for default account routing
-  - Expense transactions allow account override at entry time
-  - Investment transactions expose and display `affected_account_desc`
-  - Two Alembic migrations backfill existing data safely and idempotently
-  - Gap-analysis reconciliation returned zero anomalies
-- Fixed scheduled expenses incorrectly applying to future periods where they were not due
-- Fixed browser autofill overlapping the Effective Date calendar picker
-- Fixed misleading delete messaging for the last budget cycle
-- Improved Release Notes modal UX: clicking the "N newer release available" badge scrolls to Available Updates
-- **PeriodDetailPage Modularization (COMPLETED):** Reduced from 2,911 lines to 642 lines (78% reduction)
-- Transaction entry date/time simplified: now read-only with current datetime
-- UTC datetime migration completed: all backend datetime storage now uses UTC with proper timezone handling
-- Status Change History feature: optional non-financial transaction records for Paid/Revised status changes
-- Income status workflow (Paid/Revised matching Expense/Investment behavior)
-- Date format consistency across frontend (user preference driven)
-- Release management automation (recovery workflows, version bump script)
-- SonarQube workflow artifact retrieval updated to fetch the latest completed run regardless of success or failure, ensuring failed workflow artifacts are accessible for diagnosis
-- **Investment Transaction Modal UI/UX Hardening (COMPLETED):** Fixed investment transactions to be proper two-sided movements with selectable debit account override
-  - Added `source_account_desc` to `InvestmentItem` and `PeriodInvestment`; `build_investment_tx` now debits source and credits linked account
-  - `InvestmentTxCreate` accepts optional `account_desc` for transaction-time account override; modal shows selectable "Debit Account" dropdown
-  - `account_delta_for_transaction` treats investments as proper two-sided movements
-  - Added Alembic migration `4bf1bf54b0bb` to add `source_account_desc` to investment items
-  - Cleaned up 17 orphaned incomplete investment transactions from production database and recalculated affected periods
-- **Dynamic Balance Limit Exceeded UX (COMPLETED):** Replaced HTTP 204 with `200 []` + `X-Balances-Limit-Exceeded: true` header, and added `balances_limit_exceeded` flag to `PeriodDetailOut`
-  - Frontend uses explicit flag instead of fragile heuristic for limit-exceeded banner
-- Fixed account detail text wrapping in `InvestmentSection.jsx` to prevent truncation
-- Fixed investment and expense budget totals on the period detail page so the total row correctly sums budgeted amounts rather than substituting actuals for paid lines
-- **Demo Data Update:** Seeded demo budget now covers cash-flow account routing, scheduled expenses (Fixed Day of Month and Every N Days), and AUTO/MANUAL payment types for realistic walkthroughs
+  - Investment transactions are proper two-sided movements with selectable debit account override
+- **Period Detail UI Unification (COMPLETED):** Unified table layouts, transfer income labels, and CSS alignment across Income, Expense, Investment, and Account Balances sections
+- **Demo Data Update:** Seeded demo budget now covers cash-flow account routing, scheduled expenses, and AUTO/MANUAL payment types for realistic walkthroughs
 
 **Active Focus Areas:**
-- Testing infrastructure hardening (all 155 backend tests passing, 176 frontend tests passing)
+- Budget Health refinement (personalisation behavior, evidence language, test coverage)
+- Testing infrastructure hardening (all 153 backend tests passing, 176 frontend tests passing)
 - Documentation framework compliance
 - Release process reliability
-- SonarQube maintainability follow-through (props validation, cognitive complexity, form-label accessibility)
+- SonarQube maintainability follow-through
 
 **Guardrails in Effect:**
 - Test-by-change discipline (tests with behavior changes)

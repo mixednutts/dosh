@@ -4,7 +4,57 @@ This document records meaningful automated test results from major working sessi
 
 It exists separately from [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) so the strategy can stay stable while future sessions still have a record of what was actually run and verified.
 
-## Latest Session: Investment Transaction Hardening, Dynamic Balance Limit UX, And Modal Polish
+## Latest Session: Budget Health Engine — Configurable Health System Implementation
+
+This session completed the transition from a fixed budget health implementation to a fully configurable Budget Health Engine with personalization framework, point-in-time snapshots, drill-down capabilities, and metric builder UI.
+
+### Verification
+
+```bash
+cd /home/ubuntu/dosh/backend
+.venv/bin/python -m pytest tests/ -q
+```
+
+Result:
+
+- Full backend suite: **153 passed**
+- No regressions introduced
+- Legacy `budget_health.py` tests removed; engine integration verified via `test_app_smoke.py`
+
+```bash
+cd /home/ubuntu/dosh/frontend
+CI=true npm test -- --watchAll=false --runInBand
+```
+
+Result:
+
+- Full frontend suite: **176 passed**
+- No regressions introduced
+
+### Deployment Verification
+
+```bash
+cd /home/ubuntu/dosh
+INCLUDE_OVERRIDE=true ./scripts/release_with_migrations.sh
+curl -sS http://127.0.0.1:3080/api/health
+```
+
+Result:
+
+- Backend container rebuilt and restarted successfully
+- Frontend container rebuilt and restarted successfully
+- Health endpoint returned `{"status":"ok","app":"Dosh"}`
+- Version endpoint returned `0.4.0-alpha`
+
+### Migration Verification
+
+- Alembic revision `7a8b9c0d1e2f` applied successfully (adds Budget Health Engine tables)
+- All existing budgets migrated to `BudgetHealthMatrix` instances with default matrices
+- Demo budget and test fixtures updated to seed engine catalogs and create default matrices automatically
+
+---
+
+## Previous Session: Investment Transaction Hardening, Dynamic Balance Limit UX, And Modal Polish
 
 This session hardened investment transactions into proper two-sided ledger movements, improved the dynamic balance limit-exceeded experience, and fixed small UI defects.
 

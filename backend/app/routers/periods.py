@@ -12,7 +12,6 @@ from fastapi import APIRouter, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 from ..api_docs import DbSession, error_responses
 from ..auto_expense import process_auto_expenses_for_period
-from ..budget_health import _build_current_period_check, _current_period_totals
 from ..cycle_constants import (
     ACTIVE,
     CARRIED_FORWARD_DESC,

@@ -305,6 +305,42 @@ Maintenance notes:
 
 - should remain focused on health design direction rather than become a duplicate implementation log
 
+### BUDGET_HEALTH_ENGINE_PLAN.md
+
+Document:
+
+- [BUDGET_HEALTH_ENGINE_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_HEALTH_ENGINE_PLAN.md)
+
+Document type:
+
+- domain or workflow plan
+
+Primary purpose:
+
+- define the complete Budget Health Engine architecture, data models, personalization framework, execution flow, and transition plan
+
+Primary source-of-truth scope:
+
+- health engine data models (HealthDataSource, HealthMetricTemplate, HealthScale, BudgetHealthMatrix, PeriodHealthResult, etc.)
+- three-knob design (personalisation, scoring sensitivity, matrix weight)
+- safe formula evaluation boundaries
+- engine execution flow and metric executor patterns
+- phase-by-phase transition plan from legacy to engine
+- rollback procedures for each phase
+
+Key relationships:
+
+- implements the configurable health direction from [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/docs/plans/BUDGET_HEALTH_ADDENDUM.md)
+- informs health-related roadmap work in [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md)
+- implementation recorded in [CHANGES.md](/home/ubuntu/dosh/docs/CHANGES.md)
+- referenced by [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) for engine test coverage expectations
+
+Maintenance notes:
+
+- should remain the canonical design reference for the Budget Health Engine implementation
+- should be updated when engine behavior or data models change materially
+- transition phase status should be kept current until all phases are complete
+
 ### CASH_MANAGEMENT_WORKFLOW_PLAN.md
 
 Document:

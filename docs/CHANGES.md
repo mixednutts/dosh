@@ -39,7 +39,48 @@ For the implemented Auto Expense workflow rules, scheduler behavior, migration e
 
 For the cash management workflow plan that defines generalised transfers, expense routing, investment tracking, and balance validation, read [CASH_MANAGEMENT_WORKFLOW_PLAN.md](/home/ubuntu/dosh/docs/plans/CASH_MANAGEMENT_WORKFLOW_PLAN.md).
 
-## Latest Session: Investment Transaction Hardening, Dynamic Balance Limit UX, And Modal Polish
+## Latest Session: Budget Health Engine — Configurable Health System Implementation
+
+This session completed the transition from a fixed budget health implementation to a fully configurable Budget Health Engine with personalization framework, point-in-time snapshots, drill-down capabilities, and metric builder UI.
+
+### What changed
+
+- **Budget Health Engine Architecture:**
+  - Created new `health_engine/` package with safe formula parser, data source executors, metric executors, runner, and period utilities.
+  - Implemented 11 new data models: `HealthDataSource`, `HealthMetricTemplate`, `HealthScale`, `BudgetHealthMatrix`, `BudgetHealthMatrixItem`, `BudgetMetricPersonalisation`, `PeriodHealthResult`, `BudgetHealthSummary`, `HealthPersonalisationDefinition`, `HealthMatrixTemplate`, and supporting relationship tables.
+  - Added Alembic migration `7a8b9c0d1e2f_add_budget_health_engine_tables.py` to create all engine tables.
+  - Implemented three-knob design: personalisation (threshold), scoring sensitivity (steepness), and matrix weight (importance).
+
+- **Engine Execution Layer:**
+  - Safe formula evaluation supporting `+`, `-`, `*`, `/`, parentheses, and data source references.
+  - Code-backed data source executors for `total_budgeted_income`, `total_budgeted_expenses`, `total_actual_expenses`, `future_period_count`, `historical_overrun_ratio`, `revised_line_count`, `live_period_surplus`, and `period_progress_ratio`.
+  - Code-backed metric executors for `setup_health`, `budget_discipline`, `planning_stability`, and `current_period_check`.
+  - Period health snapshot persistence for close-out workflows via `persist_period_health_snapshot()`.
+
+- **Frontend Migration:**
+  - Expanded `PersonalisationTab.jsx` to support matrix item management (enable/disable, weight, sensitivity).
+  - Added tone selector (`practical`/`clinical`) to budget settings and health evidence rendering.
+  - Added metric builder UI for creating custom metrics from available data sources.
+  - Updated `BudgetsPage.jsx` to consume engine health endpoint and render drill-down links in health modals.
+  - Updated `BudgetHealthModal` and `CurrentPeriodCheckModal` to render contextual drill-down links.
+
+- **Legacy Cleanup:**
+  - Removed legacy `budget_health.py` (665 lines) and associated tests (`test_budget_health_advanced.py`, `test_budget_health_matrix.py`).
+  - Redirected `/api/budgets/{id}/health` endpoint to use `evaluate_budget_health()` directly.
+  - Extracted still-needed closeout preview functions to `health_engine/closeout_health.py`.
+  - Added cascade-delete relationships in `models.py` for proper cleanup on budget deletion.
+  - Updated test fixtures and demo setup to seed engine catalogs and create default matrices.
+
+### Verification
+
+- Full backend suite: **153 passed**
+- Full frontend suite: **176 passed**
+- Docker Compose deployment via `scripts/release_with_migrations.sh` with `INCLUDE_OVERRIDE=true` completed successfully
+- Alembic migration `7a8b9c0d1e2f` applied successfully to the production database in the Docker container
+
+---
+
+## Previous Session: Investment Transaction Hardening, Dynamic Balance Limit UX, And Modal Polish
 
 This session hardened investment transactions into proper two-sided ledger movements, improved the dynamic balance limit-exceeded experience, and fixed small UI defects in the investment modal and table display.
 

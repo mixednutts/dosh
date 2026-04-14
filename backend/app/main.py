@@ -21,6 +21,7 @@ from .routers import (
     balance_types,
     investment_transactions,
     period_transactions,
+    health_matrices,
 )
 
 app = FastAPI(title="Dosh API", version=APP_VERSION)
@@ -43,6 +44,7 @@ app.include_router(balance_types.router, prefix="/api")
 app.include_router(balance_types.period_router, prefix="/api")
 app.include_router(investment_transactions.router, prefix="/api")
 app.include_router(period_transactions.router, prefix="/api")
+app.include_router(health_matrices.router, prefix="/api")
 
 
 @app.on_event("startup")

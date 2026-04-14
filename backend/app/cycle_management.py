@@ -6,7 +6,7 @@ from decimal import Decimal
 
 from sqlalchemy.orm import Session
 
-from .budget_health import _build_current_period_check, _current_period_totals
+from .health_engine.closeout_health import build_current_period_check, current_period_totals
 from .cycle_constants import (
     ACTIVE,
     CARRIED_FORWARD_DESC,
@@ -33,6 +33,7 @@ from .models import (
     PeriodInvestment,
     PeriodTransaction,
 )
+from .health_engine import persist_period_health_snapshot
 from .period_logic import calc_period_end, expense_occurs_in_period
 from .time_utils import app_now_naive, utc_now
 from .transaction_ledger import sync_period_state
@@ -106,7 +107,7 @@ def has_cycle_transactions(finperiodid: int, db: Session) -> bool:
 
 
 def carry_forward_amount_for_period(period: FinancialPeriod) -> Decimal:
-    totals = _current_period_totals(period)
+    totals = current_period_totals(period)
     return Decimal(str(totals["surplus_actual"])).quantize(Decimal("0.01"))
 
 
@@ -310,8 +311,8 @@ def build_closeout_preview(period: FinancialPeriod, budget: Budget, db: Session)
     sync_period_state(period.finperiodid, db)
     periods = ordered_budget_periods(period.budgetid, db)
     current, future, historical = lifecycle_groups(periods)
-    health = _build_current_period_check(budget, current or [period], future, historical)
-    totals = _current_period_totals(period)
+    health = build_current_period_check(budget, current or [period], future, historical)
+    totals = current_period_totals(period)
     next_period = next_period_for(period, db)
     return {
         "period": period,
@@ -358,6 +359,12 @@ def close_cycle(period: FinancialPeriod, budget: Budget, comments: str | None, g
     snapshot.carry_forward_amount = preview["carry_forward_amount"]
     snapshot.health_snapshot_json = json.dumps(preview["health"])
     snapshot.totals_snapshot_json = json.dumps(preview["totals"])
+
+    # Persist new engine health snapshot rows
+    from .models import BudgetHealthMatrix
+    matrix = db.query(BudgetHealthMatrix).filter_by(budgetid=budget.budgetid, is_active=True).first()
+    if matrix:
+        persist_period_health_snapshot(db, budget, period, matrix)
 
     recalculate_budget_chain(period.budgetid, db)
     return period, next_period

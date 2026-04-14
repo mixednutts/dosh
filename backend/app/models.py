@@ -45,6 +45,7 @@ class Budget(Base):
     auto_expense_offset_days = Column(Integer, nullable=False, default=0)
     record_line_status_changes = Column(Boolean, nullable=False, default=False)
     max_forward_balance_cycles = Column(Integer, nullable=False, default=10)
+    health_tone = Column(String, nullable=False, default="supportive")
 
     periods = relationship("FinancialPeriod", back_populates="budget", cascade="all, delete-orphan")
     income_types = relationship("IncomeType", back_populates="budget", cascade="all, delete-orphan")
@@ -52,6 +53,10 @@ class Budget(Base):
     investment_items = relationship("InvestmentItem", back_populates="budget", cascade="all, delete-orphan")
     balance_types = relationship("BalanceType", back_populates="budget", cascade="all, delete-orphan")
     setup_revision_events = relationship("SetupRevisionEvent", back_populates="budget", cascade="all, delete-orphan")
+    health_matrices = relationship("BudgetHealthMatrix", back_populates="budget", cascade="all, delete-orphan")
+    health_summaries = relationship("BudgetHealthSummary", back_populates="budget", cascade="all, delete-orphan")
+    health_metrics = relationship("HealthMetric", back_populates="budget", cascade="all, delete-orphan")
+    metric_personalisations = relationship("BudgetMetricPersonalisation", back_populates="budget", cascade="all, delete-orphan")
 
 
 class PayType(Base):
@@ -80,6 +85,7 @@ class FinancialPeriod(Base):
     period_investments = relationship("PeriodInvestment", back_populates="period", cascade="all, delete-orphan")
     period_transactions = relationship("PeriodTransaction", back_populates="period", cascade="all, delete-orphan")
     closeout_snapshot = relationship("PeriodCloseoutSnapshot", back_populates="period", uselist=False, cascade="all, delete-orphan")
+    health_results = relationship("PeriodHealthResult", back_populates="period", cascade="all, delete-orphan")
 
     @property
     def cycle_stage(self) -> str:
@@ -335,5 +341,181 @@ class SetupRevisionEvent(Base):
     created_at = Column(UTCDateTime, default=lambda: dt.now(timezone.utc), nullable=False)
 
     budget = relationship("Budget", back_populates="setup_revision_events")
+
+
+class HealthDataSource(Base):
+    __tablename__ = "healthdatasources"
+    source_key = Column(String, primary_key=True)
+    name = Column(String, nullable=False)
+    description = Column(Text)
+    version = Column(Integer, nullable=False, default=1)
+    executor_path = Column(String, nullable=False)
+    return_type = Column(String, nullable=False)
+    cache_ttl_seconds = Column(Integer, default=0)
+
+
+class HealthDataSourceParameter(Base):
+    __tablename__ = "healthdatasourceparameters"
+    source_key = Column(String, ForeignKey("healthdatasources.source_key"), primary_key=True)
+    param_name = Column(String, primary_key=True)
+    param_type = Column(String, nullable=False)
+    default_value = Column(Text, nullable=True)
+    is_required = Column(Boolean, default=True)
+
+
+class HealthScale(Base):
+    __tablename__ = "healthscales"
+    scale_key = Column(String, primary_key=True)
+    name = Column(String, nullable=False)
+    scale_type = Column(String, nullable=False)
+    min_value = Column(Numeric, nullable=True)
+    max_value = Column(Numeric, nullable=True)
+    step_value = Column(Numeric, nullable=True)
+    unit_label = Column(String, nullable=True)
+
+
+class HealthScaleOption(Base):
+    __tablename__ = "healthscaleoptions"
+    scale_key = Column(String, ForeignKey("healthscales.scale_key"), primary_key=True)
+    option_value = Column(String, primary_key=True)
+    option_label = Column(String, nullable=False)
+    option_order = Column(Integer, default=0)
+
+
+class HealthPersonalisationDefinition(Base):
+    __tablename__ = "healthpersonalisationdefinitions"
+    personalisation_key = Column(String, primary_key=True)
+    name = Column(String, nullable=False)
+    description = Column(Text)
+    scale_key = Column(String, ForeignKey("healthscales.scale_key"), nullable=False)
+    default_value_json = Column(Text, nullable=False, default="{}")
+
+
+class HealthMetricTemplate(Base):
+    __tablename__ = "healthmetrictemplates"
+    template_key = Column(String, primary_key=True)
+    name = Column(String, nullable=False)
+    description = Column(Text)
+    scope = Column(String, nullable=False)
+    formula_expression = Column(Text, nullable=False)
+    formula_data_sources_json = Column(Text, nullable=False)
+    default_personalisation_key = Column(String, ForeignKey("healthpersonalisationdefinitions.personalisation_key"), nullable=True)
+    scoring_logic_json = Column(Text, nullable=False)
+    evidence_template_json = Column(Text, nullable=False)
+    drill_down_enabled = Column(Boolean, default=False)
+    is_system = Column(Boolean, default=False)
+
+
+class HealthMetric(Base):
+    __tablename__ = "healthmetrics"
+    metric_id = Column(Integer, primary_key=True, autoincrement=True)
+    template_key = Column(String, ForeignKey("healthmetrictemplates.template_key"), nullable=True)
+    budgetid = Column(Integer, ForeignKey("budgets.budgetid"), nullable=True)
+    name = Column(String, nullable=False)
+    description = Column(Text)
+    scope = Column(String, nullable=False)
+    formula_expression = Column(Text, nullable=False)
+    formula_data_sources_json = Column(Text, nullable=False)
+    personalisation_key = Column(String, ForeignKey("healthpersonalisationdefinitions.personalisation_key"), nullable=True)
+    scoring_logic_json = Column(Text, nullable=False)
+    evidence_template_json = Column(Text, nullable=False)
+    drill_down_enabled = Column(Boolean, default=False)
+    created_at = Column(UTCDateTime, default=lambda: dt.now(timezone.utc))
+
+    budget = relationship("Budget", back_populates="health_metrics")
+    matrix_items = relationship("BudgetHealthMatrixItem", back_populates="metric", cascade="all, delete-orphan")
+    period_results = relationship("PeriodHealthResult", back_populates="metric", cascade="all, delete-orphan")
+    personalisations = relationship("BudgetMetricPersonalisation", back_populates="metric", cascade="all, delete-orphan")
+
+
+class HealthMatrixTemplate(Base):
+    __tablename__ = "healthmatrixtemplates"
+    template_key = Column(String, primary_key=True)
+    name = Column(String, nullable=False)
+    description = Column(Text)
+    is_system = Column(Boolean, default=False)
+
+
+class HealthMatrixTemplateItem(Base):
+    __tablename__ = "healthmatrixtemplateitems"
+    template_key = Column(String, ForeignKey("healthmatrixtemplates.template_key"), primary_key=True)
+    metric_template_key = Column(String, ForeignKey("healthmetrictemplates.template_key"), primary_key=True)
+    weight = Column(Numeric(5, 4), nullable=False)
+    display_order = Column(Integer, default=0)
+
+
+class BudgetHealthMatrix(Base):
+    __tablename__ = "budgethealthmatrices"
+    matrix_id = Column(Integer, primary_key=True, autoincrement=True)
+    budgetid = Column(Integer, ForeignKey("budgets.budgetid"), nullable=False, unique=True)
+    name = Column(String, nullable=False)
+    based_on_template_key = Column(String, ForeignKey("healthmatrixtemplates.template_key"), nullable=True)
+    cloned_from_matrix_id = Column(Integer, ForeignKey("budgethealthmatrices.matrix_id"), nullable=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(UTCDateTime, default=lambda: dt.now(timezone.utc))
+
+    budget = relationship("Budget", back_populates="health_matrices")
+    items = relationship("BudgetHealthMatrixItem", back_populates="matrix", cascade="all, delete-orphan")
+    period_results = relationship("PeriodHealthResult", back_populates="matrix")
+    summaries = relationship("BudgetHealthSummary", back_populates="matrix")
+
+
+class BudgetHealthMatrixItem(Base):
+    __tablename__ = "budgethealthmatrixitems"
+    matrix_id = Column(Integer, ForeignKey("budgethealthmatrices.matrix_id"), primary_key=True)
+    metric_id = Column(Integer, ForeignKey("healthmetrics.metric_id"), primary_key=True)
+    weight = Column(Numeric(5, 4), nullable=False)
+    scoring_sensitivity = Column(Integer, nullable=False, default=50)
+    display_order = Column(Integer, default=0)
+    is_enabled = Column(Boolean, default=True)
+
+    matrix = relationship("BudgetHealthMatrix", back_populates="items")
+    metric = relationship("HealthMetric", back_populates="matrix_items")
+
+
+class BudgetMetricPersonalisation(Base):
+    __tablename__ = "budgetmetricpersonalisations"
+    budgetid = Column(Integer, ForeignKey("budgets.budgetid"), primary_key=True)
+    metric_id = Column(Integer, ForeignKey("healthmetrics.metric_id"), primary_key=True)
+    personalisation_key = Column(String, ForeignKey("healthpersonalisationdefinitions.personalisation_key"), nullable=False)
+    value_json = Column(Text, nullable=False)
+    updated_at = Column(UTCDateTime, default=lambda: dt.now(timezone.utc))
+
+    budget = relationship("Budget", back_populates="metric_personalisations")
+    metric = relationship("HealthMetric", back_populates="personalisations")
+
+
+class PeriodHealthResult(Base):
+    __tablename__ = "periodhealthresults"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    finperiodid = Column(Integer, ForeignKey("financialperiods.finperiodid"), nullable=False)
+    matrix_id = Column(Integer, ForeignKey("budgethealthmatrices.matrix_id"), nullable=False)
+    metric_id = Column(Integer, ForeignKey("healthmetrics.metric_id"), nullable=False)
+    evaluated_at = Column(UTCDateTime, default=lambda: dt.now(timezone.utc))
+    score = Column(Integer, nullable=False)
+    status = Column(String, nullable=False)
+    summary = Column(Text, nullable=False)
+    evidence_json = Column(Text, nullable=False, default="[]")
+    drill_down_json = Column(Text, nullable=True)
+    is_snapshot = Column(Boolean, default=False)
+
+    period = relationship("FinancialPeriod", back_populates="health_results")
+    matrix = relationship("BudgetHealthMatrix", back_populates="period_results")
+    metric = relationship("HealthMetric", back_populates="period_results")
+
+
+class BudgetHealthSummary(Base):
+    __tablename__ = "budgethealthsummaries"
+    budgetid = Column(Integer, ForeignKey("budgets.budgetid"), primary_key=True)
+    matrix_id = Column(Integer, ForeignKey("budgethealthmatrices.matrix_id"), nullable=False)
+    evaluated_at = Column(UTCDateTime, default=lambda: dt.now(timezone.utc))
+    overall_score = Column(Integer, nullable=False)
+    overall_status = Column(String, nullable=False)
+    momentum_status = Column(String, nullable=False)
+    momentum_delta = Column(Integer, default=0)
+    metric_results_json = Column(Text, nullable=False, default="[]")
+
+    budget = relationship("Budget", back_populates="health_summaries")
+    matrix = relationship("BudgetHealthMatrix", back_populates="summaries")
 
 

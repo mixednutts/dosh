@@ -2,10 +2,30 @@
 
 ## Unreleased
 
-### Fixed
+## 0.4.0-alpha | released | 2026-04-14
 
-- Fixed critical bug where `PENDING_CLOSURE` periods were incorrectly treated as frozen anchors for dynamic balance calculation, causing account balances to display wildly incorrect values after a period's end date passed.
-- Fixed expense transaction modal not defaulting to the expense item's configured debit account (`default_account_desc`). The account dropdown now correctly initializes to the configured default instead of defaulting to the first account in the list.
+### Added
+
+- **Budget Health Engine**: Replaced the fixed health implementation with a fully configurable engine. Budget health is now driven by a metric matrix, safe formula evaluation, code-backed data sources, and per-metric executors.
+- **Health Personalisation Framework**: Added per-budget health matrices with `BudgetHealthMatrix`, `BudgetHealthMatrixItem`, and `BudgetMetricPersonalisation`. Each metric supports configurable thresholds, scoring sensitivity, and weight.
+- **Point-in-Time Health Snapshots**: Close-out now persists `PeriodHealthResult` snapshots so historical health meaning is preserved even when engine logic evolves.
+- **Health Tone Selection**: Budget settings now include a `health_tone` preference (`practical` or `clinical`) that shapes evidence language across the health surface.
+- **Drill-Down Links**: Health modals now render contextual drill-down links that navigate directly into relevant budget setup, period detail, or cycles pages.
+- **Custom Metric Builder**: The Personalisation tab now includes a metric builder UI that allows creating custom health metrics from available data sources.
+
+### Changed
+
+- The legacy `/api/budgets/{id}/health` endpoint now runs through the Budget Health Engine directly. The old fixed scoring implementation has been removed.
+- `PersonalisationTab.jsx` expanded to support matrix item management, tone selection, metric builder, and weight/sensitivity controls.
+
+### Engineering
+
+- Added Alembic migration `7a8b9c0d1e2f` for all Budget Health Engine tables (`HealthDataSource`, `HealthMetricTemplate`, `HealthScale`, `BudgetHealthMatrix`, `PeriodHealthResult`, and supporting entities).
+- Added `health_engine/` package with safe formula parser, data source executors, metric executors, runner, and period utilities.
+- Added `health_matrices.py` router for matrix and personalisation CRUD.
+- Legacy `budget_health.py` and associated legacy tests removed. Remaining closeout preview logic extracted to `health_engine/closeout_health.py`.
+- Demo budget and test factories updated to seed health engine catalogs and create default matrices automatically.
+- All backend tests passing (153). All frontend tests passing (176).
 
 ## 0.3.9-alpha | released | 2026-04-13
 

@@ -374,11 +374,36 @@ Roadmap alignment:
 
 - `Beta Release > Budget Health Engine`
 
-Budget health exists today, but it is intentionally an early slice rather than a finished scoring system.
+The fixed budget health implementation has been replaced with a configurable Budget Health Engine. The core engine, personalization framework, point-in-time snapshots, tone selection, drill-down links, and metric builder are now live.
 
 Reference:
 
+- [BUDGET_HEALTH_ENGINE_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_HEALTH_ENGINE_PLAN.md)
 - [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/docs/plans/BUDGET_HEALTH_ADDENDUM.md)
+
+#### Activity Group: Engine Foundation
+
+Status:
+
+- `Completed`
+
+- `Completed`: created 11 new data models for the Budget Health Engine (`HealthDataSource`, `HealthMetricTemplate`, `HealthScale`, `BudgetHealthMatrix`, `BudgetHealthMatrixItem`, `BudgetMetricPersonalisation`, `PeriodHealthResult`, `BudgetHealthSummary`, `HealthPersonalisationDefinition`, `HealthMatrixTemplate`, and supporting relationship tables)
+- `Completed`: added Alembic migration `7a8b9c0d1e2f_add_budget_health_engine_tables.py` and seeded catalogs (`HealthDataSource`, `HealthScale`, `HealthPersonalisationDefinition`)
+- `Completed`: migrated all existing budgets to `BudgetHealthMatrix` instances with default `Standard Budget Health` matrices
+- `Completed`: implemented safe formula parser and engine runner (`health_engine/runner.py`) supporting `+`, `-`, `*`, `/`, parentheses, and data source references
+- `Completed`: implemented code-backed data source executors and metric executors for the four core templates (`setup_health`, `budget_discipline`, `planning_stability`, `current_period_check`)
+- `Completed`: added `PeriodHealthResult` persistence for close-out workflows so historical health meaning is preserved when engine logic evolves
+
+#### Activity Group: Frontend Integration
+
+Status:
+
+- `Completed`
+
+- `Completed`: expanded `PersonalisationTab.jsx` to manage matrix items (enable/disable, weight, sensitivity) and custom metric creation
+- `Completed`: added `health_tone` selector (`practical`/`clinical`) to budget settings and health evidence rendering
+- `Completed`: updated `BudgetsPage.jsx` to consume the engine health endpoint and render contextual drill-down links in health modals
+- `Completed`: removed the legacy fixed health endpoint implementation and consolidated all health traffic through the engine
 
 #### Activity Group: Scoring and Momentum
 
@@ -399,9 +424,9 @@ Status:
 - `Next`
 
 - `Completed`: shift current-period planning stability away from required revision-comment capture by recording transaction line state and using off-plan activity history in budget health
+- `Completed`: align the overall budget health detail view with the dedicated current-period health check so the active-period story does not conflict between the two surfaces
 - refine current-period warning signals
 - prepare for close-out metrics integration
-- align the overall budget health detail view with the dedicated current-period health check so the active-period story does not conflict between the two surfaces
 
 #### Activity Group: Personalisation and Evidence Language
 
@@ -423,6 +448,7 @@ Status:
 - `Active`
 
 - `Completed`: update the demo seed to match the lighter revision workflow and the newer transaction-backed planning-history model
+- `Completed`: update the demo seed to create default health matrices and seed engine catalogs automatically
 - keep development and demo data realistic enough that health surfaces remain meaningful during walkthroughs and regression checks
 - keep the demo seed aligned with later budget-health scoring changes so walkthrough data does not become misleading or stale
 - `Completed`: update the rolling demo seed so new walkthroughs include `Closed`, multiple `Pending Closure`, `Current`, and `Planned` cycle stages together with transaction-direction and budget-adjustment examples
