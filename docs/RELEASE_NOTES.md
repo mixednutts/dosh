@@ -2,17 +2,19 @@
 
 ## Unreleased
 
-### Fixed
+### Changed
 
-- Fixed a reliability bug in the Budget Health Engine runner where a conditional returned the same value regardless of input type.
-- Improved form accessibility in the Personalisation tab by associating labels with their controls.
+- Removed legacy personalisation sliders from the Personalisation tab. Metric cards are now the single source of truth, with an inline View/Edit toggle for formula details and scale-aware personalisation controls.
+- Refactored `setup_health` and `current_period_check` metric executors to consume `formula_result` and `source_values` instead of querying the database directly.
+- Migrated closeout preview to use the Budget Health Engine directly, removing reliance on legacy `closeout_health.py`.
+- Updated `current_period_check` formula to `live_period_surplus + total_budgeted_income * 0` so income context is available to the executor without changing the computed value.
+- Aligned `health_tone` documentation with the implemented three-tone model (`supportive`, `factual`, `friendly`).
 
 ### Engineering
 
-- Added dedicated backend API regression coverage for health matrix CRUD and validation (`test_health_matrices.py`).
-- Expanded frontend test coverage for the health matrix personalisation UI (`PersonalisationTab.test.jsx`).
-- Expanded frontend API client regression coverage (`client.test.js`) for budget health helpers, period-critical workflows, and export filename parsing.
-- All backend tests passing (162). All frontend tests passing (200).
+- Added dedicated backend unit tests for the formula evaluator, metric executors, and runner (`test_health_engine.py`, 22 tests).
+- Updated lifecycle health snapshot test to verify historical closeout snapshots remain frozen after live personalisation changes.
+- All backend tests passing (184). All frontend tests passing (198).
 
 ## 0.4.0-alpha | released | 2026-04-14
 

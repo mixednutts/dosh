@@ -392,7 +392,10 @@ Status:
 - `Completed`: migrated all existing budgets to `BudgetHealthMatrix` instances with default `Standard Budget Health` matrices
 - `Completed`: implemented safe formula parser and engine runner (`health_engine/runner.py`) supporting `+`, `-`, `*`, `/`, parentheses, and data source references
 - `Completed`: implemented code-backed data source executors and metric executors for the four core templates (`setup_health`, `budget_discipline`, `planning_stability`, `current_period_check`)
+- `Completed`: refactored `setup_health` and `current_period_check` executors to consume `formula_result` and `source_values` instead of querying the database directly
+- `Completed`: updated `live_period_surplus` data source to include investments, aligning with closeout surplus calculation
 - `Completed`: added `PeriodHealthResult` persistence for close-out workflows so historical health meaning is preserved when engine logic evolves
+- `Completed`: migrated closeout preview to evaluate period health through the engine directly, removing dependence on legacy `closeout_health.py`
 
 #### Activity Group: Frontend Integration
 
@@ -400,8 +403,11 @@ Status:
 
 - `Completed`
 
+- `Completed`: removed legacy personalisation sliders from `PersonalisationTab.jsx` and embedded scale-aware personalisation controls directly into each metric card
+- `Completed`: added View/Edit toggle to metric cards with formula display and data-source badges
+- `Completed`: added `GET /budgets/{id}/health-matrix/definitions` endpoint to drive scale-aware personalisation UI controls
 - `Completed`: expanded `PersonalisationTab.jsx` to manage matrix items (enable/disable, weight, sensitivity) and custom metric creation
-- `Completed`: added `health_tone` selector (`practical`/`clinical`) to budget settings and health evidence rendering
+- `Completed`: added `health_tone` selector (`supportive`/`factual`/`friendly`) to budget settings and health evidence rendering
 - `Completed`: updated `BudgetsPage.jsx` to consume the engine health endpoint and render contextual drill-down links in health modals
 - `Completed`: removed the legacy fixed health endpoint implementation and consolidated all health traffic through the engine
 
@@ -421,25 +427,37 @@ Status:
 
 Status:
 
-- `Next`
+- `Completed`
 
 - `Completed`: shift current-period planning stability away from required revision-comment capture by recording transaction line state and using off-plan activity history in budget health
 - `Completed`: align the overall budget health detail view with the dedicated current-period health check so the active-period story does not conflict between the two surfaces
-- refine current-period warning signals
-- prepare for close-out metrics integration
+- `Completed`: refactored `current_period_check` executor to use `formula_result` (live period surplus) rather than re-querying period lines
+- `Completed`: migrated closeout preview health scoring to use the engine directly
 
 #### Activity Group: Personalisation and Evidence Language
 
 Status:
 
-- `Next`
+- `Completed`
 
+- `Completed`: removed legacy personalisation sliders and made metric cards the single source of truth for personalisation
+- `Completed`: fixed seed data scale for `revision_sensitivity`, `savings_priority`, and `period_criticality_bias` from `percentage_0_100` to `ten_scale_1_10`
+- `Completed`: added backend validation for personalisation values based on scale `min_value`/`max_value`
 - refine evidence language so it reads naturally in budget terms
 - test and refine personalised threshold behavior
 - make the interaction between deficit percentage and maximum deficit amount clearer
-- check whether remaining slider labels or helper text still feel abstract
 - decide whether some health evidence lines should mirror the personalisation wording more closely
 - keep the personalisation section lightweight rather than turning it into an intimidating settings panel
+
+#### Activity Group: Test Coverage
+
+Status:
+
+- `Completed`
+
+- `Completed`: added dedicated backend unit tests for formula evaluator, all four metric executors, executor registry, `evaluate_period_health`, and `evaluate_budget_health` (`test_health_engine.py`, 22 tests)
+- `Completed`: updated `test_lifecycle_and_health.py` to verify closeout health snapshots remain historical after live personalisation changes
+- `Completed`: updated `PersonalisationTab.test.jsx` to cover new View/Edit toggle, formula display, and scale-aware personalisation controls
 
 #### Activity Group: Demo Data Alignment
 

@@ -389,6 +389,7 @@ class HealthPersonalisationDefinition(Base):
     description = Column(Text)
     scale_key = Column(String, ForeignKey("healthscales.scale_key"), nullable=False)
     default_value_json = Column(Text, nullable=False, default="{}")
+    scale = relationship("HealthScale")
 
 
 class HealthMetricTemplate(Base):
@@ -517,5 +518,3 @@ class BudgetHealthSummary(Base):
 
     budget = relationship("Budget", back_populates="health_summaries")
     matrix = relationship("BudgetHealthMatrix", back_populates="summaries")
-
-

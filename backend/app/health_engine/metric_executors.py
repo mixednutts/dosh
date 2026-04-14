@@ -52,22 +52,17 @@ def execute_setup_health(
     personalisation_value: Decimal | None,
     scoring_sensitivity: int,
     tone: str,
+    source_values: dict[str, Decimal] | None = None,
 ) -> dict:
     """Executor for setup_health metric.
 
     Evaluates income sources, active expenses, and future period coverage.
     Scoring is based on presence of minimum required setup elements.
     """
-    from ..models import IncomeType, ExpenseItem, FinancialPeriod
-    from datetime import datetime, timezone
-
-    income_count = db.query(IncomeType).filter_by(budgetid=budget.budgetid).count()
-    expense_count = db.query(ExpenseItem).filter_by(budgetid=budget.budgetid, active=True).count()
-    now = datetime.now(timezone.utc)
-    future_periods = db.query(FinancialPeriod).filter(
-        FinancialPeriod.budgetid == budget.budgetid,
-        FinancialPeriod.startdate > now,
-    ).count()
+    source_values = source_values or {}
+    income_count = int(source_values.get("income_source_count", Decimal(0)))
+    expense_count = int(source_values.get("active_expense_count", Decimal(0)))
+    future_periods = int(source_values.get("future_period_count", Decimal(0)))
 
     # Setup health scoring: all three components needed for full score
     score = 0
@@ -118,6 +113,7 @@ def execute_budget_discipline(
     personalisation_value: Decimal | None,
     scoring_sensitivity: int,
     tone: str,
+    source_values: dict[str, Decimal] | None = None,
 ) -> dict:
     """Executor for budget_discipline metric.
 
@@ -173,6 +169,7 @@ def execute_planning_stability(
     personalisation_value: Decimal | None,
     scoring_sensitivity: int,
     tone: str,
+    source_values: dict[str, Decimal] | None = None,
 ) -> dict:
     """Executor for planning_stability metric.
 
@@ -226,28 +223,16 @@ def execute_current_period_check(
     personalisation_value: Decimal | None,
     scoring_sensitivity: int,
     tone: str,
+    source_values: dict[str, Decimal] | None = None,
 ) -> dict:
     """Executor for current_period_check metric.
 
-    Evaluates live-period surplus/deficit, timing, and revision pressure.
-    Formula result is (surplus / progress_ratio) — normalized surplus rate.
+    Evaluates live-period surplus/deficit against the user's threshold.
+    Formula result is live_period_surplus.
     """
-    from ..models import PeriodExpense, PeriodIncome
-    from datetime import datetime, timezone
+    from ..models import PeriodExpense
 
-    # Get actual current period data
-    current_period = period
-    if current_period is None:
-        now = datetime.now(timezone.utc)
-        from ..models import FinancialPeriod
-        current_period = db.query(FinancialPeriod).filter(
-            FinancialPeriod.budgetid == budget.budgetid,
-            FinancialPeriod.startdate <= now,
-            FinancialPeriod.enddate >= now,
-        ).first()
-
-    if current_period is None:
-        # No current period — return neutral score
+    if period is None:
         return {
             "score": 50,
             "status": HEALTH_WATCH,
@@ -256,13 +241,9 @@ def execute_current_period_check(
             "drill_down": [],
         }
 
-    # Calculate actual surplus
-    incomes = db.query(PeriodIncome).filter_by(finperiodid=current_period.finperiodid).all()
-    expenses = db.query(PeriodExpense).filter_by(finperiodid=current_period.finperiodid).all()
-
-    total_income = sum((i.budgetamount or Decimal(0)) for i in incomes)
-    total_expense = sum((e.budgetamount or Decimal(0)) for e in expenses)
-    surplus = total_income - total_expense
+    source_values = source_values or {}
+    surplus = formula_result
+    total_income = source_values.get("total_budgeted_income", Decimal(0))
 
     # Get max deficit threshold
     max_deficit = personalisation_value
@@ -296,6 +277,12 @@ def execute_current_period_check(
         "friendly": "Things are looking good this cycle — no red flags!" if score >= 80 else f"Running a bit tight at {surplus_str} — manageable but watch those spends!",
     }
 
+    # Query expenses for drill-down and expense evidence when db is available
+    expenses = []
+    if db is not None:
+        expenses = db.query(PeriodExpense).filter_by(finperiodid=period.finperiodid).all()
+    total_expense = sum((e.budgetamount or Decimal(0)) for e in expenses)
+
     evidence = [
         f"Period surplus: {surplus_str}",
         f"Budgeted income: ${total_income:.2f}",
@@ -309,7 +296,7 @@ def execute_current_period_check(
             drill_down.append({
                 "type": "period_expense",
                 "label": f"Over budget: {exp.expensedesc}",
-                "finperiodid": current_period.finperiodid,
+                "finperiodid": period.finperiodid,
                 "expensedesc": exp.expensedesc,
             })
 

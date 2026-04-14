@@ -5,88 +5,13 @@ import {
   updateBudget,
   getBudgetHealthMatrix,
   getHealthDataSources,
+  getHealthPersonalisationDefinitions,
   createCustomMetric,
   removeMatrixItem,
   updateMatrixItem,
   updateMetricPersonalisation,
 } from '../../api/client'
 import LocalizedAmountInput from '../../components/LocalizedAmountInput'
-
-const DEFAULTS = {
-  acceptable_expense_overrun_pct: 10,
-  comfortable_surplus_buffer_pct: 5,
-  maximum_deficit_amount: null,
-  revision_sensitivity: 50,
-  savings_priority: 50,
-  period_criticality_bias: 50,
-}
-
-const RANGE_MARKS = {
-  percent: [0, 25, 50, 75, 100],
-  ten: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-}
-
-const SLIDER_THUMB_WIDTH_PX = 20
-
-const SLIDERS = [
-  {
-    key: 'acceptable_expense_overrun_pct',
-    title: 'When would an expense going over budget start to feel uncomfortable?',
-    helper: 'This helps Dosh understand how much over-budget drift feels acceptable before it should affect the health checks.',
-    formatValue: value => `${value}% over budget`,
-    inputSuffix: '% over budget',
-    unitHint: 'Unit: percentage over budget',
-    leftLabel: 'A little drift is fine',
-    rightLabel: 'Flag it quickly',
-    scale: 'percent',
-  },
-  {
-    key: 'comfortable_surplus_buffer_pct',
-    title: 'At what point will a budget deficit start raising a budget health concern?',
-    helper: 'This setting tells Dosh how much deficit is acceptable before it becomes a budget health concern.',
-    formatValue: value => `${value}% deficit`,
-    inputSuffix: '% deficit',
-    unitHint: 'Unit: percentage deficit threshold',
-    leftLabel: 'Small deficits are okay',
-    rightLabel: 'Raise concern sooner',
-    scale: 'percent',
-  },
-  {
-    key: 'revision_sensitivity',
-    title: 'How quickly should repeated plan changes start to feel like a warning sign?',
-    helper: 'Higher sensitivity means revised expense lines will weigh more heavily in the health checks.',
-    formatValue: value => `${value}/10`,
-    inputSuffix: '/10',
-    unitHint: 'Unit: sensitivity score',
-    leftLabel: 'Flexible plan',
-    rightLabel: 'Stable plan matters',
-    scale: 'ten',
-  },
-  {
-    key: 'savings_priority',
-    title: 'How important is it to keep savings and investment contributions on track?',
-    helper: 'This helps Dosh decide how strongly missed or drifting savings activity should affect the health checks.',
-    formatValue: value => `${value}/10`,
-    inputSuffix: '/10',
-    unitHint: 'Unit: importance score',
-    leftLabel: 'Useful, but flexible',
-    rightLabel: 'Very important',
-    scale: 'ten',
-  },
-  {
-    key: 'period_criticality_bias',
-    title: 'When in the budget cycle should health issues escalate?',
-    helper: 'This helps Dosh decide whether issues should feel more important earlier in the budget cycle or closer to the finish line.',
-    formatValue: value => `${value}/10`,
-    inputSuffix: '/10',
-    unitHint: 'Unit: timing sensitivity across the budget cycle',
-    leftLabel: 'Earlier in the budget cycle',
-    rightLabel: 'Later in the budget cycle',
-    scale: 'ten',
-  },
-]
-
-const PERSONALISATION_KEYS = Object.keys(DEFAULTS)
 
 const TONE_OPTIONS = [
   { value: 'supportive', label: 'Supportive', description: 'Encouraging and gentle feedback' },
@@ -98,155 +23,145 @@ function formatApiError(error, fallback) {
   return error?.response?.data?.detail || fallback
 }
 
-function sliderTrackStyle(value) {
+function sliderTrackStyle(valuePercent) {
   return {
-    background: `linear-gradient(to right, rgb(13 148 136) 0%, rgb(13 148 136) ${value}%, rgb(229 231 235) ${value}%, rgb(229 231 235) 100%)`,
+    background: `linear-gradient(to right, rgb(13 148 136) 0%, rgb(13 148 136) ${valuePercent}%, rgb(229 231 235) ${valuePercent}%, rgb(229 231 235) 100%)`,
   }
 }
 
-function getDisplayValue(config, storedValue) {
-  if (config.scale === 'ten') {
-    return Math.max(1, Math.min(10, Math.round(storedValue / 10)))
-  }
-  return storedValue
-}
-
-function getStoredValue(config, displayValue) {
-  if (config.scale === 'ten') {
-    return Math.max(10, Math.min(100, Math.round(displayValue) * 10))
-  }
-  return Math.max(0, Math.min(100, Math.round(displayValue)))
-}
-
-function getSliderRange(config) {
-  if (config.scale === 'ten') {
-    return { min: 1, max: 10, step: 1, marks: RANGE_MARKS.ten }
-  }
-  return { min: 0, max: 100, step: 1, marks: RANGE_MARKS.percent }
-}
-
-function markerPositionStyle(valuePercent) {
-  const offsetPx = (SLIDER_THUMB_WIDTH_PX / 2) - ((SLIDER_THUMB_WIDTH_PX * valuePercent) / 100)
-  return {
-    left: `calc(${valuePercent}% + ${offsetPx}px)`,
-  }
-}
-
-function normaliseFormValue(value) {
-  if (value === null || value === undefined || value === '') return null
-  return String(value)
-}
-
-function CurrencyField({ value, onChange }) {
+function PercentSlider({ value, onChange, min = 0, max = 100, label, helper }) {
+  const clamped = Math.max(min, Math.min(max, value ?? min))
+  const percent = ((clamped - min) / (max - min)) * 100
   return (
-    <div className="mt-4 rounded-lg border border-dashed border-gray-300 bg-white/70 px-3 py-3 dark:border-gray-600 dark:bg-gray-900/40">
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <p className="text-sm font-medium text-gray-900 dark:text-gray-100">And / or maximum deficit amount</p>
-          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-            Enter the dollar amount where health issues should escalate. Entering 50 means the concern point is reached when surplus moves to -50.
-          </p>
-        </div>
-        <label className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-semibold text-dosh-700 shadow-sm dark:bg-gray-900 dark:text-dosh-300">
-          <LocalizedAmountInput
-            value={value === null || value === undefined ? '' : String(value)}
-            onChange={onChange}
-            min="0"
-            placeholder="Optional"
-            className="w-24 border-0 bg-transparent p-0 text-right text-xs font-semibold text-dosh-700 outline-none focus:ring-0 dark:text-dosh-300"
-            ariaLabel="Maximum deficit amount"
-          />
-        </label>
+    <div className="mt-2">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{label}</span>
+        <span className="text-xs font-semibold text-dosh-700 dark:text-dosh-300">{clamped}%</span>
+      </div>
+      {helper && <p className="text-[11px] text-gray-500 dark:text-gray-400">{helper}</p>}
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={1}
+        value={clamped}
+        onChange={e => onChange(Number(e.target.value))}
+        style={sliderTrackStyle(percent)}
+        className="mt-2 h-2 w-full cursor-pointer appearance-none rounded-lg bg-gray-200 accent-dosh-600 dark:bg-gray-700"
+        aria-label={label}
+      />
+    </div>
+  )
+}
+
+function TenScaleSlider({ value, onChange, label, helper }) {
+  const clamped = Math.max(1, Math.min(10, Math.round(value ?? 5)))
+  const percent = ((clamped - 1) / 9) * 100
+  return (
+    <div className="mt-2">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{label}</span>
+        <span className="text-xs font-semibold text-dosh-700 dark:text-dosh-300">{clamped}/10</span>
+      </div>
+      {helper && <p className="text-[11px] text-gray-500 dark:text-gray-400">{helper}</p>}
+      <input
+        type="range"
+        min={1}
+        max={10}
+        step={1}
+        value={clamped}
+        onChange={e => onChange(Number(e.target.value))}
+        style={sliderTrackStyle(percent)}
+        className="mt-2 h-2 w-full cursor-pointer appearance-none rounded-lg bg-gray-200 accent-dosh-600 dark:bg-gray-700"
+      />
+      <div className="mt-1 flex justify-between text-[10px] text-gray-400 dark:text-gray-500">
+        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(m => (
+          <span key={m}>{m}</span>
+        ))}
       </div>
     </div>
   )
 }
 
-function SliderField({ config, value, onChange, extraContent = null }) {
-  const { min, max, step, marks } = getSliderRange(config)
-  const displayValue = getDisplayValue(config, value)
-  const defaultDisplayValue = getDisplayValue(config, DEFAULTS[config.key])
-  const valuePercent = ((displayValue - min) / (max - min)) * 100
-  const defaultValuePercent = ((defaultDisplayValue - min) / (max - min)) * 100
-  const setTypedValue = nextValue => {
-    if (nextValue === '') return
-    const numericValue = Number(nextValue)
-    if (Number.isNaN(numericValue)) return
-    const clampedValue = Math.max(min, Math.min(max, Math.round(numericValue)))
-    onChange(config.key, getStoredValue(config, clampedValue))
-  }
-
+function CurrencyInput({ value, onChange, label, helper }) {
   return (
-    <div className="block rounded-xl border border-gray-200 bg-gray-50 px-4 py-4 dark:border-gray-700 dark:bg-gray-800/50">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{config.title}</p>
-          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">{config.helper}</p>
-          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{config.unitHint}</p>
-        </div>
-        <div className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-dosh-700 shadow-sm dark:bg-gray-900 dark:text-dosh-300">
-          <div className="flex items-center gap-1">
-            <input
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              value={displayValue}
-              onChange={e => setTypedValue(e.target.value)}
-              className="w-12 border-0 bg-transparent p-0 text-right text-xs font-semibold text-dosh-700 outline-none focus:ring-0 dark:text-dosh-300"
-              aria-label={config.title}
-            />
-            <span>{config.inputSuffix}</span>
-          </div>
-        </div>
+    <div className="mt-2">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{label}</span>
       </div>
-      <div className="mt-4">
-        <div className="relative">
-          <div className="pointer-events-none absolute inset-x-0 top-1/2 flex -translate-y-1/2 justify-between px-1">
-            {marks.map(mark => (
-              <span key={mark} className="h-3 w-px bg-gray-400/70 dark:bg-gray-500/70" />
-            ))}
-          </div>
-          <div
-            className="pointer-events-none absolute top-1/2 -translate-y-1/2 -translate-x-1/2"
-            style={markerPositionStyle(defaultValuePercent)}
-            title="Normal default"
-          >
-            <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] font-semibold uppercase tracking-wide text-dosh-700 dark:text-dosh-300">
-              Default
-            </span>
-            <span className="block h-5 w-0.5 bg-dosh-700 dark:bg-dosh-300" />
-          </div>
-          <input
-            type="range"
-            min={min}
-            max={max}
-            step={step}
-            value={displayValue}
-            onChange={e => onChange(config.key, getStoredValue(config, Number(e.target.value)))}
-            style={sliderTrackStyle(valuePercent)}
-            className="relative h-2 w-full cursor-pointer appearance-none rounded-lg bg-gray-200 accent-dosh-600 dark:bg-gray-700"
-          />
-        </div>
-        <div className="mt-2 flex items-center justify-between text-[11px] text-gray-400 dark:text-gray-500">
-          {marks.map(mark => (
-            <span key={mark}>{mark}</span>
-          ))}
-        </div>
-      </div>
-      <div className="mt-2 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-        <span>{config.leftLabel}</span>
-        <span>{config.rightLabel}</span>
-      </div>
-      {extraContent}
+      {helper && <p className="text-[11px] text-gray-500 dark:text-gray-400">{helper}</p>}
+      <label className="mt-2 inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-semibold text-dosh-700 shadow-sm dark:bg-gray-900 dark:text-dosh-300">
+        <LocalizedAmountInput
+          value={value === null || value === undefined ? '' : String(value)}
+          onChange={onChange}
+          min="0"
+          placeholder="Optional"
+          className="w-24 border-0 bg-transparent p-0 text-right text-xs font-semibold text-dosh-700 outline-none focus:ring-0 dark:text-dosh-300"
+          ariaLabel={label}
+        />
+      </label>
     </div>
   )
 }
 
-function MatrixItemCard({ item, onUpdate, onUpdatePersonalisation, onRemove, allowRemove }) {
+function PersonalisationControl({ scale, value, onChange }) {
+  if (!scale) {
+    return (
+      <input
+        type="text"
+        value={value === null || value === undefined ? '' : String(value)}
+        onChange={e => onChange(e.target.value)}
+        className="mt-2 w-full rounded-md border border-gray-300 px-2 py-1 text-sm dark:border-gray-600 dark:bg-gray-900"
+      />
+    )
+  }
+
+  if (scale.scale_type === 'money') {
+    return (
+      <CurrencyInput
+        value={value}
+        onChange={onChange}
+        label="Value"
+        helper={scale.unit_label ? `Unit: ${scale.unit_label}` : undefined}
+      />
+    )
+  }
+
+  if (scale.scale_type === 'integer_range' && scale.max_value === 10 && scale.min_value === 1) {
+    return (
+      <TenScaleSlider
+        value={value}
+        onChange={onChange}
+        label="Value"
+        helper={scale.unit_label ? `Unit: ${scale.unit_label}` : undefined}
+      />
+    )
+  }
+
+  return (
+    <PercentSlider
+      value={value}
+      onChange={onChange}
+      min={scale.min_value ?? 0}
+      max={scale.max_value ?? 100}
+      label="Value"
+      helper={scale.unit_label ? `Unit: ${scale.unit_label}` : undefined}
+    />
+  )
+}
+
+function MatrixItemCard({
+  item,
+  onUpdate,
+  onUpdatePersonalisation,
+  onRemove,
+  allowRemove,
+}) {
   const [localWeight, setLocalWeight] = useState(item.weight)
   const [localSensitivity, setLocalSensitivity] = useState(item.scoring_sensitivity)
   const [localEnabled, setLocalEnabled] = useState(item.is_enabled)
   const [localPers, setLocalPers] = useState(item.personalisation_value)
+  const [isExpanded, setIsExpanded] = useState(false)
 
   useEffect(() => {
     setLocalWeight(item.weight)
@@ -258,13 +173,13 @@ function MatrixItemCard({ item, onUpdate, onUpdatePersonalisation, onRemove, all
   const commitWeight = () => {
     const w = Math.max(0, Math.min(1, parseFloat(localWeight) || 0))
     setLocalWeight(w)
-    onUpdate({ weight: w })
+    if (w !== item.weight) onUpdate({ weight: w })
   }
 
   const commitSensitivity = () => {
     const s = Math.max(0, Math.min(100, Math.round(localSensitivity)))
     setLocalSensitivity(s)
-    onUpdate({ scoring_sensitivity: s })
+    if (s !== item.scoring_sensitivity) onUpdate({ scoring_sensitivity: s })
   }
 
   const commitEnabled = next => {
@@ -272,8 +187,9 @@ function MatrixItemCard({ item, onUpdate, onUpdatePersonalisation, onRemove, all
     onUpdate({ is_enabled: next })
   }
 
-  const commitPers = () => {
-    onUpdatePersonalisation({ personalisation_key: item.personalisation_key, value: localPers })
+  const commitPers = nextValue => {
+    setLocalPers(nextValue)
+    onUpdatePersonalisation({ personalisation_key: item.personalisation_key, value: nextValue })
   }
 
   const isCustom = !item.template_key
@@ -293,6 +209,13 @@ function MatrixItemCard({ item, onUpdate, onUpdatePersonalisation, onRemove, all
           <p className="text-xs text-gray-500 dark:text-gray-400">{item.description}</p>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setIsExpanded(v => !v)}
+            className="text-xs text-dosh-700 hover:text-dosh-800 dark:text-dosh-300 dark:hover:text-dosh-200"
+          >
+            {isExpanded ? 'Hide details' : 'View / Edit'}
+          </button>
           <label className="inline-flex cursor-pointer items-center gap-2">
             <input
               type="checkbox"
@@ -315,58 +238,78 @@ function MatrixItemCard({ item, onUpdate, onUpdatePersonalisation, onRemove, all
         </div>
       </div>
 
-      <div className="mt-3 grid gap-3 sm:grid-cols-2">
-        <div>
-          <label htmlFor={`weight-${item.metric_id}`} className="text-xs font-medium text-gray-600 dark:text-gray-300">Weight</label>
-          <div className="flex items-center gap-2">
-            <input
-              id={`weight-${item.metric_id}`}
-              type="range"
-              min={0}
-              max={1}
-              step={0.05}
-              value={localWeight}
-              onChange={e => setLocalWeight(Number.parseFloat(e.target.value))}
-              onMouseUp={commitWeight}
-              onKeyUp={commitWeight}
-              className="w-full accent-dosh-600"
-            />
-            <span className="w-12 text-right text-xs">{Math.round(localWeight * 100)}%</span>
+      {isExpanded && (
+        <div className="mt-4 border-t border-gray-100 pt-4 dark:border-gray-700">
+          <div className="mb-3">
+            <p className="text-xs font-medium text-gray-600 dark:text-gray-300">Formula</p>
+            <code className="mt-1 block rounded bg-gray-100 px-2 py-1 text-xs text-gray-800 dark:bg-gray-800 dark:text-gray-200">
+              {item.formula_expression}
+            </code>
+            {item.formula_data_sources_json?.length > 0 && (
+              <div className="mt-1 flex flex-wrap gap-1">
+                {item.formula_data_sources_json.map(ds => (
+                  <span
+                    key={ds}
+                    className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+                  >
+                    {ds}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
-        </div>
-        <div>
-          <label htmlFor={`sensitivity-${item.metric_id}`} className="text-xs font-medium text-gray-600 dark:text-gray-300">Scoring Sensitivity</label>
-          <div className="flex items-center gap-2">
-            <input
-              id={`sensitivity-${item.metric_id}`}
-              type="range"
-              min={0}
-              max={100}
-              step={1}
-              value={localSensitivity}
-              onChange={e => setLocalSensitivity(Number.parseInt(e.target.value, 10))}
-              onMouseUp={commitSensitivity}
-              onKeyUp={commitSensitivity}
-              className="w-full accent-dosh-600"
-            />
-            <span className="w-8 text-right text-xs">{localSensitivity}</span>
-          </div>
-        </div>
-      </div>
 
-      {item.personalisation_key && (
-        <div className="mt-3">
-          <label htmlFor={`pers-${item.metric_id}`} className="text-xs font-medium text-gray-600 dark:text-gray-300">Personalisation ({item.personalisation_key})</label>
-          <div className="flex items-center gap-2">
-            <input
-              id={`pers-${item.metric_id}`}
-              type="text"
-              value={localPers === null || localPers === undefined ? '' : String(localPers)}
-              onChange={e => setLocalPers(e.target.value)}
-              onBlur={commitPers}
-              className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm dark:border-gray-600 dark:bg-gray-900"
-            />
+          <div className="mb-3 grid gap-3 sm:grid-cols-2">
+            <div>
+              <label htmlFor={`weight-${item.metric_id}`} className="text-xs font-medium text-gray-600 dark:text-gray-300">Weight</label>
+              <div className="flex items-center gap-2">
+                <input
+                  id={`weight-${item.metric_id}`}
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.05}
+                  value={localWeight}
+                  onChange={e => setLocalWeight(Number.parseFloat(e.target.value))}
+                  onMouseUp={commitWeight}
+                  onKeyUp={commitWeight}
+                  className="w-full accent-dosh-600"
+                />
+                <span className="w-12 text-right text-xs">{Math.round(localWeight * 100)}%</span>
+              </div>
+            </div>
+            <div>
+              <label htmlFor={`sensitivity-${item.metric_id}`} className="text-xs font-medium text-gray-600 dark:text-gray-300">Scoring Sensitivity</label>
+              <div className="flex items-center gap-2">
+                <input
+                  id={`sensitivity-${item.metric_id}`}
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={localSensitivity}
+                  onChange={e => setLocalSensitivity(Number.parseInt(e.target.value, 10))}
+                  onMouseUp={commitSensitivity}
+                  onKeyUp={commitSensitivity}
+                  className="w-full accent-dosh-600"
+                />
+                <span className="w-8 text-right text-xs">{localSensitivity}</span>
+              </div>
+            </div>
           </div>
+
+          {item.personalisation_key && (
+            <div className="rounded-md border border-gray-200 bg-gray-50/50 p-3 dark:border-gray-700 dark:bg-gray-800/40">
+              <p className="text-xs font-medium text-gray-700 dark:text-gray-200">
+                Personalisation: {item.personalisation_key}
+              </p>
+              <PersonalisationControl
+                scale={item.personalisation_scale}
+                value={localPers}
+                onChange={commitPers}
+              />
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -394,7 +337,6 @@ function MetricBuilderCard({ dataSources, onCreate, onCancel }) {
       return
     }
 
-    // Extract data sources from formula
     const sourceKeys = dataSources.map(ds => ds.source_key)
     const usedSources = sourceKeys.filter(key => trimmedFormula.includes(key))
 
@@ -522,28 +464,6 @@ function MetricBuilderCard({ dataSources, onCreate, onCancel }) {
 
 export default function PersonalisationTab({ budgetId, budget }) {
   const qc = useQueryClient()
-  const [form, setForm] = useState(DEFAULTS)
-
-  useEffect(() => {
-    if (!budget) return
-    setForm({
-      acceptable_expense_overrun_pct: budget.acceptable_expense_overrun_pct ?? DEFAULTS.acceptable_expense_overrun_pct,
-      comfortable_surplus_buffer_pct: budget.comfortable_surplus_buffer_pct ?? DEFAULTS.comfortable_surplus_buffer_pct,
-      maximum_deficit_amount: budget.maximum_deficit_amount ?? DEFAULTS.maximum_deficit_amount,
-      revision_sensitivity: budget.revision_sensitivity ?? DEFAULTS.revision_sensitivity,
-      savings_priority: budget.savings_priority ?? DEFAULTS.savings_priority,
-      period_criticality_bias: budget.period_criticality_bias ?? DEFAULTS.period_criticality_bias,
-    })
-  }, [budget])
-
-  const savePersonalisation = useMutation({
-    mutationFn: data => updateBudget(budgetId, data),
-    onSuccess: data => {
-      qc.setQueryData(['budget', budgetId], data)
-      qc.invalidateQueries({ queryKey: ['budgets'] })
-      qc.invalidateQueries({ queryKey: ['budget-health', budgetId] })
-    },
-  })
 
   const matrixQuery = useQuery({
     queryKey: ['health-matrix', budgetId],
@@ -554,6 +474,12 @@ export default function PersonalisationTab({ budgetId, budget }) {
   const dataSourcesQuery = useQuery({
     queryKey: ['health-data-sources', budgetId],
     queryFn: () => getHealthDataSources(budgetId),
+    enabled: !!budgetId,
+  })
+
+  const definitionsQuery = useQuery({
+    queryKey: ['health-definitions', budgetId],
+    queryFn: () => getHealthPersonalisationDefinitions(budgetId),
     enabled: !!budgetId,
   })
 
@@ -589,40 +515,15 @@ export default function PersonalisationTab({ budgetId, budget }) {
     },
   })
 
+  const saveTone = useMutation({
+    mutationFn: tone => updateBudget(budgetId, { health_tone: tone }),
+    onSuccess: data => {
+      qc.setQueryData(['budget', budgetId], data)
+      qc.invalidateQueries({ queryKey: ['budgets'] })
+    },
+  })
+
   const [showMetricBuilder, setShowMetricBuilder] = useState(false)
-
-  const setValue = (key, value) => {
-    setForm(current => ({ ...current, [key]: value }))
-  }
-
-  const setMaximumDeficitAmount = nextValue => {
-    const trimmedValue = nextValue.trim()
-    if (trimmedValue === '') {
-      setValue('maximum_deficit_amount', null)
-      return
-    }
-    setValue('maximum_deficit_amount', trimmedValue)
-  }
-
-  useEffect(() => {
-    if (!budget) return
-    const hasChanges = PERSONALISATION_KEYS.some(
-      key => normaliseFormValue(form[key]) !== normaliseFormValue(budget[key] ?? DEFAULTS[key])
-    )
-    if (!hasChanges) return
-    const timeoutId = globalThis.setTimeout(() => {
-      savePersonalisation.mutate(form)
-    }, 400)
-    return () => globalThis.clearTimeout(timeoutId)
-  }, [budget, form, savePersonalisation])
-
-  const resetDefaults = () => {
-    setForm(DEFAULTS)
-  }
-
-  const handleToneChange = tone => {
-    savePersonalisation.mutate({ health_tone: tone })
-  }
 
   const handleCreateMetric = async data => {
     await createCustomMetricMutation.mutateAsync(data)
@@ -631,48 +532,6 @@ export default function PersonalisationTab({ budgetId, budget }) {
 
   return (
     <div className="max-w-3xl space-y-6">
-      {/* Legacy Personalisation Sliders */}
-      <div className="card p-5">
-        <h3 className="mb-2 font-semibold text-gray-800 dark:text-gray-100">Personalisation</h3>
-        <p className="mb-4 text-sm text-gray-500 dark:text-gray-400">
-          Help Dosh understand what matters most to you. These preferences gently tune the health checks so the warnings feel more relevant to how you budget.
-        </p>
-        <p className="mb-4 text-xs text-gray-500 dark:text-gray-400">
-          The darker marker on each slider shows the normal default. Percentage controls stay in percentage units, while the preference controls use a simpler 1 to 10 scale.
-        </p>
-
-        <div className="space-y-4">
-          {SLIDERS.map(config => (
-            <SliderField
-              key={config.key}
-              config={config}
-              value={form[config.key]}
-              onChange={setValue}
-              extraContent={
-                config.key === 'comfortable_surplus_buffer_pct' ? (
-                  <CurrencyField
-                    value={form.maximum_deficit_amount}
-                    onChange={setMaximumDeficitAmount}
-                  />
-                ) : null
-              }
-            />
-          ))}
-        </div>
-
-        <div className="mt-5 flex flex-wrap justify-end gap-2">
-          <button type="button" className="btn-secondary" onClick={resetDefaults}>
-            Reset to Defaults
-          </button>
-        </div>
-
-        {savePersonalisation.isError && (
-          <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300">
-            {formatApiError(savePersonalisation.error, 'Unable to save personalisation right now.')}
-          </div>
-        )}
-      </div>
-
       {/* Tone Selector */}
       <div className="card p-5">
         <h3 className="mb-2 font-semibold text-gray-800 dark:text-gray-100">Health Tone</h3>
@@ -684,7 +543,7 @@ export default function PersonalisationTab({ budgetId, budget }) {
             <button
               key={opt.value}
               type="button"
-              onClick={() => handleToneChange(opt.value)}
+              onClick={() => saveTone.mutate(opt.value)}
               className={`rounded-lg border px-3 py-3 text-left transition-colors ${
                 (budget?.health_tone || 'supportive') === opt.value
                   ? 'border-dosh-500 bg-dosh-50 dark:border-dosh-400 dark:bg-dosh-950/30'
@@ -755,38 +614,59 @@ export default function PersonalisationTab({ budgetId, budget }) {
   )
 }
 
-CurrencyField.propTypes = {
-  value: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+PercentSlider.propTypes = {
+  value: PropTypes.number,
   onChange: PropTypes.func.isRequired,
+  min: PropTypes.number,
+  max: PropTypes.number,
+  label: PropTypes.string,
+  helper: PropTypes.string,
 }
 
-SliderField.propTypes = {
-  config: PropTypes.shape({
-    key: PropTypes.string.isRequired,
-    title: PropTypes.string.isRequired,
-    helper: PropTypes.string.isRequired,
-    inputSuffix: PropTypes.string.isRequired,
-    unitHint: PropTypes.string.isRequired,
-    leftLabel: PropTypes.string.isRequired,
-    rightLabel: PropTypes.string.isRequired,
-    scale: PropTypes.oneOf(['percent', 'ten']).isRequired,
-  }).isRequired,
-  value: PropTypes.number.isRequired,
+TenScaleSlider.propTypes = {
+  value: PropTypes.number,
   onChange: PropTypes.func.isRequired,
-  extraContent: PropTypes.node,
+  label: PropTypes.string,
+  helper: PropTypes.string,
+}
+
+CurrencyInput.propTypes = {
+  value: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  onChange: PropTypes.func.isRequired,
+  label: PropTypes.string,
+  helper: PropTypes.string,
+}
+
+PersonalisationControl.propTypes = {
+  scale: PropTypes.shape({
+    scale_type: PropTypes.string,
+    min_value: PropTypes.number,
+    max_value: PropTypes.number,
+    unit_label: PropTypes.string,
+  }),
+  value: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  onChange: PropTypes.func.isRequired,
 }
 
 MatrixItemCard.propTypes = {
   item: PropTypes.shape({
     metric_id: PropTypes.number.isRequired,
+    template_key: PropTypes.string,
     name: PropTypes.string.isRequired,
     description: PropTypes.string,
+    formula_expression: PropTypes.string,
+    formula_data_sources_json: PropTypes.arrayOf(PropTypes.string),
     weight: PropTypes.number.isRequired,
     scoring_sensitivity: PropTypes.number.isRequired,
     is_enabled: PropTypes.bool.isRequired,
     personalisation_key: PropTypes.string,
     personalisation_value: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
-    template_key: PropTypes.string,
+    personalisation_scale: PropTypes.shape({
+      scale_type: PropTypes.string,
+      min_value: PropTypes.number,
+      max_value: PropTypes.number,
+      unit_label: PropTypes.string,
+    }),
   }).isRequired,
   onUpdate: PropTypes.func.isRequired,
   onUpdatePersonalisation: PropTypes.func.isRequired,
@@ -808,12 +688,6 @@ MetricBuilderCard.propTypes = {
 PersonalisationTab.propTypes = {
   budgetId: PropTypes.number.isRequired,
   budget: PropTypes.shape({
-    acceptable_expense_overrun_pct: PropTypes.number,
-    comfortable_surplus_buffer_pct: PropTypes.number,
-    maximum_deficit_amount: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
-    revision_sensitivity: PropTypes.number,
-    savings_priority: PropTypes.number,
-    period_criticality_bias: PropTypes.number,
     health_tone: PropTypes.string,
   }),
 }

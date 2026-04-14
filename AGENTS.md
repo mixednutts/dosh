@@ -206,10 +206,11 @@ For document changes, follow [DOCUMENTATION_FRAMEWORK.md](./docs/DOCUMENTATION_F
 
 ## Current Project State (Snapshot)
 
-**Version:** 0.4.0-alpha
+**Version:** 0.4.1-alpha
 **Schema Revisions:** d3091a75b8ff, e4f5a6b7c8d9, f1a2b3c4d5e6, b10a29f14a8f, 559cbaa1dce7, 4bf1bf54b0bb, 7a8b9c0d1e2f
 
 **Recent Work:**
+- **Budget Health Engine Refinement (COMPLETED):** Removed legacy personalisation sliders and made metric cards the single source of truth with scale-aware View/Edit controls; refactored `setup_health` and `current_period_check` executors to consume `formula_result` instead of querying the DB directly; migrated closeout preview to use the health engine directly
 - **Budget Health Engine (COMPLETED):** Transitioned from fixed health implementation to a fully configurable Budget Health Engine
   - Added 11 new data models (`HealthDataSource`, `HealthMetricTemplate`, `HealthScale`, `BudgetHealthMatrix`, `BudgetHealthMatrixItem`, `BudgetMetricPersonalisation`, `PeriodHealthResult`, `BudgetHealthSummary`, `HealthPersonalisationDefinition`, `HealthMatrixTemplate`, and supporting tables)
   - Implemented safe formula parser and engine runner (`health_engine/runner.py`) supporting `+`, `-`, `*`, `/`, parentheses, and data source references
@@ -217,7 +218,7 @@ For document changes, follow [DOCUMENTATION_FRAMEWORK.md](./docs/DOCUMENTATION_F
   - Added `PeriodHealthResult` persistence so close-out workflows preserve historical health meaning when engine logic evolves
   - Migrated all existing budgets to `BudgetHealthMatrix` instances with default `Standard Budget Health` matrices
   - Removed legacy `budget_health.py` and consolidated all health traffic through the engine
-  - Added `health_tone` selector (`practical`/`clinical`) to budget settings and health evidence rendering
+  - Added `health_tone` selector (`supportive`/`factual`/`friendly`) to budget settings and health evidence rendering
   - Expanded `PersonalisationTab.jsx` to manage matrix items (enable/disable, weight, sensitivity) and custom metric creation
   - Updated `BudgetsPage.jsx` to consume engine health endpoint and render contextual drill-down links in health modals
   - Created Alembic migration `7a8b9c0d1e2f` for all engine tables; deployed successfully to local Docker with override
@@ -239,7 +240,7 @@ For document changes, follow [DOCUMENTATION_FRAMEWORK.md](./docs/DOCUMENTATION_F
 
 **Active Focus Areas:**
 - Budget Health refinement (personalisation behavior, evidence language, test coverage)
-- Testing infrastructure hardening (all 153 backend tests passing, 176 frontend tests passing)
+- Testing infrastructure hardening (all 184 backend tests passing, 198 frontend tests passing)
 - Documentation framework compliance
 - Release process reliability
 - SonarQube maintainability follow-through

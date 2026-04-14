@@ -90,10 +90,17 @@ def revised_line_count(db: Session, finperiodid: int) -> int:
     return expense_revisions + income_revisions
 
 
+def total_budgeted_investments(db: Session, finperiodid: int) -> Decimal:
+    from app.models import PeriodInvestment
+    result = db.query(PeriodInvestment).filter_by(finperiodid=finperiodid).all()
+    return sum((r.budgeted_amount or Decimal(0)) for r in result)
+
+
 def live_period_surplus(db: Session, finperiodid: int) -> Decimal:
     income = total_budgeted_income(db, finperiodid)
     expenses = total_budgeted_expenses(db, finperiodid)
-    return income - expenses
+    investments = total_budgeted_investments(db, finperiodid)
+    return income - expenses - investments
 
 
 def period_progress_ratio(db: Session, finperiodid: int) -> Decimal:

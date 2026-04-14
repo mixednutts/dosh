@@ -23,12 +23,6 @@ const api = axios.create()
 
 describe('PersonalisationTab', () => {
   const budget = {
-    acceptable_expense_overrun_pct: 10,
-    comfortable_surplus_buffer_pct: 5,
-    maximum_deficit_amount: null,
-    revision_sensitivity: 50,
-    savings_priority: 50,
-    period_criticality_bias: 50,
     health_tone: 'supportive',
   }
 
@@ -43,12 +37,15 @@ describe('PersonalisationTab', () => {
         name: 'Setup Health',
         description: 'Checks whether budget setup is complete.',
         scope: 'OVERALL',
+        formula_expression: 'income_source_count + active_expense_count',
+        formula_data_sources_json: ['income_source_count', 'active_expense_count'],
         weight: 0.2,
         scoring_sensitivity: 50,
         is_enabled: true,
         display_order: 0,
         personalisation_key: null,
         personalisation_value: null,
+        personalisation_scale: null,
       },
       {
         metric_id: 102,
@@ -56,12 +53,21 @@ describe('PersonalisationTab', () => {
         name: 'Custom Metric',
         description: 'A user-built metric.',
         scope: 'CURRENT_PERIOD',
+        formula_expression: 'total_budgeted_income / total_budgeted_expenses',
+        formula_data_sources_json: ['total_budgeted_income', 'total_budgeted_expenses'],
         weight: 0.15,
         scoring_sensitivity: 30,
         is_enabled: true,
         display_order: 1,
         personalisation_key: 'threshold',
         personalisation_value: 0.8,
+        personalisation_scale: {
+          scale_key: 'percentage_0_100',
+          scale_type: 'integer_range',
+          min_value: 0,
+          max_value: 100,
+          unit_label: '%',
+        },
       },
     ],
   }
@@ -81,6 +87,9 @@ describe('PersonalisationTab', () => {
           ],
         })
       }
+      if (url === '/budgets/1/health-matrix/definitions') {
+        return Promise.resolve({ data: [] })
+      }
       return Promise.resolve({ data: {} })
     })
     api.patch.mockResolvedValue({ data: { budgetid: 1, ...budget } })
@@ -95,70 +104,16 @@ describe('PersonalisationTab', () => {
     jest.useRealTimers()
   })
 
-  it('renders budget-backed values and resets back to defaults', async () => {
-    const customBudget = {
-      ...budget,
-      acceptable_expense_overrun_pct: 15,
-      comfortable_surplus_buffer_pct: 20,
-      maximum_deficit_amount: 75,
-    }
-
-    renderWithProviders(<PersonalisationTab budgetId={1} budget={customBudget} />)
-
-    const overrunInput = screen.getByLabelText('When would an expense going over budget start to feel uncomfortable?')
-    const deficitInput = screen.getByLabelText('At what point will a budget deficit start raising a budget health concern?')
-    const amountInput = screen.getByLabelText('Maximum deficit amount')
-
-    expect(overrunInput.value).toBe('15')
-    expect(deficitInput.value).toBe('20')
-    expect(amountInput.value).toBe('75.00')
-
-    fireEvent.click(screen.getByRole('button', { name: 'Reset to Defaults' }))
-
-    expect(overrunInput.value).toBe('10')
-    expect(deficitInput.value).toBe('5')
-    expect(amountInput.value).toBe('')
-  })
-
-  it('autosaves meaningful changes and ignores invalid maximum deficit input', async () => {
+  it('renders tone selector and allows changing tone', async () => {
     renderWithProviders(<PersonalisationTab budgetId={1} budget={budget} />)
 
-    const amountInput = screen.getByLabelText('Maximum deficit amount')
-    fireEvent.change(amountInput, { target: { value: '12.345' } })
-    expect(amountInput.value).toBe('12.35')
+    expect(await screen.findByText('Health Tone')).toBeTruthy()
+    expect(screen.getByText('Supportive')).toBeTruthy()
 
-    await act(async () => {
-      jest.advanceTimersByTime(450)
-    })
-
+    fireEvent.click(screen.getByText('Factual'))
     await waitFor(() => {
-      expect(api.patch).toHaveBeenCalledWith('/budgets/1', expect.objectContaining({
-        maximum_deficit_amount: '12.35',
-      }))
+      expect(api.patch).toHaveBeenCalledWith('/budgets/1', { health_tone: 'factual' })
     })
-  })
-
-  it('shows the save error message when autosave fails', async () => {
-    api.patch.mockRejectedValue({
-      response: {
-        data: {
-          detail: 'Unable to save preferences right now.',
-        },
-      },
-    })
-
-    renderWithProviders(<PersonalisationTab budgetId={1} budget={budget} />)
-
-    fireEvent.change(
-      screen.getByLabelText('How quickly should repeated plan changes start to feel like a warning sign?'),
-      { target: { value: '8' } }
-    )
-
-    await act(async () => {
-      jest.advanceTimersByTime(450)
-    })
-
-    expect(await screen.findByText('Unable to save preferences right now.')).toBeTruthy()
   })
 
   it('loads and displays the health matrix with items', async () => {
@@ -182,13 +137,28 @@ describe('PersonalisationTab', () => {
     })
   })
 
+  it('allows expanding metric card to view details', async () => {
+    renderWithProviders(<PersonalisationTab budgetId={1} budget={budget} />)
+
+    await screen.findByText('Setup Health')
+    const viewEditButtons = screen.getAllByRole('button', { name: 'View / Edit' })
+    expect(viewEditButtons.length).toBe(2)
+
+    fireEvent.click(viewEditButtons[0])
+    expect(await screen.findByText('Formula')).toBeTruthy()
+    expect(screen.getByText('income_source_count + active_expense_count')).toBeTruthy()
+  })
+
   it('allows changing the weight of a matrix item', async () => {
     renderWithProviders(<PersonalisationTab budgetId={1} budget={budget} />)
 
     await screen.findByText('Setup Health')
-    const weightInputs = screen.getAllByLabelText('Weight')
-    fireEvent.change(weightInputs[0], { target: { value: '0.5' } })
-    fireEvent.mouseUp(weightInputs[0])
+    const viewEditButtons = screen.getAllByRole('button', { name: 'View / Edit' })
+    fireEvent.click(viewEditButtons[0])
+
+    const weightInput = await screen.findByLabelText('Weight')
+    fireEvent.change(weightInput, { target: { value: '0.5' } })
+    fireEvent.mouseUp(weightInput)
 
     await waitFor(() => {
       expect(api.patch).toHaveBeenCalledWith('/budgets/1/health-matrix/items/101', expect.objectContaining({ weight: 0.5 }))
@@ -199,9 +169,12 @@ describe('PersonalisationTab', () => {
     renderWithProviders(<PersonalisationTab budgetId={1} budget={budget} />)
 
     await screen.findByText('Setup Health')
-    const sensitivityInputs = screen.getAllByLabelText('Scoring Sensitivity')
-    fireEvent.change(sensitivityInputs[0], { target: { value: '75' } })
-    fireEvent.mouseUp(sensitivityInputs[0])
+    const viewEditButtons = screen.getAllByRole('button', { name: 'View / Edit' })
+    fireEvent.click(viewEditButtons[0])
+
+    const sensitivityInput = await screen.findByLabelText('Scoring Sensitivity')
+    fireEvent.change(sensitivityInput, { target: { value: '75' } })
+    fireEvent.mouseUp(sensitivityInput)
 
     await waitFor(() => {
       expect(api.patch).toHaveBeenCalledWith('/budgets/1/health-matrix/items/101', expect.objectContaining({ scoring_sensitivity: 75 }))
@@ -212,14 +185,20 @@ describe('PersonalisationTab', () => {
     renderWithProviders(<PersonalisationTab budgetId={1} budget={budget} />)
 
     await screen.findByText('Custom Metric')
-    const persInput = screen.getByLabelText('Personalisation (threshold)')
-    fireEvent.change(persInput, { target: { value: '0.95' } })
-    fireEvent.blur(persInput)
+    const viewEditButtons = screen.getAllByRole('button', { name: 'View / Edit' })
+    fireEvent.click(viewEditButtons[1])
+
+    const persLabel = await screen.findByText('Personalisation: threshold')
+    expect(persLabel).toBeTruthy()
+
+    // The percentage slider should be visible
+    const slider = screen.getByLabelText('Value')
+    fireEvent.change(slider, { target: { value: '95' } })
 
     await waitFor(() => {
       expect(api.patch).toHaveBeenCalledWith('/budgets/1/health-matrix/personalisation/102', {
         personalisation_key: 'threshold',
-        value: '0.95',
+        value: 95,
       })
     })
   })
@@ -299,22 +278,21 @@ describe('PersonalisationTab', () => {
       if (url === '/budgets/1/health-matrix/') {
         return Promise.reject({ response: { data: { detail: 'Matrix unavailable.' } } })
       }
+      if (url === '/budgets/1/health-matrix/data-sources') {
+        return Promise.resolve({
+          data: [
+            { source_key: 'total_budgeted_income', name: 'Total Budgeted Income', description: '', return_type: 'decimal' },
+          ],
+        })
+      }
+      if (url === '/budgets/1/health-matrix/definitions') {
+        return Promise.resolve({ data: [] })
+      }
       return Promise.resolve({ data: {} })
     })
 
     renderWithProviders(<PersonalisationTab budgetId={1} budget={budget} />)
 
     expect(await screen.findByText('Matrix unavailable.')).toBeTruthy()
-  })
-
-  it('changes health tone when a tone option is selected', async () => {
-    renderWithProviders(<PersonalisationTab budgetId={1} budget={budget} />)
-
-    await screen.findByText('Health Tone')
-    fireEvent.click(screen.getByText('Factual'))
-
-    await waitFor(() => {
-      expect(api.patch).toHaveBeenCalledWith('/budgets/1', { health_tone: 'factual' })
-    })
   })
 })

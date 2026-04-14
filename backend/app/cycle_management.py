@@ -2,11 +2,10 @@ from __future__ import annotations
 
 import json
 from datetime import timedelta, timezone
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 
 from sqlalchemy.orm import Session
 
-from .health_engine.closeout_health import build_current_period_check, current_period_totals
 from .cycle_constants import (
     ACTIVE,
     CARRIED_FORWARD_DESC,
@@ -33,7 +32,8 @@ from .models import (
     PeriodInvestment,
     PeriodTransaction,
 )
-from .health_engine import persist_period_health_snapshot
+from .health_engine import evaluate_period_health, persist_period_health_snapshot
+from .health_engine.metric_executors import _health_status
 from .period_logic import calc_period_end, expense_occurs_in_period
 from .time_utils import app_now_naive, utc_now
 from .transaction_ledger import sync_period_state
@@ -104,6 +104,40 @@ def has_cycle_transactions(finperiodid: int, db: Session) -> bool:
         .first()
     )
     return movement_like_tx is not None
+
+
+def _to_decimal(value) -> Decimal:
+    return Decimal(str(value or 0))
+
+
+def _quantize_money(value: Decimal) -> Decimal:
+    return value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+
+def current_period_totals(period: FinancialPeriod) -> dict[str, Decimal]:
+    """Calculate budget and actual totals for a period."""
+    income_budget = sum((_to_decimal(income.budgetamount) for income in period.period_incomes), Decimal("0"))
+    income_actual = sum((_to_decimal(income.actualamount) for income in period.period_incomes), Decimal("0"))
+    expense_budget = sum((
+        _to_decimal(expense.actualamount if (getattr(expense, "status", "Current") or "Current") == "Paid" else expense.budgetamount)
+        for expense in period.period_expenses
+    ), Decimal("0"))
+    expense_actual = sum((_to_decimal(expense.actualamount) for expense in period.period_expenses), Decimal("0"))
+    investment_budget = sum((
+        _to_decimal(investment.actualamount if (getattr(investment, "status", "Current") or "Current") == "Paid" else investment.budgeted_amount)
+        for investment in period.period_investments
+    ), Decimal("0"))
+    investment_actual = sum((_to_decimal(investment.actualamount) for investment in period.period_investments), Decimal("0"))
+    return {
+        "income_budget": income_budget,
+        "income_actual": income_actual,
+        "expense_budget": expense_budget,
+        "expense_actual": expense_actual,
+        "investment_budget": investment_budget,
+        "investment_actual": investment_actual,
+        "surplus_budget": income_budget - expense_budget - investment_budget,
+        "surplus_actual": income_actual - expense_actual - investment_actual,
+    }
 
 
 def carry_forward_amount_for_period(period: FinancialPeriod) -> Decimal:
@@ -309,11 +343,37 @@ def create_next_cycle(period: FinancialPeriod, budget: Budget, db: Session) -> F
 
 def build_closeout_preview(period: FinancialPeriod, budget: Budget, db: Session) -> dict:
     sync_period_state(period.finperiodid, db)
-    periods = ordered_budget_periods(period.budgetid, db)
-    current, future, historical = lifecycle_groups(periods)
-    health = build_current_period_check(budget, current or [period], future, historical)
     totals = current_period_totals(period)
     next_period = next_period_for(period, db)
+
+    # Compute health using the Budget Health Engine directly
+    from .models import BudgetHealthMatrix
+    matrix = db.query(BudgetHealthMatrix).filter_by(budgetid=budget.budgetid, is_active=True).first()
+    if matrix:
+        period_results = evaluate_period_health(db, budget, period, matrix)
+        current_metrics = [r for r in period_results if r["scope"] == "CURRENT_PERIOD"]
+        if current_metrics:
+            total_weight = sum(r["weight"] for r in current_metrics)
+            score = int(sum(r["score"] * r["weight"] for r in current_metrics) / total_weight) if total_weight > 0 else 50
+            status = _health_status(score)
+            summary = current_metrics[0]["summary"] if current_metrics else "Current period evaluation complete."
+        else:
+            score = 50
+            status = "Watch"
+            summary = "Current period evaluation complete."
+    else:
+        score = 50
+        status = "Watch"
+        summary = "Current period evaluation complete."
+
+    health = {
+        "key": "current_period_check",
+        "title": "Health Check for Current Period",
+        "score": score,
+        "status": status,
+        "summary": summary,
+    }
+
     return {
         "period": period,
         "next_period": next_period,

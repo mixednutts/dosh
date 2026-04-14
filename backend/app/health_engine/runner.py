@@ -175,6 +175,7 @@ def evaluate_period_health(
             personalisation_value=personalisation_value,
             scoring_sensitivity=item.scoring_sensitivity,
             tone=tone,
+            source_values=source_values,
         )
 
         results.append({
@@ -201,7 +202,7 @@ def evaluate_budget_health(
     Returns a payload similar to the legacy BudgetHealthOut schema.
     """
     from ..models import Budget, BudgetHealthMatrix, FinancialPeriod
-    from ..cycle_constants import CURRENT_STAGE, PENDING_CLOSURE_STAGE
+    from ..cycle_constants import CURRENT_STAGE, PENDING_CLOSURE_STAGE, CLOSED
     from datetime import datetime, timezone
 
     budget = db.get(Budget, budgetid)
@@ -214,11 +215,12 @@ def evaluate_budget_health(
 
     now = datetime.now(timezone.utc)
 
-    # Resolve current period
+    # Resolve current period (exclude already-closed periods)
     current_period = db.query(FinancialPeriod).filter(
         FinancialPeriod.budgetid == budgetid,
         FinancialPeriod.startdate <= now,
         FinancialPeriod.enddate >= now,
+        FinancialPeriod.cycle_status != CLOSED,
     ).first()
 
     # Evaluate metrics for current period

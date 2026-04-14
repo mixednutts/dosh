@@ -207,22 +207,22 @@ def seed_catalogs(db: Session) -> None:
             personalisation_key="revision_sensitivity",
             name="Revision Sensitivity",
             description="How strongly budget revisions should affect stability scoring.",
-            scale_key="percentage_0_100",
-            default_value_json=json.dumps(50),
+            scale_key="ten_scale_1_10",
+            default_value_json=json.dumps(5),
         ),
         HealthPersonalisationDefinition(
             personalisation_key="savings_priority",
             name="Savings Priority",
             description="Importance placed on savings contributions in overall health.",
-            scale_key="percentage_0_100",
-            default_value_json=json.dumps(50),
+            scale_key="ten_scale_1_10",
+            default_value_json=json.dumps(5),
         ),
         HealthPersonalisationDefinition(
             personalisation_key="period_criticality_bias",
             name="Period Criticality Bias",
             description="How much timing within the period amplifies health concerns.",
-            scale_key="percentage_0_100",
-            default_value_json=json.dumps(50),
+            scale_key="ten_scale_1_10",
+            default_value_json=json.dumps(5),
         ),
     ]
 
@@ -297,8 +297,8 @@ def create_standard_templates(db: Session) -> HealthMatrixTemplate:
             name="Current Period Check",
             description="Live-period deficit, tolerance, revision pressure, and timing factor.",
             scope="CURRENT_PERIOD",
-            formula_expression="live_period_surplus / period_progress_ratio",
-            formula_data_sources_json=json.dumps(["live_period_surplus", "period_progress_ratio"]),
+            formula_expression="live_period_surplus + total_budgeted_income * 0",
+            formula_data_sources_json=json.dumps(["live_period_surplus", "total_budgeted_income"]),
             default_personalisation_key="maximum_deficit_amount",
             scoring_logic_json=json.dumps({"type": "current_period_check_v1"}),
             evidence_template_json=json.dumps({
@@ -532,8 +532,29 @@ def create_default_matrix_for_budget(db: Session, budget: Budget) -> BudgetHealt
     return matrix
 
 
+def _update_existing_metric_templates(db: Session) -> None:
+    """Keep existing metric templates in sync with seed changes."""
+    mt = db.query(HealthMetricTemplate).filter_by(template_key="current_period_check").first()
+    if mt:
+        mt.formula_expression = "live_period_surplus + total_budgeted_income * 0"
+        mt.formula_data_sources_json = json.dumps(["live_period_surplus", "total_budgeted_income"])
+
+    db.flush()
+
+
+def _update_existing_metrics(db: Session) -> None:
+    """Push template-level formula changes to existing budget metric instances."""
+    for metric in db.query(HealthMetric).filter_by(template_key="current_period_check").all():
+        metric.formula_expression = "live_period_surplus + total_budgeted_income * 0"
+        metric.formula_data_sources_json = json.dumps(["live_period_surplus", "total_budgeted_income"])
+
+    db.flush()
+
+
 def seed_and_migrate(db: Session) -> None:
     """Run the full Phase A seed and migration in one transaction."""
     seed_catalogs(db)
     create_standard_templates(db)
+    _update_existing_metric_templates(db)
     migrate_existing_budgets(db)
+    _update_existing_metrics(db)

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timezone
+from decimal import Decimal
 
 from fastapi import APIRouter, HTTPException
 from sqlalchemy.orm import Session
@@ -16,10 +17,42 @@ from ..models import (
     HealthMetric,
     HealthMetricTemplate,
     HealthPersonalisationDefinition,
+    HealthScale,
 )
-from ..schemas import BudgetOut
 
 router = APIRouter(prefix="/budgets/{budgetid}/health-matrix", tags=["health-matrices"])
+
+
+def _serialize_scale(scale: HealthScale | None) -> dict | None:
+    """Serialize a HealthScale for API response."""
+    if not scale:
+        return None
+    return {
+        "scale_key": scale.scale_key,
+        "name": scale.name,
+        "scale_type": scale.scale_type,
+        "min_value": float(scale.min_value) if scale.min_value is not None else None,
+        "max_value": float(scale.max_value) if scale.max_value is not None else None,
+        "step_value": float(scale.step_value) if scale.step_value is not None else None,
+        "unit_label": scale.unit_label,
+    }
+
+
+def _parse_personalisation_value(value_json: str, scale_type: str | None) -> int | float | str | None:
+    """Parse a personalisation value from JSON based on scale type."""
+    try:
+        raw = json.loads(value_json)
+    except json.JSONDecodeError:
+        return value_json
+    if raw is None:
+        return None
+    if scale_type == "money":
+        return float(raw) if raw is not None else None
+    elif scale_type == "integer_range":
+        return int(raw) if raw is not None else None
+    elif scale_type == "decimal_range":
+        return float(raw) if raw is not None else None
+    return raw
 
 
 @router.get("/", responses=error_responses(404))
@@ -40,6 +73,11 @@ def get_budget_health_matrix(budgetid: int, db: DbSession):
         .all()
     )
 
+    pers_defs = {
+        p.personalisation_key: p
+        for p in db.query(HealthPersonalisationDefinition).all()
+    }
+
     result_items = []
     for item in items:
         metric = item.metric
@@ -47,16 +85,15 @@ def get_budget_health_matrix(budgetid: int, db: DbSession):
             continue
 
         pers_value = None
+        pers_def = None
         if metric.personalisation_key:
+            pers_def = pers_defs.get(metric.personalisation_key)
             bmp = db.query(BudgetMetricPersonalisation).filter_by(
                 budgetid=budgetid, metric_id=metric.metric_id
             ).first()
             if bmp:
-                import json
-                try:
-                    pers_value = json.loads(bmp.value_json)
-                except json.JSONDecodeError:
-                    pers_value = bmp.value_json
+                scale_type = pers_def.scale.scale_type if pers_def and pers_def.scale else None
+                pers_value = _parse_personalisation_value(bmp.value_json, scale_type)
 
         result_items.append({
             "matrix_item_id": f"{item.matrix_id}-{item.metric_id}",
@@ -65,12 +102,15 @@ def get_budget_health_matrix(budgetid: int, db: DbSession):
             "name": metric.name,
             "description": metric.description,
             "scope": metric.scope,
+            "formula_expression": metric.formula_expression,
+            "formula_data_sources_json": json.loads(metric.formula_data_sources_json or "[]"),
             "weight": float(item.weight),
             "scoring_sensitivity": item.scoring_sensitivity,
             "is_enabled": item.is_enabled,
             "display_order": item.display_order,
             "personalisation_key": metric.personalisation_key,
             "personalisation_value": pers_value,
+            "personalisation_scale": _serialize_scale(pers_def.scale) if pers_def else None,
         })
 
     return {
@@ -79,6 +119,30 @@ def get_budget_health_matrix(budgetid: int, db: DbSession):
         "name": matrix.name,
         "items": result_items,
     }
+
+
+@router.get("/definitions", responses=error_responses(404))
+def get_personalisation_definitions(budgetid: int, db: DbSession):
+    """Get all available personalisation definitions with their scales."""
+    budget = db.get(Budget, budgetid)
+    if not budget:
+        raise HTTPException(404, "Budget not found")
+
+    definitions = db.query(HealthPersonalisationDefinition).all()
+    result = []
+    for d in definitions:
+        try:
+            default_value = json.loads(d.default_value_json)
+        except json.JSONDecodeError:
+            default_value = d.default_value_json
+        result.append({
+            "personalisation_key": d.personalisation_key,
+            "name": d.name,
+            "description": d.description,
+            "default_value": default_value,
+            "scale": _serialize_scale(d.scale),
+        })
+    return result
 
 
 @router.patch("/items/{metric_id}", responses=error_responses(404))
@@ -115,7 +179,7 @@ def update_matrix_item(
     return {"ok": True}
 
 
-@router.patch("/personalisation/{metric_id}", responses=error_responses(404))
+@router.patch("/personalisation/{metric_id}", responses=error_responses(404, 400))
 def update_metric_personalisation(
     budgetid: int,
     metric_id: int,
@@ -137,8 +201,21 @@ def update_metric_personalisation(
     if not personalisation_key:
         raise HTTPException(400, "No personalisation key defined for this metric")
 
-    import json
-    from datetime import datetime, timezone
+    pers_def = db.query(HealthPersonalisationDefinition).filter_by(
+        personalisation_key=personalisation_key
+    ).first()
+
+    if pers_def and pers_def.scale:
+        scale = pers_def.scale
+        if scale.scale_type in ("integer_range", "decimal_range", "money") and value is not None:
+            try:
+                num_value = float(value)
+                if scale.min_value is not None and num_value < float(scale.min_value):
+                    raise HTTPException(400, f"Value must be >= {scale.min_value}")
+                if scale.max_value is not None and num_value > float(scale.max_value):
+                    raise HTTPException(400, f"Value must be <= {scale.max_value}")
+            except ValueError:
+                raise HTTPException(400, "Invalid numeric value")
 
     bmp = db.query(BudgetMetricPersonalisation).filter_by(
         budgetid=budgetid, metric_id=metric_id
@@ -213,7 +290,6 @@ def create_custom_metric(
     if scope not in ("OVERALL", "CURRENT_PERIOD", "BOTH"):
         raise HTTPException(400, "Invalid scope")
 
-    # Validate data sources exist
     if data_sources:
         existing = {s.source_key for s in db.query(HealthDataSource).filter(
             HealthDataSource.source_key.in_(data_sources)
@@ -222,7 +298,6 @@ def create_custom_metric(
         if missing:
             raise HTTPException(400, f"Unknown data sources: {missing}")
 
-    # Validate personalisation key if provided
     if personalisation_key:
         pers_def = db.query(HealthPersonalisationDefinition).filter_by(
             personalisation_key=personalisation_key
@@ -230,9 +305,7 @@ def create_custom_metric(
         if not pers_def:
             raise HTTPException(400, f"Unknown personalisation key: {personalisation_key}")
 
-    # Validate formula syntax via safe evaluator
     from ..health_engine.formula_evaluator import evaluate_formula
-    from decimal import Decimal
     dummy_values = {k: Decimal(1) for k in data_sources}
     try:
         evaluate_formula(formula, dummy_values)
@@ -260,7 +333,6 @@ def create_custom_metric(
     db.commit()
     db.refresh(metric)
 
-    # Auto-add to budget's active matrix
     matrix = db.query(BudgetHealthMatrix).filter_by(budgetid=budgetid, is_active=True).first()
     if matrix:
         max_order = db.query(BudgetHealthMatrixItem).filter_by(matrix_id=matrix.matrix_id).count()
@@ -305,12 +377,10 @@ def remove_matrix_item(
 
     db.delete(item)
 
-    # Also clean up any personalisation rows for this metric
     db.query(BudgetMetricPersonalisation).filter_by(
         budgetid=budgetid, metric_id=metric_id
     ).delete()
 
-    # Optionally delete the custom metric itself if it belongs to this budget
     metric = db.query(HealthMetric).filter_by(metric_id=metric_id, budgetid=budgetid).first()
     if metric and not metric.template_key:
         db.delete(metric)
