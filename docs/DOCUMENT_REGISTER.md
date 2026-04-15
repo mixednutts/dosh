@@ -341,6 +341,40 @@ Maintenance notes:
 - should be updated when engine behavior or data models change materially
 - transition phase status should be kept current until all phases are complete
 
+### BUDGET_HEALTH_TEMPLATE_LIBRARY.md
+
+Document:
+
+- [BUDGET_HEALTH_TEMPLATE_LIBRARY.md](/home/ubuntu/dosh/docs/plans/BUDGET_HEALTH_TEMPLATE_LIBRARY.md)
+
+Document type:
+
+- domain or workflow plan
+
+Primary purpose:
+
+- catalog current health engine templates, data sources, thresholds, and scoring logic
+- support future template design with documented examples and a design checklist
+
+Primary source-of-truth scope:
+
+- current data source executors and parameters
+- current metric templates (`setup_health`, `budget_discipline`, `planning_stability`, `current_period_check`)
+- current threshold definitions, scales, and metric mappings
+- current matrix template (`standard_budget_health`)
+- design checklist for new templates
+
+Key relationships:
+
+- references [BUDGET_HEALTH_ENGINE_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_HEALTH_ENGINE_PLAN.md) for architecture and data models
+- linked from [AGENTS.md](/home/ubuntu/dosh/AGENTS.md) as the operational template reference
+- informs health-related roadmap work in [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md)
+
+Maintenance notes:
+
+- should be updated whenever a new data source, metric template, threshold, or matrix template is added
+- should remain the canonical working reference for template definitions and real-world examples
+
 ### CASH_MANAGEMENT_WORKFLOW_PLAN.md
 
 Document:

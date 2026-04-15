@@ -701,3 +701,10 @@ git push origin main --force-with-lease  # if needed
 
 **Last Updated:** 2026-04-11 (consolidated duplicate controls #6/#8; added deployment awareness, external plan document check; documented data loss incident)
 **Framework Version:** 1.0 (per DOCUMENTATION_FRAMEWORK.md)
+
+---
+
+## Budget Health Engine Reference
+
+Template and data source details have been moved to:
+- [docs/plans/BUDGET_HEALTH_TEMPLATE_LIBRARY.md](docs/plans/BUDGET_HEALTH_TEMPLATE_LIBRARY.md)
