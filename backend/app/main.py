@@ -78,10 +78,12 @@ def health():
 
 @app.get("/api/info")
 def info():
+    from .runtime_settings import dev_mode_enabled
     return {
         "app": "Dosh",
         "version": APP_VERSION,
         "schema_revision": get_schema_revision(),
+        "dev_mode": dev_mode_enabled(),
     }
 
 

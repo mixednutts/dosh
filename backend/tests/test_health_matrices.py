@@ -21,19 +21,36 @@ def test_get_budget_health_matrix_returns_default_matrix(client, db_session):
     assert data["budgetid"] == budget.budgetid
     assert "matrix_id" in data
     assert "items" in data
-    assert len(data["items"]) > 0
+    # Standard Budget Health is now an empty shell until metrics are created via UI.
+    assert len(data["items"]) >= 0
+
+
+def _create_custom_metric_for_budget(client, budget):
+    payload = {
+        "name": "Temp Metric",
+        "description": "Temporary metric for test mutation",
+        "scope": "OVERALL",
+        "formula_expression": "income_source_count",
+        "data_sources": ["income_source_count"],
+    }
+    response = client.post(
+        f"/api/budgets/{budget.budgetid}/health-matrix/metrics",
+        json=payload,
+    )
+    assert response.status_code == 200, response.text
+    return response.json()["metric_id"]
 
 
 def test_update_matrix_item(client, db_session):
     budget = create_budget(db_session)
-    from app.models import BudgetHealthMatrix
+    from app.models import BudgetHealthMatrix, BudgetHealthMatrixItem
+    metric_id = _create_custom_metric_for_budget(client, budget)
     bhm = db_session.query(BudgetHealthMatrix).filter_by(budgetid=budget.budgetid, is_active=True).first()
     matrix = (
         db_session.query(BudgetHealthMatrixItem)
-        .filter_by(matrix_id=bhm.matrix_id)
+        .filter_by(matrix_id=bhm.matrix_id, metric_id=metric_id)
         .first()
     )
-    metric_id = matrix.metric_id
 
     response = client.patch(
         f"/api/budgets/{budget.budgetid}/health-matrix/items/{metric_id}",
@@ -50,14 +67,14 @@ def test_update_matrix_item(client, db_session):
 
 def test_update_matrix_item_threshold_value(client, db_session):
     budget = create_budget(db_session)
-    from app.models import BudgetHealthMatrix, HealthMetric, HealthScale
+    from app.models import BudgetHealthMatrix, BudgetHealthMatrixItem, HealthMetric, HealthScale
+    metric_id = _create_custom_metric_for_budget(client, budget)
     bhm = db_session.query(BudgetHealthMatrix).filter_by(budgetid=budget.budgetid, is_active=True).first()
     matrix_item = (
         db_session.query(BudgetHealthMatrixItem)
-        .filter_by(matrix_id=bhm.matrix_id)
+        .filter_by(matrix_id=bhm.matrix_id, metric_id=metric_id)
         .first()
     )
-    metric_id = matrix_item.metric_id
     metric = db_session.query(HealthMetric).filter_by(metric_id=metric_id).first()
     scale = db_session.query(HealthScale).filter_by(scale_key="percentage_0_100").first()
     if not scale:
@@ -161,14 +178,15 @@ def test_create_custom_metric_unknown_data_source(client, db_session):
 
 def test_remove_matrix_item(client, db_session):
     budget = create_budget(db_session)
-    from app.models import BudgetHealthMatrix
+    from app.models import BudgetHealthMatrix, BudgetHealthMatrixItem
+    metric_id = _create_custom_metric_for_budget(client, budget)
     bhm = db_session.query(BudgetHealthMatrix).filter_by(budgetid=budget.budgetid, is_active=True).first()
     matrix_item = (
         db_session.query(BudgetHealthMatrixItem)
-        .filter_by(matrix_id=bhm.matrix_id)
+        .filter_by(matrix_id=bhm.matrix_id, metric_id=metric_id)
         .first()
     )
-    metric_id = matrix_item.metric_id
+    assert matrix_item is not None
 
     response = client.delete(
         f"/api/budgets/{budget.budgetid}/health-matrix/items/{metric_id}"
@@ -237,16 +255,121 @@ def test_apply_matrix_template_400_unknown_template(client, db_session):
     assert "Unknown template" in response.text
 
 
+def test_delete_matrix_template_requires_dev_mode(client, db_session):
+    budget = create_budget(db_session)
+    response = client.delete(f"/api/budgets/{budget.budgetid}/health-matrix/templates/standard_budget_health")
+    assert response.status_code == 404
+
+
+def test_delete_matrix_template_404_when_template_missing(client, db_session, monkeypatch):
+    monkeypatch.setenv("DEV_MODE", "true")
+    budget = create_budget(db_session)
+    response = client.delete(f"/api/budgets/{budget.budgetid}/health-matrix/templates/nonexistent")
+    assert response.status_code == 404
+
+
+def test_delete_matrix_template_ok_and_nulls_metric_references(client, db_session, monkeypatch):
+    from app.models import (
+        BudgetHealthMatrix,
+        BudgetHealthMatrixItem,
+        HealthMetric,
+        HealthMatrixTemplate,
+        HealthMatrixTemplateItem,
+        HealthMetricTemplate,
+    )
+    monkeypatch.setenv("DEV_MODE", "true")
+    budget = create_budget(db_session)
+
+    # Build a custom template with a metric template and a matrix template item
+    mt = HealthMetricTemplate(
+        template_key="test_metric_tmpl",
+        name="Test Metric",
+        scope="OVERALL",
+        formula_expression="income_source_count",
+        formula_data_sources_json='["income_source_count"]',
+        scale_key="percentage_0_100",
+        default_value_json="0",
+        scoring_logic_json='{"tone":"neutral"}',
+        evidence_template_json='{}',
+    )
+    db_session.add(mt)
+    db_session.flush()
+
+    matrix_tmpl = HealthMatrixTemplate(
+        template_key="test_matrix_tmpl",
+        name="Test Matrix",
+    )
+    db_session.add(matrix_tmpl)
+    db_session.flush()
+
+    db_session.add(HealthMatrixTemplateItem(
+        template_key="test_matrix_tmpl",
+        metric_template_key="test_metric_tmpl",
+        weight=1.0,
+        display_order=0,
+    ))
+    db_session.flush()
+
+    # Create a metric from the template so there is a foreign-key reference to null out
+    metric = HealthMetric(
+        template_key="test_metric_tmpl",
+        budgetid=budget.budgetid,
+        name="Test Metric",
+        scope="OVERALL",
+        formula_expression="income_source_count",
+        formula_data_sources_json='["income_source_count"]',
+        scale_key="percentage_0_100",
+        default_value_json="0",
+        scoring_logic_json='{"tone":"neutral"}',
+        evidence_template_json='{}',
+    )
+    db_session.add(metric)
+    db_session.flush()
+
+    bhm = BudgetHealthMatrix(
+        budgetid=budget.budgetid,
+        name="Test Matrix",
+        based_on_template_key="test_matrix_tmpl",
+        is_active=True,
+    )
+    db_session.add(bhm)
+    db_session.flush()
+
+    db_session.add(BudgetHealthMatrixItem(
+        matrix_id=bhm.matrix_id,
+        metric_id=metric.metric_id,
+        weight=1.0,
+        scoring_sensitivity=50,
+        display_order=0,
+        is_enabled=True,
+    ))
+    db_session.commit()
+
+    metric_id = metric.metric_id
+    response = client.delete(f"/api/budgets/{budget.budgetid}/health-matrix/templates/test_matrix_tmpl")
+    assert response.status_code == 200
+    assert response.json()["ok"] is True
+
+    db_session.expunge_all()
+    assert db_session.query(HealthMatrixTemplate).filter_by(template_key="test_matrix_tmpl").first() is None
+    assert db_session.query(HealthMatrixTemplateItem).filter_by(template_key="test_matrix_tmpl").first() is None
+    assert db_session.query(HealthMetricTemplate).filter_by(template_key="test_metric_tmpl").first() is None
+    assert db_session.query(HealthMetric).filter_by(metric_id=metric_id).first() is None
+    assert response.json()["deleted_metrics"] == 1
+    assert response.json()["affected_budgets"] == 1
+
+
 def test_get_budget_health_matrix_marked_customized_after_weight_change(client, db_session):
     budget = create_budget(db_session)
-    from app.models import BudgetHealthMatrix
+    from app.models import BudgetHealthMatrix, BudgetHealthMatrixItem
+    metric_id = _create_custom_metric_for_budget(client, budget)
     bhm = db_session.query(BudgetHealthMatrix).filter_by(budgetid=budget.budgetid, is_active=True).first()
     matrix_item = (
         db_session.query(BudgetHealthMatrixItem)
-        .filter_by(matrix_id=bhm.matrix_id)
+        .filter_by(matrix_id=bhm.matrix_id, metric_id=metric_id)
         .first()
     )
-    metric_id = matrix_item.metric_id
+    assert matrix_item is not None
 
     response = client.patch(
         f"/api/budgets/{budget.budgetid}/health-matrix/items/{metric_id}",

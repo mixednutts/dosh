@@ -18,6 +18,7 @@ from ..models import (
     HealthMetricTemplate,
     HealthScale,
 )
+from ..runtime_settings import dev_mode_enabled
 
 router = APIRouter(prefix="/budgets/{budgetid}/health-matrix", tags=["health-matrices"])
 
@@ -167,6 +168,63 @@ def get_matrix_templates(budgetid: int, db: DbSession):
         }
         for t in templates
     ]
+
+
+@router.delete("/templates/{template_key}", responses=error_responses(404, 400))
+def delete_matrix_template(
+    budgetid: int,
+    template_key: str,
+    db: DbSession,
+):
+    """Delete a health matrix template (dev mode only)."""
+    if not dev_mode_enabled():
+        raise HTTPException(404, "Not found")
+
+    budget = db.get(Budget, budgetid)
+    if not budget:
+        raise HTTPException(404, "Budget not found")
+
+    template = db.query(HealthMatrixTemplate).filter_by(template_key=template_key).first()
+    if not template:
+        raise HTTPException(404, "Template not found")
+
+    # Null out budget matrix references before deleting the template
+    db.query(BudgetHealthMatrix).filter_by(based_on_template_key=template_key).update(
+        {"based_on_template_key": None}, synchronize_session=False
+    )
+
+    # Remove template items and associated metric templates
+    items = db.query(HealthMatrixTemplateItem).filter_by(template_key=template_key).all()
+    metric_keys = [i.metric_template_key for i in items]
+    for item in items:
+        db.delete(item)
+    db.flush()
+
+    # Cascade delete all metrics derived from this template so budgets stay clean
+    deleted_metrics = 0
+    affected_budget_ids = set()
+    if metric_keys:
+        metrics_to_delete = db.query(HealthMetric).filter(
+            HealthMetric.template_key.in_(metric_keys)
+        ).all()
+        for metric in metrics_to_delete:
+            affected_budget_ids.add(metric.budgetid)
+            db.delete(metric)
+            deleted_metrics += 1
+        db.flush()
+
+    for mk in metric_keys:
+        mt = db.query(HealthMetricTemplate).filter_by(template_key=mk).first()
+        if mt:
+            db.delete(mt)
+
+    db.delete(template)
+    db.commit()
+    return {
+        "ok": True,
+        "deleted_metrics": deleted_metrics,
+        "affected_budgets": len(affected_budget_ids),
+    }
 
 
 @router.post("/apply-template", responses=error_responses(404, 400))
@@ -417,3 +475,166 @@ def remove_matrix_item(
 
     db.commit()
     return {"ok": True}
+
+
+@router.delete("/", responses=error_responses(404))
+def delete_budget_health_matrix(budgetid: int, db: DbSession):
+    """Delete the active health matrix for this budget."""
+    budget = db.get(Budget, budgetid)
+    if not budget:
+        raise HTTPException(404, "Budget not found")
+
+    matrix = db.query(BudgetHealthMatrix).filter_by(budgetid=budgetid, is_active=True).first()
+    if not matrix:
+        raise HTTPException(404, "Health matrix not found")
+
+    # Remove items and any custom metrics owned by this budget
+    items = db.query(BudgetHealthMatrixItem).filter_by(matrix_id=matrix.matrix_id).all()
+    for item in items:
+        metric = item.metric
+        db.delete(item)
+        if metric and metric.budgetid == budgetid and not metric.template_key:
+            db.delete(metric)
+
+    db.delete(matrix)
+    db.commit()
+    return {"ok": True}
+
+
+@router.post("/create-empty", responses=error_responses(404))
+def create_empty_matrix(budgetid: int, db: DbSession):
+    """Create a new empty health matrix for this budget."""
+    budget = db.get(Budget, budgetid)
+    if not budget:
+        raise HTTPException(404, "Budget not found")
+
+    existing = db.query(BudgetHealthMatrix).filter_by(budgetid=budgetid, is_active=True).all()
+    for m in existing:
+        m.is_active = False
+
+    matrix = BudgetHealthMatrix(
+        budgetid=budgetid,
+        name="Custom Health Matrix",
+        based_on_template_key=None,
+        cloned_from_matrix_id=None,
+        is_active=True,
+    )
+    db.add(matrix)
+    db.commit()
+    db.refresh(matrix)
+
+    return {
+        "matrix_id": matrix.matrix_id,
+        "budgetid": budgetid,
+        "name": matrix.name,
+        "based_on_template_key": None,
+        "is_customized": False,
+    }
+
+
+@router.post("/save-template", responses=error_responses(404, 400))
+def save_matrix_as_template(
+    budgetid: int,
+    payload: dict,
+    db: DbSession,
+):
+    """Save the current budget health matrix as a reusable template (dev mode only)."""
+    if not dev_mode_enabled():
+        raise HTTPException(404, "Not found")
+
+    budget = db.get(Budget, budgetid)
+    if not budget:
+        raise HTTPException(404, "Budget not found")
+
+    matrix = db.query(BudgetHealthMatrix).filter_by(budgetid=budgetid, is_active=True).first()
+    if not matrix:
+        raise HTTPException(404, "Health matrix not found")
+
+    template_key = payload.get("template_key", "").strip()
+    name = payload.get("name", "").strip()
+    description = payload.get("description", "").strip()
+    overwrite = payload.get("overwrite", False)
+
+    if not template_key:
+        raise HTTPException(400, "template_key is required")
+    if not name:
+        raise HTTPException(400, "name is required")
+
+    existing_template = db.query(HealthMatrixTemplate).filter_by(template_key=template_key).first()
+    if existing_template and not overwrite:
+        raise HTTPException(409, f"Template '{template_key}' already exists. Set overwrite=true to replace it.")
+
+    items = (
+        db.query(BudgetHealthMatrixItem)
+        .filter_by(matrix_id=matrix.matrix_id)
+        .order_by(BudgetHealthMatrixItem.display_order)
+        .all()
+    )
+
+    # Build metric templates from current matrix items
+    metric_templates: list[HealthMetricTemplate] = []
+    template_items: list[HealthMatrixTemplateItem] = []
+    for idx, item in enumerate(items):
+        metric = item.metric
+        if not metric:
+            continue
+
+        mt_key = f"{template_key}_metric_{idx}"
+        metric_templates.append(HealthMetricTemplate(
+            template_key=mt_key,
+            name=metric.name,
+            description=metric.description or "",
+            scope=metric.scope,
+            formula_expression=metric.formula_expression,
+            formula_data_sources_json=metric.formula_data_sources_json,
+            scale_key=metric.scale_key,
+            default_value_json=metric.default_value_json,
+            scoring_logic_json=metric.scoring_logic_json,
+            evidence_template_json=metric.evidence_template_json,
+            drill_down_enabled=metric.drill_down_enabled,
+            is_system=False,
+        ))
+        template_items.append(HealthMatrixTemplateItem(
+            template_key=template_key,
+            metric_template_key=mt_key,
+            weight=item.weight,
+            display_order=idx,
+        ))
+
+    if existing_template and overwrite:
+        # Clean up old template items and metric templates
+        old_items = db.query(HealthMatrixTemplateItem).filter_by(template_key=template_key).all()
+        for oi in old_items:
+            db.delete(oi)
+        db.flush()
+        old_mt_keys = [ti.metric_template_key for ti in old_items]
+        for mtk in old_mt_keys:
+            mt = db.query(HealthMetricTemplate).filter_by(template_key=mtk).first()
+            if mt:
+                db.delete(mt)
+        existing_template.name = name
+        existing_template.description = description
+        db.flush()
+    else:
+        new_template = HealthMatrixTemplate(
+            template_key=template_key,
+            name=name,
+            description=description,
+            is_system=False,
+        )
+        db.add(new_template)
+        db.flush()
+
+    for mt in metric_templates:
+        db.add(mt)
+    db.flush()
+
+    for ti in template_items:
+        db.add(ti)
+
+    db.commit()
+    return {
+        "template_key": template_key,
+        "name": name,
+        "metric_count": len(metric_templates),
+    }

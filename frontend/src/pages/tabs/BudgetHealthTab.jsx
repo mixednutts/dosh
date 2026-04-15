@@ -11,6 +11,11 @@ import {
   updateMatrixItem,
   getHealthMatrixTemplates,
   applyHealthMatrixTemplate,
+  deleteBudgetHealthMatrix,
+  createEmptyHealthMatrix,
+  saveHealthMatrixTemplate,
+  deleteHealthMatrixTemplate,
+  getAppInfo,
 } from '../../api/client'
 import LocalizedAmountInput from '../../components/LocalizedAmountInput'
 
@@ -578,15 +583,18 @@ function MetricBuilderCard({ dataSources, scales, onCreate, onCancel }) {
   )
 }
 
-function TemplateSelector({ matrix, templates, onApply, isApplying }) {
+function TemplateSelector({ matrix, templates, onApply, isApplying, onDeleteMatrix, onCreateEmpty, isDeleting, devMode, onSaveTemplate, onDeleteTemplate, isDeletingTemplate }) {
   const [selected, setSelected] = useState('')
   const [showConfirm, setShowConfirm] = useState(false)
+  const [showDeleteWarning, setShowDeleteWarning] = useState(false)
 
   useEffect(() => {
     if (matrix?.based_on_template_key) {
       setSelected(matrix.based_on_template_key)
+    } else if (templates.length > 0) {
+      setSelected(templates[0].template_key)
     }
-  }, [matrix?.based_on_template_key])
+  }, [matrix?.based_on_template_key, templates])
 
   const handleApply = () => {
     if (!selected) return
@@ -608,6 +616,9 @@ function TemplateSelector({ matrix, templates, onApply, isApplying }) {
     }
   }
 
+  const selectedTemplate = templates.find(t => t.template_key === selected)
+  const canDeleteTemplate = devMode && selectedTemplate
+
   return (
     <div className="rounded-lg border border-gray-200 bg-white px-4 py-4 dark:border-gray-700 dark:bg-gray-900">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -621,39 +632,135 @@ function TemplateSelector({ matrix, templates, onApply, isApplying }) {
             )}
           </div>
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            {matrix?.template_name ? `Current: ${matrix.template_name}` : 'Choose a template to define how budget health is calculated.'}
+            {matrix?.template_name ? `Current: ${matrix.template_name}` : matrix?.name ? `Current: ${matrix.name}` : 'No health matrix is configured for this budget.'}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <select
-            value={selected}
-            onChange={e => setSelected(e.target.value)}
-            className="rounded-md border border-gray-300 px-3 py-2 text-xs dark:border-gray-600 dark:bg-gray-900"
-          >
-            {templates.map(t => (
-              <option key={t.template_key} value={t.template_key}>{t.name}</option>
-            ))}
-          </select>
-          <button
-            type="button"
-            onClick={handleApply}
-            disabled={isApplying || !selected || selected === matrix?.based_on_template_key}
-            className="btn-primary text-xs"
-          >
-            {isApplying ? 'Applying…' : 'Apply'}
-          </button>
-          {matrix?.is_customized && (
-            <button
-              type="button"
-              onClick={handleReset}
-              disabled={isApplying}
-              className="btn-secondary text-xs"
-            >
-              Reset
-            </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {matrix ? (
+            <>
+              <select
+                value={selected}
+                onChange={e => setSelected(e.target.value)}
+                className="rounded-md border border-gray-300 px-3 py-2 text-xs dark:border-gray-600 dark:bg-gray-900"
+              >
+                {templates.map(t => (
+                  <option key={t.template_key} value={t.template_key}>{t.name}</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={handleApply}
+                disabled={isApplying || !selected || selected === matrix?.based_on_template_key}
+                className="btn-primary text-xs"
+              >
+                {isApplying ? 'Applying…' : 'Apply'}
+              </button>
+              {matrix?.is_customized && (
+                <button
+                  type="button"
+                  onClick={handleReset}
+                  disabled={isApplying}
+                  className="btn-secondary text-xs"
+                >
+                  Reset
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={onDeleteMatrix}
+                disabled={isDeleting}
+                className="btn-danger text-xs"
+              >
+                {isDeleting ? 'Deleting…' : 'Delete Matrix'}
+              </button>
+              {devMode && (
+                <button
+                  type="button"
+                  onClick={onSaveTemplate}
+                  className="btn-secondary text-xs"
+                >
+                  Save as Template
+                </button>
+              )}
+              {canDeleteTemplate && (
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteWarning(true)}
+                  disabled={isDeletingTemplate}
+                  className="btn-danger text-xs"
+                >
+                  {isDeletingTemplate ? 'Deleting…' : 'Delete Template'}
+                </button>
+              )}
+            </>
+          ) : (
+            <>
+              <select
+                value={selected}
+                onChange={e => setSelected(e.target.value)}
+                className="rounded-md border border-gray-300 px-3 py-2 text-xs dark:border-gray-600 dark:bg-gray-900"
+              >
+                {templates.map(t => (
+                  <option key={t.template_key} value={t.template_key}>{t.name}</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={handleApply}
+                disabled={isApplying || !selected}
+                className="btn-primary text-xs"
+              >
+                {isApplying ? 'Applying…' : 'Create from Template'}
+              </button>
+              <button
+                type="button"
+                onClick={onCreateEmpty}
+                disabled={isApplying}
+                className="btn-secondary text-xs"
+              >
+                Create Empty Matrix
+              </button>
+              {canDeleteTemplate && (
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteWarning(true)}
+                  disabled={isDeletingTemplate}
+                  className="btn-danger text-xs"
+                >
+                  {isDeletingTemplate ? 'Deleting…' : 'Delete Template'}
+                </button>
+              )}
+            </>
           )}
         </div>
       </div>
+
+      {showDeleteWarning && (
+        <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 dark:border-red-800 dark:bg-red-950/20">
+          <p className="text-xs text-red-800 dark:text-red-300">
+            <strong>Warning:</strong> Deleting this template will also remove all metrics derived from it from every budget. This cannot be undone.
+          </p>
+          <div className="mt-2 flex gap-2">
+            <button
+              type="button"
+              className="btn-danger text-xs"
+              onClick={() => {
+                setShowDeleteWarning(false)
+                onDeleteTemplate(selected)
+              }}
+            >
+              Delete anyway
+            </button>
+            <button
+              type="button"
+              className="btn-secondary text-xs"
+              onClick={() => setShowDeleteWarning(false)}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       {showConfirm && (
         <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-800 dark:bg-amber-950/20">
@@ -685,10 +792,136 @@ function TemplateSelector({ matrix, templates, onApply, isApplying }) {
   )
 }
 
+function SaveTemplateDialog({ templates, onSave, onCancel, isSaving }) {
+  const [mode, setMode] = useState('new')
+  const [selectedKey, setSelectedKey] = useState('')
+  const [name, setName] = useState('')
+  const [description, setDescription] = useState('')
+  const [showOverwriteWarning, setShowOverwriteWarning] = useState(false)
+
+  useEffect(() => {
+    if (templates.length > 0) {
+      setSelectedKey(templates[0].template_key)
+    }
+  }, [templates])
+
+  const handleSave = () => {
+    if (mode === 'existing') {
+      const existing = templates.find(t => t.template_key === selectedKey)
+      if (existing && !showOverwriteWarning) {
+        setShowOverwriteWarning(true)
+        return
+      }
+      onSave({ template_key: selectedKey, name: existing?.name || selectedKey, description, overwrite: true })
+    } else {
+      if (!name.trim()) return
+      const key = name.trim().toLowerCase().replace(/\s+/g, '_')
+      onSave({ template_key: key, name: name.trim(), description, overwrite: false })
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="w-full max-w-md rounded-lg border border-gray-200 bg-white p-5 shadow-lg dark:border-gray-700 dark:bg-gray-900">
+        <h4 className="mb-3 text-sm font-semibold text-gray-900 dark:text-gray-100">Save Matrix as Template</h4>
+
+        <div className="mb-3 flex gap-4">
+          <label className="flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300">
+            <input
+              type="radio"
+              name="save-template-mode"
+              checked={mode === 'new'}
+              onChange={() => { setMode('new'); setShowOverwriteWarning(false) }}
+            />
+            New template
+          </label>
+          <label className="flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300">
+            <input
+              type="radio"
+              name="save-template-mode"
+              checked={mode === 'existing'}
+              onChange={() => { setMode('existing'); setShowOverwriteWarning(false) }}
+            />
+            Overwrite existing
+          </label>
+        </div>
+
+        {mode === 'existing' ? (
+          <div className="mb-3">
+            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Select template</label>
+            <select
+              value={selectedKey}
+              onChange={e => { setSelectedKey(e.target.value); setShowOverwriteWarning(false) }}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900"
+            >
+              {templates.map(t => (
+                <option key={t.template_key} value={t.template_key}>{t.name}</option>
+              ))}
+            </select>
+            {showOverwriteWarning && (
+              <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">
+                Warning: This will overwrite the selected template with the current matrix metrics.
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="mb-3">
+            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Template name</label>
+            <input
+              type="text"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder="e.g., My Custom Template"
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900"
+            />
+          </div>
+        )}
+
+        <div className="mb-4">
+          <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Description (optional)</label>
+          <input
+            type="text"
+            value={description}
+            onChange={e => setDescription(e.target.value)}
+            placeholder="Brief description"
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900"
+          />
+        </div>
+
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="btn-secondary text-xs"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={isSaving || (mode === 'new' && !name.trim())}
+            className="btn-primary text-xs"
+          >
+            {isSaving ? 'Saving…' : 'Save'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function BudgetHealthTab({ budgetId, budget }) {
   const qc = useQueryClient()
   const [activeScope, setActiveScope] = useState('ALL')
   const [showMetricBuilder, setShowMetricBuilder] = useState(false)
+  const [showSaveTemplate, setShowSaveTemplate] = useState(false)
+
+  const appInfoQuery = useQuery({
+    queryKey: ['app-info'],
+    queryFn: getAppInfo,
+    staleTime: 300_000,
+  })
+  const devMode = !!appInfoQuery.data?.dev_mode
 
   const matrixQuery = useQuery({
     queryKey: ['health-matrix', budgetId],
@@ -746,6 +979,37 @@ export default function BudgetHealthTab({ budgetId, budget }) {
     },
   })
 
+  const deleteMatrixMutation = useMutation({
+    mutationFn: () => deleteBudgetHealthMatrix(budgetId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['health-matrix', budgetId] })
+      qc.invalidateQueries({ queryKey: ['budget-health', budgetId] })
+    },
+  })
+
+  const createEmptyMatrixMutation = useMutation({
+    mutationFn: () => createEmptyHealthMatrix(budgetId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['health-matrix', budgetId] })
+      qc.invalidateQueries({ queryKey: ['budget-health', budgetId] })
+    },
+  })
+
+  const saveTemplateMutation = useMutation({
+    mutationFn: data => saveHealthMatrixTemplate(budgetId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['health-matrix-templates'] })
+      setShowSaveTemplate(false)
+    },
+  })
+
+  const deleteTemplateMutation = useMutation({
+    mutationFn: templateKey => deleteHealthMatrixTemplate(budgetId, templateKey),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['health-matrix-templates'] })
+    },
+  })
+
   const saveTone = useMutation({
     mutationFn: tone => updateBudget(budgetId, { health_tone: tone }),
     onSuccess: data => {
@@ -764,6 +1028,8 @@ export default function BudgetHealthTab({ budgetId, budget }) {
     if (activeScope === 'ALL') return items
     return items.filter(i => i.scope === activeScope || i.scope === 'BOTH')
   }, [matrixQuery.data, activeScope])
+
+  const hasMatrix = !!matrixQuery.data && !matrixQuery.isError
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -793,77 +1059,84 @@ export default function BudgetHealthTab({ budgetId, budget }) {
       </div>
 
       {/* Template Selector */}
-      {Array.isArray(templatesQuery.data) && templatesQuery.data.length > 0 && (
+      {(Array.isArray(templatesQuery.data) && templatesQuery.data.length > 0 || devMode) && (
         <TemplateSelector
-          matrix={matrixQuery.data}
-          templates={templatesQuery.data}
+          matrix={hasMatrix ? matrixQuery.data : null}
+          templates={templatesQuery.data || []}
           onApply={key => applyTemplateMutation.mutate(key)}
           isApplying={applyTemplateMutation.isPending}
+          onDeleteMatrix={() => deleteMatrixMutation.mutate()}
+          onCreateEmpty={() => createEmptyMatrixMutation.mutate()}
+          isDeleting={deleteMatrixMutation.isPending}
+          devMode={devMode}
+          onSaveTemplate={() => setShowSaveTemplate(true)}
+          onDeleteTemplate={key => deleteTemplateMutation.mutate(key)}
+          isDeletingTemplate={deleteTemplateMutation.isPending}
         />
       )}
 
+      {matrixQuery.isError && !hasMatrix && (
+        <p className="text-sm text-red-600">{formatApiError(matrixQuery.error, 'Unable to load health matrix.')}</p>
+      )}
+
       {/* Matrix Item Management */}
-      <div className="card p-5">
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <h3 className="mb-1 font-semibold text-gray-800 dark:text-gray-100">Health Matrix</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Adjust how each metric contributes to your overall budget health.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setShowMetricBuilder(true)}
-            className="btn-primary text-xs"
-            disabled={showMetricBuilder}
-          >
-            + Add Metric
-          </button>
-        </div>
-
-        <p className="mb-3 text-[11px] text-gray-500 dark:text-gray-400">
-          Weights are automatically normalized to 100% by the engine.
-        </p>
-
-        {/* Scope filter tabs */}
-        <div className="mb-4 flex flex-wrap gap-2">
-          {SCOPE_TABS.map(tab => (
+      {hasMatrix && (
+        <div className="card p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <h3 className="mb-1 font-semibold text-gray-800 dark:text-gray-100">Health Matrix</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Adjust how each metric contributes to your overall budget health.
+              </p>
+            </div>
             <button
-              key={tab.key}
               type="button"
-              onClick={() => setActiveScope(tab.key)}
-              className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                activeScope === tab.key
-                  ? 'border-dosh-600 bg-dosh-50 text-dosh-700 dark:border-dosh-500 dark:bg-dosh-900/30 dark:text-dosh-300'
-                  : 'border-gray-300 text-gray-600 hover:border-dosh-300 hover:text-dosh-700 dark:border-gray-700 dark:text-gray-300 dark:hover:border-dosh-700 dark:hover:text-dosh-300'
-              }`}
+              onClick={() => setShowMetricBuilder(true)}
+              className="btn-primary text-xs"
+              disabled={showMetricBuilder}
             >
-              {tab.label}
+              + Add Metric
             </button>
-          ))}
-        </div>
-
-        {showMetricBuilder && (
-          <div className="mb-4">
-            <MetricBuilderCard
-              dataSources={dataSourcesQuery.data || []}
-              scales={scalesQuery.data || []}
-              onCreate={handleCreateMetric}
-              onCancel={() => setShowMetricBuilder(false)}
-            />
-            {createCustomMetricMutation.isError && (
-              <div className="mt-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300">
-                {formatApiError(createCustomMetricMutation.error, 'Unable to create metric.')}
-              </div>
-            )}
           </div>
-        )}
 
-        {matrixQuery.isLoading && <p className="text-sm text-gray-500">Loading matrix…</p>}
-        {matrixQuery.isError && (
-          <p className="text-sm text-red-600">{formatApiError(matrixQuery.error, 'Unable to load health matrix.')}</p>
-        )}
-        {matrixQuery.data && (
+          <p className="mb-3 text-[11px] text-gray-500 dark:text-gray-400">
+            Weights are automatically normalized to 100% by the engine.
+          </p>
+
+          {/* Scope filter tabs */}
+          <div className="mb-4 flex flex-wrap gap-2">
+            {SCOPE_TABS.map(tab => (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setActiveScope(tab.key)}
+                className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                  activeScope === tab.key
+                    ? 'border-dosh-600 bg-dosh-50 text-dosh-700 dark:border-dosh-500 dark:bg-dosh-900/30 dark:text-dosh-300'
+                    : 'border-gray-300 text-gray-600 hover:border-dosh-300 hover:text-dosh-700 dark:border-gray-700 dark:text-gray-300 dark:hover:border-dosh-700 dark:hover:text-dosh-300'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {showMetricBuilder && (
+            <div className="mb-4">
+              <MetricBuilderCard
+                dataSources={dataSourcesQuery.data || []}
+                scales={scalesQuery.data || []}
+                onCreate={handleCreateMetric}
+                onCancel={() => setShowMetricBuilder(false)}
+              />
+              {createCustomMetricMutation.isError && (
+                <div className="mt-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300">
+                  {formatApiError(createCustomMetricMutation.error, 'Unable to create metric.')}
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="space-y-3">
             {filteredItems.map(item => (
               <MatrixItemCard
@@ -878,8 +1151,17 @@ export default function BudgetHealthTab({ budgetId, budget }) {
               <p className="text-sm text-gray-500 dark:text-gray-400">No metrics match the selected scope.</p>
             )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {showSaveTemplate && (
+        <SaveTemplateDialog
+          templates={templatesQuery.data || []}
+          onSave={data => saveTemplateMutation.mutate(data)}
+          onCancel={() => setShowSaveTemplate(false)}
+          isSaving={saveTemplateMutation.isPending}
+        />
+      )}
     </div>
   )
 }
@@ -966,6 +1248,7 @@ TemplateSelector.propTypes = {
   matrix: PropTypes.shape({
     based_on_template_key: PropTypes.string,
     template_name: PropTypes.string,
+    name: PropTypes.string,
     is_customized: PropTypes.bool,
   }),
   templates: PropTypes.arrayOf(PropTypes.shape({
@@ -976,6 +1259,25 @@ TemplateSelector.propTypes = {
   })).isRequired,
   onApply: PropTypes.func.isRequired,
   isApplying: PropTypes.bool,
+  onDeleteMatrix: PropTypes.func.isRequired,
+  onCreateEmpty: PropTypes.func.isRequired,
+  isDeleting: PropTypes.bool,
+  devMode: PropTypes.bool,
+  onSaveTemplate: PropTypes.func.isRequired,
+  onDeleteTemplate: PropTypes.func.isRequired,
+  isDeletingTemplate: PropTypes.bool,
+}
+
+SaveTemplateDialog.propTypes = {
+  templates: PropTypes.arrayOf(PropTypes.shape({
+    template_key: PropTypes.string.isRequired,
+    name: PropTypes.string.isRequired,
+    description: PropTypes.string,
+    is_system: PropTypes.bool,
+  })).isRequired,
+  onSave: PropTypes.func.isRequired,
+  onCancel: PropTypes.func.isRequired,
+  isSaving: PropTypes.bool,
 }
 
 BudgetHealthTab.propTypes = {

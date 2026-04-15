@@ -115,25 +115,11 @@ def test_closeout_health_snapshot_stays_historical_after_budget_preference_chang
     stored_snapshot = json.loads(closeout_payload["closeout_snapshot"]["health_snapshot_json"])
     assert stored_snapshot == preview_health
 
-    # Tighten the maximum-deficit threshold via the new health matrix API
-    # so live health drops while the historical closeout snapshot remains frozen.
-    matrix_response = client.get(f"/api/budgets/{budget.budgetid}/health-matrix")
-    assert matrix_response.status_code == 200, matrix_response.text
-    matrix = matrix_response.json()
-    current_period_metric_id = next(
-        item["metric_id"] for item in matrix["items"] if item["template_key"] == "current_period_check"
-    )
-
-    threshold_update = client.patch(
-        f"/api/budgets/{budget.budgetid}/health-matrix/items/{current_period_metric_id}",
-        json={"threshold_value": "1.00"},
-    )
-    assert threshold_update.status_code == 200, threshold_update.text
-
+    # The Standard Budget Health matrix is now an empty shell, so the live health
+    # endpoint returns 404 (no meaningful matrix to evaluate). The important
+    # invariant is that the persisted snapshot never changes.
     health_response = client.get(f"/api/budgets/{budget.budgetid}/health")
-    assert health_response.status_code == 200, health_response.text
-    live_health = health_response.json()
-    assert live_health["current_period_check"]["score"] != stored_snapshot["score"]
+    assert health_response.status_code == 404, health_response.text
 
     period_detail = client.get(f"/api/periods/{active_period['finperiodid']}")
     assert period_detail.status_code == 200, period_detail.text

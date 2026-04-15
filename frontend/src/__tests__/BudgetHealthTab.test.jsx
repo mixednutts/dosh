@@ -92,6 +92,9 @@ describe('BudgetHealthTab', () => {
     jest.clearAllMocks()
     jest.useFakeTimers()
     api.get.mockImplementation((url) => {
+      if (url === '/info') {
+        return Promise.resolve({ data: { app: 'Dosh', version: '0.0.0', schema_revision: 'abc', dev_mode: false } })
+      }
       if (url === '/budgets/1/health-matrix/') {
         return Promise.resolve({ data: matrixResponse })
       }
@@ -177,6 +180,9 @@ describe('BudgetHealthTab', () => {
   it('shows customized badge and allows reset when customized', async () => {
     const customizedResponse = { ...matrixResponse, is_customized: true }
     api.get.mockImplementation((url) => {
+      if (url === '/info') {
+        return Promise.resolve({ data: { app: 'Dosh', version: '0.0.0', schema_revision: 'abc', dev_mode: false } })
+      }
       if (url === '/budgets/1/health-matrix/') return Promise.resolve({ data: customizedResponse })
       if (url === '/budgets/1/health-matrix/templates') {
         return Promise.resolve({
@@ -377,6 +383,9 @@ describe('BudgetHealthTab', () => {
 
   it('displays an error when health matrix fails to load', async () => {
     api.get.mockImplementation((url) => {
+      if (url === '/info') {
+        return Promise.resolve({ data: { app: 'Dosh', version: '0.0.0', schema_revision: 'abc', dev_mode: false } })
+      }
       if (url === '/budgets/1/health-matrix/') {
         return Promise.reject({ response: { data: { detail: 'Matrix unavailable.' } } })
       }

@@ -185,7 +185,7 @@ def evaluate_budget_health(
 
     Returns a payload similar to the legacy BudgetHealthOut schema.
     """
-    from ..models import Budget, BudgetHealthMatrix, FinancialPeriod
+    from ..models import Budget, BudgetHealthMatrix, BudgetHealthMatrixItem, FinancialPeriod
     from ..cycle_constants import CURRENT_STAGE, PENDING_CLOSURE_STAGE, CLOSED
     from datetime import datetime, timezone
 
@@ -195,6 +195,11 @@ def evaluate_budget_health(
 
     matrix = db.query(BudgetHealthMatrix).filter_by(budgetid=budgetid, is_active=True).first()
     if not matrix:
+        return None
+
+    # An empty matrix (no items) should behave as if no matrix exists
+    has_items = db.query(BudgetHealthMatrixItem).filter_by(matrix_id=matrix.matrix_id).first()
+    if not has_items:
         return None
 
     now = datetime.now(timezone.utc)

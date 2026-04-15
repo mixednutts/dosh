@@ -181,107 +181,8 @@ def seed_catalogs(db: Session) -> None:
     db.flush()
 
 
-METRIC_TEMPLATE_DEFAULTS: dict[str, dict[str, Any]] = {
-    "setup_health": {
-        "scale_key": None,
-        "default_value_json": json.dumps(None),
-    },
-    "budget_discipline": {
-        "scale_key": "percentage_0_100",
-        "default_value_json": json.dumps(10),
-    },
-    "planning_stability": {
-        "scale_key": "ten_scale_1_10",
-        "default_value_json": json.dumps(5),
-    },
-    "current_period_check": {
-        "scale_key": "dollar_amount",
-        "default_value_json": json.dumps(None),
-    },
-}
-
-
 def create_standard_templates(db: Session) -> HealthMatrixTemplate:
-    """Create the 'Standard Budget Health' metric and matrix templates."""
-
-    # Metric templates for the 4 existing health components
-    metric_templates = [
-        HealthMetricTemplate(
-            template_key="setup_health",
-            name="Setup Health",
-            description="Evaluates income sources, active expenses, and future period coverage.",
-            scope="OVERALL",
-            formula_expression="income_source_count + active_expense_count + future_period_count",
-            formula_data_sources_json=json.dumps(["income_source_count", "active_expense_count", "future_period_count"]),
-            scoring_logic_json=json.dumps({"type": "setup_health_v1"}),
-            evidence_template_json=json.dumps({
-                "supportive": "Your budget setup looks solid with the current income, expenses, and period coverage.",
-                "factual": "Income sources, active expenses, and future period counts are within expected ranges.",
-                "friendly": "Looks like your budget is set up nicely — income, expenses, and periods are all in order!",
-            }),
-            drill_down_enabled=False,
-            is_system=True,
-            **METRIC_TEMPLATE_DEFAULTS["setup_health"],
-        ),
-        HealthMetricTemplate(
-            template_key="budget_discipline",
-            name="Budget Discipline",
-            description="Measures historical outflow overrun across closed periods.",
-            scope="OVERALL",
-            formula_expression="historical_overrun_ratio",
-            formula_data_sources_json=json.dumps(["historical_overrun_ratio"]),
-            scoring_logic_json=json.dumps({"type": "budget_discipline_v1"}),
-            evidence_template_json=json.dumps({
-                "supportive": "Your historical spending discipline is tracking well.",
-                "factual": "Historical expense overrun is within acceptable thresholds.",
-                "friendly": "You're keeping your spending in check — nice work!",
-            }),
-            drill_down_enabled=True,
-            is_system=True,
-            **METRIC_TEMPLATE_DEFAULTS["budget_discipline"],
-        ),
-        HealthMetricTemplate(
-            template_key="planning_stability",
-            name="Planning Stability",
-            description="Tracks off-plan activity in current periods.",
-            scope="BOTH",
-            formula_expression="revised_line_count",
-            formula_data_sources_json=json.dumps(["revised_line_count"]),
-            scoring_logic_json=json.dumps({"type": "planning_stability_v1"}),
-            evidence_template_json=json.dumps({
-                "supportive": "Your plan has remained stable with minimal revisions.",
-                "factual": "Number of revised lines is within tolerance.",
-                "friendly": "Not many changes this cycle — your plan is holding steady!",
-            }),
-            drill_down_enabled=True,
-            is_system=True,
-            **METRIC_TEMPLATE_DEFAULTS["planning_stability"],
-        ),
-        HealthMetricTemplate(
-            template_key="current_period_check",
-            name="Current Period Check",
-            description="Live-period deficit, tolerance, revision pressure, and timing factor.",
-            scope="CURRENT_PERIOD",
-            formula_expression="live_period_surplus + total_budgeted_income * 0",
-            formula_data_sources_json=json.dumps(["live_period_surplus", "total_budgeted_income"]),
-            scoring_logic_json=json.dumps({"type": "current_period_check_v1"}),
-            evidence_template_json=json.dumps({
-                "supportive": "This period is tracking along well with the current plan.",
-                "factual": "Current period surplus and timing factors are within tolerance.",
-                "friendly": "Things are looking good this cycle — no red flags!",
-            }),
-            drill_down_enabled=True,
-            is_system=True,
-            **METRIC_TEMPLATE_DEFAULTS["current_period_check"],
-        ),
-    ]
-
-    for mt in metric_templates:
-        existing = db.query(HealthMetricTemplate).filter_by(template_key=mt.template_key).first()
-        if not existing:
-            db.add(mt)
-
-    db.flush()
+    """Create the 'Standard Budget Health' matrix template (empty shell)."""
 
     # Matrix template
     matrix_template = db.query(HealthMatrixTemplate).filter_by(template_key="standard_budget_health").first()
@@ -295,28 +196,7 @@ def create_standard_templates(db: Session) -> HealthMatrixTemplate:
         db.add(matrix_template)
         db.flush()
 
-    # Matrix template items with current fixed weights from budget_health.py logic
-    # setup_health and budget_discipline = 25% each, planning_stability = 20%, current_period = 30%
-    items = [
-        ("setup_health", Decimal("0.2500")),
-        ("budget_discipline", Decimal("0.2500")),
-        ("planning_stability", Decimal("0.2000")),
-        ("current_period_check", Decimal("0.3000")),
-    ]
-
-    for idx, (mt_key, weight) in enumerate(items):
-        existing = db.query(HealthMatrixTemplateItem).filter_by(
-            template_key=matrix_template.template_key, metric_template_key=mt_key
-        ).first()
-        if not existing:
-            db.add(HealthMatrixTemplateItem(
-                template_key=matrix_template.template_key,
-                metric_template_key=mt_key,
-                weight=weight,
-                display_order=idx,
-            ))
-
-    db.flush()
+    # No default metric templates are seeded; metrics will be created via the UI.
     return matrix_template
 
 
@@ -468,29 +348,8 @@ def create_default_matrix_for_budget(db: Session, budget: Budget) -> BudgetHealt
     return create_matrix_from_template(db, budget, "standard_budget_health")
 
 
-def _update_existing_metric_templates(db: Session) -> None:
-    """Keep existing metric templates in sync with seed changes."""
-    mt = db.query(HealthMetricTemplate).filter_by(template_key="current_period_check").first()
-    if mt:
-        mt.formula_expression = "live_period_surplus + total_budgeted_income * 0"
-        mt.formula_data_sources_json = json.dumps(["live_period_surplus", "total_budgeted_income"])
-
-    db.flush()
-
-
-def _update_existing_metrics(db: Session) -> None:
-    """Push template-level formula changes to existing budget metric instances."""
-    for metric in db.query(HealthMetric).filter_by(template_key="current_period_check").all():
-        metric.formula_expression = "live_period_surplus + total_budgeted_income * 0"
-        metric.formula_data_sources_json = json.dumps(["live_period_surplus", "total_budgeted_income"])
-
-    db.flush()
-
-
 def seed_and_migrate(db: Session) -> None:
     """Run the full Phase A seed and migration in one transaction."""
     seed_catalogs(db)
     create_standard_templates(db)
-    _update_existing_metric_templates(db)
     migrate_existing_budgets(db)
-    _update_existing_metrics(db)

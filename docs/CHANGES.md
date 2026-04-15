@@ -4,7 +4,40 @@ This document captures the key product and implementation changes made during re
 
 It is intended to complement [README.md](/home/ubuntu/dosh/README.md), not replace it.
 
-## Latest Session: Budget Health Engine Simplification — Collapse Threshold Definitions
+## Latest Session: Budget Health Engine Cleanup — Template Deletion and Empty-Matrix Handling (0.4.7-alpha)
+
+This session fixed dev-mode template deletion to fully cascade derived metrics, cleaned up orphaned and empty health matrix records, and aligned the dashboard to hide health UI when no meaningful matrix exists.
+
+### What changed
+
+- **Backend fix (`health_matrices.py`):**
+  - The `DELETE /health-matrix/templates/{key}` endpoint now deletes all `HealthMetric` rows derived from the template instead of leaving them orphaned.
+  - Added impact counters to the response (`deleted_metrics`, `affected_budgets`).
+
+- **Backend fix (`runner.py`):**
+  - `evaluate_budget_health` now returns `None` when the active `BudgetHealthMatrix` has no items.
+  - This prevents empty matrices from producing a misleading default score of 50.
+
+- **Frontend fix (`BudgetsPage.jsx`):**
+  - The Budget Health card on the dashboard is now hidden entirely when health data is absent.
+  - Removed grey placeholder skeletons in the Current Budget Cycle card when there is no current-period health check.
+
+- **Frontend fix (`BudgetHealthTab.jsx`):**
+  - The dev-mode `TemplateSelector` remains visible even when the template list is empty, so `Save as Template` and `Create Empty Matrix` are always accessible.
+  - Added a red warning banner before confirming template deletion.
+
+- **Database cleanup (local Docker container):**
+  - Deleted 44 orphaned `HealthMetric` rows, 28 orphaned `BudgetHealthMatrixItem` rows, and 7 empty `BudgetHealthMatrix` rows.
+  - Preserved a full backup at `/app/data/backups/dosh-pre-cleanup-20260415-152459.db`.
+
+- **Tests:**
+  - Updated `test_health_engine.py` to assert `None` for empty matrices and added a new test with a custom metric to verify real structure.
+  - Updated `test_lifecycle_and_health.py` and `test_app_smoke.py` to expect 404 when no evaluable matrix exists.
+  - Added backend tests in `test_health_matrices.py` for dev-mode template deletion.
+
+---
+
+## Previous Session: Budget Health Engine Simplification — Collapse Threshold Definitions
 
 This session simplified the Budget Health Engine by removing the separate `HealthThresholdDefinition` and `BudgetMetricThreshold` abstractions. Threshold values are now stored directly on `HealthMetric`/`HealthMetricTemplate` (via `scale_key` and `default_value_json`) and on `BudgetHealthMatrixItem` (via `threshold_value_json`).
 

@@ -821,18 +821,13 @@ function BudgetStats({ budgetId, budgetName, periods = [], currentPeriodDetail, 
             </button>
           ) : null}
         </div>
-        {health?.current_period_check ? (
+        {health?.current_period_check && (
           <div className="mt-3 space-y-2">
             <TrafficLight status={health.current_period_check.status} />
             <p className={`text-sm font-medium ${healthToneClass(health.current_period_check.status)}`}>
               {health.current_period_check.summary}
             </p>
           </div>
-        ) : (
-            <div className="mt-3 space-y-2">
-              <div className="h-10 w-36 rounded-full bg-gray-200 dark:bg-gray-700" />
-              <div className="h-3 w-full rounded bg-gray-200 dark:bg-gray-700" />
-            </div>
         )}
         <PendingClosureList periods={grouped.pendingClosure} budgetId={budgetId} />
       </div>
@@ -848,39 +843,32 @@ function BudgetStats({ budgetId, budgetName, periods = [], currentPeriodDetail, 
         isLoading={currentPeriodDetailLoading}
         budgetName={budgetName}
       />
-      <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 dark:border-gray-700 dark:bg-gray-800/50">
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Budget Health</p>
-        {health ? (
-          <>
-            <div className="mt-3 flex items-start justify-between gap-3">
-              <div className="relative flex h-24 w-24 shrink-0 items-center justify-center">
-                <div className={`flex h-20 w-20 items-center justify-center rounded-full shadow-sm ${healthCircleClass(health.overall_status)}`}>
-                  <span className="text-3xl font-light tracking-tight">{health.overall_score}</span>
-                </div>
-                <div className={`
-                  absolute bottom-0 right-0 flex h-10 w-10 items-center justify-center rounded-full
-                  border-2 border-white text-xs font-semibold shadow-sm dark:border-gray-800
-                  ${healthCircleClass(health.overall_status)}
-                `}>
-                  <div className="flex flex-col items-center leading-none">
-                    <MomentumIcon status={health.momentum_status} />
-                    <span className="mt-0.5 text-[10px]">{formatMomentumDelta(health.momentum_delta)}</span>
-                  </div>
+      {health && (
+        <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 dark:border-gray-700 dark:bg-gray-800/50">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Budget Health</p>
+          <div className="mt-3 flex items-start justify-between gap-3">
+            <div className="relative flex h-24 w-24 shrink-0 items-center justify-center">
+              <div className={`flex h-20 w-20 items-center justify-center rounded-full shadow-sm ${healthCircleClass(health.overall_status)}`}>
+                <span className="text-3xl font-light tracking-tight">{health.overall_score}</span>
+              </div>
+              <div className={`
+                absolute bottom-0 right-0 flex h-10 w-10 items-center justify-center rounded-full
+                border-2 border-white text-xs font-semibold shadow-sm dark:border-gray-800
+                ${healthCircleClass(health.overall_status)}
+              `}>
+                <div className="flex flex-col items-center leading-none">
+                  <MomentumIcon status={health.momentum_status} />
+                  <span className="mt-0.5 text-[10px]">{formatMomentumDelta(health.momentum_delta)}</span>
                 </div>
               </div>
-              <button type="button" className="btn-secondary" onClick={onOpenHealth} disabled={!health}>
-                Details
-              </button>
             </div>
-            <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">{health.momentum_summary}</p>
-          </>
-        ) : (
-          <div className="mt-3 space-y-2">
-            <div className="h-20 w-20 rounded-full bg-gray-200 dark:bg-gray-700" />
-            <div className="h-3 w-28 rounded bg-gray-200 dark:bg-gray-700" />
+            <button type="button" className="btn-secondary" onClick={onOpenHealth}>
+              Details
+            </button>
           </div>
-        )}
-      </div>
+          <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">{health.momentum_summary}</p>
+        </div>
+      )}
     </div>
   )
 }

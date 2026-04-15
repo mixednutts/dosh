@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+## 0.4.7-alpha | released | 2026-04-15
+
+### Fixed
+
+- Fixed a database foreign-key error when deleting a health matrix template in dev mode. Deleting a template now correctly cascades and removes all derived metrics across budgets.
+- Fixed the budget dashboard so the Budget Health card and grey placeholder backgrounds are completely hidden when a budget has no health matrix metrics.
+- Fixed the Budget Health Engine so empty matrices return no health data instead of a default score of 50.
+
+### Changed
+
+- The Save as Template and Create Empty Matrix dev-mode controls remain visible even when no templates exist yet.
+- Added a warning banner before deleting a matrix template in dev mode to confirm the cascade impact.
+
 ## 0.4.6-alpha | released | 2026-04-15
 
 ### Changed

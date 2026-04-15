@@ -474,6 +474,11 @@ Status:
 - `Completed`: updated documentation: `DEVELOPMENT_ACTIVITIES.md`, `CHANGES.md`, `BUDGET_HEALTH_ENGINE_PLAN.md`, and `AGENTS.md` references to personalisation
 - `Fixed (0.4.4-alpha)`: corrected a model-migration mismatch where `backend/app/models.py` still referenced the old `personalisation` table names after the migration renamed them to `threshold_*`. This caused the health engine to query non-existent tables, resulting in empty health payloads and blank UI placeholders on the budget summary page. The fix aligned models, fresh-install migration, and upgrade migration to the same `threshold_*` naming.
 - `Completed (0.4.6-alpha)`: simplified the engine by collapsing `HealthThresholdDefinition` and `BudgetMetricThreshold` into `HealthMetric`/`HealthMetricTemplate` (`scale_key` + `default_value_json`) and `BudgetHealthMatrixItem` (`threshold_value_json`). This removes the fine-grained threshold-definition abstraction and makes scale + default value a direct metric property.
+- `Fixed`: corrected the `DELETE /health-matrix/templates/{key}` endpoint to fully cascade and delete derived `HealthMetric` rows, preventing foreign-key failures and orphaned metrics.
+- `Fixed`: updated `evaluate_budget_health` to return `None` when the active `BudgetHealthMatrix` has no items, so empty matrices do not produce misleading default scores.
+- `Fixed`: updated the budget dashboard (`BudgetsPage.jsx`) to hide the Budget Health card and placeholder skeletons entirely when no health data is available.
+- `Completed`: added a red warning banner in the frontend before deleting a matrix template in dev mode, explaining that derived metrics will be removed.
+- `Completed`: ensured the dev-mode `Save as Template` and `Create Empty Matrix` controls remain visible even when the template list is empty.
 - `Decision`: keep the `revision_sensitivity` threshold for `planning_stability` for now; the threshold is stored and surfaced in evidence but does not yet directly modulate scoring tolerance. A future session may decide to integrate it or remove it if it remains unused.
 
 #### Activity Group: Test Coverage

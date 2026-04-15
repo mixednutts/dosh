@@ -2,21 +2,21 @@
 
 This document records meaningful automated test results from major working sessions.
 
-## Latest Session: Budget Health Engine Simplification (0.4.6-alpha)
+## Latest Session: Budget Health Engine Cleanup (0.4.7-alpha)
 
-This session simplified the Budget Health Engine by collapsing `HealthThresholdDefinition` and `BudgetMetricThreshold` into direct metric/matrix-item properties, then deployed to the local Docker container.
+This session fixed dev-mode template deletion to fully cascade, cleaned up orphaned/empty health matrix records, aligned empty-matrix handling so `evaluate_budget_health` returns `None`, and hid health UI on the dashboard when no meaningful matrix exists.
 
 ### Verification
 
 ```bash
 cd /home/ubuntu/dosh/backend
-.venv/bin/python -m pytest tests/ -q
+.venv/bin/pytest tests/ -q
 ```
 
 Result:
 
-- Full backend suite: **190 passed**
-- Migration tests (`test_auto_expense_migration.py`): clean upgrade to head and legacy upgrade both pass
+- Full backend suite: **183 passed**
+- New tests added for template deletion (`test_health_matrices.py`) and empty-matrix behavior (`test_health_engine.py`)
 
 ```bash
 cd /home/ubuntu/dosh/frontend
@@ -27,6 +27,15 @@ Result:
 
 - Full frontend suite: **203 passed** (18 test suites)
 - No regressions introduced
+
+### Previous Session: Budget Health Engine Simplification (0.4.6-alpha)
+
+This session simplified the Budget Health Engine by collapsing `HealthThresholdDefinition` and `BudgetMetricThreshold` into direct metric/matrix-item properties, then deployed to the local Docker container.
+
+Result:
+
+- Full backend suite: **190 passed**
+- Full frontend suite: **203 passed**
 
 ### Deployment Verification
 
