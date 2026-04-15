@@ -114,8 +114,8 @@ describe('PeriodDetailPage', () => {
     })
 
     renderWithProviders(<PeriodDetailPage />, {
-      route: '/periods/44',
-      path: '/periods/:periodId',
+      route: '/budgets/1/periods/44',
+      path: '/budgets/:budgetId/periods/:periodId',
     })
 
     expect(await screen.findByText(/This budget cycle is closed\./)).toBeTruthy()
@@ -156,8 +156,8 @@ describe('PeriodDetailPage', () => {
     })
 
     renderWithProviders(<PeriodDetailPage />, {
-      route: '/periods/45',
-      path: '/periods/:periodId',
+      route: '/budgets/1/periods/45',
+      path: '/budgets/:budgetId/periods/:periodId',
     })
 
     expect(await screen.findByText('Close Out')).toBeTruthy()
@@ -171,7 +171,7 @@ describe('PeriodDetailPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Download Export' }))
 
     await waitFor(() => {
-      expect(client.exportPeriod).toHaveBeenCalledWith(45, 'json')
+      expect(client.exportPeriod).toHaveBeenCalledWith(1, 45, 'json')
     })
   })
 
@@ -220,8 +220,8 @@ describe('PeriodDetailPage', () => {
     client.runPeriodAutoExpenses.mockResolvedValue({ created_count: 1, skipped_count: 0, skipped_reasons: [] })
 
     renderWithProviders(<PeriodDetailPage />, {
-      route: '/periods/47',
-      path: '/periods/:periodId',
+      route: '/budgets/1/periods/47',
+      path: '/budgets/:budgetId/periods/:periodId',
     })
 
     expect(await screen.findByText('Run Auto Expense')).toBeTruthy()
@@ -230,7 +230,7 @@ describe('PeriodDetailPage', () => {
     fireEvent.click(screen.getByText('Run Auto Expense'))
 
     await waitFor(() => {
-      expect(client.runPeriodAutoExpenses).toHaveBeenCalledWith(47)
+      expect(client.runPeriodAutoExpenses).toHaveBeenCalledWith(1, 47)
     })
   })
 
@@ -285,8 +285,8 @@ describe('PeriodDetailPage', () => {
     })
 
     renderWithProviders(<PeriodDetailPage />, {
-      route: '/periods/49',
-      path: '/periods/:periodId',
+      route: '/budgets/1/periods/49',
+      path: '/budgets/:budgetId/periods/:periodId',
     })
 
     fireEvent.click(await screen.findByRole('button', { name: 'MANUAL' }))
@@ -345,8 +345,8 @@ describe('PeriodDetailPage', () => {
     })
 
     renderWithProviders(<PeriodDetailPage />, {
-      route: '/periods/48',
-      path: '/periods/:periodId',
+      route: '/budgets/1/periods/48',
+      path: '/budgets/:budgetId/periods/:periodId',
     })
 
     expect(await screen.findByText('Rent')).toBeTruthy()
@@ -380,8 +380,8 @@ describe('PeriodDetailPage', () => {
     })
 
     renderWithProviders(<PeriodDetailPage />, {
-      route: '/periods/46',
-      path: '/periods/:periodId',
+      route: '/budgets/1/periods/46',
+      path: '/budgets/:budgetId/periods/:periodId',
     })
 
     expect(await screen.findByTitle('Export budget cycle')).toBeTruthy()
@@ -437,8 +437,8 @@ describe('PeriodDetailPage', () => {
     })
 
     renderWithProviders(<PeriodDetailPage />, {
-      route: '/periods/55',
-      path: '/periods/:periodId',
+      route: '/budgets/1/periods/55',
+      path: '/budgets/:budgetId/periods/:periodId',
     })
 
     fireEvent.click(await screen.findByText('Close Out'))
@@ -495,8 +495,8 @@ describe('PeriodDetailPage', () => {
     client.setPeriodExpenseStatus.mockResolvedValue({})
 
     renderWithProviders(<PeriodDetailPage />, {
-      route: '/periods/56',
-      path: '/periods/:periodId',
+      route: '/budgets/1/periods/56',
+      path: '/budgets/:budgetId/periods/:periodId',
     })
 
     fireEvent.click(await screen.findByTitle(/Click to mark Paid/i))
@@ -508,7 +508,7 @@ describe('PeriodDetailPage', () => {
     fireEvent.click(screen.getByText('Mark Paid'))
 
     await waitFor(() => {
-      expect(client.setPeriodExpenseStatus).toHaveBeenCalledWith(56, 'Groceries', 'Paid', null)
+      expect(client.setPeriodExpenseStatus).toHaveBeenCalledWith(1, 56, 'Groceries', 'Paid', null)
     })
   })
 
@@ -548,8 +548,8 @@ describe('PeriodDetailPage', () => {
     })
 
     renderWithProviders(<PeriodDetailPage />, {
-      route: '/periods/57',
-      path: '/periods/:periodId',
+      route: '/budgets/1/periods/57',
+      path: '/budgets/:budgetId/periods/:periodId',
     })
 
     expect(await screen.findByText('Salary')).toBeTruthy()
@@ -633,8 +633,8 @@ describe('PeriodDetailPage', () => {
     })
 
     renderWithProviders(<PeriodDetailPage />, {
-      route: '/periods/58',
-      path: '/periods/:periodId',
+      route: '/budgets/1/periods/58',
+      path: '/budgets/:budgetId/periods/:periodId',
     })
 
     expect(await screen.findByText('Salary')).toBeTruthy()
@@ -732,8 +732,8 @@ describe('PeriodDetailPage', () => {
     })
 
     renderWithProviders(<PeriodDetailPage />, {
-      route: '/periods/57',
-      path: '/periods/:periodId',
+      route: '/budgets/1/periods/57',
+      path: '/budgets/:budgetId/periods/:periodId',
     })
 
     expect(await screen.findByText(/Budget cycle is locked\./)).toBeTruthy()
@@ -801,8 +801,8 @@ describe('PeriodDetailPage', () => {
     })
 
     renderWithProviders(<PeriodDetailPage />, {
-      route: '/periods/61',
-      path: '/periods/:periodId',
+      route: '/budgets/1/periods/61',
+      path: '/budgets/:budgetId/periods/:periodId',
     })
 
     fireEvent.click(await screen.findByTitle('Add income correction'))
@@ -820,7 +820,7 @@ describe('PeriodDetailPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add Correction' }))
 
     await waitFor(() => {
-      expect(client.addIncomeTransaction).toHaveBeenCalledWith(61, 'Salary', {
+      expect(client.addIncomeTransaction).toHaveBeenCalledWith(1, 61, 'Salary', {
         amount: -125.5,
         note: 'Payroll correction',
         entrydate: expect.any(String),
@@ -871,8 +871,8 @@ describe('PeriodDetailPage', () => {
     })
 
     renderWithProviders(<PeriodDetailPage />, {
-      route: '/periods/65',
-      path: '/periods/:periodId',
+      route: '/budgets/1/periods/65',
+      path: '/budgets/:budgetId/periods/:periodId',
     })
 
     fireEvent.click(await screen.findByTitle('Add expense transaction'))
@@ -889,7 +889,7 @@ describe('PeriodDetailPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add Expense' }))
 
     await waitFor(() => {
-      expect(client.addExpenseEntry).toHaveBeenCalledWith(65, 'Rent', {
+      expect(client.addExpenseEntry).toHaveBeenCalledWith(1, 65, 'Rent', {
         amount: 275,
         note: 'Part payment',
         entrydate: expect.any(String),
@@ -938,8 +938,8 @@ describe('PeriodDetailPage', () => {
     })
 
     renderWithProviders(<PeriodDetailPage />, {
-      route: '/periods/165',
-      path: '/periods/:periodId',
+      route: '/budgets/1/periods/165',
+      path: '/budgets/:budgetId/periods/:periodId',
     })
 
     fireEvent.click(await screen.findByTitle('Add expense transaction'))
@@ -989,8 +989,8 @@ describe('PeriodDetailPage', () => {
     })
 
     renderWithProviders(<PeriodDetailPage />, {
-      route: '/periods/167',
-      path: '/periods/:periodId',
+      route: '/budgets/1/periods/167',
+      path: '/budgets/:budgetId/periods/:periodId',
     })
 
     fireEvent.click(await screen.findByTitle('Add expense transaction'))
@@ -1040,8 +1040,8 @@ describe('PeriodDetailPage', () => {
     })
 
     renderWithProviders(<PeriodDetailPage />, {
-      route: '/periods/171',
-      path: '/periods/:periodId',
+      route: '/budgets/1/periods/171',
+      path: '/budgets/:budgetId/periods/:periodId',
     })
 
     fireEvent.click(await screen.findByTitle('Add expense transaction'))
@@ -1090,8 +1090,8 @@ describe('PeriodDetailPage', () => {
     })
 
     renderWithProviders(<PeriodDetailPage />, {
-      route: '/periods/172',
-      path: '/periods/:periodId',
+      route: '/budgets/1/periods/172',
+      path: '/budgets/:budgetId/periods/:periodId',
     })
 
     fireEvent.click(await screen.findByTitle('Add expense transaction'))
@@ -1141,8 +1141,8 @@ describe('PeriodDetailPage', () => {
     })
 
     renderWithProviders(<PeriodDetailPage />, {
-      route: '/periods/181',
-      path: '/periods/:periodId',
+      route: '/budgets/1/periods/181',
+      path: '/budgets/:budgetId/periods/:periodId',
     })
 
     fireEvent.click(await screen.findByTitle('Add expense transaction'))
@@ -1193,8 +1193,8 @@ describe('PeriodDetailPage', () => {
     })
 
     renderWithProviders(<PeriodDetailPage />, {
-      route: '/periods/177',
-      path: '/periods/:periodId',
+      route: '/budgets/1/periods/177',
+      path: '/budgets/:budgetId/periods/:periodId',
     })
 
     fireEvent.click(await screen.findByTitle('Add expense transaction'))
@@ -1241,8 +1241,8 @@ describe('PeriodDetailPage', () => {
     })
 
     renderWithProviders(<PeriodDetailPage />, {
-      route: '/periods/173',
-      path: '/periods/:periodId',
+      route: '/budgets/1/periods/173',
+      path: '/budgets/:budgetId/periods/:periodId',
     })
 
     fireEvent.click(await screen.findByTitle('Add income transaction'))
@@ -1288,8 +1288,8 @@ describe('PeriodDetailPage', () => {
     })
 
     renderWithProviders(<PeriodDetailPage />, {
-      route: '/periods/174',
-      path: '/periods/:periodId',
+      route: '/budgets/1/periods/174',
+      path: '/budgets/:budgetId/periods/:periodId',
     })
 
     fireEvent.click(await screen.findByTitle('Add income transaction'))
@@ -1336,8 +1336,8 @@ describe('PeriodDetailPage', () => {
     })
 
     renderWithProviders(<PeriodDetailPage />, {
-      route: '/periods/182',
-      path: '/periods/:periodId',
+      route: '/budgets/1/periods/182',
+      path: '/budgets/:budgetId/periods/:periodId',
     })
 
     fireEvent.click(await screen.findByTitle('Add income transaction'))
@@ -1385,8 +1385,8 @@ describe('PeriodDetailPage', () => {
     })
 
     renderWithProviders(<PeriodDetailPage />, {
-      route: '/periods/184',
-      path: '/periods/:periodId',
+      route: '/budgets/1/periods/184',
+      path: '/budgets/:budgetId/periods/:periodId',
     })
 
     fireEvent.click(await screen.findByTitle('Add income transaction'))
@@ -1434,8 +1434,8 @@ describe('PeriodDetailPage', () => {
     })
 
     renderWithProviders(<PeriodDetailPage />, {
-      route: '/periods/178',
-      path: '/periods/:periodId',
+      route: '/budgets/1/periods/178',
+      path: '/budgets/:budgetId/periods/:periodId',
     })
 
     fireEvent.click(await screen.findByTitle('Add income transaction'))
@@ -1493,8 +1493,8 @@ describe('PeriodDetailPage', () => {
     })
 
     renderWithProviders(<PeriodDetailPage />, {
-      route: '/periods/168',
-      path: '/periods/:periodId',
+      route: '/budgets/1/periods/168',
+      path: '/budgets/:budgetId/periods/:periodId',
     })
 
     fireEvent.click(await screen.findByTitle('Add investment transaction'))
@@ -1553,8 +1553,8 @@ describe('PeriodDetailPage', () => {
     })
 
     renderWithProviders(<PeriodDetailPage />, {
-      route: '/periods/175',
-      path: '/periods/:periodId',
+      route: '/budgets/1/periods/175',
+      path: '/budgets/:budgetId/periods/:periodId',
     })
 
     fireEvent.click(await screen.findByTitle('Add investment transaction'))
@@ -1612,8 +1612,8 @@ describe('PeriodDetailPage', () => {
     })
 
     renderWithProviders(<PeriodDetailPage />, {
-      route: '/periods/176',
-      path: '/periods/:periodId',
+      route: '/budgets/1/periods/176',
+      path: '/budgets/:budgetId/periods/:periodId',
     })
 
     fireEvent.click(await screen.findByTitle('Add investment transaction'))
@@ -1672,8 +1672,8 @@ describe('PeriodDetailPage', () => {
     })
 
     renderWithProviders(<PeriodDetailPage />, {
-      route: '/periods/183',
-      path: '/periods/:periodId',
+      route: '/budgets/1/periods/183',
+      path: '/budgets/:budgetId/periods/:periodId',
     })
 
     fireEvent.click(await screen.findByTitle('Add investment transaction'))
@@ -1733,8 +1733,8 @@ describe('PeriodDetailPage', () => {
     })
 
     renderWithProviders(<PeriodDetailPage />, {
-      route: '/periods/185',
-      path: '/periods/:periodId',
+      route: '/budgets/1/periods/185',
+      path: '/budgets/:budgetId/periods/:periodId',
     })
 
     fireEvent.click(await screen.findByTitle('Add investment transaction'))
@@ -1786,8 +1786,8 @@ describe('PeriodDetailPage', () => {
     })
 
     renderWithProviders(<PeriodDetailPage />, {
-      route: '/periods/66',
-      path: '/periods/:periodId',
+      route: '/budgets/1/periods/66',
+      path: '/budgets/:budgetId/periods/:periodId',
     })
 
     fireEvent.click(await screen.findByTitle('Add investment transaction'))
@@ -1804,7 +1804,7 @@ describe('PeriodDetailPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add' }))
 
     await waitFor(() => {
-      expect(client.addInvestmentTransaction).toHaveBeenCalledWith(66, 'Emergency Fund', {
+      expect(client.addInvestmentTransaction).toHaveBeenCalledWith(1, 66, 'Emergency Fund', {
         amount: 50,
         note: 'Adjusted contribution',
         account_desc: null,
@@ -1884,8 +1884,8 @@ describe('PeriodDetailPage', () => {
     })
 
     renderWithProviders(<PeriodDetailPage />, {
-      route: '/periods/166',
-      path: '/periods/:periodId',
+      route: '/budgets/1/periods/166',
+      path: '/budgets/:budgetId/periods/:periodId',
     })
 
     const viewButtons = await screen.findAllByTitle('View transactions')
@@ -1950,8 +1950,8 @@ describe('PeriodDetailPage', () => {
     })
 
     renderWithProviders(<PeriodDetailPage />, {
-      route: '/periods/167',
-      path: '/periods/:periodId',
+      route: '/budgets/1/periods/167',
+      path: '/budgets/:budgetId/periods/:periodId',
     })
 
     const viewButton = await screen.findByTitle('View transactions')
@@ -2002,8 +2002,8 @@ describe('PeriodDetailPage', () => {
     })
 
     renderWithProviders(<PeriodDetailPage />, {
-      route: '/periods/67',
-      path: '/periods/:periodId',
+      route: '/budgets/1/periods/67',
+      path: '/budgets/:budgetId/periods/:periodId',
     })
 
     fireEvent.click(await screen.findByLabelText('Edit budget for Salary'))
@@ -2016,7 +2016,7 @@ describe('PeriodDetailPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save Budget Change' }))
 
     await waitFor(() => {
-      expect(client.updatePeriodIncomeBudget).toHaveBeenCalledWith(67, 'Salary', {
+      expect(client.updatePeriodIncomeBudget).toHaveBeenCalledWith(1, 67, 'Salary', {
         budgetamount: 275,
         scope: 'current',
         note: 'Adjusted budget',
@@ -2073,8 +2073,8 @@ describe('PeriodDetailPage', () => {
     })
 
     renderWithProviders(<PeriodDetailPage />, {
-      route: '/periods/63',
-      path: '/periods/:periodId',
+      route: '/budgets/1/periods/63',
+      path: '/budgets/:budgetId/periods/:periodId',
     })
 
     fireEvent.click(await screen.findByText('Add New Income Line Item'))
@@ -2098,7 +2098,7 @@ describe('PeriodDetailPage', () => {
     })
 
     await waitFor(() => {
-      expect(client.addIncomeToPeriod).toHaveBeenCalledWith(63, {
+      expect(client.addIncomeToPeriod).toHaveBeenCalledWith(1, 63, {
         budgetid: 1,
         incomedesc: 'Bonus',
         budgetamount: 450,
@@ -2153,8 +2153,8 @@ describe('PeriodDetailPage', () => {
     })
 
     renderWithProviders(<PeriodDetailPage />, {
-      route: '/periods/68',
-      path: '/periods/:periodId',
+      route: '/budgets/1/periods/68',
+      path: '/budgets/:budgetId/periods/:periodId',
     })
 
     fireEvent.click(await screen.findByText('Add New Income Line Item'))
@@ -2174,7 +2174,7 @@ describe('PeriodDetailPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add' }))
 
     await waitFor(() => {
-      expect(client.addIncomeToPeriod).toHaveBeenCalledWith(68, {
+      expect(client.addIncomeToPeriod).toHaveBeenCalledWith(1, 68, {
         budgetid: 1,
         incomedesc: 'Bonus',
         budgetamount: 275,
@@ -2216,8 +2216,8 @@ describe('PeriodDetailPage', () => {
     })
 
     renderWithProviders(<PeriodDetailPage />, {
-      route: '/periods/69',
-      path: '/periods/:periodId',
+      route: '/budgets/1/periods/69',
+      path: '/budgets/:budgetId/periods/:periodId',
     })
 
     fireEvent.click(await screen.findByText('Add New Expense Line Item'))
@@ -2237,7 +2237,7 @@ describe('PeriodDetailPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add' }))
 
     await waitFor(() => {
-      expect(client.addExpenseToPeriod).toHaveBeenCalledWith(69, {
+      expect(client.addExpenseToPeriod).toHaveBeenCalledWith(1, 69, {
         budgetid: 1,
         expensedesc: 'Rent',
         budgetamount: 275,
@@ -2285,8 +2285,8 @@ describe('PeriodDetailPage', () => {
     })
 
     renderWithProviders(<PeriodDetailPage />, {
-      route: '/periods/70',
-      path: '/periods/:periodId',
+      route: '/budgets/1/periods/70',
+      path: '/budgets/:budgetId/periods/:periodId',
     })
 
     fireEvent.click(await screen.findByTitle('Add income transaction'))
@@ -2310,7 +2310,7 @@ describe('PeriodDetailPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add Income' }))
 
     await waitFor(() => {
-      expect(client.addIncomeTransaction).toHaveBeenCalledWith(70, 'Salary', {
+      expect(client.addIncomeTransaction).toHaveBeenCalledWith(1, 70, 'Salary', {
         amount: 2000,
         note: 'Full amount',
         entrydate: expect.any(String),
@@ -2358,8 +2358,8 @@ describe('PeriodDetailPage', () => {
     })
 
     renderWithProviders(<PeriodDetailPage />, {
-      route: '/periods/179',
-      path: '/periods/:periodId',
+      route: '/budgets/1/periods/179',
+      path: '/budgets/:budgetId/periods/:periodId',
     })
 
     fireEvent.click(await screen.findByTitle('Add expense transaction'))
@@ -2408,8 +2408,8 @@ describe('PeriodDetailPage', () => {
     })
 
     renderWithProviders(<PeriodDetailPage />, {
-      route: '/periods/180',
-      path: '/periods/:periodId',
+      route: '/budgets/1/periods/180',
+      path: '/budgets/:budgetId/periods/:periodId',
     })
 
     fireEvent.click(await screen.findByTitle('Add investment transaction'))
@@ -2444,8 +2444,8 @@ describe('PeriodDetailPage', () => {
     })
 
     renderWithProviders(<PeriodDetailPage />, {
-      route: '/periods/71',
-      path: '/periods/:periodId',
+      route: '/budgets/1/periods/71',
+      path: '/budgets/:budgetId/periods/:periodId',
     })
 
     fireEvent.click(await screen.findByText('Add New Expense Line Item'))
@@ -2481,8 +2481,8 @@ describe('PeriodDetailPage', () => {
     })
 
     renderWithProviders(<PeriodDetailPage />, {
-      route: '/periods/72',
-      path: '/periods/:periodId',
+      route: '/budgets/1/periods/72',
+      path: '/budgets/:budgetId/periods/:periodId',
     })
 
     fireEvent.click(await screen.findByText('Add New Expense Line Item'))
@@ -2534,8 +2534,8 @@ describe('PeriodDetailPage', () => {
     client.setPeriodInvestmentStatus.mockResolvedValue({})
 
     renderWithProviders(<PeriodDetailPage />, {
-      route: '/periods/58',
-      path: '/periods/:periodId',
+      route: '/budgets/1/periods/58',
+      path: '/budgets/:budgetId/periods/:periodId',
     })
 
     fireEvent.click(await screen.findByText('Spent'))
@@ -2547,7 +2547,7 @@ describe('PeriodDetailPage', () => {
     fireEvent.click(screen.getByText('Mark Paid'))
 
     await waitFor(() => {
-      expect(client.setPeriodInvestmentStatus).toHaveBeenCalledWith(58, 'Emergency Fund', 'Paid', null)
+      expect(client.setPeriodInvestmentStatus).toHaveBeenCalledWith(1, 58, 'Emergency Fund', 'Paid', null)
     })
   })
 
@@ -2587,8 +2587,8 @@ describe('PeriodDetailPage', () => {
     })
 
     renderWithProviders(<PeriodDetailPage />, {
-      route: '/periods/62',
-      path: '/periods/:periodId',
+      route: '/budgets/1/periods/62',
+      path: '/budgets/:budgetId/periods/:periodId',
     })
 
     const totalIncomeCell = await screen.findByText('Total Income')
@@ -2637,8 +2637,8 @@ describe('PeriodDetailPage', () => {
     })
 
     renderWithProviders(<PeriodDetailPage />, {
-      route: '/periods/63',
-      path: '/periods/:periodId',
+      route: '/budgets/1/periods/63',
+      path: '/budgets/:budgetId/periods/:periodId',
     })
 
     const spentButton = await screen.findByTitle(/95% spent • \$95\.00 of \$100\.00 • Remaining \$5\.00 • Click to mark Paid/i)
@@ -2711,8 +2711,8 @@ describe('PeriodDetailPage', () => {
     })
 
     renderWithProviders(<PeriodDetailPage />, {
-      route: '/periods/64',
-      path: '/periods/:periodId',
+      route: '/budgets/1/periods/64',
+      path: '/budgets/:budgetId/periods/:periodId',
     })
 
     expect((await screen.findAllByText('Status / Txns')).length).toBeGreaterThanOrEqual(2)
@@ -2810,8 +2810,8 @@ describe('PeriodDetailPage', () => {
     })
 
     renderWithProviders(<PeriodDetailPage />, {
-      route: '/periods/71',
-      path: '/periods/:periodId',
+      route: '/budgets/1/periods/71',
+      path: '/budgets/:budgetId/periods/:periodId',
     })
 
     fireEvent.click(await screen.findByTitle('View supporting transactions'))
@@ -2880,8 +2880,8 @@ describe('PeriodDetailPage', () => {
     })
 
     renderWithProviders(<PeriodDetailPage />, {
-      route: '/periods/172',
-      path: '/periods/:periodId',
+      route: '/budgets/1/periods/172',
+      path: '/budgets/:budgetId/periods/:periodId',
     })
 
     expect(await screen.findByText('Rent')).toBeTruthy()
@@ -2945,8 +2945,8 @@ describe('PeriodDetailPage', () => {
     })
 
     renderWithProviders(<PeriodDetailPage />, {
-      route: '/periods/173',
-      path: '/periods/:periodId',
+      route: '/budgets/1/periods/173',
+      path: '/budgets/:budgetId/periods/:periodId',
     })
 
     const totalExpensesRow = (await screen.findByText('Total Expenses')).closest('tr')
@@ -3033,8 +3033,8 @@ describe('PeriodDetailPage', () => {
     })
 
     renderWithProviders(<PeriodDetailPage />, {
-      route: '/periods/174',
-      path: '/periods/:periodId',
+      route: '/budgets/1/periods/174',
+      path: '/budgets/:budgetId/periods/:periodId',
     })
 
     expect(await screen.findByText('Surplus (Budget)')).toBeTruthy()
@@ -3089,14 +3089,14 @@ describe('PeriodDetailPage', () => {
     client.setPeriodExpenseStatus.mockResolvedValue({})
 
     renderWithProviders(<PeriodDetailPage />, {
-      route: '/periods/59',
-      path: '/periods/:periodId',
+      route: '/budgets/1/periods/59',
+      path: '/budgets/:budgetId/periods/:periodId',
     })
 
     fireEvent.click(await screen.findByTitle(/Click to reopen as Revised/))
 
     await waitFor(() => {
-      expect(client.setPeriodExpenseStatus).toHaveBeenCalledWith(59, 'Utilities', 'Revised', null)
+      expect(client.setPeriodExpenseStatus).toHaveBeenCalledWith(1, 59, 'Utilities', 'Revised', null)
     })
   })
 
@@ -3165,8 +3165,8 @@ describe('PeriodDetailPage', () => {
     })
 
     renderWithProviders(<PeriodDetailPage />, {
-      route: '/periods/175',
-      path: '/periods/:periodId',
+      route: '/budgets/1/periods/175',
+      path: '/budgets/:budgetId/periods/:periodId',
     })
 
     expect(await screen.findByText('Surplus (Budget)')).toBeTruthy()
@@ -3213,14 +3213,14 @@ describe('PeriodDetailPage', () => {
     client.setPeriodInvestmentStatus.mockResolvedValue({})
 
     renderWithProviders(<PeriodDetailPage />, {
-      route: '/periods/60',
-      path: '/periods/:periodId',
+      route: '/budgets/1/periods/60',
+      path: '/budgets/:budgetId/periods/:periodId',
     })
 
     fireEvent.click((await screen.findAllByText('Paid')).find(element => element.tagName === 'BUTTON'))
 
     await waitFor(() => {
-      expect(client.setPeriodInvestmentStatus).toHaveBeenCalledWith(60, 'Brokerage', 'Revised', null)
+      expect(client.setPeriodInvestmentStatus).toHaveBeenCalledWith(1, 60, 'Brokerage', 'Revised', null)
     })
   })
 
@@ -3297,8 +3297,8 @@ describe('PeriodDetailPage', () => {
     })
 
     renderWithProviders(<PeriodDetailPage />, {
-      route: '/periods/71',
-      path: '/periods/:periodId',
+      route: '/budgets/1/periods/71',
+      path: '/budgets/:budgetId/periods/:periodId',
     })
 
     await screen.findByText('Salary')
@@ -3365,15 +3365,15 @@ describe('PeriodDetailPage', () => {
     })
 
     renderWithProviders(<PeriodDetailPage />, {
-      route: '/periods/81',
-      path: '/periods/:periodId',
+      route: '/budgets/1/periods/81',
+      path: '/budgets/:budgetId/periods/:periodId',
     })
 
     // Wait for page to load
     await screen.findByText('Home Budget')
 
     // Navigation links should be present (chevrons are part of the links)
-    const navLinks = document.querySelectorAll('a[href^="/periods/"]')
+    const navLinks = document.querySelectorAll('a[href^="/budgets/1/periods/"]')
     expect(navLinks.length).toBe(2) // Previous and next
   })
 })

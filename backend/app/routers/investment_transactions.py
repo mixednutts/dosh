@@ -14,7 +14,7 @@ from ..schemas import InvestmentTxCreate, InvestmentTxOut
 from ..transaction_ledger import build_investment_tx, sync_period_state
 
 router = APIRouter(
-    prefix="/periods/{finperiodid}/investments/{investmentdesc}/transactions",
+    prefix="/budgets/{budgetid}/periods/{finperiodid}/investments/{investmentdesc}/transactions",
     tags=["investment-transactions"],
 )
 
@@ -40,9 +40,9 @@ def _to_investment_tx_out(tx: PeriodTransaction) -> InvestmentTxOut:
     )
 
 
-def _get_period_investment(finperiodid: int, investmentdesc: str, db: Session) -> PeriodInvestment:
+def _get_period_investment(finperiodid: int, investmentdesc: str, budgetid: int, db: Session) -> PeriodInvestment:
     pi = db.get(PeriodInvestment, (finperiodid, investmentdesc))
-    if not pi:
+    if not pi or pi.budgetid != budgetid:
         raise HTTPException(404, "Investment line item not found in this period")
     return pi
 
@@ -52,8 +52,8 @@ def _assert_investment_not_paid(pi: PeriodInvestment) -> None:
         raise HTTPException(423, "Investment is marked Paid — revise it before making changes")
 
 @router.get("/", response_model=list[InvestmentTxOut], responses=error_responses(404))
-def list_transactions(finperiodid: int, investmentdesc: str, db: DbSession):
-    _get_period_investment(finperiodid, investmentdesc, db)
+def list_transactions(budgetid: int, finperiodid: int, investmentdesc: str, db: DbSession):
+    _get_period_investment(finperiodid, investmentdesc, budgetid, db)
     rows = (
         db.query(PeriodTransaction)
         .filter(
@@ -69,6 +69,7 @@ def list_transactions(finperiodid: int, investmentdesc: str, db: DbSession):
 
 @router.post("/", response_model=InvestmentTxOut, status_code=201, responses=error_responses(404, 423))
 def add_transaction(
+    budgetid: int,
     finperiodid: int,
     investmentdesc: str,
     payload: InvestmentTxCreate,
@@ -80,7 +81,7 @@ def add_transaction(
     if getattr(period, "cycle_status", None) == CLOSED:
         raise HTTPException(423, "Budget cycle is closed")
 
-    pi = _get_period_investment(finperiodid, investmentdesc, db)
+    pi = _get_period_investment(finperiodid, investmentdesc, budgetid, db)
     _assert_investment_not_paid(pi)
 
     item = db.get(InvestmentItem, (pi.budgetid, investmentdesc))
@@ -113,6 +114,7 @@ def add_transaction(
 
 @router.delete("/{tx_id}", status_code=204, responses=error_responses(404, 423))
 def delete_transaction(
+    budgetid: int,
     finperiodid: int,
     investmentdesc: str,
     tx_id: int,
@@ -128,7 +130,7 @@ def delete_transaction(
     if not tx or tx.finperiodid != finperiodid or tx.source != "investment" or tx.source_key != investmentdesc:
         raise HTTPException(404, "Transaction not found")
 
-    pi = _get_period_investment(finperiodid, investmentdesc, db)
+    pi = _get_period_investment(finperiodid, investmentdesc, budgetid, db)
     _assert_investment_not_paid(pi)
 
     db.delete(tx)

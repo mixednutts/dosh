@@ -7,25 +7,26 @@ from ..api_docs import DbSession, error_responses
 from ..models import FinancialPeriod, PeriodTransaction
 from ..schemas import PeriodTransactionOut
 
-router = APIRouter(prefix="/periods", tags=["period-transactions"])
+router = APIRouter(prefix="/budgets/{budgetid}/periods", tags=["period-transactions"])
 
 
-def _get_period_or_404(finperiodid: int, db: Session) -> FinancialPeriod:
+def _get_period_or_404(finperiodid: int, budgetid: int, db: Session) -> FinancialPeriod:
     period = db.get(FinancialPeriod, finperiodid)
-    if not period:
+    if not period or period.budgetid != budgetid:
         raise HTTPException(404, "Period not found")
     return period
 
 
 @router.get("/{finperiodid}/transactions", response_model=list[PeriodTransactionOut], responses=error_responses(404))
 def list_period_transactions(
+    budgetid: int,
     finperiodid: int,
     db: DbSession,
     source: Annotated[Optional[str], Query()] = None,
     source_key: Annotated[Optional[str], Query()] = None,
     balancedesc: Annotated[Optional[str], Query()] = None,
 ):
-    _get_period_or_404(finperiodid, db)
+    _get_period_or_404(finperiodid, budgetid, db)
     q = db.query(PeriodTransaction).filter(PeriodTransaction.finperiodid == finperiodid)
     if source:
         q = q.filter(PeriodTransaction.source == source)
@@ -41,11 +42,12 @@ def list_period_transactions(
 
 @router.get("/{finperiodid}/balances/{balancedesc}/transactions", response_model=list[PeriodTransactionOut], responses=error_responses(404))
 def list_balance_transactions(
+    budgetid: int,
     finperiodid: int,
     balancedesc: str,
     db: DbSession,
 ):
-    _get_period_or_404(finperiodid, db)
+    _get_period_or_404(finperiodid, budgetid, db)
     return (
         db.query(PeriodTransaction)
         .filter(

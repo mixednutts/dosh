@@ -4,6 +4,34 @@ This document captures the key product and implementation changes made during re
 
 It is intended to complement [README.md](/home/ubuntu/dosh/README.md), not replace it.
 
+## Latest Session: Fix Missing Budget Cycles in Sidebar and Period Routing Hardening (0.5.1-alpha)
+
+This session fixed a bug where the left sidebar showed "No budget cycles yet" even when cycles existed, and systematically hardened period routing across the frontend and backend.
+
+### What changed
+
+- **Frontend API client fix (`client.js`):**
+  - Removed the trailing slash from `getPeriodsForBudget` so the endpoint matches the backend router path exactly (`/budgets/${budgetId}/periods`). The trailing slash was causing a 404, which left the sidebar shortcuts with an empty periods list.
+
+- **Backend routing hardening (`periods.py`, `balance_types.py`, `period_transactions.py`, `income_transactions.py`, `expense_entries.py`, `investment_transactions.py`):**
+  - Updated router prefixes and endpoint paths to ensure consistent budget-scoped period routing.
+
+- **Frontend routing and component alignment:**
+  - Updated React Router paths and `Link`/`NavLink` references across `Layout.jsx`, `Dashboard.jsx`, `BudgetsPage.jsx`, `BudgetPeriodsPage.jsx`, `PeriodDetailPage.jsx`, and transaction/period modals.
+
+- **Test alignment:**
+  - Updated ~220 `/api/periods` references across 20+ backend test files to match the corrected routing.
+  - Updated frontend route strings and API mocks in `BudgetPeriodsPage.test.jsx`, `Dashboard.test.jsx`, `Layout.test.jsx`, `PeriodDetailPage.test.jsx`, and `client.test.js`.
+
+- **Deployment:**
+  - Rebuilt frontend with `--no-cache` and redeployed local Docker containers using `INCLUDE_OVERRIDE=true ./scripts/release_with_migrations.sh`.
+  - Verified `/api/health` and sidebar budget cycle shortcuts post-deployment.
+
+- **Version bump:**
+  - Bumped version to `0.5.1-alpha` using `scripts/bump_version.py` to mark the deployed fix.
+
+---
+
 ## Latest Session: Budget Health Engine Simplification and Destructive Migration (0.5.0-alpha)
 
 This session radically simplified the Budget Health Engine to two hard-coded system metrics with user-tunable parameters. All template, data-source, scale, custom-metric, drill-down, and dynamic-formula concepts were removed. A destructive Alembic migration drops obsolete tables, recreates the simplified schema, and backfills every budget with fresh defaults.

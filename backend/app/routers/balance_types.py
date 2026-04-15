@@ -14,7 +14,7 @@ from ..setup_assessment import account_assessment
 from ..transaction_ledger import compute_dynamic_period_balances
 
 router = APIRouter(prefix="/budgets/{budgetid}/balance-types", tags=["balance-types"])
-period_router = APIRouter(prefix="/periods", tags=["period-balances"])
+period_router = APIRouter(prefix="/budgets/{budgetid}/periods", tags=["period-balances"])
 
 
 def _get_budget_or_404(budgetid: int, db: Session) -> Budget:
@@ -222,9 +222,9 @@ def delete_balance_type(budgetid: int, balancedesc: str, db: DbSession):
 # ── Period Balance endpoints ──────────────────────────────────────────────────
 
 @period_router.get("/{finperiodid}/balances", response_model=list[PeriodBalanceOut], responses=error_responses(404))
-def list_period_balances(finperiodid: int, db: DbSession):
+def list_period_balances(budgetid: int, finperiodid: int, db: DbSession):
     period = db.get(FinancialPeriod, finperiodid)
-    if not period:
+    if not period or period.budgetid != budgetid:
         raise HTTPException(404, "Period not found")
 
     if cycle_status(period) != CLOSED:
@@ -248,9 +248,13 @@ def list_period_balances(finperiodid: int, db: DbSession):
 
 @period_router.patch("/{finperiodid}/balances/{balancedesc}", response_model=PeriodBalanceOut, responses=error_responses(405))
 def update_period_balance(
+    budgetid: int,
     finperiodid: int,
     balancedesc: str,
     payload: PeriodBalanceUpdate,
     db: DbSession,
 ):
+    period = db.get(FinancialPeriod, finperiodid)
+    if not period or period.budgetid != budgetid:
+        raise HTTPException(404, "Period not found")
     raise HTTPException(405, "Period balance movement is calculated from transactions and cannot be edited directly")

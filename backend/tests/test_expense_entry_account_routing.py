@@ -32,13 +32,13 @@ def test_expense_entry_debits_selected_non_primary_account(client, db_session):
     )[0]
 
     entry = client.post(
-        f"/api/periods/{active_period['finperiodid']}/expenses/Rent/entries/",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/expenses/Rent/entries/",
         json={"amount": "120.00", "note": "Debit joint", "account_desc": "Joint"},
     )
     assert entry.status_code == 201, entry.text
     assert entry.json()["affected_account_desc"] == "Joint"
 
-    balances = client.get(f"/api/periods/{active_period['finperiodid']}/balances")
+    balances = client.get(f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/balances")
     assert balances.status_code == 200
     by_name = {b["balancedesc"]: b for b in balances.json()}
     assert Decimal(by_name["Joint"]["movement_amount"]) == Decimal("-120.00")
@@ -64,7 +64,7 @@ def test_expense_entry_falls_back_to_primary_when_no_account_desc(client, db_ses
     )[0]
 
     entry = client.post(
-        f"/api/periods/{active_period['finperiodid']}/expenses/Rent/entries/",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/expenses/Rent/entries/",
         json={"amount": "75.00", "note": "Debit primary by fallback"},
     )
     assert entry.status_code == 201, entry.text
@@ -90,7 +90,7 @@ def test_expense_entry_rejects_unknown_account(client, db_session):
     )[0]
 
     entry = client.post(
-        f"/api/periods/{active_period['finperiodid']}/expenses/Rent/entries/",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/expenses/Rent/entries/",
         json={"amount": "50.00", "note": "Bad account", "account_desc": "Ghost"},
     )
     assert entry.status_code == 404

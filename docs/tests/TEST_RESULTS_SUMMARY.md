@@ -2,6 +2,49 @@
 
 This document records meaningful automated test results from major working sessions.
 
+## Latest Session: Fix Missing Budget Cycles in Sidebar (0.5.1-alpha)
+
+This session fixed a frontend API path mismatch that caused the sidebar budget cycle shortcuts to disappear, and aligned frontend/backend period routing and tests across the codebase.
+
+### Verification
+
+```bash
+cd /home/ubuntu/dosh/backend
+.venv/bin/python -m pytest tests/ -q
+```
+
+Result:
+
+- Full backend suite: **166 passed**
+- No regressions introduced
+
+```bash
+cd /home/ubuntu/dosh/frontend
+npm test -- --watchAll=false
+```
+
+Result:
+
+- Full frontend suite: **192 passed** (18 test suites)
+- No regressions introduced
+
+### Deployment Verification
+
+```bash
+cd /home/ubuntu/dosh
+INCLUDE_OVERRIDE=true ./scripts/release_with_migrations.sh
+curl -sS http://127.0.0.1:3080/api/health
+```
+
+Result:
+
+- Backend container rebuilt and restarted successfully
+- Frontend container rebuilt and restarted successfully
+- Health endpoint returned `{"status":"ok","app":"Dosh"}`
+- Sidebar budget cycle shortcuts verified present after fix
+
+---
+
 ## Latest Session: Budget Health Engine Simplification (0.5.0-alpha)
 
 This session radically simplified the Budget Health Engine to two hard-coded system metrics with user-tunable parameters. All template, data-source, scale, custom-metric, drill-down, and dynamic-formula concepts were removed, and tests were rewritten for the simplified framework.

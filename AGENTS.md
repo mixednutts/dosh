@@ -229,10 +229,11 @@ For document changes, follow [DOCUMENTATION_FRAMEWORK.md](./docs/DOCUMENTATION_F
 
 ## Current Project State (Snapshot)
 
-**Version:** 0.4.8-alpha
+**Version:** 0.5.1-alpha
 **Schema Revisions:** d3091a75b8ff, e4f5a6b7c8d9, f1a2b3c4d5e6, b10a29f14a8f, 559cbaa1dce7, 4bf1bf54b0bb, 7a8b9c0d1e2f, 009297f69b52, a1b2c3d4e5f6, 9c0f8d72a04c
 
 **Recent Work:**
+- **Fix Missing Budget Cycles in Sidebar (COMPLETED):** Removed the trailing slash from the frontend `getPeriodsForBudget` API call so the endpoint (`/budgets/${budgetId}/periods`) matches the backend router path. This restored budget cycle shortcuts in the left sidebar. Aligned backend tests and frontend routing references across the codebase. Deployed to local Docker with override and verified.
 - **Custom Metric Scoring Fix (COMPLETED):** Implemented `custom_metric_v1` executor in `metric_executors.py` and wired `scoring_logic_json` resolution into `runner.py` so custom metrics built in the UI now compute real scores instead of returning a fallback "Metric evaluation not yet implemented" result. Added backend tests to lock in the behavior.
 - **Fix Empty Health Metric Data After Threshold Terminology Refactor (COMPLETED):** Aligned SQLAlchemy models (`backend/app/models.py`) and Alembic migrations to use the correct renamed threshold table/column names (`healththresholddefinitions`, `budgetmetricthresholds`, `threshold_key`); made the rename migration idempotent so it works for both fresh installs and upgrades; restored populated health payloads to the Budgets page
 - **Budget Health Engine Refinement (COMPLETED):** Removed legacy threshold sliders and made metric cards the single source of truth with scale-aware View/Edit controls; refactored `setup_health` and `current_period_check` executors to consume `formula_result` instead of querying the DB directly; migrated closeout preview to use the health engine directly
@@ -265,7 +266,7 @@ For document changes, follow [DOCUMENTATION_FRAMEWORK.md](./docs/DOCUMENTATION_F
 
 **Active Focus Areas:**
 - Budget Health refinement (threshold behavior, evidence language, test coverage)
-- Testing infrastructure hardening (all 184 backend tests passing, 198 frontend tests passing)
+- Testing infrastructure hardening (all 166 backend tests passing, 192 frontend tests passing)
 - Documentation framework compliance
 - Release process reliability
 - SonarQube maintainability follow-through

@@ -28,7 +28,7 @@ def test_transfer_from_cash_account_succeeds(client, db_session):
     active_period = generate_periods(client, budgetid=budget.budgetid, startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0), count=1)[0]
 
     transfer = client.post(
-        f"/api/periods/{active_period['finperiodid']}/account-transfer",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/account-transfer",
         json={"budgetid": budget.budgetid, "source_account": "Cash", "destination_account": "Main", "amount": "50.00"},
     )
     assert transfer.status_code == 201, transfer.text
@@ -53,7 +53,7 @@ def test_transfer_from_inactive_account_fails(client, db_session):
     active_period = generate_periods(client, budgetid=budget.budgetid, startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0), count=1)[0]
 
     transfer = client.post(
-        f"/api/periods/{active_period['finperiodid']}/account-transfer",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/account-transfer",
         json={"budgetid": budget.budgetid, "source_account": "Old", "destination_account": "Main", "amount": "50.00"},
     )
     assert transfer.status_code == 422
@@ -80,7 +80,7 @@ def test_initial_transfer_exceeds_source_balance_fails(client, db_session):
     active_period = generate_periods(client, budgetid=budget.budgetid, startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0), count=1)[0]
 
     transfer = client.post(
-        f"/api/periods/{active_period['finperiodid']}/account-transfer",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/account-transfer",
         json={"budgetid": budget.budgetid, "source_account": "Rainy Day", "destination_account": "Main", "amount": "150.00"},
     )
     assert transfer.status_code == 422
@@ -107,13 +107,13 @@ def test_duplicate_transfer_line_fails(client, db_session):
     active_period = generate_periods(client, budgetid=budget.budgetid, startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0), count=1)[0]
 
     first = client.post(
-        f"/api/periods/{active_period['finperiodid']}/account-transfer",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/account-transfer",
         json={"budgetid": budget.budgetid, "source_account": "Rainy Day", "destination_account": "Main", "amount": "50.00"},
     )
     assert first.status_code == 201
 
     second = client.post(
-        f"/api/periods/{active_period['finperiodid']}/account-transfer",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/account-transfer",
         json={"budgetid": budget.budgetid, "source_account": "Rainy Day", "destination_account": "Main", "amount": "30.00"},
     )
     assert second.status_code == 409
@@ -144,14 +144,14 @@ def test_nonpaid_transfer_validates_against_max_budget_actual(client, db_session
 
     # Create transfer line: budget=100
     transfer = client.post(
-        f"/api/periods/{finperiodid}/account-transfer",
+        f"/api/budgets/{budget.budgetid}/periods/{finperiodid}/account-transfer",
         json={"budgetid": budget.budgetid, "source_account": "Rainy Day", "destination_account": "Main", "amount": "100.00"},
     )
     assert transfer.status_code == 201
 
     # Record 120 transaction: committed = max(100, 120) = 120 <= 300 → succeeds
     tx1 = client.post(
-        f"/api/periods/{finperiodid}/income/Transfer%3A%20Rainy%20Day%20to%20Main/transactions/",
+        f"/api/budgets/{budget.budgetid}/periods/{finperiodid}/income/Transfer%3A%20Rainy%20Day%20to%20Main/transactions/",
         json={"amount": "120.00", "note": "Over-budget transfer"},
     )
     assert tx1.status_code == 201, tx1.text
@@ -159,7 +159,7 @@ def test_nonpaid_transfer_validates_against_max_budget_actual(client, db_session
 
     # Record another 50: new actual would be 170; committed = max(100, 170) = 170 <= 180 → succeeds
     tx2 = client.post(
-        f"/api/periods/{finperiodid}/income/Transfer%3A%20Rainy%20Day%20to%20Main/transactions/",
+        f"/api/budgets/{budget.budgetid}/periods/{finperiodid}/income/Transfer%3A%20Rainy%20Day%20to%20Main/transactions/",
         json={"amount": "50.00", "note": "Second over-budget transfer"},
     )
     assert tx2.status_code == 201, tx2.text
@@ -167,7 +167,7 @@ def test_nonpaid_transfer_validates_against_max_budget_actual(client, db_session
 
     # Record another 50: new actual would be 220; committed = max(100, 220) = 220 > 130 → fails
     tx3 = client.post(
-        f"/api/periods/{finperiodid}/income/Transfer%3A%20Rainy%20Day%20to%20Main/transactions/",
+        f"/api/budgets/{budget.budgetid}/periods/{finperiodid}/income/Transfer%3A%20Rainy%20Day%20to%20Main/transactions/",
         json={"amount": "50.00", "note": "Should fail"},
     )
     assert tx3.status_code == 422
@@ -197,28 +197,28 @@ def test_nonpaid_transfer_validates_against_budget_when_actual_below_budget(clie
 
     # Create transfer line: budget=150
     transfer = client.post(
-        f"/api/periods/{finperiodid}/account-transfer",
+        f"/api/budgets/{budget.budgetid}/periods/{finperiodid}/account-transfer",
         json={"budgetid": budget.budgetid, "source_account": "Rainy Day", "destination_account": "Main", "amount": "150.00"},
     )
     assert transfer.status_code == 201
 
     # Record 50: committed = max(150, 50) = 150 <= 200 → succeeds
     tx1 = client.post(
-        f"/api/periods/{finperiodid}/income/Transfer%3A%20Rainy%20Day%20to%20Main/transactions/",
+        f"/api/budgets/{budget.budgetid}/periods/{finperiodid}/income/Transfer%3A%20Rainy%20Day%20to%20Main/transactions/",
         json={"amount": "50.00", "note": "Within budget"},
     )
     assert tx1.status_code == 201, tx1.text
 
     # Record another 80: new actual=130; committed = max(150, 130) = 150 <= 200 → succeeds
     tx2 = client.post(
-        f"/api/periods/{finperiodid}/income/Transfer%3A%20Rainy%20Day%20to%20Main/transactions/",
+        f"/api/budgets/{budget.budgetid}/periods/{finperiodid}/income/Transfer%3A%20Rainy%20Day%20to%20Main/transactions/",
         json={"amount": "80.00", "note": "Still within budget"},
     )
     assert tx2.status_code == 201, tx2.text
 
     # Record another 80: new actual=210; committed = max(150, 210) = 210 > 200 → fails
     tx3 = client.post(
-        f"/api/periods/{finperiodid}/income/Transfer%3A%20Rainy%20Day%20to%20Main/transactions/",
+        f"/api/budgets/{budget.budgetid}/periods/{finperiodid}/income/Transfer%3A%20Rainy%20Day%20to%20Main/transactions/",
         json={"amount": "80.00", "note": "Should fail"},
     )
     assert tx3.status_code == 422
@@ -248,13 +248,13 @@ def test_paid_transfer_validates_against_actual_plus_increment(client, db_sessio
 
     # Create transfer line and fully actualize it
     transfer = client.post(
-        f"/api/periods/{finperiodid}/account-transfer",
+        f"/api/budgets/{budget.budgetid}/periods/{finperiodid}/account-transfer",
         json={"budgetid": budget.budgetid, "source_account": "Rainy Day", "destination_account": "Main", "amount": "100.00"},
     )
     assert transfer.status_code == 201
 
     tx = client.post(
-        f"/api/periods/{finperiodid}/income/Transfer%3A%20Rainy%20Day%20to%20Main/transactions/",
+        f"/api/budgets/{budget.budgetid}/periods/{finperiodid}/income/Transfer%3A%20Rainy%20Day%20to%20Main/transactions/",
         json={"amount": "100.00", "note": "Full transfer"},
     )
     assert tx.status_code == 201
@@ -267,14 +267,14 @@ def test_paid_transfer_validates_against_actual_plus_increment(client, db_sessio
     # Direct actual addition through periods router should still validate
     # New actual would be 200; committed = 200 <= 300 → succeeds
     add_actual = client.patch(
-        f"/api/periods/{finperiodid}/income/Transfer%3A%20Rainy%20Day%20to%20Main",
+        f"/api/budgets/{budget.budgetid}/periods/{finperiodid}/income/Transfer%3A%20Rainy%20Day%20to%20Main",
         json={"actualamount": "200.00"},
     )
     assert add_actual.status_code == 200, add_actual.text
 
     # Try to exceed balance: new actual would be 400; committed = 400 > 300 → fails
     add_actual_fail = client.patch(
-        f"/api/periods/{finperiodid}/income/Transfer%3A%20Rainy%20Day%20to%20Main",
+        f"/api/budgets/{budget.budgetid}/periods/{finperiodid}/income/Transfer%3A%20Rainy%20Day%20to%20Main",
         json={"actualamount": "400.00"},
     )
     assert add_actual_fail.status_code == 422

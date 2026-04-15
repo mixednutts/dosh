@@ -11,7 +11,7 @@ function PeriodRow({ budget, period }) {
   const { formatCurrency, formatDateRange } = useLocalisation()
   const { data } = useQuery({
     queryKey: ['period', period.finperiodid],
-    queryFn: () => getPeriodDetail(period.finperiodid),
+    queryFn: () => getPeriodDetail(budget.budgetid, period.finperiodid),
     staleTime: 60_000,
   })
 
@@ -58,7 +58,7 @@ function PeriodRow({ budget, period }) {
         {loading ? <span className="inline-block w-16 h-4 rounded bg-gray-100 dark:bg-gray-800 animate-pulse" /> : formatCurrency(surplusActual)}
       </td>
       <td className="table-cell text-right">
-        <Link to={`/periods/${period.finperiodid}`} className="badge-blue cursor-pointer whitespace-nowrap">Details →</Link>
+        <Link to={`/budgets/${budget.budgetid}/periods/${period.finperiodid}`} className="badge-blue cursor-pointer whitespace-nowrap">Details →</Link>
       </td>
     </tr>
   )

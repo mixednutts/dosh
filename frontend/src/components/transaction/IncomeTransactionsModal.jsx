@@ -6,7 +6,7 @@ import { useFormatters } from '../useFormatters'
 import { TransactionWorkflowModal } from './TransactionWorkflowModal'
 import { getTransactionModalConfig, buildTransactionSubmitHandler } from '../../utils/transactionHelpers'
 
-export function IncomeTransactionsModal({ periodId, incomedesc, budgetamount, actualamount, locked, readOnly = false, onClose, defaultType = 'credit' }) {
+export function IncomeTransactionsModal({ periodId, budgetId, incomedesc, budgetamount, actualamount, locked, readOnly = false, onClose, defaultType = 'credit' }) {
   const config = getTransactionModalConfig('income')
   const qc = useQueryClient()
   const formatters = useFormatters()
@@ -23,11 +23,11 @@ export function IncomeTransactionsModal({ periodId, incomedesc, budgetamount, ac
 
   const { data: transactions = [], isLoading } = useQuery({
     queryKey: ['income-transactions', periodId, incomedesc],
-    queryFn: () => getIncomeTransactions(periodId, incomedesc),
+    queryFn: () => getIncomeTransactions(budgetId, periodId, incomedesc),
   })
 
   const add = useMutation({
-    mutationFn: data => addIncomeTransaction(periodId, incomedesc, data),
+    mutationFn: data => addIncomeTransaction(budgetId, periodId, incomedesc, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['income-transactions', periodId, incomedesc] })
       qc.invalidateQueries({ queryKey: ['period', periodId] })
@@ -42,7 +42,7 @@ export function IncomeTransactionsModal({ periodId, incomedesc, budgetamount, ac
   })
 
   const remove = useMutation({
-    mutationFn: txId => deleteIncomeTransaction(periodId, incomedesc, txId),
+    mutationFn: txId => deleteIncomeTransaction(budgetId, periodId, incomedesc, txId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['income-transactions', periodId, incomedesc] })
       qc.invalidateQueries({ queryKey: ['period', periodId] })

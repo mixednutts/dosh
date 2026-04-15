@@ -17,10 +17,10 @@ import { getAppInfo, getBudgets, getBudgetSetupAssessment, getPeriodDetail, getP
 import { getCycleStage } from '../utils/periodStage'
 
 function displayVersion(version) {
-  return `v${version || '0.5.0-alpha'}`
+  return `v${version || '0.5.1-alpha'}`
 }
 
-function PeriodShortcutGroup({ title, periods, activePeriodId, onNav, emptyMessage = null, moreText = null, moreTo = null, moreSubtle = false }) {
+function PeriodShortcutGroup({ title, periods, activePeriodId, onNav, budgetId, emptyMessage = null, moreText = null, moreTo = null, moreSubtle = false }) {
   const { formatDateRange } = useLocalisation()
 
   if (periods.length === 0 && !emptyMessage) return null
@@ -37,7 +37,7 @@ function PeriodShortcutGroup({ title, periods, activePeriodId, onNav, emptyMessa
           {periods.map(period => (
             <Link
               key={period.finperiodid}
-              to={`/periods/${period.finperiodid}`}
+              to={`/budgets/${budgetId}/periods/${period.finperiodid}`}
               onClick={onNav}
               className={clsx(
                 'flex items-center justify-between gap-3 rounded-xl border px-3 py-2 text-xs transition-colors',
@@ -130,7 +130,7 @@ function CompactCurrentBudgetContext({ budget, activePeriodId, onNav }) {
       </Link>
       {activePeriodId ? (
         <Link
-          to={`/periods/${activePeriodId}`}
+          to={`/budgets/${budget.budgetid}/periods/${activePeriodId}`}
           onClick={onNav}
           title="Open current budget cycle context"
           className="flex h-9 w-9 items-center justify-center rounded-2xl border border-cyan-800 bg-cyan-950/40 text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-200 transition-colors hover:border-cyan-500 hover:bg-cyan-900/40 hover:text-white"
@@ -238,13 +238,14 @@ function CurrentBudgetPanel({ budget, activePeriodId, onNav, shortcutsExpanded =
             <div className="space-y-3">
               <PeriodShortcutGroup
                 title="Current"
-                periods={currentPeriods}
+                budgetId={budget.budgetid} periods={currentPeriods}
                 activePeriodId={activePeriodId}
                 onNav={onNav}
                 emptyMessage="No current budget cycle right now."
               />
               <PeriodShortcutGroup
                 title="Planned"
+                budgetId={budget.budgetid}
                 periods={futurePeriods}
                 activePeriodId={activePeriodId}
                 onNav={onNav}
@@ -254,7 +255,7 @@ function CurrentBudgetPanel({ budget, activePeriodId, onNav, shortcutsExpanded =
               />
               <PeriodShortcutGroup
                 title="Pending Closure"
-                periods={visiblePendingClosurePeriods}
+                budgetId={budget.budgetid} periods={visiblePendingClosurePeriods}
                 activePeriodId={activePeriodId}
                 onNav={onNav}
                 moreText={hasMorePendingClosurePeriods ? `View all ${pendingClosurePeriods.length} pending closure cycles (${hiddenPendingClosureCount} more)` : null}
@@ -263,6 +264,7 @@ function CurrentBudgetPanel({ budget, activePeriodId, onNav, shortcutsExpanded =
               />
               <PeriodShortcutGroup
                 title="Historic"
+                budgetId={budget.budgetid}
                 periods={historicalPeriods}
                 activePeriodId={activePeriodId}
                 onNav={onNav}
@@ -349,19 +351,21 @@ export default function Layout() {
 
   const budgetMatch = useMatch('/budgets/:budgetId')
   const budgetSetupMatch = useMatch('/budgets/:budgetId/setup')
-  const periodMatch = useMatch('/periods/:periodId')
+  const periodMatch = useMatch('/budgets/:budgetId/periods/:periodId')
 
   let activeBudgetId = null
   if (budgetMatch) {
     activeBudgetId = Number.parseInt(budgetMatch.params.budgetId, 10)
   } else if (budgetSetupMatch) {
     activeBudgetId = Number.parseInt(budgetSetupMatch.params.budgetId, 10)
+  } else if (periodMatch) {
+    activeBudgetId = Number.parseInt(periodMatch.params.budgetId, 10)
   }
   const activePeriodId = periodMatch ? Number.parseInt(periodMatch.params.periodId, 10) : null
 
   const { data: periodData } = useQuery({
     queryKey: ['period', activePeriodId],
-    queryFn: () => getPeriodDetail(activePeriodId),
+    queryFn: () => getPeriodDetail(activeBudgetId, activePeriodId),
     enabled: !!activePeriodId,
     staleTime: 60_000,
   })

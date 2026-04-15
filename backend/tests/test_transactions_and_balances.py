@@ -34,25 +34,25 @@ def test_period_transactions_drive_balance_movement_and_balance_transaction_view
     )[0]
 
     income_update = client.patch(
-        f"/api/periods/{active_period['finperiodid']}/income/Salary",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/income/Salary",
         json={"actualamount": "1000.00"},
     )
     assert income_update.status_code == 200, income_update.text
 
     expense_entry = client.post(
-        f"/api/periods/{active_period['finperiodid']}/expenses/Rent/entries/",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/expenses/Rent/entries/",
         json={"amount": "200.00", "note": "Rent paid"},
     )
     assert expense_entry.status_code == 201, expense_entry.text
 
     investment_tx = client.post(
-        f"/api/periods/{active_period['finperiodid']}/investments/Emergency%20Fund/transactions/",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/investments/Emergency%20Fund/transactions/",
         json={"amount": "50.00", "note": "Savings contribution"},
     )
     assert investment_tx.status_code == 201, investment_tx.text
 
     transfer_create = client.post(
-        f"/api/periods/{active_period['finperiodid']}/account-transfer",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/account-transfer",
         json={
             "budgetid": budget.budgetid,
             "source_account": "Rainy Day",
@@ -63,12 +63,12 @@ def test_period_transactions_drive_balance_movement_and_balance_transaction_view
     assert transfer_create.status_code == 201, transfer_create.text
 
     transfer_actual = client.patch(
-        f"/api/periods/{active_period['finperiodid']}/income/Transfer%3A%20Rainy%20Day%20to%20Main%20Account",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/income/Transfer%3A%20Rainy%20Day%20to%20Main%20Account",
         json={"actualamount": "75.00"},
     )
     assert transfer_actual.status_code == 200, transfer_actual.text
 
-    balances_response = client.get(f"/api/periods/{active_period['finperiodid']}/balances")
+    balances_response = client.get(f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/balances")
     assert balances_response.status_code == 200, balances_response.text
     balances = {row["balancedesc"]: row for row in balances_response.json()}
 
@@ -80,20 +80,20 @@ def test_period_transactions_drive_balance_movement_and_balance_transaction_view
     assert Decimal(rainy_day["closing_amount"]) == Decimal("475.00")
 
     main_account_txs = client.get(
-        f"/api/periods/{active_period['finperiodid']}/balances/Main%20Account/transactions"
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/balances/Main%20Account/transactions"
     )
     assert main_account_txs.status_code == 200, main_account_txs.text
     main_tx_payload = main_account_txs.json()
     assert [tx["source"] for tx in main_tx_payload] == ["income", "expense", "investment", "transfer"]
 
     filtered_txs = client.get(
-        f"/api/periods/{active_period['finperiodid']}/transactions?balancedesc=Main%20Account"
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/transactions?balancedesc=Main%20Account"
     )
     assert filtered_txs.status_code == 200, filtered_txs.text
     assert len(filtered_txs.json()) == 4
 
     rainy_day_txs = client.get(
-        f"/api/periods/{active_period['finperiodid']}/balances/Rainy%20Day/transactions"
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/balances/Rainy%20Day/transactions"
     )
     assert rainy_day_txs.status_code == 200, rainy_day_txs.text
     rainy_day_payload = rainy_day_txs.json()
@@ -130,7 +130,7 @@ def test_locked_active_cycle_still_allows_actuals_and_transactions(client, db_se
     )[0]
 
     lock_response = client.patch(
-        f"/api/periods/{active_period['finperiodid']}/lock",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/lock",
         json={"islocked": True},
     )
     assert lock_response.status_code == 200, lock_response.text
@@ -138,25 +138,25 @@ def test_locked_active_cycle_still_allows_actuals_and_transactions(client, db_se
     assert lock_response.json()["cycle_status"] == "ACTIVE"
 
     income_update = client.patch(
-        f"/api/periods/{active_period['finperiodid']}/income/Salary",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/income/Salary",
         json={"actualamount": "1000.00"},
     )
     assert income_update.status_code == 200, income_update.text
 
     expense_entry = client.post(
-        f"/api/periods/{active_period['finperiodid']}/expenses/Rent/entries/",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/expenses/Rent/entries/",
         json={"amount": "200.00", "note": "Rent paid while locked"},
     )
     assert expense_entry.status_code == 201, expense_entry.text
 
     investment_tx = client.post(
-        f"/api/periods/{active_period['finperiodid']}/investments/Emergency%20Fund/transactions/",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/investments/Emergency%20Fund/transactions/",
         json={"amount": "50.00", "note": "Savings contribution while locked"},
     )
     assert investment_tx.status_code == 201, investment_tx.text
 
     transfer_create = client.post(
-        f"/api/periods/{active_period['finperiodid']}/account-transfer",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/account-transfer",
         json={
             "budgetid": budget.budgetid,
             "source_account": "Rainy Day",
@@ -167,12 +167,12 @@ def test_locked_active_cycle_still_allows_actuals_and_transactions(client, db_se
     assert transfer_create.status_code == 201, transfer_create.text
 
     transfer_actual = client.patch(
-        f"/api/periods/{active_period['finperiodid']}/income/Transfer%3A%20Rainy%20Day%20to%20Main%20Account",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/income/Transfer%3A%20Rainy%20Day%20to%20Main%20Account",
         json={"actualamount": "75.00"},
     )
     assert transfer_actual.status_code == 200, transfer_actual.text
 
-    balances_response = client.get(f"/api/periods/{active_period['finperiodid']}/balances")
+    balances_response = client.get(f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/balances")
     assert balances_response.status_code == 200, balances_response.text
     balances = {row["balancedesc"]: row for row in balances_response.json()}
 
@@ -205,7 +205,7 @@ def test_creating_active_balance_type_creates_period_balances_for_existing_perio
     assert response.status_code == 201, response.text
 
     for period in periods:
-        balances_response = client.get(f"/api/periods/{period['finperiodid']}/balances")
+        balances_response = client.get(f"/api/budgets/{budget.budgetid}/periods/{period['finperiodid']}/balances")
         assert balances_response.status_code == 200, balances_response.text
         balances = {row["balancedesc"]: row for row in balances_response.json()}
         assert "New Account" in balances
@@ -233,7 +233,7 @@ def test_creating_active_balance_type_skips_closed_and_pending_closure_periods(c
 
     # Close the first period
     close_response = client.post(
-        f"/api/periods/{first_period_id}/closeout",
+        f"/api/budgets/{budget.budgetid}/periods/{first_period_id}/closeout",
         json={"create_next_cycle": False},
     )
     assert close_response.status_code == 200, close_response.text
@@ -251,19 +251,19 @@ def test_creating_active_balance_type_skips_closed_and_pending_closure_periods(c
     assert response.status_code == 201, response.text
 
     # Closed period should NOT have the new account
-    closed_balances = client.get(f"/api/periods/{first_period_id}/balances")
+    closed_balances = client.get(f"/api/budgets/{budget.budgetid}/periods/{first_period_id}/balances")
     assert closed_balances.status_code == 200, closed_balances.text
     closed_descs = {row["balancedesc"] for row in closed_balances.json()}
     assert "Late Account" not in closed_descs
 
     # Pending closure period should NOT have the new account
-    pending_balances = client.get(f"/api/periods/{second_period_id}/balances")
+    pending_balances = client.get(f"/api/budgets/{budget.budgetid}/periods/{second_period_id}/balances")
     assert pending_balances.status_code == 200, pending_balances.text
     pending_descs = {row["balancedesc"] for row in pending_balances.json()}
     assert "Late Account" not in pending_descs
 
     # Current/future period SHOULD have the new account
-    current_balances = client.get(f"/api/periods/{third_period_id}/balances")
+    current_balances = client.get(f"/api/budgets/{budget.budgetid}/periods/{third_period_id}/balances")
     assert current_balances.status_code == 200, current_balances.text
     current_descs = {row["balancedesc"] for row in current_balances.json()}
     assert "Late Account" in current_descs

@@ -81,17 +81,17 @@ export const getInvestmentItemHistory = (budgetId, desc) =>
 
 // ── Periods ───────────────────────────────────────────────────────────────────
 export const getPeriodsForBudget = budgetId =>
-  api.get(`/periods/budget/${budgetId}`).then(r => r.data)
+  api.get(`/budgets/${budgetId}/periods`).then(r => r.data)
 export const getPeriodSummariesForBudget = budgetId =>
-  api.get(`/periods/budget/${budgetId}/summary`).then(r => r.data)
-export const getPeriodDetail = periodId =>
-  api.get(`/periods/${periodId}`).then(r => r.data)
-export const getPeriodDeleteOptions = periodId =>
-  api.get(`/periods/${periodId}/delete-options`).then(r => r.data)
-export const getPeriodCloseoutPreview = periodId =>
-  api.get(`/periods/${periodId}/closeout-preview`).then(r => r.data)
-export const exportPeriod = async (periodId, format) => {
-  const response = await api.get(`/periods/${periodId}/export`, {
+  api.get(`/budgets/${budgetId}/periods/summary`).then(r => r.data)
+export const getPeriodDetail = (budgetId, periodId) =>
+  api.get(`/budgets/${budgetId}/periods/${periodId}`).then(r => r.data)
+export const getPeriodDeleteOptions = (budgetId, periodId) =>
+  api.get(`/budgets/${budgetId}/periods/${periodId}/delete-options`).then(r => r.data)
+export const getPeriodCloseoutPreview = (budgetId, periodId) =>
+  api.get(`/budgets/${budgetId}/periods/${periodId}/closeout-preview`).then(r => r.data)
+export const exportPeriod = async (budgetId, periodId, format) => {
+  const response = await api.get(`/budgets/${budgetId}/periods/${periodId}/export`, {
     params: { format },
     responseType: 'blob',
   })
@@ -102,46 +102,46 @@ export const exportPeriod = async (periodId, format) => {
   triggerBrowserDownload(response.data, filename)
   return filename
 }
-export const generatePeriod = data => api.post('/periods/generate', data).then(r => r.data)
-export const setPeriodLock = (periodId, islocked) =>
-  api.patch(`/periods/${periodId}/lock`, { islocked }).then(r => r.data)
-export const closeOutPeriod = (periodId, data) =>
-  api.post(`/periods/${periodId}/closeout`, data).then(r => r.data)
-export const deletePeriod = (periodId, deleteMode = 'single') =>
-  api.delete(`/periods/${periodId}?delete_mode=${deleteMode}`)
+export const generatePeriod = data => api.post(`/budgets/${data.budgetid}/periods/generate`, data).then(r => r.data)
+export const setPeriodLock = (budgetId, periodId, islocked) =>
+  api.patch(`/budgets/${budgetId}/periods/${periodId}/lock`, { islocked }).then(r => r.data)
+export const closeOutPeriod = (budgetId, periodId, data) =>
+  api.post(`/budgets/${budgetId}/periods/${periodId}/closeout`, data).then(r => r.data)
+export const deletePeriod = (budgetId, periodId, deleteMode = 'single') =>
+  api.delete(`/budgets/${budgetId}/periods/${periodId}?delete_mode=${deleteMode}`)
 
-export const updateIncomeActual = (periodId, desc, actualamount) =>
-  api.patch(`/periods/${periodId}/income/${encodeURIComponent(desc)}`, { actualamount }).then(r => r.data)
-export const addToIncomeActual = (periodId, desc, amount) =>
-  api.post(`/periods/${periodId}/income/${encodeURIComponent(desc)}/add`, { amount }).then(r => r.data)
-export const getIncomeTransactions = (periodId, desc) =>
-  api.get(`/periods/${periodId}/income/${encodeURIComponent(desc)}/transactions/`).then(r => r.data)
-export const addIncomeTransaction = (periodId, desc, data) =>
-  api.post(`/periods/${periodId}/income/${encodeURIComponent(desc)}/transactions/`, data).then(r => r.data)
-export const deleteIncomeTransaction = (periodId, desc, txId) =>
-  api.delete(`/periods/${periodId}/income/${encodeURIComponent(desc)}/transactions/${txId}`)
-export const updateExpenseActual = (periodId, desc, actualamount) =>
-  api.patch(`/periods/${periodId}/expense/${encodeURIComponent(desc)}`, { actualamount }).then(r => r.data)
-export const addToExpenseActual = (periodId, desc, amount) =>
-  api.post(`/periods/${periodId}/expense/${encodeURIComponent(desc)}/add`, { amount }).then(r => r.data)
-export const addExpenseToPeriod = (periodId, data) =>
-  api.post(`/periods/${periodId}/add-expense`, data).then(r => r.data)
-export const addIncomeToPeriod = (periodId, data) =>
-  api.post(`/periods/${periodId}/add-income`, data).then(r => r.data)
-export const accountTransfer = (periodId, data) =>
-  api.post(`/periods/${periodId}/account-transfer`, data).then(r => r.data)
-export const deletePeriodForce = (periodId, force = false) =>
-  api.delete(`/periods/${periodId}?force=${force}`)
-export const reorderPeriodExpenses = (periodId, items) =>
-  api.patch(`/periods/${periodId}/expenses/reorder`, { items })
+export const updateIncomeActual = (budgetId, periodId, desc, actualamount) =>
+  api.patch(`/budgets/${budgetId}/periods/${periodId}/income/${encodeURIComponent(desc)}`, { actualamount }).then(r => r.data)
+export const addToIncomeActual = (budgetId, periodId, desc, amount) =>
+  api.post(`/budgets/${budgetId}/periods/${periodId}/income/${encodeURIComponent(desc)}/add`, { amount }).then(r => r.data)
+export const getIncomeTransactions = (budgetId, periodId, desc) =>
+  api.get(`/budgets/${budgetId}/periods/${periodId}/income/${encodeURIComponent(desc)}/transactions/`).then(r => r.data)
+export const addIncomeTransaction = (budgetId, periodId, desc, data) =>
+  api.post(`/budgets/${budgetId}/periods/${periodId}/income/${encodeURIComponent(desc)}/transactions/`, data).then(r => r.data)
+export const deleteIncomeTransaction = (budgetId, periodId, desc, txId) =>
+  api.delete(`/budgets/${budgetId}/periods/${periodId}/income/${encodeURIComponent(desc)}/transactions/${txId}`)
+export const updateExpenseActual = (budgetId, periodId, desc, actualamount) =>
+  api.patch(`/budgets/${budgetId}/periods/${periodId}/expense/${encodeURIComponent(desc)}`, { actualamount }).then(r => r.data)
+export const addToExpenseActual = (budgetId, periodId, desc, amount) =>
+  api.post(`/budgets/${budgetId}/periods/${periodId}/expense/${encodeURIComponent(desc)}/add`, { amount }).then(r => r.data)
+export const addExpenseToPeriod = (budgetId, periodId, data) =>
+  api.post(`/budgets/${budgetId}/periods/${periodId}/add-expense`, data).then(r => r.data)
+export const addIncomeToPeriod = (budgetId, periodId, data) =>
+  api.post(`/budgets/${budgetId}/periods/${periodId}/add-income`, data).then(r => r.data)
+export const accountTransfer = (budgetId, periodId, data) =>
+  api.post(`/budgets/${budgetId}/periods/${periodId}/account-transfer`, data).then(r => r.data)
+export const deletePeriodForce = (budgetId, periodId, force = false) =>
+  api.delete(`/budgets/${budgetId}/periods/${periodId}?force=${force}`)
+export const reorderPeriodExpenses = (budgetId, periodId, items) =>
+  api.patch(`/budgets/${budgetId}/periods/${periodId}/expenses/reorder`, { items })
 
 // ── Expense Entries ───────────────────────────────────────────────────────────
-export const getExpenseEntries = (periodId, desc) =>
-  api.get(`/periods/${periodId}/expenses/${encodeURIComponent(desc)}/entries/`).then(r => r.data)
-export const addExpenseEntry = (periodId, desc, data) =>
-  api.post(`/periods/${periodId}/expenses/${encodeURIComponent(desc)}/entries/`, data).then(r => r.data)
-export const deleteExpenseEntry = (periodId, desc, entryId) =>
-  api.delete(`/periods/${periodId}/expenses/${encodeURIComponent(desc)}/entries/${entryId}`)
+export const getExpenseEntries = (budgetId, periodId, desc) =>
+  api.get(`/budgets/${budgetId}/periods/${periodId}/expenses/${encodeURIComponent(desc)}/entries/`).then(r => r.data)
+export const addExpenseEntry = (budgetId, periodId, desc, data) =>
+  api.post(`/budgets/${budgetId}/periods/${periodId}/expenses/${encodeURIComponent(desc)}/entries/`, data).then(r => r.data)
+export const deleteExpenseEntry = (budgetId, periodId, desc, entryId) =>
+  api.delete(`/budgets/${budgetId}/periods/${periodId}/expenses/${encodeURIComponent(desc)}/entries/${entryId}`)
 
 // ── Balance Types ─────────────────────────────────────────────────────────────
 export const getBalanceTypes = budgetId =>
@@ -154,40 +154,40 @@ export const deleteBalanceType = (budgetId, desc) =>
   api.delete(`/budgets/${budgetId}/balance-types/${encodeURIComponent(desc)}`)
 
 // ── Period Balances ───────────────────────────────────────────────────────────
-export const getPeriodBalances = periodId =>
-  api.get(`/periods/${periodId}/balances`).then(r => r.data)
-export const getBalanceTransactions = (periodId, balancedesc) =>
-  api.get(`/periods/${periodId}/balances/${encodeURIComponent(balancedesc)}/transactions`).then(r => r.data)
+export const getPeriodBalances = (budgetId, periodId) =>
+  api.get(`/budgets/${budgetId}/periods/${periodId}/balances`).then(r => r.data)
+export const getBalanceTransactions = (budgetId, periodId, balancedesc) =>
+  api.get(`/budgets/${budgetId}/periods/${periodId}/balances/${encodeURIComponent(balancedesc)}/transactions`).then(r => r.data)
 
-export const setPeriodExpenseStatus = (periodId, desc, status, revision_comment = null) =>
-  api.patch(`/periods/${periodId}/expense/${encodeURIComponent(desc)}/status`, { status, revision_comment }).then(r => r.data)
-export const updatePeriodExpensePayType = (periodId, desc, paytype) =>
-  api.patch(`/periods/${periodId}/expense/${encodeURIComponent(desc)}/paytype`, { paytype }).then(r => r.data)
-export const runPeriodAutoExpenses = periodId =>
-  api.post(`/periods/${periodId}/run-auto-expenses`).then(r => r.data)
+export const setPeriodExpenseStatus = (budgetId, periodId, desc, status, revision_comment = null) =>
+  api.patch(`/budgets/${budgetId}/periods/${periodId}/expense/${encodeURIComponent(desc)}/status`, { status, revision_comment }).then(r => r.data)
+export const updatePeriodExpensePayType = (budgetId, periodId, desc, paytype) =>
+  api.patch(`/budgets/${budgetId}/periods/${periodId}/expense/${encodeURIComponent(desc)}/paytype`, { paytype }).then(r => r.data)
+export const runPeriodAutoExpenses = (budgetId, periodId) =>
+  api.post(`/budgets/${budgetId}/periods/${periodId}/run-auto-expenses`).then(r => r.data)
 
-export const updatePeriodExpenseBudget = (periodId, desc, data) =>
-  api.patch(`/periods/${periodId}/expense/${encodeURIComponent(desc)}/budget`, data).then(r => r.data)
+export const updatePeriodExpenseBudget = (budgetId, periodId, desc, data) =>
+  api.patch(`/budgets/${budgetId}/periods/${periodId}/expense/${encodeURIComponent(desc)}/budget`, data).then(r => r.data)
 
-export const updatePeriodIncomeBudget = (periodId, desc, data) =>
-  api.patch(`/periods/${periodId}/income/${encodeURIComponent(desc)}/budget`, data).then(r => r.data)
+export const updatePeriodIncomeBudget = (budgetId, periodId, desc, data) =>
+  api.patch(`/budgets/${budgetId}/periods/${periodId}/income/${encodeURIComponent(desc)}/budget`, data).then(r => r.data)
 
-export const removePeriodExpense = (periodId, desc) =>
-  api.delete(`/periods/${periodId}/expense/${encodeURIComponent(desc)}`)
-export const removePeriodIncome = (periodId, desc) =>
-  api.delete(`/periods/${periodId}/income/${encodeURIComponent(desc)}`)
-export const setPeriodIncomeStatus = (periodId, desc, status, revision_comment = null) =>
-  api.patch(`/periods/${periodId}/income/${encodeURIComponent(desc)}/status`, { status, revision_comment }).then(r => r.data)
+export const removePeriodExpense = (budgetId, periodId, desc) =>
+  api.delete(`/budgets/${budgetId}/periods/${periodId}/expense/${encodeURIComponent(desc)}`)
+export const removePeriodIncome = (budgetId, periodId, desc) =>
+  api.delete(`/budgets/${budgetId}/periods/${periodId}/income/${encodeURIComponent(desc)}`)
+export const setPeriodIncomeStatus = (budgetId, periodId, desc, status, revision_comment = null) =>
+  api.patch(`/budgets/${budgetId}/periods/${periodId}/income/${encodeURIComponent(desc)}/status`, { status, revision_comment }).then(r => r.data)
 
-export const updatePeriodInvestmentBudget = (periodId, desc, data) =>
-  api.patch(`/periods/${periodId}/investment/${encodeURIComponent(desc)}/budget`, data).then(r => r.data)
-export const setPeriodInvestmentStatus = (periodId, desc, status, revision_comment = null) =>
-  api.patch(`/periods/${periodId}/investment/${encodeURIComponent(desc)}/status`, { status, revision_comment }).then(r => r.data)
+export const updatePeriodInvestmentBudget = (budgetId, periodId, desc, data) =>
+  api.patch(`/budgets/${budgetId}/periods/${periodId}/investment/${encodeURIComponent(desc)}/budget`, data).then(r => r.data)
+export const setPeriodInvestmentStatus = (budgetId, periodId, desc, status, revision_comment = null) =>
+  api.patch(`/budgets/${budgetId}/periods/${periodId}/investment/${encodeURIComponent(desc)}/status`, { status, revision_comment }).then(r => r.data)
 
 // ── Investment Transactions ───────────────────────────────────────────────────
-export const getInvestmentTransactions = (periodId, desc) =>
-  api.get(`/periods/${periodId}/investments/${encodeURIComponent(desc)}/transactions/`).then(r => r.data)
-export const addInvestmentTransaction = (periodId, desc, data) =>
-  api.post(`/periods/${periodId}/investments/${encodeURIComponent(desc)}/transactions/`, data).then(r => r.data)
-export const deleteInvestmentTransaction = (periodId, desc, txId) =>
-  api.delete(`/periods/${periodId}/investments/${encodeURIComponent(desc)}/transactions/${txId}`)
+export const getInvestmentTransactions = (budgetId, periodId, desc) =>
+  api.get(`/budgets/${budgetId}/periods/${periodId}/investments/${encodeURIComponent(desc)}/transactions/`).then(r => r.data)
+export const addInvestmentTransaction = (budgetId, periodId, desc, data) =>
+  api.post(`/budgets/${budgetId}/periods/${periodId}/investments/${encodeURIComponent(desc)}/transactions/`, data).then(r => r.data)
+export const deleteInvestmentTransaction = (budgetId, periodId, desc, txId) =>
+  api.delete(`/budgets/${budgetId}/periods/${periodId}/investments/${encodeURIComponent(desc)}/transactions/${txId}`)

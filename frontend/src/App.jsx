@@ -27,7 +27,7 @@ export default function App() {
             <Route path="budgets" element={<BudgetsPage />} />
             <Route path="budgets/:budgetId" element={<BudgetPeriodsPage />} />
             <Route path="budgets/:budgetId/setup" element={<BudgetDetailPage />} />
-            <Route path="periods/:periodId" element={<PeriodDetailPage />} />
+            <Route path="budgets/:budgetId/periods/:periodId" element={<PeriodDetailPage />} />
           </Route>
         </Routes>
       </Suspense>

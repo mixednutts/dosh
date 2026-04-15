@@ -118,7 +118,7 @@ function PeriodSummaryRow({ summary, onDelete }) {
     <tr className="table-row align-top">
       <td className="table-cell">
         <Link
-          to={`/periods/${period.finperiodid}`}
+          to={`/budgets/${period.budgetid}/periods/${period.finperiodid}`}
           className="block font-medium leading-snug text-gray-900 transition-colors hover:text-dosh-700 dark:text-gray-100 dark:hover:text-dosh-300"
           title="View budget cycle details"
         >
@@ -143,7 +143,7 @@ function PeriodSummaryRow({ summary, onDelete }) {
       <td className={clsx('table-cell text-right font-semibold', surplusActualTone)}>{formatCurrency(summary.surplus_actual)}</td>
       <td className="table-cell">
         <div className="flex flex-wrap justify-end gap-2">
-          <Link to={`/periods/${period.finperiodid}`} className="btn-primary">
+          <Link to={`/budgets/${period.budgetid}/periods/${period.finperiodid}`} className="btn-primary">
             Details
           </Link>
           {summary.can_delete && (
@@ -349,7 +349,7 @@ export default function BudgetPeriodsPage() {
   })
 
   const removePeriod = useMutation({
-    mutationFn: ({ periodId, mode }) => deletePeriod(periodId, mode),
+    mutationFn: ({ periodId, mode }) => deletePeriod(id, periodId, mode),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['periods', id] })
       qc.invalidateQueries({ queryKey: ['period-summaries', id] })
@@ -510,7 +510,7 @@ function DeleteCycleModal({ deleteTarget, deleteMode, setDeleteMode, removePerio
   const { formatDateRange } = useLocalisation()
   const { data: deleteOptions } = useQuery({
     queryKey: ['period-delete-options', deleteTarget.period.finperiodid],
-    queryFn: () => getPeriodDeleteOptions(deleteTarget.period.finperiodid),
+    queryFn: () => getPeriodDeleteOptions(deleteTarget.period.budgetid, deleteTarget.period.finperiodid),
   })
   const canDeleteSingle = !!deleteOptions?.can_delete_single
   const canDeleteFutureChain = !!deleteOptions?.can_delete_future_chain

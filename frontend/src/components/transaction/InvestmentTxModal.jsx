@@ -24,7 +24,7 @@ export function InvestmentTxModal({ periodId, budgetId, investmentdesc, openingV
 
   const { data: transactions = [], isLoading } = useQuery({
     queryKey: ['investment-tx', periodId, investmentdesc],
-    queryFn: () => getInvestmentTransactions(periodId, investmentdesc),
+    queryFn: () => getInvestmentTransactions(budgetId, periodId, investmentdesc),
   })
 
   const { data: balanceTypes = [] } = useQuery({
@@ -39,7 +39,7 @@ export function InvestmentTxModal({ periodId, budgetId, investmentdesc, openingV
   }, [sourceAccount, selectedAccount])
 
   const add = useMutation({
-    mutationFn: data => addInvestmentTransaction(periodId, investmentdesc, data),
+    mutationFn: data => addInvestmentTransaction(budgetId, periodId, investmentdesc, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['investment-tx', periodId, investmentdesc] })
       qc.invalidateQueries({ queryKey: ['period', periodId] })
@@ -58,7 +58,7 @@ export function InvestmentTxModal({ periodId, budgetId, investmentdesc, openingV
   })
 
   const remove = useMutation({
-    mutationFn: txId => deleteInvestmentTransaction(periodId, investmentdesc, txId),
+    mutationFn: txId => deleteInvestmentTransaction(budgetId, periodId, investmentdesc, txId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['investment-tx', periodId, investmentdesc] })
       qc.invalidateQueries({ queryKey: ['period', periodId] })

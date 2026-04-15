@@ -82,6 +82,6 @@ describe('Dashboard', () => {
     expect(screen.getAllByText('$1,450.00').length).toBeGreaterThanOrEqual(1)
     expect(screen.getByText('$1,350.00')).toBeTruthy()
     expect(screen.getByText('$1,900.00')).toBeTruthy()
-    expect(screen.getByRole('link', { name: 'Details →' }).getAttribute('href')).toBe('/periods/99')
+    expect(screen.getByRole('link', { name: 'Details →' }).getAttribute('href')).toBe('/budgets/1/periods/99')
   })
 })

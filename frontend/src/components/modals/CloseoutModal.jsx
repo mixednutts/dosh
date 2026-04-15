@@ -5,7 +5,7 @@ import { getPeriodCloseoutPreview, closeOutPeriod } from '../../api/client'
 import Spinner from '../../components/Spinner'
 import { useFormatters } from '../../components/useFormatters'
 
-export function CloseoutModal({ periodId, onClose }) {
+export function CloseoutModal({ periodId, budgetId, onClose }) {
   const qc = useQueryClient()
   const [comments, setComments] = useState('')
   const [goals, setGoals] = useState('')
@@ -13,11 +13,11 @@ export function CloseoutModal({ periodId, onClose }) {
   const formatters = useFormatters()
   const { data: preview, isLoading } = useQuery({
     queryKey: ['period-closeout-preview', periodId],
-    queryFn: () => getPeriodCloseoutPreview(periodId),
+    queryFn: () => getPeriodCloseoutPreview(budgetId, periodId),
   })
 
   const closeout = useMutation({
-    mutationFn: () => closeOutPeriod(periodId, { comments, goals, create_next_cycle: createNextCycle }),
+    mutationFn: () => closeOutPeriod(budgetId, periodId, { comments, goals, create_next_cycle: createNextCycle }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['period', periodId] })
       qc.invalidateQueries({ queryKey: ['period-balances', periodId] })

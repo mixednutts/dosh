@@ -24,7 +24,7 @@ export function ExpenseEntriesModal({ periodId, budgetId, expensedesc, budgetamo
 
   const { data: entries = [], isLoading } = useQuery({
     queryKey: ['expense-entries', periodId, expensedesc],
-    queryFn: () => getExpenseEntries(periodId, expensedesc),
+    queryFn: () => getExpenseEntries(budgetId, periodId, expensedesc),
   })
 
   const { data: balanceTypes = [] } = useQuery({
@@ -54,7 +54,7 @@ export function ExpenseEntriesModal({ periodId, budgetId, expensedesc, budgetamo
   }, [expenseItems, expensedesc, primaryAccount, selectedAccount])
 
   const add = useMutation({
-    mutationFn: data => addExpenseEntry(periodId, expensedesc, data),
+    mutationFn: data => addExpenseEntry(budgetId, periodId, expensedesc, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['expense-entries', periodId, expensedesc] })
       qc.invalidateQueries({ queryKey: ['period', periodId] })
@@ -69,7 +69,7 @@ export function ExpenseEntriesModal({ periodId, budgetId, expensedesc, budgetamo
   })
 
   const remove = useMutation({
-    mutationFn: entryId => deleteExpenseEntry(periodId, expensedesc, entryId),
+    mutationFn: entryId => deleteExpenseEntry(budgetId, periodId, expensedesc, entryId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['expense-entries', periodId, expensedesc] })
       qc.invalidateQueries({ queryKey: ['period', periodId] })

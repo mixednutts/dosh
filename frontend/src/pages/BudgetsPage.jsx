@@ -329,7 +329,7 @@ function PendingClosureList({ periods, budgetId }) {
               <p className="truncate text-[12px] font-medium text-gray-900 dark:text-gray-100">{formatPeriodRange(period, formatDateRange)}</p>
             </div>
             <Link
-              to={`/periods/${period.finperiodid}?closeout=1`}
+              to={`/budgets/${budgetId}/periods/${period.finperiodid}?closeout=1`}
               className="inline-flex h-8 shrink-0 items-center rounded-md border border-slate-300 px-2.5 text-[12px] font-medium text-slate-700 transition-colors hover:border-dosh-400 hover:text-dosh-800 dark:border-slate-600 dark:text-slate-200 dark:hover:border-dosh-500 dark:hover:text-white"
             >
               Close Out
@@ -758,7 +758,7 @@ function BudgetStats({ budgetId, budgetName, periods = [], currentPeriodDetail, 
             <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{currentPeriodDetailText}</p>
             {currentPeriod ? (
               <Link
-                to={`/periods/${currentPeriod.finperiodid}`}
+                to={`/budgets/${budgetId}/periods/${currentPeriod.finperiodid}`}
                 className="mt-2 inline-block text-xs font-medium text-dosh-700 hover:underline dark:text-dosh-400"
               >
                 Open current budget cycle
@@ -1135,7 +1135,7 @@ export default function BudgetsPage() {
   const calendarPeriodDetailQueries = useQueries({
     queries: calendarPeriodMeta.map(meta => ({
       queryKey: ['budget-calendar-period-detail', meta.budgetid, meta.finperiodid],
-      queryFn: () => getPeriodDetail(meta.finperiodid),
+      queryFn: () => getPeriodDetail(meta.budgetid, meta.finperiodid),
       staleTime: 60_000,
     })),
   })

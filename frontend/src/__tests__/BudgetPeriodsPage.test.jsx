@@ -551,7 +551,7 @@ describe('BudgetPeriodsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Delete Budget Cycle' }))
 
     await waitFor(() => {
-      expect(client.deletePeriod).toHaveBeenCalledWith(51, 'future_chain')
+      expect(client.deletePeriod).toHaveBeenCalledWith(1, 51, 'future_chain')
     })
   })
 })

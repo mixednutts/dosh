@@ -5,11 +5,11 @@ import Spinner from '../../components/Spinner'
 import { useFormatters } from '../../components/useFormatters'
 import { balanceTransactionDelta, balanceTransactionLabel } from '../../utils'
 
-export function BalanceTransactionsModal({ periodId, balancedesc, movementAmount }) {
+export function BalanceTransactionsModal({ periodId, budgetId, balancedesc, movementAmount }) {
   const formatters = useFormatters()
   const { data: transactions = [], isLoading } = useQuery({
     queryKey: ['balance-transactions', periodId, balancedesc],
-    queryFn: () => getBalanceTransactions(periodId, balancedesc),
+    queryFn: () => getBalanceTransactions(budgetId, periodId, balancedesc),
   })
 
   const runningTotal = transactions.reduce((sum, tx) => sum + balanceTransactionDelta(tx, balancedesc), 0)

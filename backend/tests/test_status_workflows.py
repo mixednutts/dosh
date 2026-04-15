@@ -16,32 +16,32 @@ def test_paid_expense_requires_revision_before_more_changes(client, db_session):
     )[0]
 
     mark_paid = client.patch(
-        f"/api/periods/{active_period['finperiodid']}/expense/Rent/status",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/expense/Rent/status",
         json={"status": "Paid"},
     )
     assert mark_paid.status_code == 200, mark_paid.text
     assert mark_paid.json()["status"] == "Paid"
 
     budget_edit = client.patch(
-        f"/api/periods/{active_period['finperiodid']}/expense/Rent/budget",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/expense/Rent/budget",
         json={"budgetamount": "1300.00", "scope": "current", "note": "Increase current period budget"},
     )
     assert budget_edit.status_code == 423
 
     add_entry = client.post(
-        f"/api/periods/{active_period['finperiodid']}/expenses/Rent/entries/",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/expenses/Rent/entries/",
         json={"amount": "50.00", "note": "Late fee"},
     )
     assert add_entry.status_code == 423
 
     revise = client.patch(
-        f"/api/periods/{active_period['finperiodid']}/expense/Rent/status",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/expense/Rent/status",
         json={"status": "Revised"},
     )
     assert revise.status_code == 200, revise.text
 
     updated_budget = client.patch(
-        f"/api/periods/{active_period['finperiodid']}/expense/Rent/budget",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/expense/Rent/budget",
         json={"budgetamount": "1300.00", "scope": "current", "note": "Increase current period budget"},
     )
     assert updated_budget.status_code == 200, updated_budget.text
@@ -59,32 +59,32 @@ def test_paid_investment_requires_revision_before_more_changes(client, db_sessio
     )[0]
 
     mark_paid = client.patch(
-        f"/api/periods/{active_period['finperiodid']}/investment/Emergency%20Fund/status",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/investment/Emergency%20Fund/status",
         json={"status": "Paid"},
     )
     assert mark_paid.status_code == 200, mark_paid.text
     assert mark_paid.json()["status"] == "Paid"
 
     budget_edit = client.patch(
-        f"/api/periods/{active_period['finperiodid']}/investment/Emergency%20Fund/budget",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/investment/Emergency%20Fund/budget",
         json={"budgetamount": "250.00", "scope": "current", "note": "Increase current period contribution"},
     )
     assert budget_edit.status_code == 423
 
     add_transaction = client.post(
-        f"/api/periods/{active_period['finperiodid']}/investments/Emergency%20Fund/transactions/",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/investments/Emergency%20Fund/transactions/",
         json={"amount": "25.00", "note": "Extra contribution"},
     )
     assert add_transaction.status_code == 423
 
     revise = client.patch(
-        f"/api/periods/{active_period['finperiodid']}/investment/Emergency%20Fund/status",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/investment/Emergency%20Fund/status",
         json={"status": "Revised"},
     )
     assert revise.status_code == 200, revise.text
 
     updated_budget = client.patch(
-        f"/api/periods/{active_period['finperiodid']}/investment/Emergency%20Fund/budget",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/investment/Emergency%20Fund/budget",
         json={"budgetamount": "250.00", "scope": "current", "note": "Increase current period contribution"},
     )
     assert updated_budget.status_code == 200, updated_budget.text
@@ -104,7 +104,7 @@ def test_paid_income_requires_revision_before_more_changes(client, db_session):
 
     # Mark income as Paid
     mark_paid = client.patch(
-        f"/api/periods/{active_period['finperiodid']}/income/Salary/status",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/income/Salary/status",
         json={"status": "Paid"},
     )
     assert mark_paid.status_code == 200, mark_paid.text
@@ -112,21 +112,21 @@ def test_paid_income_requires_revision_before_more_changes(client, db_session):
 
     # Budget edits should be blocked while Paid
     budget_edit = client.patch(
-        f"/api/periods/{active_period['finperiodid']}/income/Salary/budget",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/income/Salary/budget",
         json={"budgetamount": "5500.00", "scope": "current", "note": "Increase current period income"},
     )
     assert budget_edit.status_code == 423
 
     # Transactions should be blocked while Paid
     add_transaction = client.post(
-        f"/api/periods/{active_period['finperiodid']}/income/Salary/transactions/",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/income/Salary/transactions/",
         json={"amount": "100.00", "note": "Bonus"},
     )
     assert add_transaction.status_code == 423
 
     # Revise to allow edits
     revise = client.patch(
-        f"/api/periods/{active_period['finperiodid']}/income/Salary/status",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/income/Salary/status",
         json={"status": "Revised"},
     )
     assert revise.status_code == 200, revise.text
@@ -134,7 +134,7 @@ def test_paid_income_requires_revision_before_more_changes(client, db_session):
 
     # Budget edits should now work
     updated_budget = client.patch(
-        f"/api/periods/{active_period['finperiodid']}/income/Salary/budget",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/income/Salary/budget",
         json={"budgetamount": "5500.00", "scope": "current", "note": "Increase current period income"},
     )
     assert updated_budget.status_code == 200, updated_budget.text

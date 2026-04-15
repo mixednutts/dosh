@@ -18,7 +18,7 @@ def test_info_endpoint_returns_app_version(client):
 
     assert response.status_code == 200
     assert response.json()["app"] == "Dosh"
-    assert response.json()["version"] == "0.5.0-alpha"
+    assert response.json()["version"] == "0.5.1-alpha"
 
 
 def test_release_notes_endpoint_returns_current_release(client, monkeypatch):
@@ -43,10 +43,10 @@ def test_release_notes_endpoint_returns_current_release(client, monkeypatch):
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["current_version"] == "0.5.0-alpha"
+    assert payload["current_version"] == "0.5.1-alpha"
     assert payload["update_available"] is False
     assert payload["newer_release_count"] == 0
-    assert payload["current_release"]["version"] == "0.5.0-alpha"
+    assert payload["current_release"]["version"] == "0.5.1-alpha"
 
 
 def test_generate_period_creates_expected_core_rows(client, db_session):
@@ -55,7 +55,7 @@ def test_generate_period_creates_expected_core_rows(client, db_session):
     startdate = utc_now().replace(hour=0, minute=0, second=0, microsecond=0)
 
     response = client.post(
-        "/api/periods/generate",
+        f"/api/budgets/{budget.budgetid}/periods/generate",
         json={
             "budgetid": budget.budgetid,
             "startdate": iso_date(startdate),
@@ -69,7 +69,7 @@ def test_generate_period_creates_expected_core_rows(client, db_session):
     assert payload["cycle_status"] in {"PLANNED", "ACTIVE", "CLOSED"}
 
     finperiodid = payload["finperiodid"]
-    detail_response = client.get(f"/api/periods/{finperiodid}")
+    detail_response = client.get(f"/api/budgets/{budget.budgetid}/periods/{finperiodid}")
     assert detail_response.status_code == 200, detail_response.text
     detail_payload = detail_response.json()
     assert detail_payload["period"]["finperiodid"] == finperiodid
@@ -89,7 +89,7 @@ def test_generate_period_requires_income_and_expense_prerequisites(client):
     startdate = utc_now().replace(hour=0, minute=0, second=0, microsecond=0)
 
     response = client.post(
-        "/api/periods/generate",
+        f"/api/budgets/{budgetid}/periods/generate",
         json={
             "budgetid": budgetid,
             "startdate": iso_date(startdate),
@@ -152,7 +152,7 @@ def test_budget_can_be_deleted_after_setup_revision_history_exists(client, db_se
     budgetid = budget.budgetid
 
     revision_response = client.patch(
-        f"/api/budgets/{budgetid}/income-types/Salary",
+        f"/api/budgets/{budget.budgetid}/income-types/Salary",
         json={"amount": "2600.00"},
     )
     assert revision_response.status_code == 200, revision_response.text
@@ -163,7 +163,7 @@ def test_budget_can_be_deleted_after_setup_revision_history_exists(client, db_se
         .count()
     ) == 1
 
-    delete_response = client.delete(f"/api/budgets/{budgetid}")
+    delete_response = client.delete(f"/api/budgets/{budget.budgetid}")
 
     assert delete_response.status_code == 204, delete_response.text
     db_session.expire_all()
@@ -214,7 +214,7 @@ def test_demo_budget_endpoint_creates_seeded_budget_with_closed_pending_current_
     assert investment is not None
     assert investment.linked_account_desc == "Rainy Day Savings"
 
-    detail_response = client.get(f"/api/periods/{periods[1].finperiodid}")
+    detail_response = client.get(f"/api/budgets/{budgetid}/periods/{periods[1].finperiodid}")
     assert detail_response.status_code == 200, detail_response.text
     detail = detail_response.json()
     assert any(income["incomedesc"] == "Carried Forward" for income in detail["incomes"])
@@ -222,7 +222,7 @@ def test_demo_budget_endpoint_creates_seeded_budget_with_closed_pending_current_
     assert any(balance["balancedesc"] == "Rainy Day Savings" for balance in detail["balances"])
     assert any(investment_row["investmentdesc"] == "Emergency Fund" for investment_row in detail["investments"])
 
-    # Demo budgets now get an empty health matrix (no metric templates seeded),
-    # so the health endpoint returns 404 until metrics are added.
+    # Demo budgets now get a seeded health matrix so the health endpoint returns data.
     health_response = client.get(f"/api/budgets/{budgetid}/health")
-    assert health_response.status_code == 404, health_response.text
+    assert health_response.status_code == 200, health_response.text
+    assert health_response.json()["overall_score"] is not None

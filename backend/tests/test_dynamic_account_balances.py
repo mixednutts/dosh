@@ -11,7 +11,7 @@ from .factories import create_balance_type, create_minimum_budget_setup, generat
 
 
 def _get_balances(client, finperiodid: int) -> dict[str, dict]:
-    response = client.get(f"/api/periods/{finperiodid}/balances")
+    response = client.get(f"/api/budgets/{1}/periods/{finperiodid}/balances")
     assert response.status_code == 200, response.text
     return {row["balancedesc"]: row for row in response.json()}
 
@@ -57,7 +57,7 @@ def test_dynamic_balances_after_transaction_in_first_open_cycle(client, db_sessi
 
     # Record income in first cycle
     income_update = client.patch(
-        f"/api/periods/{first_id}/income/Salary",
+        f"/api/budgets/{budget.budgetid}/periods/{first_id}/income/Salary",
         json={"actualamount": "500.00"},
     )
     assert income_update.status_code == 200, income_update.text
@@ -88,14 +88,14 @@ def test_dynamic_balances_anchor_to_most_recent_closed_cycle(client, db_session)
     # Close first two cycles
     for pid in [p1_id, p2_id]:
         close_response = client.post(
-            f"/api/periods/{pid}/closeout",
+            f"/api/budgets/{budget.budgetid}/periods/{pid}/closeout",
             json={"create_next_cycle": False},
         )
         assert close_response.status_code == 200, close_response.text
 
     # Record income in cycle 3
     income_update = client.patch(
-        f"/api/periods/{p3_id}/income/Salary",
+        f"/api/budgets/{budget.budgetid}/periods/{p3_id}/income/Salary",
         json={"actualamount": "300.00"},
     )
     assert income_update.status_code == 200, income_update.text
@@ -135,7 +135,7 @@ def test_dynamic_balances_with_transfers(client, db_session):
 
     # Create transfer in first cycle
     transfer_create = client.post(
-        f"/api/periods/{first_id}/account-transfer",
+        f"/api/budgets/{budget.budgetid}/periods/{first_id}/account-transfer",
         json={
             "budgetid": budget.budgetid,
             "source_account": "Savings",
@@ -146,7 +146,7 @@ def test_dynamic_balances_with_transfers(client, db_session):
     assert transfer_create.status_code == 201, transfer_create.text
 
     transfer_actual = client.patch(
-        f"/api/periods/{first_id}/income/Transfer%3A%20Savings%20to%20Main%20Account",
+        f"/api/budgets/{budget.budgetid}/periods/{first_id}/income/Transfer%3A%20Savings%20to%20Main%20Account",
         json={"actualamount": "100.00"},
     )
     assert transfer_actual.status_code == 200, transfer_actual.text
@@ -174,7 +174,7 @@ def test_stored_values_propagate_after_income_actual_update(client, db_session):
     first_id = periods[0]["finperiodid"]
     second_id = periods[1]["finperiodid"]
 
-    client.patch(f"/api/periods/{first_id}/income/Salary", json={"actualamount": "500.00"})
+    client.patch(f"/api/budgets/{budget.budgetid}/periods/{first_id}/income/Salary", json={"actualamount": "500.00"})
 
     # Direct DB check: stored values in second period should be fresh
     pb = db_session.get(PeriodBalance, (second_id, "Main Account"))
@@ -193,7 +193,7 @@ def test_stored_values_propagate_after_income_actual_add(client, db_session):
     first_id = periods[0]["finperiodid"]
     second_id = periods[1]["finperiodid"]
 
-    client.post(f"/api/periods/{first_id}/income/Salary/add", json={"amount": "300.00"})
+    client.post(f"/api/budgets/{budget.budgetid}/periods/{first_id}/income/Salary/add", json={"amount": "300.00"})
 
     pb = db_session.get(PeriodBalance, (second_id, "Main Account"))
     assert Decimal(pb.opening_amount) == Decimal("1300.00")
@@ -209,7 +209,7 @@ def test_stored_values_propagate_after_expense_entry(client, db_session):
     second_id = periods[1]["finperiodid"]
 
     response = client.post(
-        f"/api/periods/{first_id}/expenses/Rent/entries/",
+        f"/api/budgets/{budget.budgetid}/periods/{first_id}/expenses/Rent/entries/",
         json={"amount": "200.00", "note": "Rent paid"},
     )
     assert response.status_code == 201, response.text
@@ -227,7 +227,7 @@ def test_stored_values_propagate_after_expense_actual_set(client, db_session):
     first_id = periods[0]["finperiodid"]
     second_id = periods[1]["finperiodid"]
 
-    client.patch(f"/api/periods/{first_id}/expense/Rent", json={"actualamount": "300.00"})
+    client.patch(f"/api/budgets/{budget.budgetid}/periods/{first_id}/expense/Rent", json={"actualamount": "300.00"})
 
     pb = db_session.get(PeriodBalance, (second_id, "Main Account"))
     assert Decimal(pb.opening_amount) == Decimal("700.00")
@@ -259,7 +259,7 @@ def test_stored_values_propagate_after_investment_transaction(client, db_session
     second_id = periods[1]["finperiodid"]
 
     response = client.post(
-        f"/api/periods/{first_id}/investments/Emergency%20Fund/transactions/",
+        f"/api/budgets/{budget.budgetid}/periods/{first_id}/investments/Emergency%20Fund/transactions/",
         json={"amount": "100.00", "note": "Contribution"},
     )
     assert response.status_code == 201, response.text
@@ -293,12 +293,12 @@ def test_transfer_validation_uses_fresh_closing_amount(client, db_session):
     second_id = periods[1]["finperiodid"]
 
     # Drain Main Account in first cycle
-    client.patch(f"/api/periods/{first_id}/income/Salary", json={"actualamount": "-1000.00"})
+    client.patch(f"/api/budgets/{budget.budgetid}/periods/{first_id}/income/Salary", json={"actualamount": "-1000.00"})
 
     # Try to transfer 1.00 from Main Account in second cycle
     # Main Account closing in first cycle is 0.00, so this should fail
     transfer_response = client.post(
-        f"/api/periods/{second_id}/account-transfer",
+        f"/api/budgets/{budget.budgetid}/periods/{second_id}/account-transfer",
         json={
             "budgetid": budget.budgetid,
             "source_account": "Main Account",
@@ -332,7 +332,7 @@ def test_transfer_validation_defensive_guard_catches_stale_data(client, db_sessi
     second_id = periods[1]["finperiodid"]
 
     # Add income in first cycle (propagation updates second cycle opening to 1500)
-    client.patch(f"/api/periods/{first_id}/income/Salary", json={"actualamount": "500.00"})
+    client.patch(f"/api/budgets/{budget.budgetid}/periods/{first_id}/income/Salary", json={"actualamount": "500.00"})
 
     # Manually corrupt the stored second-cycle opening to make it look like 2000
     pb = db_session.get(PeriodBalance, (second_id, "Main Account"))
@@ -344,7 +344,7 @@ def test_transfer_validation_defensive_guard_catches_stale_data(client, db_sessi
     # Stored value says 2000, so 1800 would pass
     # But true computed value is 1500, so 1800 should fail
     transfer_response = client.post(
-        f"/api/periods/{second_id}/account-transfer",
+        f"/api/budgets/{budget.budgetid}/periods/{second_id}/account-transfer",
         json={
             "budgetid": budget.budgetid,
             "source_account": "Main Account",
@@ -385,24 +385,24 @@ def test_all_transaction_entry_points_leave_no_stale_balances(client, db_session
     third_id = periods[2]["finperiodid"]
 
     # 1. Income actual set
-    client.patch(f"/api/periods/{first_id}/income/Salary", json={"actualamount": "100.00"})
+    client.patch(f"/api/budgets/{budget.budgetid}/periods/{first_id}/income/Salary", json={"actualamount": "100.00"})
     # 2. Income actual add
-    client.post(f"/api/periods/{first_id}/income/Salary/add", json={"amount": "50.00"})
+    client.post(f"/api/budgets/{budget.budgetid}/periods/{first_id}/income/Salary/add", json={"amount": "50.00"})
     # 3. Expense entry
     client.post(
-        f"/api/periods/{first_id}/expenses/Rent/entries/",
+        f"/api/budgets/{budget.budgetid}/periods/{first_id}/expenses/Rent/entries/",
         json={"amount": "25.00", "note": "Rent"},
     )
     # 4. Expense actual set
-    client.patch(f"/api/periods/{first_id}/expense/Rent", json={"actualamount": "30.00"})
+    client.patch(f"/api/budgets/{budget.budgetid}/periods/{first_id}/expense/Rent", json={"actualamount": "30.00"})
     # 5. Investment transaction
     client.post(
-        f"/api/periods/{first_id}/investments/Emergency%20Fund/transactions/",
+        f"/api/budgets/{budget.budgetid}/periods/{first_id}/investments/Emergency%20Fund/transactions/",
         json={"amount": "10.00", "note": "Save"},
     )
     # 6. Transfer
     client.post(
-        f"/api/periods/{first_id}/account-transfer",
+        f"/api/budgets/{budget.budgetid}/periods/{first_id}/account-transfer",
         json={
             "budgetid": budget.budgetid,
             "source_account": "Savings",
@@ -411,7 +411,7 @@ def test_all_transaction_entry_points_leave_no_stale_balances(client, db_session
         },
     )
     client.patch(
-        f"/api/periods/{first_id}/income/Transfer%3A%20Savings%20to%20Main%20Account",
+        f"/api/budgets/{budget.budgetid}/periods/{first_id}/income/Transfer%3A%20Savings%20to%20Main%20Account",
         json={"actualamount": "20.00"},
     )
 
@@ -446,13 +446,13 @@ def test_forward_limit_returns_200_with_limit_exceeded_header(client, db_session
     # Default limit is 10; cycle 12 is 12 cycles from the start (no frozen anchor)
     # So it exceeds the limit
     cycle_12_id = periods[11]["finperiodid"]
-    response = client.get(f"/api/periods/{cycle_12_id}/balances")
+    response = client.get(f"/api/budgets/{budget.budgetid}/periods/{cycle_12_id}/balances")
     assert response.status_code == 200
     assert response.json() == []
     assert response.headers.get("X-Balances-Limit-Exceeded") == "true"
 
     # Period detail should also report the limit exceeded
-    detail = client.get(f"/api/periods/{cycle_12_id}").json()
+    detail = client.get(f"/api/budgets/{budget.budgetid}/periods/{cycle_12_id}").json()
     assert detail["balances_limit_exceeded"] is True
 
 
@@ -466,7 +466,7 @@ def test_forward_limit_allows_within_limit(client, db_session):
 
     # Cycle 10 is exactly at the limit
     cycle_10_id = periods[9]["finperiodid"]
-    response = client.get(f"/api/periods/{cycle_10_id}/balances")
+    response = client.get(f"/api/budgets/{budget.budgetid}/periods/{cycle_10_id}/balances")
     assert response.status_code == 200
     balances = response.json()
     assert len(balances) > 0
@@ -487,17 +487,17 @@ def test_forward_limit_respects_custom_budget_setting(client, db_session):
 
     # Cycle 6 exceeds limit of 5
     cycle_6_id = periods[5]["finperiodid"]
-    response = client.get(f"/api/periods/{cycle_6_id}/balances")
+    response = client.get(f"/api/budgets/{budget.budgetid}/periods/{cycle_6_id}/balances")
     assert response.status_code == 200
     assert response.json() == []
     assert response.headers.get("X-Balances-Limit-Exceeded") == "true"
 
-    detail = client.get(f"/api/periods/{cycle_6_id}").json()
+    detail = client.get(f"/api/budgets/{budget.budgetid}/periods/{cycle_6_id}").json()
     assert detail["balances_limit_exceeded"] is True
 
     # Cycle 5 is within limit
     cycle_5_id = periods[4]["finperiodid"]
-    response = client.get(f"/api/periods/{cycle_5_id}/balances")
+    response = client.get(f"/api/budgets/{budget.budgetid}/periods/{cycle_5_id}/balances")
     assert response.status_code == 200
     assert response.headers.get("X-Balances-Limit-Exceeded") is None
 
@@ -524,9 +524,9 @@ def test_gap_analysis_zero_anomalies(client, db_session):
     first_id = periods[0]["finperiodid"]
 
     # Add mixed transactions
-    client.patch(f"/api/periods/{first_id}/income/Salary", json={"actualamount": "200.00"})
+    client.patch(f"/api/budgets/{budget.budgetid}/periods/{first_id}/income/Salary", json={"actualamount": "200.00"})
     client.post(
-        f"/api/periods/{first_id}/expenses/Rent/entries/",
+        f"/api/budgets/{budget.budgetid}/periods/{first_id}/expenses/Rent/entries/",
         json={"amount": "50.00", "note": "Rent"},
     )
 

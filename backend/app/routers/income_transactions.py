@@ -11,7 +11,7 @@ from ..schemas import IncomeTxCreate, IncomeTxOut
 from ..transaction_ledger import TRANSFER_PREFIX, build_income_tx, sync_period_state
 
 router = APIRouter(
-    prefix="/periods/{finperiodid}/income/{incomedesc}/transactions",
+    prefix="/budgets/{budgetid}/periods/{finperiodid}/income/{incomedesc}/transactions",
     tags=["income-transactions"],
 )
 
@@ -42,16 +42,16 @@ def _to_income_tx_out(tx: PeriodTransaction) -> IncomeTxOut:
     )
 
 
-def _get_period_income(finperiodid: int, incomedesc: str, db: Session) -> PeriodIncome:
+def _get_period_income(finperiodid: int, incomedesc: str, budgetid: int, db: Session) -> PeriodIncome:
     pi = db.get(PeriodIncome, (finperiodid, incomedesc))
-    if not pi:
+    if not pi or pi.budgetid != budgetid:
         raise HTTPException(404, "Income line item not found in this period")
     return pi
 
 
 @router.get("/", response_model=list[IncomeTxOut], responses=error_responses(404))
-def list_transactions(finperiodid: int, incomedesc: str, db: DbSession):
-    _get_period_income(finperiodid, incomedesc, db)
+def list_transactions(budgetid: int, finperiodid: int, incomedesc: str, db: DbSession):
+    _get_period_income(finperiodid, incomedesc, budgetid, db)
     rows = (
         db.query(PeriodTransaction)
         .filter(
@@ -67,6 +67,7 @@ def list_transactions(finperiodid: int, incomedesc: str, db: DbSession):
 
 @router.post("/", response_model=IncomeTxOut, status_code=201, responses=error_responses(404, 423))
 def add_transaction(
+    budgetid: int,
     finperiodid: int,
     incomedesc: str,
     payload: IncomeTxCreate,
@@ -78,7 +79,7 @@ def add_transaction(
     if getattr(period, "cycle_status", None) == CLOSED:
         raise HTTPException(423, "Budget cycle is closed")
 
-    pi = _get_period_income(finperiodid, incomedesc, db)
+    pi = _get_period_income(finperiodid, incomedesc, budgetid, db)
     if (getattr(pi, "status", WORKING) or WORKING) == PAID:
         raise HTTPException(423, "Paid income must be revised before adding transactions")
     tx = build_income_tx(
@@ -98,6 +99,7 @@ def add_transaction(
 
 @router.delete("/{tx_id}", status_code=204, responses=error_responses(404, 423))
 def delete_transaction(
+    budgetid: int,
     finperiodid: int,
     incomedesc: str,
     tx_id: int,
@@ -114,7 +116,7 @@ def delete_transaction(
     if not tx or tx.finperiodid != finperiodid or tx.source != expected_source or tx.source_key != incomedesc:
         raise HTTPException(404, "Transaction not found")
 
-    _get_period_income(finperiodid, incomedesc, db)
+    _get_period_income(finperiodid, incomedesc, budgetid, db)
     db.delete(tx)
     db.flush()
     sync_period_state(finperiodid, db)

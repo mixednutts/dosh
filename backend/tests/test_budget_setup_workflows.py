@@ -40,7 +40,7 @@ def test_generated_periods_use_income_source_amount_for_auto_included_income(cli
     create_expense_item(db_session, budgetid=budget.budgetid, expensedesc="Rent")
 
     generate_response = client.post(
-        "/api/periods/generate",
+        f"/api/budgets/{budget.budgetid}/periods/generate",
         json={
             "budgetid": budget.budgetid,
             "startdate": utc_now().replace(hour=0, minute=0, second=0, microsecond=0).isoformat(),
@@ -49,7 +49,7 @@ def test_generated_periods_use_income_source_amount_for_auto_included_income(cli
     )
     assert generate_response.status_code == 201, generate_response.text
 
-    detail_response = client.get(f"/api/periods/{generate_response.json()['finperiodid']}")
+    detail_response = client.get(f"/api/budgets/{budget.budgetid}/periods/{generate_response.json()['finperiodid']}")
     assert detail_response.status_code == 200, detail_response.text
     incomes = {row["incomedesc"]: row for row in detail_response.json()["incomes"]}
     assert incomes["Salary"]["budgetamount"] == "2750.00"
@@ -68,11 +68,11 @@ def test_adding_existing_income_to_current_and_future_updates_source_amount(clie
     )
     current_period = periods[0]
 
-    remove_response = client.delete(f"/api/periods/{current_period['finperiodid']}/income/Salary")
+    remove_response = client.delete(f"/api/budgets/{budget.budgetid}/periods/{current_period['finperiodid']}/income/Salary")
     assert remove_response.status_code == 204, remove_response.text
 
     add_response = client.post(
-        f"/api/periods/{current_period['finperiodid']}/add-income",
+        f"/api/budgets/{budget.budgetid}/periods/{current_period['finperiodid']}/add-income",
         json={
             "budgetid": budget.budgetid,
             "incomedesc": "Salary",
@@ -87,7 +87,7 @@ def test_adding_existing_income_to_current_and_future_updates_source_amount(clie
     assert income_type.amount == Decimal("2800.00")
 
     next_period_id = periods[1]["finperiodid"]
-    next_period_detail = client.get(f"/api/periods/{next_period_id}")
+    next_period_detail = client.get(f"/api/budgets/{budget.budgetid}/periods/{next_period_id}")
     assert next_period_detail.status_code == 200, next_period_detail.text
     incomes = {row["incomedesc"]: row for row in next_period_detail.json()["incomes"]}
     assert incomes["Salary"]["budgetamount"] == "2800.00"
@@ -209,7 +209,7 @@ def test_generation_succeeds_without_investment_lines_even_when_auto_surplus_is_
     )
     period = generated[0]
 
-    detail_response = client.get(f"/api/periods/{period['finperiodid']}")
+    detail_response = client.get(f"/api/budgets/{budget.budgetid}/periods/{period['finperiodid']}")
     assert detail_response.status_code == 200, detail_response.text
     payload = detail_response.json()
     assert payload["period"]["cycle_status"] == "ACTIVE"
@@ -242,7 +242,7 @@ def test_single_account_scenario_rejects_transfer_when_destination_missing(clien
     )[0]
 
     transfer_attempt = client.post(
-        f"/api/periods/{active_period['finperiodid']}/account-transfer",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/account-transfer",
         json={
             "budgetid": budget.budgetid,
             "source_account": "Main Account",
@@ -284,7 +284,7 @@ def test_generation_requires_a_primary_account_when_expense_tracking_is_configur
     assert second_balance.status_code == 201, second_balance.text
 
     generation_attempt = client.post(
-        "/api/periods/generate",
+        f"/api/budgets/{budget.budgetid}/periods/generate",
         json={
             "budgetid": budget.budgetid,
             "startdate": utc_now().replace(hour=0, minute=0, second=0, microsecond=0).isoformat(),
@@ -332,12 +332,12 @@ def test_multi_transaction_setup_uses_primary_account_for_expense_activity(clien
     )[0]
 
     expense_entry = client.post(
-        f"/api/periods/{active_period['finperiodid']}/expenses/Rent/entries/",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/expenses/Rent/entries/",
         json={"amount": "125.00", "note": "Primary account spend"},
     )
     assert expense_entry.status_code == 201, expense_entry.text
 
-    balances_response = client.get(f"/api/periods/{active_period['finperiodid']}/balances")
+    balances_response = client.get(f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/balances")
     assert balances_response.status_code == 200, balances_response.text
     balances = {row["balancedesc"]: row for row in balances_response.json()}
     assert Decimal(balances["Main Account"]["movement_amount"]) == Decimal("-125.00")
@@ -376,7 +376,7 @@ def test_primary_account_cannot_be_removed_when_it_is_the_only_active_primary(cl
     assert "active primary account" in demote_primary.json()["detail"].lower()
 
     expense_entry = client.post(
-        f"/api/periods/{active_period['finperiodid']}/expenses/Rent/entries/",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/expenses/Rent/entries/",
         json={"amount": "125.00", "note": "Primary account should still be available"},
     )
     assert expense_entry.status_code == 201, expense_entry.text
@@ -459,12 +459,12 @@ def test_multi_transaction_setup_routes_linked_income_to_non_primary_account(cli
     )[0]
 
     income_update = client.patch(
-        f"/api/periods/{active_period['finperiodid']}/income/Salary",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/income/Salary",
         json={"actualamount": "1000.00"},
     )
     assert income_update.status_code == 200, income_update.text
 
-    balances_response = client.get(f"/api/periods/{active_period['finperiodid']}/balances")
+    balances_response = client.get(f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/balances")
     assert balances_response.status_code == 200, balances_response.text
     balances = {row["balancedesc"]: row for row in balances_response.json()}
     assert Decimal(balances["Main Account"]["movement_amount"]) == Decimal("0.00")
@@ -520,12 +520,12 @@ def test_reassigning_primary_account_changes_future_expense_activity_home(client
     assert configured_balances["Bills Account"]["is_primary"] is True
 
     expense_entry = client.post(
-        f"/api/periods/{active_period['finperiodid']}/expenses/Rent/entries/",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/expenses/Rent/entries/",
         json={"amount": "80.00", "note": "Updated default account"},
     )
     assert expense_entry.status_code == 201, expense_entry.text
 
-    balances_response = client.get(f"/api/periods/{active_period['finperiodid']}/balances")
+    balances_response = client.get(f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/balances")
     assert balances_response.status_code == 200, balances_response.text
     balances = {row["balancedesc"]: row for row in balances_response.json()}
     assert Decimal(balances["Main Account"]["movement_amount"]) == Decimal("0.00")
@@ -586,7 +586,7 @@ def test_auto_surplus_allocation_targets_only_primary_investment_line(client, db
         count=1,
     )[0]
 
-    detail_response = client.get(f"/api/periods/{active_period['finperiodid']}")
+    detail_response = client.get(f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}")
     assert detail_response.status_code == 200, detail_response.text
     investments = {row["investmentdesc"]: row for row in detail_response.json()["investments"]}
     assert Decimal(investments["Emergency Fund"]["budgeted_amount"]) == Decimal("800.00")
@@ -660,7 +660,7 @@ def test_reassigning_primary_investment_changes_future_auto_surplus_target(clien
         count=1,
     )[0]
 
-    detail_response = client.get(f"/api/periods/{active_period['finperiodid']}")
+    detail_response = client.get(f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}")
     assert detail_response.status_code == 200, detail_response.text
     period_investments = {row["investmentdesc"]: row for row in detail_response.json()["investments"]}
     assert Decimal(period_investments["Emergency Fund"]["budgeted_amount"]) == Decimal("0.00")
@@ -729,19 +729,19 @@ def test_mixed_accounts_scenario_routes_movements_to_linked_accounts(client, db_
     )[0]
 
     salary_update = client.patch(
-        f"/api/periods/{active_period['finperiodid']}/income/Salary",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/income/Salary",
         json={"actualamount": "1000.00"},
     )
     assert salary_update.status_code == 200, salary_update.text
 
     investment_tx = client.post(
-        f"/api/periods/{active_period['finperiodid']}/investments/ETF/transactions/",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/investments/ETF/transactions/",
         json={"amount": "150.00", "note": "Brokerage transfer"},
     )
     assert investment_tx.status_code == 201, investment_tx.text
 
     transfer_create = client.post(
-        f"/api/periods/{active_period['finperiodid']}/account-transfer",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/account-transfer",
         json={
             "budgetid": budget.budgetid,
             "source_account": "Rainy Day",
@@ -752,12 +752,12 @@ def test_mixed_accounts_scenario_routes_movements_to_linked_accounts(client, db_
     assert transfer_create.status_code == 201, transfer_create.text
 
     transfer_actual = client.patch(
-        f"/api/periods/{active_period['finperiodid']}/income/Transfer%3A%20Rainy%20Day%20to%20Main%20Account",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/income/Transfer%3A%20Rainy%20Day%20to%20Main%20Account",
         json={"actualamount": "75.00"},
     )
     assert transfer_actual.status_code == 200, transfer_actual.text
 
-    balances_response = client.get(f"/api/periods/{active_period['finperiodid']}/balances")
+    balances_response = client.get(f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/balances")
     assert balances_response.status_code == 200, balances_response.text
     balances = {row["balancedesc"]: row for row in balances_response.json()}
     assert Decimal(balances["Main Account"]["movement_amount"]) == Decimal("925.00")
@@ -790,7 +790,7 @@ def test_missing_period_investment_reference_fails_clearly_for_downstream_activi
     )[0]
 
     missing_investment_tx = client.post(
-        f"/api/periods/{active_period['finperiodid']}/investments/ETF/transactions/",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/investments/ETF/transactions/",
         json={"amount": "50.00", "note": "Should fail"},
     )
     assert missing_investment_tx.status_code == 404
@@ -822,19 +822,19 @@ def test_setup_history_endpoints_return_budget_adjustment_details(client, db_ses
     )[0]
 
     income_adjust = client.patch(
-        f"/api/periods/{active_period['finperiodid']}/income/Salary/budget",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/income/Salary/budget",
         json={"budgetamount": "2600.00", "scope": "current", "note": "Pay review landed"},
     )
     assert income_adjust.status_code == 200, income_adjust.text
 
     expense_adjust = client.patch(
-        f"/api/periods/{active_period['finperiodid']}/expense/Rent/budget",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/expense/Rent/budget",
         json={"budgetamount": "1300.00", "scope": "current", "note": "Rent increased"},
     )
     assert expense_adjust.status_code == 200, expense_adjust.text
 
     investment_adjust = client.patch(
-        f"/api/periods/{active_period['finperiodid']}/investment/Emergency%20Fund/budget",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/investment/Emergency%20Fund/budget",
         json={"budgetamount": "100.00", "scope": "current", "note": "Boost savings target"},
     )
     assert investment_adjust.status_code == 200, investment_adjust.text
@@ -890,7 +890,7 @@ def test_adding_scheduled_expense_to_future_only_applies_to_periods_where_due(cl
 
     # Add the expense to the first period with "future" scope
     add_response = client.post(
-        f"/api/periods/{period_1['finperiodid']}/add-expense",
+        f"/api/budgets/{budget.budgetid}/periods/{period_1['finperiodid']}/add-expense",
         json={
             "budgetid": budget.budgetid,
             "expensedesc": expense.expensedesc,
@@ -902,17 +902,17 @@ def test_adding_scheduled_expense_to_future_only_applies_to_periods_where_due(cl
     assert add_response.status_code == 201, add_response.text
 
     # Verify the expense exists in period 1 (directly added)
-    detail_1 = client.get(f"/api/periods/{period_1['finperiodid']}").json()
+    detail_1 = client.get(f"/api/budgets/{budget.budgetid}/periods/{period_1['finperiodid']}").json()
     expenses_1 = {e["expensedesc"] for e in detail_1["expenses"]}
     assert "Quarterly Bill" in expenses_1
 
     # Verify the expense does NOT exist in period 2 (no occurrence within Feb)
-    detail_2 = client.get(f"/api/periods/{period_2['finperiodid']}").json()
+    detail_2 = client.get(f"/api/budgets/{budget.budgetid}/periods/{period_2['finperiodid']}").json()
     expenses_2 = {e["expensedesc"] for e in detail_2["expenses"]}
     assert "Quarterly Bill" not in expenses_2
 
     # Verify the expense exists in period 3 (occurs on 17 Mar, which is 75 days after 1 Jan)
-    detail_3 = client.get(f"/api/periods/{period_3['finperiodid']}").json()
+    detail_3 = client.get(f"/api/budgets/{budget.budgetid}/periods/{period_3['finperiodid']}").json()
     expenses_3 = {e["expensedesc"] for e in detail_3["expenses"]}
     assert "Quarterly Bill" in expenses_3
 

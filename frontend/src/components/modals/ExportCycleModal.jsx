@@ -3,11 +3,11 @@ import PropTypes from 'prop-types'
 import { useMutation } from '@tanstack/react-query'
 import { exportPeriod } from '../../api/client'
 
-export function ExportCycleModal({ periodId, onClose }) {
+export function ExportCycleModal({ periodId, budgetId, onClose }) {
   const [format, setFormat] = useState('csv')
   const [error, setError] = useState('')
   const exportMutation = useMutation({
-    mutationFn: selectedFormat => exportPeriod(periodId, selectedFormat),
+    mutationFn: selectedFormat => exportPeriod(budgetId, periodId, selectedFormat),
     onSuccess: () => {
       setError('')
       onClose()

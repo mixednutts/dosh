@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 0.5.1-alpha | released | 2026-04-15
+
+### Fixed
+
+- Restored missing budget cycle shortcuts in the left sidebar. The periods list was failing to load due to a mismatched API path, causing the sidebar to incorrectly show "No budget cycles yet."
+- Aligned frontend and backend period routing across budget cycles, period details, and transaction modals for more reliable navigation.
+
 ## 0.5.0-alpha | released | 2026-04-15
 
 ### Changed

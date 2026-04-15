@@ -9,7 +9,7 @@ from ..models import FinancialPeriod, PeriodExpense, PeriodTransaction, ExpenseI
 from ..schemas import ExpenseEntryCreate, ExpenseEntryOut
 from ..transaction_ledger import build_expense_tx, get_primary_account_desc, sync_period_state
 
-router = APIRouter(prefix="/periods/{finperiodid}/expenses/{expensedesc}/entries", tags=["expense-entries"])
+router = APIRouter(prefix="/budgets/{budgetid}/periods/{finperiodid}/expenses/{expensedesc}/entries", tags=["expense-entries"])
 
 
 def _to_expense_entry_out(tx: PeriodTransaction) -> ExpenseEntryOut:
@@ -32,7 +32,7 @@ def _to_expense_entry_out(tx: PeriodTransaction) -> ExpenseEntryOut:
     )
 
 
-def _get_period_expense(finperiodid: int, expensedesc: str, db: Session) -> PeriodExpense:
+def _get_period_expense(finperiodid: int, expensedesc: str, budgetid: int, db: Session) -> PeriodExpense:
     pe = (
         db.query(PeriodExpense)
         .filter(
@@ -41,7 +41,7 @@ def _get_period_expense(finperiodid: int, expensedesc: str, db: Session) -> Peri
         )
         .first()
     )
-    if not pe:
+    if not pe or pe.budgetid != budgetid:
         raise HTTPException(404, "Expense line item not found in this period")
     return pe
 
@@ -52,8 +52,8 @@ def _assert_expense_not_paid(pe: PeriodExpense) -> None:
 
 
 @router.get("/", response_model=list[ExpenseEntryOut], responses=error_responses(404))
-def list_entries(finperiodid: int, expensedesc: str, db: DbSession):
-    _get_period_expense(finperiodid, expensedesc, db)
+def list_entries(budgetid: int, finperiodid: int, expensedesc: str, db: DbSession):
+    _get_period_expense(finperiodid, expensedesc, budgetid, db)
     rows = (
         db.query(PeriodTransaction)
         .filter(
@@ -69,6 +69,7 @@ def list_entries(finperiodid: int, expensedesc: str, db: DbSession):
 
 @router.post("/", response_model=ExpenseEntryOut, status_code=201, responses=error_responses(404, 422, 423))
 def add_entry(
+    budgetid: int,
     finperiodid: int,
     expensedesc: str,
     payload: ExpenseEntryCreate,
@@ -80,7 +81,7 @@ def add_entry(
     if getattr(period, "cycle_status", None) == CLOSED:
         raise HTTPException(423, "Budget cycle is closed")
 
-    pe = _get_period_expense(finperiodid, expensedesc, db)
+    pe = _get_period_expense(finperiodid, expensedesc, budgetid, db)
     _assert_expense_not_paid(pe)
     if not get_primary_account_desc(pe.budgetid, db):
         raise HTTPException(422, "Set one account as the primary account before recording expense activity.")
@@ -116,6 +117,7 @@ def add_entry(
 
 @router.delete("/{entry_id}", status_code=204, responses=error_responses(404, 423))
 def delete_entry(
+    budgetid: int,
     finperiodid: int,
     expensedesc: str,
     entry_id: int,
@@ -131,7 +133,7 @@ def delete_entry(
     if not entry or entry.finperiodid != finperiodid or entry.source != "expense" or entry.source_key != expensedesc:
         raise HTTPException(404, "Entry not found")
 
-    pe = _get_period_expense(finperiodid, expensedesc, db)
+    pe = _get_period_expense(finperiodid, expensedesc, budgetid, db)
     _assert_expense_not_paid(pe)
     db.delete(entry)
     db.flush()

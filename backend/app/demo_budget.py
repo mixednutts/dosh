@@ -425,6 +425,7 @@ def create_standard_demo_budget(db: Session) -> Budget:
         startdate = (startdate.replace(day=1) - timedelta(days=1)).replace(day=1)
 
     generate_period(
+        budget.budgetid,
         PeriodGenerateRequest(
             budgetid=budget.budgetid,
             startdate=startdate,

@@ -29,7 +29,7 @@ def test_income_budget_adjustment_updates_current_and_future_unlocked_periods_an
     )
 
     adjust_response = client.patch(
-        f"/api/periods/{active_period['finperiodid']}/income/Salary/budget",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/income/Salary/budget",
         json={"budgetamount": "3100.00", "scope": "future", "note": "Annual pay review"},
     )
     assert adjust_response.status_code == 200, adjust_response.text
@@ -50,17 +50,17 @@ def test_income_budget_adjustment_updates_current_and_future_unlocked_periods_an
         assert Decimal(str(planned_row.budgetamount)) == Decimal("3100.00")
         assert planned_row.revision_snapshot == 1
 
-    detail = client.get(f"/api/periods/{active_period['finperiodid']}")
+    detail = client.get(f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}")
     assert detail.status_code == 200, detail.text
     salary_detail = next(income for income in detail.json()["incomes"] if income["incomedesc"] == "Salary")
     assert Decimal(salary_detail["actualamount"]) == Decimal("0.00")
 
-    balances_response = client.get(f"/api/periods/{active_period['finperiodid']}/balances")
+    balances_response = client.get(f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/balances")
     assert balances_response.status_code == 200, balances_response.text
     balances = {row["balancedesc"]: row for row in balances_response.json()}
     assert Decimal(balances["Main Account"]["movement_amount"]) == Decimal("0.00")
 
-    history = client.get(f"/api/periods/{active_period['finperiodid']}/income/Salary/transactions/")
+    history = client.get(f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/income/Salary/transactions/")
     assert history.status_code == 200, history.text
     payload = history.json()
     assert len(payload) == 1
@@ -86,7 +86,7 @@ def test_expense_budget_adjustment_stays_out_of_actuals_and_balance_movement(cli
     active_period = periods[0]
 
     adjust_response = client.patch(
-        f"/api/periods/{active_period['finperiodid']}/expense/Rent/budget",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/expense/Rent/budget",
         json={"budgetamount": "1300.00", "scope": "current", "note": "Rent increased this month"},
     )
     assert adjust_response.status_code == 200, adjust_response.text
@@ -96,17 +96,17 @@ def test_expense_budget_adjustment_stays_out_of_actuals_and_balance_movement(cli
     assert expense_row is not None
     assert Decimal(str(expense_row.budgetamount)) == Decimal("1300.00")
 
-    detail = client.get(f"/api/periods/{active_period['finperiodid']}")
+    detail = client.get(f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}")
     assert detail.status_code == 200, detail.text
     rent_detail = next(expense for expense in detail.json()["expenses"] if expense["expensedesc"] == "Rent")
     assert Decimal(rent_detail["actualamount"]) == Decimal("0.00")
 
-    balances_response = client.get(f"/api/periods/{active_period['finperiodid']}/balances")
+    balances_response = client.get(f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/balances")
     assert balances_response.status_code == 200, balances_response.text
     balances = {row["balancedesc"]: row for row in balances_response.json()}
     assert Decimal(balances["Main Account"]["movement_amount"]) == Decimal("0.00")
 
-    history = client.get(f"/api/periods/{active_period['finperiodid']}/expenses/Rent/entries/")
+    history = client.get(f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/expenses/Rent/entries/")
     assert history.status_code == 200, history.text
     payload = history.json()
     assert len(payload) == 1
@@ -141,7 +141,7 @@ def test_investment_budget_adjustment_updates_setup_and_future_unlocked_periods_
     )
 
     adjust_response = client.patch(
-        f"/api/periods/{active_period['finperiodid']}/investment/Emergency%20Fund/budget",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/investment/Emergency%20Fund/budget",
         json={"budgetamount": "225.00", "scope": "future", "note": "Increase ongoing contribution"},
     )
     assert adjust_response.status_code == 200, adjust_response.text
@@ -162,20 +162,20 @@ def test_investment_budget_adjustment_updates_setup_and_future_unlocked_periods_
         assert Decimal(str(planned_row.budgeted_amount)) == Decimal("225.00")
         assert planned_row.revision_snapshot == 1
 
-    detail = client.get(f"/api/periods/{active_period['finperiodid']}")
+    detail = client.get(f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}")
     assert detail.status_code == 200, detail.text
     investment_detail = next(
         investment for investment in detail.json()["investments"] if investment["investmentdesc"] == "Emergency Fund"
     )
     assert Decimal(investment_detail["actualamount"]) == Decimal("0.00")
 
-    balances_response = client.get(f"/api/periods/{active_period['finperiodid']}/balances")
+    balances_response = client.get(f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/balances")
     assert balances_response.status_code == 200, balances_response.text
     balances = {row["balancedesc"]: row for row in balances_response.json()}
     assert Decimal(balances["Main Account"]["movement_amount"]) == Decimal("0.00")
 
     history = client.get(
-        f"/api/periods/{active_period['finperiodid']}/investments/Emergency%20Fund/transactions/"
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/investments/Emergency%20Fund/transactions/"
     )
     assert history.status_code == 200, history.text
     payload = history.json()
@@ -213,7 +213,7 @@ def test_expense_setup_history_merges_setup_revision_events_with_budget_adjustme
     assert update_response.status_code == 200, update_response.text
 
     adjust_response = client.patch(
-        f"/api/periods/{active_period['finperiodid']}/expense/Rent/budget",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/expense/Rent/budget",
         json={"budgetamount": "1300.00", "scope": "current", "note": "Short-term increase"},
     )
     assert adjust_response.status_code == 200, adjust_response.text
@@ -313,7 +313,7 @@ def test_future_budget_adjustment_uses_next_supported_revision_after_direct_setu
     active_period = next(period for period in periods if period["cycle_status"] == "ACTIVE")
 
     adjust_response = client.patch(
-        f"/api/periods/{active_period['finperiodid']}/expense/Rent/budget",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/expense/Rent/budget",
         json={"budgetamount": "1300.00", "scope": "future", "note": "Revision-linked increase"},
     )
     assert adjust_response.status_code == 200, adjust_response.text

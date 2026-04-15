@@ -22,19 +22,19 @@ def test_trailing_active_cycle_with_recorded_activity_cannot_be_deleted(client, 
     )[0]
 
     expense_entry = client.post(
-        f"/api/periods/{active_period['finperiodid']}/expenses/Rent/entries/",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/expenses/Rent/entries/",
         json={"amount": "25.00", "note": "Recorded spend"},
     )
     assert expense_entry.status_code == 201, expense_entry.text
 
-    options_response = client.get(f"/api/periods/{active_period['finperiodid']}/delete-options")
+    options_response = client.get(f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/delete-options")
     assert options_response.status_code == 200, options_response.text
     options = options_response.json()
     assert options["can_delete_single"] is False
     assert options["can_delete_future_chain"] is False
     assert "actuals or transactions cannot be deleted" in options["delete_reason"].lower()
 
-    delete_response = client.delete(f"/api/periods/{active_period['finperiodid']}?delete_mode=single")
+    delete_response = client.delete(f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}?delete_mode=single")
     assert delete_response.status_code == 409
 
 
@@ -97,17 +97,17 @@ def test_closeout_health_snapshot_stays_historical_after_budget_preference_chang
     # Create a small deficit (income 2500, expense 2600) so the score is sensitive
     # to the maximum-deficit threshold.
     expense_budget_update = client.patch(
-        f"/api/periods/{active_period['finperiodid']}/expense/Rent/budget",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/expense/Rent/budget",
         json={"budgetamount": "2600.00", "scope": "current", "note": "Test adjustment"},
     )
     assert expense_budget_update.status_code == 200, expense_budget_update.text
 
-    preview = client.get(f"/api/periods/{active_period['finperiodid']}/closeout-preview")
+    preview = client.get(f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/closeout-preview")
     assert preview.status_code == 200, preview.text
     preview_health = preview.json()["health"]
 
     closeout = client.post(
-        f"/api/periods/{active_period['finperiodid']}/closeout",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/closeout",
         json={"create_next_cycle": False, "comments": "Snapshot this view"},
     )
     assert closeout.status_code == 200, closeout.text
@@ -124,7 +124,7 @@ def test_closeout_health_snapshot_stays_historical_after_budget_preference_chang
     assert "overall_status" in health_payload
     assert "pillars" in health_payload
 
-    period_detail = client.get(f"/api/periods/{active_period['finperiodid']}")
+    period_detail = client.get(f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}")
     assert period_detail.status_code == 200, period_detail.text
     historical_snapshot = json.loads(period_detail.json()["closeout_snapshot"]["health_snapshot_json"])
     assert historical_snapshot == stored_snapshot
@@ -151,24 +151,24 @@ def test_expired_open_cycle_is_reported_as_pending_closure_and_can_still_be_clos
     assert pending_period["cycle_status"] == "ACTIVE"
     assert pending_period["closed_at"] is None
 
-    summaries_response = client.get(f"/api/periods/budget/{budget.budgetid}/summary")
+    summaries_response = client.get(f"/api/budgets/{budget.budgetid}/periods/summary")
     assert summaries_response.status_code == 200, summaries_response.text
     summaries = summaries_response.json()
     pending_summary = next(summary for summary in summaries if summary["period"]["finperiodid"] == pending_period["finperiodid"])
     assert pending_summary["period_status"] == "Pending Closure"
 
-    preview_response = client.get(f"/api/periods/{pending_period['finperiodid']}/closeout-preview")
+    preview_response = client.get(f"/api/budgets/{budget.budgetid}/periods/{pending_period['finperiodid']}/closeout-preview")
     assert preview_response.status_code == 200, preview_response.text
 
     closeout_response = client.post(
-        f"/api/periods/{pending_period['finperiodid']}/closeout",
+        f"/api/budgets/{budget.budgetid}/periods/{pending_period['finperiodid']}/closeout",
         json={"create_next_cycle": False, "comments": "Closed after cycle end"},
     )
     assert closeout_response.status_code == 200, closeout_response.text
     payload = closeout_response.json()
     assert payload["period"]["cycle_stage"] == "CLOSED"
 
-    periods_after = client.get(f"/api/periods/budget/{budget.budgetid}")
+    periods_after = client.get(f"/api/budgets/{budget.budgetid}/periods")
     assert periods_after.status_code == 200, periods_after.text
     refreshed = periods_after.json()
     activated_next = next(period for period in refreshed if period["finperiodid"] == next_period["finperiodid"])

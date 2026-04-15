@@ -53,8 +53,9 @@ import {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function PeriodDetailPage() {
-  const { periodId } = useParams()
+  const { budgetId, periodId } = useParams()
   const [searchParams, setSearchParams] = useSearchParams()
+  const budgetid = Number.parseInt(budgetId, 10)
   const id = Number.parseInt(periodId, 10)
   const qc = useQueryClient()
   const [showAddExpense, setShowAddExpense] = useState(false)
@@ -82,10 +83,10 @@ export default function PeriodDetailPage() {
   const formatters = useFormatters()
   const { fmt, fmtDate, fmtDateRange } = formatters
 
-  const { data, isLoading, isError } = useQuery({ queryKey: ['period', id], queryFn: () => getPeriodDetail(id) })
+  const { data, isLoading, isError } = useQuery({ queryKey: ['period', id], queryFn: () => getPeriodDetail(budgetid, id) })
   const { data: balancesData } = useQuery({
     queryKey: ['period-balances', id],
-    queryFn: () => getPeriodBalances(id),
+    queryFn: () => getPeriodBalances(budgetid, id),
     enabled: !!id,
   })
   const { data: budget } = useQuery({
@@ -99,10 +100,10 @@ export default function PeriodDetailPage() {
     enabled: !!data?.period?.budgetid,
   })
 
-  const lock = useMutation({ mutationFn: islocked => setPeriodLock(id, islocked), onSuccess: () => { qc.invalidateQueries({ queryKey: ['period', id] }); qc.invalidateQueries({ queryKey: ['period-balances', id] }) } })
-  const setExpenseStatus = useMutation({ mutationFn: ({ desc, status, revisionComment = null }) => setPeriodExpenseStatus(id, desc, status, revisionComment), onSuccess: () => { qc.invalidateQueries({ queryKey: ['period', id] }); qc.invalidateQueries({ queryKey: ['period-balances', id] }) } })
+  const lock = useMutation({ mutationFn: islocked => setPeriodLock(budgetid, id, islocked), onSuccess: () => { qc.invalidateQueries({ queryKey: ['period', id] }); qc.invalidateQueries({ queryKey: ['period-balances', id] }) } })
+  const setExpenseStatus = useMutation({ mutationFn: ({ desc, status, revisionComment = null }) => setPeriodExpenseStatus(budgetid, id, desc, status, revisionComment), onSuccess: () => { qc.invalidateQueries({ queryKey: ['period', id] }); qc.invalidateQueries({ queryKey: ['period-balances', id] }) } })
   const updateExpensePayType = useMutation({
-    mutationFn: ({ desc, paytype }) => updatePeriodExpensePayType(id, desc, paytype),
+    mutationFn: ({ desc, paytype }) => updatePeriodExpensePayType(budgetid, id, desc, paytype),
     onMutate: () => {
       setExpensePayTypeWarning(null)
     },
@@ -118,7 +119,7 @@ export default function PeriodDetailPage() {
     }),
   })
   const runAutoExpenses = useMutation({
-    mutationFn: () => runPeriodAutoExpenses(id),
+    mutationFn: () => runPeriodAutoExpenses(budgetid, id),
     onSuccess: result => {
       qc.invalidateQueries({ queryKey: ['period', id] })
       qc.invalidateQueries({ queryKey: ['period-balances', id] })
@@ -131,13 +132,13 @@ export default function PeriodDetailPage() {
     },
     onError: error => setAutoExpenseFeedback({ tone: 'error', text: error?.response?.data?.detail || 'Unable to run Auto Expense right now.' }),
   })
-  const setInvestmentStatus = useMutation({ mutationFn: ({ desc, status, revisionComment = null }) => setPeriodInvestmentStatus(id, desc, status, revisionComment), onSuccess: () => { qc.invalidateQueries({ queryKey: ['period', id] }); qc.invalidateQueries({ queryKey: ['period-balances', id] }) } })
-  const setIncomeStatus = useMutation({ mutationFn: ({ desc, status, revisionComment = null }) => setPeriodIncomeStatus(id, desc, status, revisionComment), onSuccess: () => { qc.invalidateQueries({ queryKey: ['period', id] }); qc.invalidateQueries({ queryKey: ['period-balances', id] }) } })
-  const editIncomeBudget = useMutation({ mutationFn: ({ desc, data }) => updatePeriodIncomeBudget(id, desc, data), onSuccess: () => { qc.invalidateQueries({ queryKey: ['period', id] }); qc.invalidateQueries({ queryKey: ['period-balances', id] }) } })
-  const editExpenseBudget = useMutation({ mutationFn: ({ desc, data }) => updatePeriodExpenseBudget(id, desc, data), onSuccess: () => { qc.invalidateQueries({ queryKey: ['period', id] }); qc.invalidateQueries({ queryKey: ['period-balances', id] }) } })
-  const deleteExpenseLine = useMutation({ mutationFn: desc => removePeriodExpense(id, desc), onSuccess: () => { qc.invalidateQueries({ queryKey: ['period', id] }); qc.invalidateQueries({ queryKey: ['period-balances', id] }) } })
-  const deleteIncomeLine = useMutation({ mutationFn: desc => removePeriodIncome(id, desc), onSuccess: () => { qc.invalidateQueries({ queryKey: ['period', id] }); qc.invalidateQueries({ queryKey: ['period-balances', id] }) } })
-  const editInvBudget = useMutation({ mutationFn: ({ desc, data }) => updatePeriodInvestmentBudget(id, desc, data), onSuccess: () => { qc.invalidateQueries({ queryKey: ['period', id] }); qc.invalidateQueries({ queryKey: ['period-balances', id] }) } })
+  const setInvestmentStatus = useMutation({ mutationFn: ({ desc, status, revisionComment = null }) => setPeriodInvestmentStatus(budgetid, id, desc, status, revisionComment), onSuccess: () => { qc.invalidateQueries({ queryKey: ['period', id] }); qc.invalidateQueries({ queryKey: ['period-balances', id] }) } })
+  const setIncomeStatus = useMutation({ mutationFn: ({ desc, status, revisionComment = null }) => setPeriodIncomeStatus(budgetid, id, desc, status, revisionComment), onSuccess: () => { qc.invalidateQueries({ queryKey: ['period', id] }); qc.invalidateQueries({ queryKey: ['period-balances', id] }) } })
+  const editIncomeBudget = useMutation({ mutationFn: ({ desc, data }) => updatePeriodIncomeBudget(budgetid, id, desc, data), onSuccess: () => { qc.invalidateQueries({ queryKey: ['period', id] }); qc.invalidateQueries({ queryKey: ['period-balances', id] }) } })
+  const editExpenseBudget = useMutation({ mutationFn: ({ desc, data }) => updatePeriodExpenseBudget(budgetid, id, desc, data), onSuccess: () => { qc.invalidateQueries({ queryKey: ['period', id] }); qc.invalidateQueries({ queryKey: ['period-balances', id] }) } })
+  const deleteExpenseLine = useMutation({ mutationFn: desc => removePeriodExpense(budgetid, id, desc), onSuccess: () => { qc.invalidateQueries({ queryKey: ['period', id] }); qc.invalidateQueries({ queryKey: ['period-balances', id] }) } })
+  const deleteIncomeLine = useMutation({ mutationFn: desc => removePeriodIncome(budgetid, id, desc), onSuccess: () => { qc.invalidateQueries({ queryKey: ['period', id] }); qc.invalidateQueries({ queryKey: ['period-balances', id] }) } })
+  const editInvBudget = useMutation({ mutationFn: ({ desc, data }) => updatePeriodInvestmentBudget(budgetid, id, desc, data), onSuccess: () => { qc.invalidateQueries({ queryKey: ['period', id] }); qc.invalidateQueries({ queryKey: ['period-balances', id] }) } })
 
   // Reset local drag-reorder when server data refreshes
   useEffect(() => { setLocalExpenses(null) }, [data])
@@ -208,7 +209,7 @@ export default function PeriodDetailPage() {
     cur.splice(ti, 0, moved)
     setLocalExpenses(cur)
     const items = cur.map((x, i) => ({ expensedesc: x.expensedesc, sort_order: i }))
-    reorderPeriodExpenses(id, items).catch(() => setLocalExpenses(null))
+    reorderPeriodExpenses(budgetid, id, items).catch(() => setLocalExpenses(null))
   }
   const totalIncomeBudget    = incomes.reduce((s, i) => s + Number(i.budgetamount), 0)
   const totalIncomeActual    = incomes.reduce((s, i) => s + Number(i.actualamount), 0)
@@ -357,7 +358,7 @@ export default function PeriodDetailPage() {
       {/* Period Navigation */}
       <div className="flex items-center justify-between">
         <Link
-          to={prevPeriod ? `/periods/${prevPeriod.finperiodid}` : '#'}
+          to={prevPeriod ? `/budgets/${budgetid}/periods/${prevPeriod.finperiodid}` : '#'}
           className={`flex items-center gap-1 text-sm font-medium ${prevPeriod ? 'text-dosh-600 hover:text-dosh-700 dark:text-dosh-400 dark:hover:text-dosh-300' : 'text-gray-300 dark:text-gray-600 cursor-not-allowed'}`}
           onClick={e => { if (!prevPeriod) e.preventDefault() }}
         >
@@ -365,7 +366,7 @@ export default function PeriodDetailPage() {
           <span className="hidden sm:inline">{prevPeriod ? fmtDate(prevPeriod.startdate) : 'Previous'}</span>
         </Link>
         <Link
-          to={nextPeriod ? `/periods/${nextPeriod.finperiodid}` : '#'}
+          to={nextPeriod ? `/budgets/${budgetid}/periods/${nextPeriod.finperiodid}` : '#'}
           className={`flex items-center gap-1 text-sm font-medium ${nextPeriod ? 'text-dosh-600 hover:text-dosh-700 dark:text-dosh-400 dark:hover:text-dosh-300' : 'text-gray-300 dark:text-gray-600 cursor-not-allowed'}`}
           onClick={e => { if (!nextPeriod) e.preventDefault() }}
         >
@@ -472,6 +473,7 @@ export default function PeriodDetailPage() {
         <Modal title={`Transactions — ${incomeModal.incomedesc}`} onClose={() => setIncomeModal(null)} size="lg">
           <IncomeTransactionsModal
             periodId={id}
+            budgetId={period.budgetid}
             incomedesc={incomeModal.incomedesc}
             budgetamount={incomeModal.budgetamount}
             actualamount={incomeModal.actualamount}
@@ -528,6 +530,7 @@ export default function PeriodDetailPage() {
         <Modal title={`Movement Details — ${balanceModal.balancedesc}`} onClose={() => setBalanceModal(null)} size="lg">
           <BalanceTransactionsModal
             periodId={id}
+            budgetId={period.budgetid}
             balancedesc={balanceModal.balancedesc}
             movementAmount={balanceModal.movementAmount}
           />
@@ -592,12 +595,12 @@ export default function PeriodDetailPage() {
       )}
       {showCloseout && (
         <Modal title="Close Out Budget Cycle" onClose={closeCloseoutModal} size="lg">
-          <CloseoutModal periodId={id} onClose={closeCloseoutModal} />
+          <CloseoutModal periodId={id} budgetId={period.budgetid} onClose={closeCloseoutModal} />
         </Modal>
       )}
       {showExport && (
         <Modal title="Export Budget Cycle" onClose={() => setShowExport(false)}>
-          <ExportCycleModal periodId={id} onClose={() => setShowExport(false)} />
+          <ExportCycleModal periodId={id} budgetId={period.budgetid} onClose={() => setShowExport(false)} />
         </Modal>
       )}
       {expensePayTypeWarning && (

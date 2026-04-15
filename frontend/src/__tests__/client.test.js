@@ -32,9 +32,9 @@ describe('exportPeriod', () => {
     mockInstance.get.mockResolvedValue({ data: blob, headers })
 
     const { exportPeriod } = require('../api/client')
-    const filename = await exportPeriod(12, format)
+    const filename = await exportPeriod(1, 12, format)
 
-    expect(mockInstance.get).toHaveBeenCalledWith('/periods/12/export', {
+    expect(mockInstance.get).toHaveBeenCalledWith('/budgets/1/periods/12/export', {
       params: { format },
       responseType: 'blob',
     })
@@ -117,10 +117,10 @@ describe('period-critical client helpers', () => {
 
     const payload = { budgetid: 1, startdate: '2026-01-01', count: 1 }
     await generatePeriod(payload)
-    expect(mockInstance.post).toHaveBeenCalledWith('/periods/generate', payload)
+    expect(mockInstance.post).toHaveBeenCalledWith('/budgets/1/periods/generate', payload)
 
-    await closeOutPeriod(4, { rollover: true })
-    expect(mockInstance.post).toHaveBeenCalledWith('/periods/4/closeout', { rollover: true })
+    await closeOutPeriod(1, 4, { rollover: true })
+    expect(mockInstance.post).toHaveBeenCalledWith('/budgets/1/periods/4/closeout', { rollover: true })
   })
 
   it('records an account transfer between two accounts', async () => {
@@ -128,30 +128,30 @@ describe('period-critical client helpers', () => {
     const { accountTransfer } = require('../api/client')
 
     const payload = { from: 'A', to: 'B', amount: 100 }
-    await accountTransfer(1, payload)
-    expect(mockInstance.post).toHaveBeenCalledWith('/periods/1/account-transfer', payload)
+    await accountTransfer(1, 1, payload)
+    expect(mockInstance.post).toHaveBeenCalledWith('/budgets/1/periods/1/account-transfer', payload)
   })
 
   it('updates period expense and investment budgets', async () => {
     mockInstance.patch.mockResolvedValue({ data: { ok: true } })
     const { updatePeriodExpenseBudget, updatePeriodInvestmentBudget } = require('../api/client')
 
-    await updatePeriodExpenseBudget(1, 'Rent', { budgetamount: '1300.00' })
-    expect(mockInstance.patch).toHaveBeenCalledWith('/periods/1/expense/Rent/budget', { budgetamount: '1300.00' })
+    await updatePeriodExpenseBudget(1, 1, 'Rent', { budgetamount: '1300.00' })
+    expect(mockInstance.patch).toHaveBeenCalledWith('/budgets/1/periods/1/expense/Rent/budget', { budgetamount: '1300.00' })
 
-    await updatePeriodInvestmentBudget(1, 'ETF', { budgetamount: '500.00' })
-    expect(mockInstance.patch).toHaveBeenCalledWith('/periods/1/investment/ETF/budget', { budgetamount: '500.00' })
+    await updatePeriodInvestmentBudget(1, 1, 'ETF', { budgetamount: '500.00' })
+    expect(mockInstance.patch).toHaveBeenCalledWith('/budgets/1/periods/1/investment/ETF/budget', { budgetamount: '500.00' })
   })
 
   it('sets period expense and investment statuses', async () => {
     mockInstance.patch.mockResolvedValue({ data: { ok: true } })
     const { setPeriodExpenseStatus, setPeriodInvestmentStatus } = require('../api/client')
 
-    await setPeriodExpenseStatus(1, 'Rent', 'PAID', 'all good')
-    expect(mockInstance.patch).toHaveBeenCalledWith('/periods/1/expense/Rent/status', { status: 'PAID', revision_comment: 'all good' })
+    await setPeriodExpenseStatus(1, 1, 'Rent', 'PAID', 'all good')
+    expect(mockInstance.patch).toHaveBeenCalledWith('/budgets/1/periods/1/expense/Rent/status', { status: 'PAID', revision_comment: 'all good' })
 
-    await setPeriodInvestmentStatus(1, 'ETF', 'EXECUTED', 'done')
-    expect(mockInstance.patch).toHaveBeenCalledWith('/periods/1/investment/ETF/status', { status: 'EXECUTED', revision_comment: 'done' })
+    await setPeriodInvestmentStatus(1, 1, 'ETF', 'EXECUTED', 'done')
+    expect(mockInstance.patch).toHaveBeenCalledWith('/budgets/1/periods/1/investment/ETF/status', { status: 'EXECUTED', revision_comment: 'done' })
   })
 
   it('fetches and deletes income transactions', async () => {
@@ -159,11 +159,11 @@ describe('period-critical client helpers', () => {
     mockInstance.delete.mockResolvedValue({})
     const { getIncomeTransactions, deleteIncomeTransaction } = require('../api/client')
 
-    await getIncomeTransactions(1, 'Salary')
-    expect(mockInstance.get).toHaveBeenCalledWith('/periods/1/income/Salary/transactions/')
+    await getIncomeTransactions(1, 1, 'Salary')
+    expect(mockInstance.get).toHaveBeenCalledWith('/budgets/1/periods/1/income/Salary/transactions/')
 
-    await deleteIncomeTransaction(1, 'Salary', 5)
-    expect(mockInstance.delete).toHaveBeenCalledWith('/periods/1/income/Salary/transactions/5')
+    await deleteIncomeTransaction(1, 1, 'Salary', 5)
+    expect(mockInstance.delete).toHaveBeenCalledWith('/budgets/1/periods/1/income/Salary/transactions/5')
   })
 
   it('adds and deletes expense entries', async () => {
@@ -171,10 +171,10 @@ describe('period-critical client helpers', () => {
     mockInstance.delete.mockResolvedValue({})
     const { addExpenseEntry, deleteExpenseEntry } = require('../api/client')
 
-    await addExpenseEntry(1, 'Rent', { amount: 50 })
-    expect(mockInstance.post).toHaveBeenCalledWith('/periods/1/expenses/Rent/entries/', { amount: 50 })
+    await addExpenseEntry(1, 1, 'Rent', { amount: 50 })
+    expect(mockInstance.post).toHaveBeenCalledWith('/budgets/1/periods/1/expenses/Rent/entries/', { amount: 50 })
 
-    await deleteExpenseEntry(1, 'Rent', 3)
-    expect(mockInstance.delete).toHaveBeenCalledWith('/periods/1/expenses/Rent/entries/3')
+    await deleteExpenseEntry(1, 1, 'Rent', 3)
+    expect(mockInstance.delete).toHaveBeenCalledWith('/budgets/1/periods/1/expenses/Rent/entries/3')
   })
 })

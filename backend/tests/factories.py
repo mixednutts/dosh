@@ -161,7 +161,7 @@ def iso_date(value: datetime) -> str:
 
 def generate_periods(client, *, budgetid: int, startdate: datetime, count: int = 1) -> list[dict]:
     response = client.post(
-        "/api/periods/generate",
+        f"/api/budgets/{budgetid}/periods/generate",
         json={
             "budgetid": budgetid,
             "startdate": iso_date(startdate),
@@ -170,6 +170,6 @@ def generate_periods(client, *, budgetid: int, startdate: datetime, count: int =
     )
     assert response.status_code == 201, response.text
 
-    periods_response = client.get(f"/api/periods/budget/{budgetid}")
+    periods_response = client.get(f"/api/budgets/{budgetid}/periods")
     assert periods_response.status_code == 200, periods_response.text
     return periods_response.json()

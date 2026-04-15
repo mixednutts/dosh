@@ -22,7 +22,7 @@ def test_middle_cycle_requires_future_chain_delete(client, db_session):
     )
     middle_period = periods[1]
 
-    options_response = client.get(f"/api/periods/{middle_period['finperiodid']}/delete-options")
+    options_response = client.get(f"/api/budgets/{budget.budgetid}/periods/{middle_period['finperiodid']}/delete-options")
     assert options_response.status_code == 200, options_response.text
     options = options_response.json()
     assert options["can_delete_single"] is False
@@ -30,13 +30,13 @@ def test_middle_cycle_requires_future_chain_delete(client, db_session):
     assert options["future_chain_count"] == 2
     assert "all upcoming cycles" in options["delete_reason"]
 
-    single_delete = client.delete(f"/api/periods/{middle_period['finperiodid']}?delete_mode=single")
+    single_delete = client.delete(f"/api/budgets/{budget.budgetid}/periods/{middle_period['finperiodid']}?delete_mode=single")
     assert single_delete.status_code == 409
 
-    chain_delete = client.delete(f"/api/periods/{middle_period['finperiodid']}?delete_mode=future_chain")
+    chain_delete = client.delete(f"/api/budgets/{budget.budgetid}/periods/{middle_period['finperiodid']}?delete_mode=future_chain")
     assert chain_delete.status_code == 204
 
-    periods_after = client.get(f"/api/periods/budget/{budget.budgetid}")
+    periods_after = client.get(f"/api/budgets/{budget.budgetid}/periods")
     assert periods_after.status_code == 200
     remaining = periods_after.json()
     assert len(remaining) == 1
@@ -61,24 +61,24 @@ def test_delete_and_regenerate_trailing_cycle_recomputes_carried_forward(client,
     original_next_period = next(period for period in periods if period["cycle_status"] == "PLANNED")
 
     income_update = client.patch(
-        f"/api/periods/{active_period['finperiodid']}/income/Salary",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/income/Salary",
         json={"actualamount": "2800.00"},
     )
     assert income_update.status_code == 200, income_update.text
 
     expense_update = client.patch(
-        f"/api/periods/{active_period['finperiodid']}/expense/Rent",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/expense/Rent",
         json={"actualamount": "900.00"},
     )
     assert expense_update.status_code == 200, expense_update.text
     investment_tx = client.post(
-        f"/api/periods/{active_period['finperiodid']}/investments/Emergency%20Fund/transactions/",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/investments/Emergency%20Fund/transactions/",
         json={"amount": "300.00", "note": "Top up"},
     )
     assert investment_tx.status_code == 201, investment_tx.text
 
     closeout = client.post(
-        f"/api/periods/{active_period['finperiodid']}/closeout",
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/closeout",
         json={"create_next_cycle": False},
     )
     assert closeout.status_code == 200, closeout.text
@@ -87,12 +87,12 @@ def test_delete_and_regenerate_trailing_cycle_recomputes_carried_forward(client,
     assert original_carried_forward is not None
     assert Decimal(str(original_carried_forward.budgetamount)) == Decimal("1600.00")
 
-    delete_response = client.delete(f"/api/periods/{original_next_period['finperiodid']}?delete_mode=single")
+    delete_response = client.delete(f"/api/budgets/{budget.budgetid}/periods/{original_next_period['finperiodid']}?delete_mode=single")
     assert delete_response.status_code == 204, delete_response.text
     assert db_session.get(FinancialPeriod, original_next_period["finperiodid"]) is None
 
     regenerate = client.post(
-        "/api/periods/generate",
+        f"/api/budgets/{budget.budgetid}/periods/generate",
         json={
             "budgetid": budget.budgetid,
             "startdate": iso_date(
@@ -105,7 +105,7 @@ def test_delete_and_regenerate_trailing_cycle_recomputes_carried_forward(client,
     )
     assert regenerate.status_code == 201, regenerate.text
 
-    periods_after = client.get(f"/api/periods/budget/{budget.budgetid}")
+    periods_after = client.get(f"/api/budgets/{budget.budgetid}/periods")
     assert periods_after.status_code == 200
     regenerated_period = max(periods_after.json(), key=lambda period: period["finperiodid"])
     assert regenerated_period["cycle_status"] == "PLANNED"
@@ -143,11 +143,11 @@ def test_planned_cycle_delete_ignores_budget_adjustment_history(client, db_sessi
     )
     db_session.commit()
 
-    options_response = client.get(f"/api/periods/{first_planned_period['finperiodid']}/delete-options")
+    options_response = client.get(f"/api/budgets/{budget.budgetid}/periods/{first_planned_period['finperiodid']}/delete-options")
     assert options_response.status_code == 200, options_response.text
     options = options_response.json()
     assert options["can_delete_single"] is False
     assert options["can_delete_future_chain"] is True
 
-    chain_delete = client.delete(f"/api/periods/{first_planned_period['finperiodid']}?delete_mode=future_chain")
+    chain_delete = client.delete(f"/api/budgets/{budget.budgetid}/periods/{first_planned_period['finperiodid']}?delete_mode=future_chain")
     assert chain_delete.status_code == 204, chain_delete.text

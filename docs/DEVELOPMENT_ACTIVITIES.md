@@ -790,6 +790,7 @@ Status:
 - `Completed`: fix the `Add New Income Item` modal so it supports creating a brand-new income line inline, matching the supported `Add New Expense Item` modal workflow
 - `Completed`: resolve the dominant SonarQube frontend issue cluster by adding explicit React props validation across shared components, setup tabs, and high-traffic budget pages
 - `Completed`: fix the account setup section header alignment so the headings line up cleanly with the displayed column values
+- `Completed`: fix missing budget cycle shortcuts in the sidebar by aligning the frontend `getPeriodsForBudget` API path with the backend router (removed trailing slash), restoring current, planned, pending closure, and historic cycle navigation
 - `Completed`: fix the inability to edit an income line from budget setup
 - `Completed`: fix budget deletion so attempting to remove a budget does not fail with a SQLite `FOREIGN KEY constraint failed` error in the backend ASGI path once setup revision history exists
 - `Completed`: add the missing webpage favicon so browser tabs and installed shortcuts show the app identity correctly
