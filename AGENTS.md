@@ -174,6 +174,29 @@ python3 -m pytest tests/
 - ❌ Modifying Docker volumes containing production data
 - ❌ Assuming local files are the "source of truth" for production
 
+### 8. ALWAYS Use scripts/bump_version.py for Version Bumps
+
+**Rule:** Whenever the canonical app version needs to change, agents MUST use `scripts/bump_version.py` and MUST NOT manually edit version strings in individual files.
+
+**Rationale:**
+- `scripts/bump_version.py` is the single source of truth for all version touchpoints (`backend/app/version.py`, `docker-compose.yml`, Dockerfiles, `frontend/package.json`, `frontend/package-lock.json`, Layout component, and smoke tests)
+- Manual edits inevitably leave one or more touchpoints out of sync, which causes the `auto-tag-on-version-bump` workflow to fail
+- The script performs validation after updating, catching drift before it reaches CI
+
+**What this means:**
+- Do NOT open `backend/app/version.py` or `docker-compose.yml` and edit the version string by hand
+- Do NOT assume that updating "the main version files" is sufficient
+- ALWAYS run:
+  ```bash
+  python scripts/bump_version.py X.Y.Z-prerelease
+  ```
+- ALWAYS follow the bump with:
+  ```bash
+  python scripts/release_management.py validate --ref WORKTREE --require-release-entry
+  ```
+
+**Exceptions:** NONE. Even for a "tiny" patch bump, use the script.
+
 **REQUIRED before any data operation:**
 1. **EXPLAIN** exactly what data will be modified and why
 2. **VERIFY** you understand the deployment architecture (Docker volumes vs local files)
