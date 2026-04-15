@@ -150,7 +150,19 @@ def evaluate_period_health(
         threshold_value = _load_threshold_value(item, metric)
 
         # Execute metric logic
-        executor = get_executor(metric.template_key or "")
+        scoring_logic = {}
+        try:
+            scoring_logic = json.loads(metric.scoring_logic_json or "{}")
+        except Exception:
+            scoring_logic = {}
+
+        evidence_templates = {}
+        try:
+            evidence_templates = json.loads(metric.evidence_template_json or "{}")
+        except Exception:
+            evidence_templates = {}
+
+        executor = get_executor(metric.template_key or "", scoring_logic.get("type"))
         metric_result = executor(
             db=db,
             budget=budget,
@@ -160,6 +172,8 @@ def evaluate_period_health(
             scoring_sensitivity=item.scoring_sensitivity,
             tone=tone,
             source_values=source_values,
+            metric_name=metric.name,
+            evidence_templates=evidence_templates,
         )
 
         results.append({

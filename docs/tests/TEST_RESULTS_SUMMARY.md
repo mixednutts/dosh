@@ -2,7 +2,38 @@
 
 This document records meaningful automated test results from major working sessions.
 
-## Latest Session: Budget Health Engine Cleanup (0.4.7-alpha)
+## Latest Session: Budget Health Engine — Custom Metric Scoring Fix (0.4.8-alpha)
+
+This session implemented `custom_metric_v1` scoring logic so custom metrics created in the Budget Health Engine UI compute real scores instead of returning a fallback "Metric evaluation not yet implemented" result.
+
+### Verification
+
+```bash
+cd /home/ubuntu/dosh/backend
+.venv/bin/pytest tests/test_health_engine.py -v
+```
+
+Result:
+
+- `test_health_engine.py`: **14 passed**
+- New tests added: `test_get_executor_returns_custom_metric_v1_for_scoring_logic_type`, `test_custom_metric_v1_executor_penalizes_above_threshold`
+- Existing custom-metric integration test updated to validate real scoring behavior end-to-end
+
+### Deployment Verification
+
+```bash
+cd /home/ubuntu/dosh
+INCLUDE_OVERRIDE=true ./scripts/release_with_migrations.sh
+curl -sS http://127.0.0.1:3080/api/health
+```
+
+Result:
+
+- Backend container rebuilt and restarted successfully
+- Frontend container rebuilt and restarted successfully
+- Health endpoint returned `{"status":"ok","app":"Dosh"}`
+
+## Previous Session: Budget Health Engine Cleanup (0.4.7-alpha)
 
 This session fixed dev-mode template deletion to fully cascade, cleaned up orphaned/empty health matrix records, aligned empty-matrix handling so `evaluate_budget_health` returns `None`, and hid health UI on the dashboard when no meaningful matrix exists.
 

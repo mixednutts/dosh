@@ -54,6 +54,38 @@ def test_get_executor_returns_fallback_for_legacy_keys() -> None:
         assert result["status"] == "Watch"
 
 
+def test_get_executor_returns_custom_metric_v1_for_scoring_logic_type() -> None:
+    executor = get_executor("", "custom_metric_v1")
+    result = executor(
+        db=None,
+        budget=None,
+        period=None,
+        formula_result=Decimal("0"),
+        threshold_value=Decimal("0"),
+        scoring_sensitivity=50,
+        tone="factual",
+        source_values={},
+    )
+    assert result["score"] == 100
+    assert result["status"] == "Strong"
+
+
+def test_custom_metric_v1_executor_penalizes_above_threshold() -> None:
+    executor = get_executor("", "custom_metric_v1")
+    result = executor(
+        db=None,
+        budget=None,
+        period=None,
+        formula_result=Decimal("50"),
+        threshold_value=Decimal("0"),
+        scoring_sensitivity=50,
+        tone="factual",
+        source_values={},
+    )
+    assert result["score"] < 100
+    assert result["status"] in ("Watch", "Needs Attention")
+
+
 def test_evaluate_period_health_with_empty_budget_matrix(client, db_session) -> None:
     budget = create_budget(db_session)
     create_income_type(db_session, budgetid=budget.budgetid)
@@ -145,8 +177,8 @@ def test_evaluate_budget_health_returns_structure_with_custom_metric(client, db_
         formula_data_sources_json='["income_source_count"]',
         scale_key="percentage_0_100",
         default_value_json="0",
-        scoring_logic_json='{"tone":"neutral"}',
-        evidence_template_json='{}',
+        scoring_logic_json='{"type":"custom_metric_v1"}',
+        evidence_template_json='{"supportive":"Test Metric looks good.","factual":"Test Metric evaluated.","friendly":"Test Metric is doing fine!"}',
     )
     db_session.add(metric)
     db_session.flush()

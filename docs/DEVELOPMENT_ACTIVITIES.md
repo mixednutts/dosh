@@ -488,6 +488,8 @@ Status:
 - `Completed`
 
 - `Completed`: added dedicated backend unit tests for formula evaluator, all four metric executors, executor registry, `evaluate_period_health`, and `evaluate_budget_health` (`test_health_engine.py`, 22 tests)
+- `Completed (0.4.8-alpha)`: implemented `custom_metric_v1` scoring executor and wired `scoring_logic_json` resolution into `runner.py` so custom metrics built in the UI compute real scores instead of returning a fallback "not yet implemented" result
+- `Completed (0.4.8-alpha)`: added `test_get_executor_returns_custom_metric_v1_for_scoring_logic_type` and `test_custom_metric_v1_executor_penalizes_above_threshold` to lock in custom metric scoring behavior
 - `Completed`: updated `test_lifecycle_and_health.py` to verify closeout health snapshots remain historical after live threshold changes
 - `Completed`: updated `PersonalisationTab.test.jsx` to cover new View/Edit toggle, formula display, and scale-aware threshold controls
 - `Completed (0.4.5-alpha)`: added backend tests for `GET /health-matrix/templates`, `POST /health-matrix/apply-template`, and `is_customized` detection in `test_health_matrices.py`

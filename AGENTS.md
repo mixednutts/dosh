@@ -229,10 +229,11 @@ For document changes, follow [DOCUMENTATION_FRAMEWORK.md](./docs/DOCUMENTATION_F
 
 ## Current Project State (Snapshot)
 
-**Version:** 0.4.6-alpha
+**Version:** 0.4.8-alpha
 **Schema Revisions:** d3091a75b8ff, e4f5a6b7c8d9, f1a2b3c4d5e6, b10a29f14a8f, 559cbaa1dce7, 4bf1bf54b0bb, 7a8b9c0d1e2f, 009297f69b52, a1b2c3d4e5f6, 9c0f8d72a04c
 
 **Recent Work:**
+- **Custom Metric Scoring Fix (COMPLETED):** Implemented `custom_metric_v1` executor in `metric_executors.py` and wired `scoring_logic_json` resolution into `runner.py` so custom metrics built in the UI now compute real scores instead of returning a fallback "Metric evaluation not yet implemented" result. Added backend tests to lock in the behavior.
 - **Fix Empty Health Metric Data After Threshold Terminology Refactor (COMPLETED):** Aligned SQLAlchemy models (`backend/app/models.py`) and Alembic migrations to use the correct renamed threshold table/column names (`healththresholddefinitions`, `budgetmetricthresholds`, `threshold_key`); made the rename migration idempotent so it works for both fresh installs and upgrades; restored populated health payloads to the Budgets page
 - **Budget Health Engine Refinement (COMPLETED):** Removed legacy threshold sliders and made metric cards the single source of truth with scale-aware View/Edit controls; refactored `setup_health` and `current_period_check` executors to consume `formula_result` instead of querying the DB directly; migrated closeout preview to use the health engine directly
 - **Budget Health Engine (COMPLETED):** Transitioned from fixed health implementation to a fully configurable Budget Health Engine

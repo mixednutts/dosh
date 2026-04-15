@@ -39,21 +39,83 @@ def _health_status(score: int) -> str:
 
 
 def _select_summary(template: dict, tone: str) -> str:
-    """Select summary text based on tone preference."""
-    templates = template.get("summary_templates", {})
-    return templates.get(tone, templates.get("factual", "Health check completed."))
+    """Select summary text based on tone preference.
+
+    Supports both nested {"summary_templates": {"tone": ...}} and
+    flat {"supportive": ..., "factual": ..., "friendly": ...} formats.
+    """
+    if "summary_templates" in template:
+        templates = template.get("summary_templates", {})
+        return templates.get(tone, templates.get("factual", "Health check completed."))
+    # Flat format fallback
+    return template.get(tone, template.get("factual", "Health check completed."))
 
 
 # Registry mapping metric template keys to executor functions.
-# Previously populated with system metric executors; now empty so that
-# all metrics are created from the UI and matched by fallback behaviour
-# until an executor is promoted to the registry.
 METRIC_EXECUTORS: dict[str, Any] = {}
 
 
-def get_executor(metric_template_key: str):
-    """Get the executor function for a metric template key."""
+# Registry mapping scoring logic types to executor functions.
+SCORING_LOGIC_EXECUTORS: dict[str, Any] = {}
+
+
+def _custom_metric_v1_executor(
+    *,
+    db,
+    budget,
+    period,
+    formula_result,
+    threshold_value,
+    scoring_sensitivity,
+    tone,
+    source_values,
+    metric_name="Metric",
+    evidence_templates=None,
+    **kwargs,
+):
+    """Generic threshold-based executor for custom metrics.
+
+    Interprets formula_result as 'lower is better' against threshold_value.
+    """
+    from decimal import Decimal
+
+    threshold = threshold_value if threshold_value is not None else Decimal(0)
+
+    if formula_result <= threshold:
+        score = 100
+        status = HEALTH_STRONG
+    else:
+        delta = float(formula_result - threshold)
+        penalty = delta * max(0.01, scoring_sensitivity / 50.0)
+        score = max(0, int(100 - penalty))
+        status = _health_status(score)
+
+    summary = _select_summary(evidence_templates or {}, tone)
+    if summary == "Health check completed.":
+        if score >= 80:
+            summary = f"{metric_name} is within target."
+        else:
+            summary = f"{metric_name} has exceeded the threshold."
+
+    evidence = [f"{metric_name}: {formula_result:.2f} (threshold: {threshold:.2f})"]
+
+    return {
+        "score": score,
+        "status": status,
+        "summary": summary,
+        "evidence": evidence,
+        "drill_down": [],
+    }
+
+
+SCORING_LOGIC_EXECUTORS["custom_metric_v1"] = _custom_metric_v1_executor
+
+
+def get_executor(metric_template_key: str, scoring_logic_type: str | None = None):
+    """Get the executor function for a metric template key or scoring logic type."""
     executor = METRIC_EXECUTORS.get(metric_template_key)
+    if executor is None and scoring_logic_type:
+        executor = SCORING_LOGIC_EXECUTORS.get(scoring_logic_type)
     if executor is None:
         # Default fallback — return neutral score
         def fallback_executor(*args, **kwargs):

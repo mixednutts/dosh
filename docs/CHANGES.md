@@ -4,7 +4,34 @@ This document captures the key product and implementation changes made during re
 
 It is intended to complement [README.md](/home/ubuntu/dosh/README.md), not replace it.
 
-## Latest Session: Budget Health Engine Cleanup — Template Deletion and Empty-Matrix Handling (0.4.7-alpha)
+## Latest Session: Budget Health Engine — Custom Metric Scoring Fix (0.4.8-alpha)
+
+This session fixed custom metrics in the Budget Health Engine so they compute real scores instead of returning a fallback "Metric evaluation not yet implemented" result.
+
+### What changed
+
+- **Backend fix (`metric_executors.py`):**
+  - Added a `SCORING_LOGIC_EXECUTORS` registry alongside the existing `METRIC_EXECUTORS` registry.
+  - Implemented `_custom_metric_v1_executor`, a generic threshold-based executor for custom metrics that interprets the formula result as "lower is better" against the threshold.
+  - Updated `_select_summary` to support both nested `summary_templates` and flat tone-key evidence templates.
+  - Updated `get_executor` to accept an optional `scoring_logic_type` argument so custom metrics without a `template_key` can still resolve a proper executor.
+
+- **Backend fix (`runner.py`):**
+  - `evaluate_period_health` now parses `metric.scoring_logic_json` and passes `scoring_logic.get("type")` to `get_executor`.
+  - The runner also forwards `metric_name` and `evidence_templates` to the executor so custom metrics produce meaningful summaries and evidence.
+
+- **Tests (`test_health_engine.py`):**
+  - Added `test_get_executor_returns_custom_metric_v1_for_scoring_logic_type`.
+  - Added `test_custom_metric_v1_executor_penalizes_above_threshold`.
+  - Updated the existing custom-metric integration test to use `{"type":"custom_metric_v1"}` scoring logic so it validates real scoring behavior end-to-end.
+
+- **Deployment:**
+  - Rebuilt and redeployed the local Docker container using `INCLUDE_OVERRIDE=true ./scripts/release_with_migrations.sh`.
+  - Verified `/api/health` returns `{"status":"ok","app":"Dosh"}` post-deployment.
+
+---
+
+## Previous Session: Budget Health Engine Cleanup — Template Deletion and Empty-Matrix Handling (0.4.7-alpha)
 
 This session fixed dev-mode template deletion to fully cascade derived metrics, cleaned up orphaned and empty health matrix records, and aligned the dashboard to hide health UI when no meaningful matrix exists.
 

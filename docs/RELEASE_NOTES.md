@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.4.8-alpha | released | 2026-04-15
+
+### Fixed
+
+- Fixed custom metrics in the Budget Health Engine so they now evaluate properly instead of returning "Metric evaluation not yet implemented." Custom metrics created through the metric builder now compute real scores based on their formula result and threshold.
+
 ## 0.4.7-alpha | released | 2026-04-15
 
 ### Fixed
