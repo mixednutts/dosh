@@ -35,6 +35,8 @@ export const getBudgetHealth = id => api.get(`/budgets/${id}/health`).then(r => 
 export const getBudgetHealthMatrix = id => api.get(`/budgets/${id}/health-matrix/`).then(r => r.data)
 export const getHealthDataSources = id => api.get(`/budgets/${id}/health-matrix/data-sources`).then(r => r.data)
 export const getHealthThresholdDefinitions = id => api.get(`/budgets/${id}/health-matrix/definitions`).then(r => r.data)
+export const getHealthMatrixTemplates = id => api.get(`/budgets/${id}/health-matrix/templates`).then(r => r.data)
+export const applyHealthMatrixTemplate = (id, data) => api.post(`/budgets/${id}/health-matrix/apply-template`, data).then(r => r.data)
 export const createCustomMetric = (id, data) => api.post(`/budgets/${id}/health-matrix/metrics`, data).then(r => r.data)
 export const updateMatrixItem = (id, metricId, data) => api.patch(`/budgets/${id}/health-matrix/items/${metricId}`, data).then(r => r.data)
 export const updateMetricThreshold = (id, metricId, data) => api.patch(`/budgets/${id}/health-matrix/thresholds/${metricId}`, data).then(r => r.data)

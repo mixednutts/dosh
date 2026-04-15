@@ -448,7 +448,7 @@ class HealthMatrixTemplateItem(Base):
 class BudgetHealthMatrix(Base):
     __tablename__ = "budgethealthmatrices"
     matrix_id = Column(Integer, primary_key=True, autoincrement=True)
-    budgetid = Column(Integer, ForeignKey("budgets.budgetid"), nullable=False, unique=True)
+    budgetid = Column(Integer, ForeignKey("budgets.budgetid"), nullable=False)
     name = Column(String, nullable=False)
     based_on_template_key = Column(String, ForeignKey("healthmatrixtemplates.template_key"), nullable=True)
     cloned_from_matrix_id = Column(Integer, ForeignKey("budgethealthmatrices.matrix_id"), nullable=True)

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import PropTypes from 'prop-types'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -10,6 +10,8 @@ import {
   removeMatrixItem,
   updateMatrixItem,
   updateMetricThreshold,
+  getHealthMatrixTemplates,
+  applyHealthMatrixTemplate,
 } from '../../api/client'
 import LocalizedAmountInput from '../../components/LocalizedAmountInput'
 
@@ -17,6 +19,13 @@ const TONE_OPTIONS = [
   { value: 'supportive', label: 'Supportive', description: 'Encouraging and gentle feedback' },
   { value: 'factual', label: 'Factual', description: 'Straightforward and neutral' },
   { value: 'friendly', label: 'Friendly', description: 'Casual and upbeat tone' },
+]
+
+const SCOPE_TABS = [
+  { key: 'ALL', label: 'All' },
+  { key: 'OVERALL', label: 'Overall' },
+  { key: 'CURRENT_PERIOD', label: 'Current Period' },
+  { key: 'BOTH', label: 'Both' },
 ]
 
 function formatApiError(error, fallback) {
@@ -205,8 +214,27 @@ function MatrixItemCard({
                 Custom
               </span>
             )}
+            <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-600 dark:bg-gray-800 dark:text-gray-400">
+              {item.scope === 'BOTH' ? 'Overall + Current' : item.scope.replace('_', ' ')}
+            </span>
           </div>
           <p className="text-xs text-gray-500 dark:text-gray-400">{item.description}</p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-2 py-1 dark:border-gray-700 dark:bg-gray-800/60">
+              <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400">Weight</span>
+              <div className="h-1.5 w-16 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+                <div
+                  className="h-full bg-dosh-500"
+                  style={{ width: `${Math.round(localWeight * 100)}%` }}
+                />
+              </div>
+              <span className="text-[10px] font-semibold text-gray-700 dark:text-gray-300">{Math.round(localWeight * 100)}%</span>
+            </div>
+            <div className="rounded-md border border-gray-200 bg-gray-50 px-2 py-1 dark:border-gray-700 dark:bg-gray-800/60">
+              <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400">Sensitivity</span>
+              <span className="ml-1 text-[10px] font-semibold text-gray-700 dark:text-gray-300">{localSensitivity}</span>
+            </div>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -301,7 +329,10 @@ function MatrixItemCard({
           {item.threshold_key && (
             <div className="rounded-md border border-gray-200 bg-gray-50/50 p-3 dark:border-gray-700 dark:bg-gray-800/40">
               <p className="text-xs font-medium text-gray-700 dark:text-gray-200">
-                Threshold: {item.threshold_key}
+                Threshold: {item.threshold_name || item.threshold_key}
+                {item.threshold_scale?.unit_label ? (
+                  <span className="ml-1 text-[10px] text-gray-500 dark:text-gray-400">({item.threshold_scale.unit_label})</span>
+                ) : null}
               </p>
               <ThresholdControl
                 scale={item.threshold_scale}
@@ -316,13 +347,33 @@ function MatrixItemCard({
   )
 }
 
-function MetricBuilderCard({ dataSources, onCreate, onCancel }) {
+function MetricBuilderCard({ dataSources, thresholdDefinitions, onCreate, onCancel }) {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [scope, setScope] = useState('OVERALL')
   const [formula, setFormula] = useState('')
+  const [thresholdKey, setThresholdKey] = useState('')
   const [error, setError] = useState(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const formulaRef = useRef(null)
+
+  const insertAtCursor = text => {
+    const input = formulaRef.current
+    if (!input) return
+    const start = input.selectionStart
+    const end = input.selectionEnd
+    const before = formula.slice(0, start)
+    const after = formula.slice(end)
+    const spacer = before && !before.endsWith(' ') ? ' ' : ''
+    const trailing = after && !after.startsWith(' ') ? ' ' : ''
+    const next = `${before}${spacer}${text}${trailing}${after}`
+    setFormula(next)
+    requestAnimationFrame(() => {
+      input.focus()
+      const pos = start + spacer.length + text.length + trailing.length
+      input.setSelectionRange(pos, pos)
+    })
+  }
 
   const handleSubmit = async () => {
     setError(null)
@@ -348,10 +399,12 @@ function MetricBuilderCard({ dataSources, onCreate, onCancel }) {
         scope,
         formula_expression: trimmedFormula,
         data_sources: usedSources,
+        threshold_key: thresholdKey || undefined,
       })
       setName('')
       setDescription('')
       setFormula('')
+      setThresholdKey('')
     } catch (e) {
       setError(e?.response?.data?.detail || 'Failed to create metric')
     } finally {
@@ -406,6 +459,7 @@ function MetricBuilderCard({ dataSources, onCreate, onCancel }) {
           <label htmlFor="metric-builder-formula" className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Formula</label>
           <input
             id="metric-builder-formula"
+            ref={formulaRef}
             type="text"
             value={formula}
             onChange={e => setFormula(e.target.value)}
@@ -424,7 +478,7 @@ function MetricBuilderCard({ dataSources, onCreate, onCancel }) {
               <button
                 key={ds.source_key}
                 type="button"
-                onClick={() => setFormula(current => current ? `${current} ${ds.source_key}` : ds.source_key)}
+                onClick={() => insertAtCursor(ds.source_key)}
                 className="mb-1 mr-1 inline-block rounded bg-gray-100 px-2 py-1 text-xs hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700"
                 title={ds.description}
               >
@@ -433,6 +487,25 @@ function MetricBuilderCard({ dataSources, onCreate, onCancel }) {
             ))}
           </div>
         </div>
+
+        {thresholdDefinitions.length > 0 && (
+          <div>
+            <label htmlFor="metric-builder-threshold" className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Threshold (optional)</label>
+            <select
+              id="metric-builder-threshold"
+              value={thresholdKey}
+              onChange={e => setThresholdKey(e.target.value)}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900"
+            >
+              <option value="">None</option>
+              {thresholdDefinitions.map(td => (
+                <option key={td.threshold_key} value={td.threshold_key}>
+                  {td.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {error && (
           <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300">
@@ -462,12 +535,127 @@ function MetricBuilderCard({ dataSources, onCreate, onCancel }) {
   )
 }
 
-export default function PersonalisationTab({ budgetId, budget }) {
+function TemplateSelector({ matrix, templates, onApply, isApplying }) {
+  const [selected, setSelected] = useState('')
+  const [showConfirm, setShowConfirm] = useState(false)
+
+  useEffect(() => {
+    if (matrix?.based_on_template_key) {
+      setSelected(matrix.based_on_template_key)
+    }
+  }, [matrix?.based_on_template_key])
+
+  const handleApply = () => {
+    if (!selected) return
+    if (matrix?.is_customized) {
+      setShowConfirm(true)
+      return
+    }
+    onApply(selected)
+  }
+
+  const handleReset = () => {
+    if (matrix?.based_on_template_key) {
+      if (matrix?.is_customized) {
+        setSelected(matrix.based_on_template_key)
+        setShowConfirm(true)
+        return
+      }
+      onApply(matrix.based_on_template_key)
+    }
+  }
+
+  return (
+    <div className="rounded-lg border border-gray-200 bg-white px-4 py-4 dark:border-gray-700 dark:bg-gray-900">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Health Matrix Template</h3>
+            {matrix?.is_customized && (
+              <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                Customized
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            {matrix?.template_name ? `Current: ${matrix.template_name}` : 'Choose a template to define how budget health is calculated.'}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <select
+            value={selected}
+            onChange={e => setSelected(e.target.value)}
+            className="rounded-md border border-gray-300 px-3 py-2 text-xs dark:border-gray-600 dark:bg-gray-900"
+          >
+            {templates.map(t => (
+              <option key={t.template_key} value={t.template_key}>{t.name}</option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={handleApply}
+            disabled={isApplying || !selected || selected === matrix?.based_on_template_key}
+            className="btn-primary text-xs"
+          >
+            {isApplying ? 'Applying…' : 'Apply'}
+          </button>
+          {matrix?.is_customized && (
+            <button
+              type="button"
+              onClick={handleReset}
+              disabled={isApplying}
+              className="btn-secondary text-xs"
+            >
+              Reset
+            </button>
+          )}
+        </div>
+      </div>
+
+      {showConfirm && (
+        <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-800 dark:bg-amber-950/20">
+          <p className="text-xs text-amber-800 dark:text-amber-300">
+            Your current matrix has customizations. Applying a template will replace them.
+          </p>
+          <div className="mt-2 flex gap-2">
+            <button
+              type="button"
+              className="btn-danger text-xs"
+              onClick={() => {
+                setShowConfirm(false)
+                onApply(selected)
+              }}
+            >
+              Replace anyway
+            </button>
+            <button
+              type="button"
+              className="btn-secondary text-xs"
+              onClick={() => setShowConfirm(false)}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default function BudgetHealthTab({ budgetId, budget }) {
   const qc = useQueryClient()
+  const [activeScope, setActiveScope] = useState('ALL')
+  const [showMetricBuilder, setShowMetricBuilder] = useState(false)
 
   const matrixQuery = useQuery({
     queryKey: ['health-matrix', budgetId],
     queryFn: () => getBudgetHealthMatrix(budgetId),
+    enabled: !!budgetId,
+  })
+
+  const templatesQuery = useQuery({
+    queryKey: ['health-matrix-templates'],
+    queryFn: () => getHealthMatrixTemplates(budgetId),
     enabled: !!budgetId,
   })
 
@@ -515,6 +703,14 @@ export default function PersonalisationTab({ budgetId, budget }) {
     },
   })
 
+  const applyTemplateMutation = useMutation({
+    mutationFn: templateKey => applyHealthMatrixTemplate(budgetId, { template_key: templateKey }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['health-matrix', budgetId] })
+      qc.invalidateQueries({ queryKey: ['budget-health', budgetId] })
+    },
+  })
+
   const saveTone = useMutation({
     mutationFn: tone => updateBudget(budgetId, { health_tone: tone }),
     onSuccess: data => {
@@ -523,12 +719,29 @@ export default function PersonalisationTab({ budgetId, budget }) {
     },
   })
 
-  const [showMetricBuilder, setShowMetricBuilder] = useState(false)
-
   const handleCreateMetric = async data => {
     await createCustomMetricMutation.mutateAsync(data)
     setShowMetricBuilder(false)
   }
+
+  const filteredItems = useMemo(() => {
+    const items = matrixQuery.data?.items || []
+    if (activeScope === 'ALL') return items
+    return items.filter(i => i.scope === activeScope || i.scope === 'BOTH')
+  }, [matrixQuery.data, activeScope])
+
+  const itemsWithThresholdNames = useMemo(() => {
+    const defs = Array.isArray(definitionsQuery.data) ? definitionsQuery.data : []
+    const defsByKey = Object.fromEntries(defs.map(d => [d.threshold_key, d]))
+    return filteredItems.map(item => {
+      if (!item.threshold_key) return item
+      const def = defsByKey[item.threshold_key]
+      return {
+        ...item,
+        threshold_name: def?.name || item.threshold_key,
+      }
+    })
+  }, [filteredItems, definitionsQuery.data])
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -557,6 +770,16 @@ export default function PersonalisationTab({ budgetId, budget }) {
         </div>
       </div>
 
+      {/* Template Selector */}
+      {Array.isArray(templatesQuery.data) && templatesQuery.data.length > 0 && (
+        <TemplateSelector
+          matrix={matrixQuery.data}
+          templates={templatesQuery.data}
+          onApply={key => applyTemplateMutation.mutate(key)}
+          isApplying={applyTemplateMutation.isPending}
+        />
+      )}
+
       {/* Matrix Item Management */}
       <div className="card p-5">
         <div className="mb-4 flex items-center justify-between">
@@ -576,10 +799,33 @@ export default function PersonalisationTab({ budgetId, budget }) {
           </button>
         </div>
 
+        <p className="mb-3 text-[11px] text-gray-500 dark:text-gray-400">
+          Weights are automatically normalized to 100% by the engine.
+        </p>
+
+        {/* Scope filter tabs */}
+        <div className="mb-4 flex flex-wrap gap-2">
+          {SCOPE_TABS.map(tab => (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => setActiveScope(tab.key)}
+              className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                activeScope === tab.key
+                  ? 'border-dosh-600 bg-dosh-50 text-dosh-700 dark:border-dosh-500 dark:bg-dosh-900/30 dark:text-dosh-300'
+                  : 'border-gray-300 text-gray-600 hover:border-dosh-300 hover:text-dosh-700 dark:border-gray-700 dark:text-gray-300 dark:hover:border-dosh-700 dark:hover:text-dosh-300'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
         {showMetricBuilder && (
           <div className="mb-4">
             <MetricBuilderCard
               dataSources={dataSourcesQuery.data || []}
+              thresholdDefinitions={definitionsQuery.data || []}
               onCreate={handleCreateMetric}
               onCancel={() => setShowMetricBuilder(false)}
             />
@@ -597,7 +843,7 @@ export default function PersonalisationTab({ budgetId, budget }) {
         )}
         {matrixQuery.data && (
           <div className="space-y-3">
-            {matrixQuery.data.items.map(item => (
+            {itemsWithThresholdNames.map(item => (
               <MatrixItemCard
                 key={item.metric_id}
                 item={item}
@@ -607,6 +853,9 @@ export default function PersonalisationTab({ budgetId, budget }) {
                 allowRemove={!item.template_key}
               />
             ))}
+            {itemsWithThresholdNames.length === 0 && (
+              <p className="text-sm text-gray-500 dark:text-gray-400">No metrics match the selected scope.</p>
+            )}
           </div>
         )}
       </div>
@@ -654,12 +903,14 @@ MatrixItemCard.propTypes = {
     template_key: PropTypes.string,
     name: PropTypes.string.isRequired,
     description: PropTypes.string,
+    scope: PropTypes.string,
     formula_expression: PropTypes.string,
     formula_data_sources_json: PropTypes.arrayOf(PropTypes.string),
     weight: PropTypes.number.isRequired,
     scoring_sensitivity: PropTypes.number.isRequired,
     is_enabled: PropTypes.bool.isRequired,
     threshold_key: PropTypes.string,
+    threshold_name: PropTypes.string,
     threshold_value: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
     threshold_scale: PropTypes.shape({
       scale_type: PropTypes.string,
@@ -681,11 +932,33 @@ MetricBuilderCard.propTypes = {
     description: PropTypes.string,
     return_type: PropTypes.string.isRequired,
   })).isRequired,
+  thresholdDefinitions: PropTypes.arrayOf(PropTypes.shape({
+    threshold_key: PropTypes.string.isRequired,
+    name: PropTypes.string.isRequired,
+    description: PropTypes.string,
+    scale: PropTypes.object,
+  })).isRequired,
   onCreate: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,
 }
 
-PersonalisationTab.propTypes = {
+TemplateSelector.propTypes = {
+  matrix: PropTypes.shape({
+    based_on_template_key: PropTypes.string,
+    template_name: PropTypes.string,
+    is_customized: PropTypes.bool,
+  }),
+  templates: PropTypes.arrayOf(PropTypes.shape({
+    template_key: PropTypes.string.isRequired,
+    name: PropTypes.string.isRequired,
+    description: PropTypes.string,
+    is_system: PropTypes.bool,
+  })).isRequired,
+  onApply: PropTypes.func.isRequired,
+  isApplying: PropTypes.bool,
+}
+
+BudgetHealthTab.propTypes = {
   budgetId: PropTypes.number.isRequired,
   budget: PropTypes.shape({
     health_tone: PropTypes.string,

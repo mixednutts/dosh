@@ -8,6 +8,7 @@ from fastapi import APIRouter, HTTPException
 from sqlalchemy.orm import Session
 
 from ..api_docs import DbSession, error_responses
+from ..health_engine_seed import create_matrix_from_template
 from ..models import (
     Budget,
     BudgetHealthMatrix,
@@ -15,6 +16,8 @@ from ..models import (
     BudgetMetricThreshold,
     HealthDataSource,
     HealthMetric,
+    HealthMatrixTemplate,
+    HealthMatrixTemplateItem,
     HealthMetricTemplate,
     HealthThresholdDefinition,
     HealthScale,
@@ -78,11 +81,40 @@ def get_budget_health_matrix(budgetid: int, db: DbSession):
         for t in db.query(HealthThresholdDefinition).all()
     }
 
+    template_defaults = {}
+    if matrix.based_on_template_key:
+        template_items = db.query(HealthMatrixTemplateItem).filter_by(
+            template_key=matrix.based_on_template_key
+        ).all()
+        template_defaults = {
+            ti.metric_template_key: {
+                "weight": float(ti.weight),
+                "scoring_sensitivity": 50,
+                "is_enabled": True,
+            }
+            for ti in template_items
+        }
+
+    is_customized = False
     result_items = []
     for item in items:
         metric = item.metric
         if not metric:
             continue
+
+        if metric.template_key is None:
+            is_customized = True
+
+        defaults = template_defaults.get(metric.template_key or "")
+        if defaults is not None:
+            if (
+                float(item.weight) != defaults["weight"]
+                or item.scoring_sensitivity != defaults["scoring_sensitivity"]
+                or item.is_enabled != defaults["is_enabled"]
+            ):
+                is_customized = True
+        elif metric.template_key:
+            is_customized = True
 
         threshold_value = None
         threshold_def = None
@@ -94,6 +126,11 @@ def get_budget_health_matrix(budgetid: int, db: DbSession):
             if bmt:
                 scale_type = threshold_def.scale.scale_type if threshold_def and threshold_def.scale else None
                 threshold_value = _parse_threshold_value(bmt.value_json, scale_type)
+                if threshold_def and bmt.value_json != threshold_def.default_value_json:
+                    is_customized = True
+            else:
+                if threshold_def and threshold_def.default_value_json != json.dumps(None):
+                    is_customized = True
 
         result_items.append({
             "matrix_item_id": f"{item.matrix_id}-{item.metric_id}",
@@ -113,10 +150,20 @@ def get_budget_health_matrix(budgetid: int, db: DbSession):
             "threshold_scale": _serialize_scale(threshold_def.scale) if threshold_def else None,
         })
 
+    template_name = None
+    if matrix.based_on_template_key:
+        template = db.query(HealthMatrixTemplate).filter_by(
+            template_key=matrix.based_on_template_key
+        ).first()
+        template_name = template.name if template else None
+
     return {
         "matrix_id": matrix.matrix_id,
         "budgetid": budgetid,
         "name": matrix.name,
+        "based_on_template_key": matrix.based_on_template_key,
+        "template_name": template_name,
+        "is_customized": is_customized,
         "items": result_items,
     }
 
@@ -143,6 +190,56 @@ def get_threshold_definitions(budgetid: int, db: DbSession):
             "scale": _serialize_scale(d.scale),
         })
     return result
+
+
+@router.get("/templates", responses=error_responses(404))
+def get_matrix_templates(budgetid: int, db: DbSession):
+    """List available health matrix templates."""
+    budget = db.get(Budget, budgetid)
+    if not budget:
+        raise HTTPException(404, "Budget not found")
+
+    templates = db.query(HealthMatrixTemplate).order_by(HealthMatrixTemplate.name).all()
+    return [
+        {
+            "template_key": t.template_key,
+            "name": t.name,
+            "description": t.description,
+            "is_system": t.is_system,
+        }
+        for t in templates
+    ]
+
+
+@router.post("/apply-template", responses=error_responses(404, 400))
+def apply_matrix_template(
+    budgetid: int,
+    payload: dict,
+    db: DbSession,
+):
+    """Apply a matrix template to this budget, replacing the current active matrix."""
+    budget = db.get(Budget, budgetid)
+    if not budget:
+        raise HTTPException(404, "Budget not found")
+
+    template_key = payload.get("template_key", "").strip()
+    if not template_key:
+        raise HTTPException(400, "template_key is required")
+
+    template = db.query(HealthMatrixTemplate).filter_by(template_key=template_key).first()
+    if not template:
+        raise HTTPException(400, f"Unknown template: {template_key}")
+
+    matrix = create_matrix_from_template(db, budget, template_key)
+    db.commit()
+
+    return {
+        "matrix_id": matrix.matrix_id,
+        "budgetid": budgetid,
+        "name": matrix.name,
+        "based_on_template_key": matrix.based_on_template_key,
+        "is_customized": False,
+    }
 
 
 @router.patch("/items/{metric_id}", responses=error_responses(404))

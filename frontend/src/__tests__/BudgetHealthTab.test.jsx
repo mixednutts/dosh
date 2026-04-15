@@ -2,7 +2,7 @@ import React from 'react'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import axios from 'axios'
 
-import PersonalisationTab from '../pages/tabs/PersonalisationTab'
+import BudgetHealthTab from '../pages/tabs/BudgetHealthTab'
 import { renderWithProviders } from '../testUtils'
 
 jest.mock('axios', () => {
@@ -21,7 +21,7 @@ jest.mock('axios', () => {
 
 const api = axios.create()
 
-describe('PersonalisationTab', () => {
+describe('BudgetHealthTab', () => {
   const budget = {
     health_tone: 'supportive',
   }
@@ -30,6 +30,9 @@ describe('PersonalisationTab', () => {
     matrix_id: 1,
     budgetid: 1,
     name: 'Standard Budget Health',
+    based_on_template_key: 'standard_budget_health',
+    template_name: 'Standard Budget Health',
+    is_customized: false,
     items: [
       {
         metric_id: 101,
@@ -69,6 +72,22 @@ describe('PersonalisationTab', () => {
           unit_label: '%',
         },
       },
+      {
+        metric_id: 103,
+        template_key: 'planning_stability',
+        name: 'Planning Stability',
+        description: 'Tracks off-plan activity.',
+        scope: 'BOTH',
+        formula_expression: 'revised_line_count',
+        formula_data_sources_json: ['revised_line_count'],
+        weight: 0.25,
+        scoring_sensitivity: 50,
+        is_enabled: true,
+        display_order: 2,
+        threshold_key: null,
+        threshold_value: null,
+        threshold_scale: null,
+      },
     ],
   }
 
@@ -79,6 +98,14 @@ describe('PersonalisationTab', () => {
       if (url === '/budgets/1/health-matrix/') {
         return Promise.resolve({ data: matrixResponse })
       }
+      if (url === '/budgets/1/health-matrix/templates') {
+        return Promise.resolve({
+          data: [
+            { template_key: 'standard_budget_health', name: 'Standard Budget Health', description: '', is_system: true },
+            { template_key: 'minimal', name: 'Minimal', description: '', is_system: false },
+          ],
+        })
+      }
       if (url === '/budgets/1/health-matrix/data-sources') {
         return Promise.resolve({
           data: [
@@ -88,12 +115,16 @@ describe('PersonalisationTab', () => {
         })
       }
       if (url === '/budgets/1/health-matrix/definitions') {
-        return Promise.resolve({ data: [] })
+        return Promise.resolve({
+          data: [
+            { threshold_key: 'threshold', name: 'Test Threshold', description: '', default_value: 0, scale: { scale_type: 'integer_range', min_value: 0, max_value: 100, unit_label: '%' } },
+          ],
+        })
       }
       return Promise.resolve({ data: {} })
     })
     api.patch.mockResolvedValue({ data: { budgetid: 1, ...budget } })
-    api.post.mockResolvedValue({ data: { metric_id: 103 } })
+    api.post.mockResolvedValue({ data: { metric_id: 104 } })
     api.delete.mockResolvedValue({ data: { ok: true } })
   })
 
@@ -105,7 +136,7 @@ describe('PersonalisationTab', () => {
   })
 
   it('renders tone selector and allows changing tone', async () => {
-    renderWithProviders(<PersonalisationTab budgetId={1} budget={budget} />)
+    renderWithProviders(<BudgetHealthTab budgetId={1} budget={budget} />)
 
     expect(await screen.findByText('Health Tone')).toBeTruthy()
     expect(screen.getByText('Supportive')).toBeTruthy()
@@ -117,7 +148,7 @@ describe('PersonalisationTab', () => {
   })
 
   it('loads and displays the health matrix with items', async () => {
-    renderWithProviders(<PersonalisationTab budgetId={1} budget={budget} />)
+    renderWithProviders(<BudgetHealthTab budgetId={1} budget={budget} />)
 
     expect(await screen.findByText('Health Matrix')).toBeTruthy()
     expect(await screen.findByText('Setup Health')).toBeTruthy()
@@ -125,8 +156,83 @@ describe('PersonalisationTab', () => {
     expect(screen.getByText('A user-built metric.')).toBeTruthy()
   })
 
+  it('shows template selector with current template', async () => {
+    renderWithProviders(<BudgetHealthTab budgetId={1} budget={budget} />)
+
+    expect(await screen.findByText('Health Matrix Template')).toBeTruthy()
+    expect(screen.getByText(/Current: Standard Budget Health/)).toBeTruthy()
+  })
+
+  it('allows applying a different template', async () => {
+    renderWithProviders(<BudgetHealthTab budgetId={1} budget={budget} />)
+
+    await screen.findByText('Health Matrix Template')
+    const select = screen.getByDisplayValue('Standard Budget Health')
+    fireEvent.change(select, { target: { value: 'minimal' } })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Apply' }))
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalledWith('/budgets/1/health-matrix/apply-template', { template_key: 'minimal' })
+    })
+  })
+
+  it('shows customized badge and allows reset when customized', async () => {
+    const customizedResponse = { ...matrixResponse, is_customized: true }
+    api.get.mockImplementation((url) => {
+      if (url === '/budgets/1/health-matrix/') return Promise.resolve({ data: customizedResponse })
+      if (url === '/budgets/1/health-matrix/templates') {
+        return Promise.resolve({
+          data: [
+            { template_key: 'standard_budget_health', name: 'Standard Budget Health', description: '', is_system: true },
+          ],
+        })
+      }
+      if (url === '/budgets/1/health-matrix/definitions') {
+        return Promise.resolve({ data: [] })
+      }
+      return Promise.resolve({ data: {} })
+    })
+
+    renderWithProviders(<BudgetHealthTab budgetId={1} budget={budget} />)
+
+    expect(await screen.findByText('Customized')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Reset' })).toBeTruthy()
+  })
+
+  it('filters metrics by scope tabs', async () => {
+    renderWithProviders(<BudgetHealthTab budgetId={1} budget={budget} />)
+
+    await screen.findByText('Setup Health')
+    expect(screen.getByText('Custom Metric')).toBeTruthy()
+    expect(screen.getByText('Planning Stability')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Overall' }))
+    expect(screen.getByText('Setup Health')).toBeTruthy()
+    expect(screen.queryByText('Custom Metric')).toBeNull()
+    expect(screen.getByText('Planning Stability')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Current Period' }))
+    expect(screen.queryByText('Setup Health')).toBeNull()
+    expect(screen.getByText('Custom Metric')).toBeTruthy()
+    expect(screen.getByText('Planning Stability')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Both' }))
+    expect(screen.queryByText('Setup Health')).toBeNull()
+    expect(screen.queryByText('Custom Metric')).toBeNull()
+    expect(screen.getByText('Planning Stability')).toBeTruthy()
+  })
+
+  it('shows weight and sensitivity inline without expanding', async () => {
+    renderWithProviders(<BudgetHealthTab budgetId={1} budget={budget} />)
+
+    await screen.findByText('Setup Health')
+    const weightBadges = screen.getAllByText('20%')
+    expect(weightBadges.length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('50').length).toBeGreaterThanOrEqual(1)
+  })
+
   it('allows toggling a matrix item on and off', async () => {
-    renderWithProviders(<PersonalisationTab budgetId={1} budget={budget} />)
+    renderWithProviders(<BudgetHealthTab budgetId={1} budget={budget} />)
 
     await screen.findByText('Setup Health')
     const setupCheckbox = screen.getAllByRole('checkbox', { name: 'Enabled' })[0]
@@ -138,11 +244,11 @@ describe('PersonalisationTab', () => {
   })
 
   it('allows expanding metric card to view details', async () => {
-    renderWithProviders(<PersonalisationTab budgetId={1} budget={budget} />)
+    renderWithProviders(<BudgetHealthTab budgetId={1} budget={budget} />)
 
     await screen.findByText('Setup Health')
     const viewEditButtons = screen.getAllByRole('button', { name: 'View / Edit' })
-    expect(viewEditButtons.length).toBe(2)
+    expect(viewEditButtons.length).toBe(3)
 
     fireEvent.click(viewEditButtons[0])
     expect(await screen.findByText('Formula')).toBeTruthy()
@@ -150,7 +256,7 @@ describe('PersonalisationTab', () => {
   })
 
   it('allows changing the weight of a matrix item', async () => {
-    renderWithProviders(<PersonalisationTab budgetId={1} budget={budget} />)
+    renderWithProviders(<BudgetHealthTab budgetId={1} budget={budget} />)
 
     await screen.findByText('Setup Health')
     const viewEditButtons = screen.getAllByRole('button', { name: 'View / Edit' })
@@ -166,7 +272,7 @@ describe('PersonalisationTab', () => {
   })
 
   it('allows changing the scoring sensitivity of a matrix item', async () => {
-    renderWithProviders(<PersonalisationTab budgetId={1} budget={budget} />)
+    renderWithProviders(<BudgetHealthTab budgetId={1} budget={budget} />)
 
     await screen.findByText('Setup Health')
     const viewEditButtons = screen.getAllByRole('button', { name: 'View / Edit' })
@@ -182,16 +288,15 @@ describe('PersonalisationTab', () => {
   })
 
   it('allows editing the threshold value of a metric', async () => {
-    renderWithProviders(<PersonalisationTab budgetId={1} budget={budget} />)
+    renderWithProviders(<BudgetHealthTab budgetId={1} budget={budget} />)
 
     await screen.findByText('Custom Metric')
     const viewEditButtons = screen.getAllByRole('button', { name: 'View / Edit' })
     fireEvent.click(viewEditButtons[1])
 
-    const thresholdLabel = await screen.findByText('Threshold: threshold')
+    const thresholdLabel = await screen.findByText(/Threshold: Test Threshold/)
     expect(thresholdLabel).toBeTruthy()
 
-    // The percentage slider should be visible
     const slider = screen.getByLabelText('Value')
     fireEvent.change(slider, { target: { value: '95' } })
 
@@ -204,7 +309,7 @@ describe('PersonalisationTab', () => {
   })
 
   it('allows removing a custom metric', async () => {
-    renderWithProviders(<PersonalisationTab budgetId={1} budget={budget} />)
+    renderWithProviders(<BudgetHealthTab budgetId={1} budget={budget} />)
 
     await screen.findByText('Custom Metric')
     const removeButtons = screen.getAllByRole('button', { name: 'Remove' })
@@ -217,7 +322,7 @@ describe('PersonalisationTab', () => {
   })
 
   it('shows metric builder when Add Metric is clicked and hides on cancel', async () => {
-    renderWithProviders(<PersonalisationTab budgetId={1} budget={budget} />)
+    renderWithProviders(<BudgetHealthTab budgetId={1} budget={budget} />)
 
     await screen.findByText('Health Matrix')
     fireEvent.click(screen.getByRole('button', { name: '+ Add Metric' }))
@@ -229,7 +334,7 @@ describe('PersonalisationTab', () => {
   })
 
   it('creates a custom metric with valid inputs', async () => {
-    renderWithProviders(<PersonalisationTab budgetId={1} budget={budget} />)
+    renderWithProviders(<BudgetHealthTab budgetId={1} budget={budget} />)
 
     await screen.findByText('Health Matrix')
     fireEvent.click(screen.getByRole('button', { name: '+ Add Metric' }))
@@ -249,7 +354,7 @@ describe('PersonalisationTab', () => {
   })
 
   it('shows validation error when creating a metric without a name', async () => {
-    renderWithProviders(<PersonalisationTab budgetId={1} budget={budget} />)
+    renderWithProviders(<BudgetHealthTab budgetId={1} budget={budget} />)
 
     await screen.findByText('Health Matrix')
     fireEvent.click(screen.getByRole('button', { name: '+ Add Metric' }))
@@ -261,7 +366,7 @@ describe('PersonalisationTab', () => {
   })
 
   it('shows validation error when creating a metric without a formula', async () => {
-    renderWithProviders(<PersonalisationTab budgetId={1} budget={budget} />)
+    renderWithProviders(<BudgetHealthTab budgetId={1} budget={budget} />)
 
     await screen.findByText('Health Matrix')
     fireEvent.click(screen.getByRole('button', { name: '+ Add Metric' }))
@@ -288,10 +393,13 @@ describe('PersonalisationTab', () => {
       if (url === '/budgets/1/health-matrix/definitions') {
         return Promise.resolve({ data: [] })
       }
+      if (url === '/budgets/1/health-matrix/templates') {
+        return Promise.resolve({ data: [] })
+      }
       return Promise.resolve({ data: {} })
     })
 
-    renderWithProviders(<PersonalisationTab budgetId={1} budget={budget} />)
+    renderWithProviders(<BudgetHealthTab budgetId={1} budget={budget} />)
 
     expect(await screen.findByText('Matrix unavailable.')).toBeTruthy()
   })

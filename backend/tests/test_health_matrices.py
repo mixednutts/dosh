@@ -170,3 +170,80 @@ def test_remove_matrix_item(client, db_session):
         .filter_by(metric_id=metric_id)
         .first()
     ) is None
+
+
+def test_get_matrix_templates(client, db_session):
+    budget = create_budget(db_session)
+    response = client.get(f"/api/budgets/{budget.budgetid}/health-matrix/templates")
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, list)
+    assert len(data) > 0
+    assert "template_key" in data[0]
+    assert "name" in data[0]
+
+
+def test_apply_matrix_template(client, db_session):
+    budget = create_budget(db_session)
+    from app.models import BudgetHealthMatrix
+    original = db_session.query(BudgetHealthMatrix).filter_by(budgetid=budget.budgetid, is_active=True).first()
+    original_id = original.matrix_id
+
+    response = client.post(
+        f"/api/budgets/{budget.budgetid}/health-matrix/apply-template",
+        json={"template_key": "standard_budget_health"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["based_on_template_key"] == "standard_budget_health"
+    assert data["is_customized"] is False
+    assert data["matrix_id"] != original_id
+
+    db_session.refresh(original)
+    assert original.is_active is False
+
+
+def test_get_budget_health_matrix_includes_customized_flag(client, db_session):
+    budget = create_budget(db_session)
+    response = client.get(f"/api/budgets/{budget.budgetid}/health-matrix/")
+    assert response.status_code == 200
+    data = response.json()
+    assert "is_customized" in data
+    assert data["is_customized"] is False
+    assert "based_on_template_key" in data
+    assert data["based_on_template_key"] == "standard_budget_health"
+    assert "template_name" in data
+    assert data["template_name"] == "Standard Budget Health"
+
+
+def test_apply_matrix_template_400_unknown_template(client, db_session):
+    budget = create_budget(db_session)
+    response = client.post(
+        f"/api/budgets/{budget.budgetid}/health-matrix/apply-template",
+        json={"template_key": "nonexistent_template"},
+    )
+    assert response.status_code == 400
+    assert "Unknown template" in response.text
+
+
+def test_get_budget_health_matrix_marked_customized_after_weight_change(client, db_session):
+    budget = create_budget(db_session)
+    from app.models import BudgetHealthMatrix
+    bhm = db_session.query(BudgetHealthMatrix).filter_by(budgetid=budget.budgetid, is_active=True).first()
+    matrix_item = (
+        db_session.query(BudgetHealthMatrixItem)
+        .filter_by(matrix_id=bhm.matrix_id)
+        .first()
+    )
+    metric_id = matrix_item.metric_id
+
+    response = client.patch(
+        f"/api/budgets/{budget.budgetid}/health-matrix/items/{metric_id}",
+        json={"weight": 0.99},
+    )
+    assert response.status_code == 200
+
+    response = client.get(f"/api/budgets/{budget.budgetid}/health-matrix/")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["is_customized"] is True

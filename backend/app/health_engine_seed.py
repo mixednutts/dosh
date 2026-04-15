@@ -473,18 +473,52 @@ def _migrate_budget_thresholds(
         break
 
 
-def create_default_matrix_for_budget(db: Session, budget: Budget) -> BudgetHealthMatrix:
-    """Create a default BudgetHealthMatrix for a newly created budget."""
-    matrix_template = db.query(HealthMatrixTemplate).filter_by(template_key="standard_budget_health").first()
+def _seed_default_thresholds(
+    db: Session,
+    budget: Budget,
+    metric: HealthMetric,
+    threshold_definitions: dict,
+) -> None:
+    """Seed a metric's threshold from the definition default value."""
+    if not metric.threshold_key:
+        return
+    threshold_def = threshold_definitions.get(metric.threshold_key)
+    if not threshold_def:
+        return
+    existing = db.query(BudgetMetricThreshold).filter_by(
+        budgetid=budget.budgetid, metric_id=metric.metric_id
+    ).first()
+    if not existing:
+        db.add(BudgetMetricThreshold(
+            budgetid=budget.budgetid,
+            metric_id=metric.metric_id,
+            threshold_key=metric.threshold_key,
+            value_json=threshold_def.default_value_json,
+        ))
+
+
+def create_matrix_from_template(
+    db: Session,
+    budget: Budget,
+    template_key: str,
+    deactivate_existing: bool = True,
+) -> BudgetHealthMatrix:
+    """Create a new BudgetHealthMatrix from a HealthMatrixTemplate."""
+    matrix_template = db.query(HealthMatrixTemplate).filter_by(template_key=template_key).first()
     if not matrix_template:
-        raise RuntimeError("Standard Budget Health matrix template must be seeded before creating budgets.")
+        raise ValueError(f"Matrix template not found: {template_key}")
+
+    if deactivate_existing:
+        existing = db.query(BudgetHealthMatrix).filter_by(budgetid=budget.budgetid, is_active=True).all()
+        for m in existing:
+            m.is_active = False
 
     metric_templates = {mt.template_key: mt for mt in db.query(HealthMetricTemplate).all()}
     threshold_definitions = {td.threshold_key: td for td in db.query(HealthThresholdDefinition).all()}
 
     matrix = BudgetHealthMatrix(
         budgetid=budget.budgetid,
-        name="Standard Budget Health",
+        name=matrix_template.name,
         based_on_template_key=matrix_template.template_key,
         cloned_from_matrix_id=None,
         is_active=True,
@@ -526,10 +560,15 @@ def create_default_matrix_for_budget(db: Session, budget: Budget) -> BudgetHealt
             is_enabled=True,
         ))
 
-        _migrate_budget_thresholds(db, budget, metric, threshold_definitions)
+        _seed_default_thresholds(db, budget, metric, threshold_definitions)
 
     db.flush()
     return matrix
+
+
+def create_default_matrix_for_budget(db: Session, budget: Budget) -> BudgetHealthMatrix:
+    """Create a default BudgetHealthMatrix for a newly created budget."""
+    return create_matrix_from_template(db, budget, "standard_budget_health")
 
 
 def _update_existing_metric_templates(db: Session) -> None:

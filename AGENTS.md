@@ -553,6 +553,41 @@ When making changes, preserve these working assumptions:
 
 ---
 
+## Incident Log: Repeat Release Notes Desync — Git Workflow Failure 2026-04-15
+
+**Severity:** SEVERE — CI/CD pipeline blocked; recurring automation failure; 2nd occurrence
+
+**What happened:**
+1. Agent bumped version to `0.4.5-alpha` using `scripts/bump_version.py`
+2. `docs/RELEASE_NOTES.md` was updated, but the new content was left under `## Unreleased` instead of being moved to a dedicated `## 0.4.5-alpha | released | YYYY-MM-DD` entry
+3. This would have caused the GitHub `auto-tag-on-version-bump` workflow to fail with: `docs/RELEASE_NOTES.md does not contain an entry for version 0.4.5-alpha.`
+4. User caught the misalignment during session wrap-up and required a corrective edit
+
+**Why this is critical:**
+- **2nd occurrence** of the exact same release-notes/version desync (1st: 2026-04-14)
+- **Pattern of oversight**: Agent updated RELEASE_NOTES but failed to perform the mandatory cutover step
+- **Inconsistent state risk**: If the workflow fails after local deployment, the canonical deployed version becomes out of sync with the repository release record
+- **CI/CD blocked**: The SonarQube/tag workflow depends on a valid release-notes entry matching `backend/app/version.py`
+
+**Root causes:**
+1. **Process gap persisted**: Despite the previous incident log, the agent did not treat version-bump and release-notes cutover as a single atomic operation
+2. **Wrap-up checklist missing**: There was no enforced verification step that explicitly compares `backend/app/version.py` against the top released entry in `docs/RELEASE_NOTES.md`
+3. **Assumption over verification**: Agent assumed the release notes were correct because they had been edited, without confirming the heading structure
+
+**Hard controls violated:**
+- Hard Control #6 (Never Implement Workarounds / Always Fix Root Cause) — leaving release notes uncutover is a systemic workaround that masks an incomplete release process
+
+**Fix applied:**
+- Moved `0.4.5-alpha` content from `## Unreleased` to a proper `## 0.4.5-alpha | released | 2026-04-15` entry in `docs/RELEASE_NOTES.md`
+
+**Prevention for future:**
+- ALWAYS run `python scripts/release_management.py validate --ref WORKTREE --require-release-entry` before pushing a version bump
+- ALWAYS verify that `docs/RELEASE_NOTES.md` contains a released entry matching `backend/app/version.py` before considering a release ready
+- NEVER push version-bump changes without the matching release-notes cutover
+- **NEW RULE — Atomic Version-Release Pair:** When bumping version, the release-notes cutover MUST happen in the same commit scope. The presence of a changed `backend/app/version.py` without a matching `## X.Y.Z-prerelease | released | YYYY-MM-DD` heading in `docs/RELEASE_NOTES.md` is treated as an incomplete release and must be fixed before the session ends.
+
+---
+
 ## Plan Execution Guardrails (Enacted 2026-04-12)
 
 These rules apply to ANY future session involving an approved implementation plan:

@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## 0.4.5-alpha | released | 2026-04-15
+
+### Changed
+
+- Renamed the budget setup "Thresholds & Tolerances" section to "Budget Health Engine" and replaced the underlying `PersonalisationTab` component with a new `BudgetHealthTab` to better reflect the configurable engine architecture.
+- Added a matrix template selector so you can see which health template your budget is using, switch to a different template, or reset to the template defaults when your matrix has been customized.
+- Added scope tabs (`All`, `Overall`, `Current Period`, `Both`) to the health matrix so it is easier to see which metrics affect which health checks.
+- Improved matrix item cards to show weight and sensitivity inline, with a visual progress bar for weight, so you can compare contributions at a glance.
+- Enhanced metric details with clearer threshold names and scale labels, and improved the custom metric builder with a threshold selector and smarter formula insertion.
+
 ## 0.4.4-alpha | released | 2026-04-14
 
 ### Fixed

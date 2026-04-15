@@ -407,6 +407,14 @@ Status:
 - `Completed`: added View/Edit toggle to metric cards with formula display and data-source badges
 - `Completed`: added `GET /budgets/{id}/health-matrix/definitions` endpoint to drive scale-aware threshold UI controls
 - `Completed`: expanded `PersonalisationTab.jsx` to manage matrix items (enable/disable, weight, sensitivity) and custom metric creation
+- `Completed (0.4.5-alpha)`: renamed `PersonalisationTab.jsx` to `BudgetHealthTab.jsx` and updated the budget setup section label from `Thresholds & Tolerances` to `Budget Health Engine`
+- `Completed (0.4.5-alpha)`: added matrix template selector with apply/reset actions and a `Customized` badge that detects when matrix items or thresholds diverge from template defaults
+- `Completed (0.4.5-alpha)`: added `GET /budgets/{id}/health-matrix/templates` and `POST /budgets/{id}/health-matrix/apply-template` endpoints so users can switch or reset their budget health matrix template
+- `Completed (0.4.5-alpha)`: added scope filter tabs (`All`, `Overall`, `Current Period`, `Both`) to the health matrix so users can see which metrics affect which health checks
+- `Completed (0.4.5-alpha)`: improved matrix item cards to show weight (with progress bar), sensitivity, and enabled state inline without expanding
+- `Completed (0.4.5-alpha)`: enhanced expanded metric details with human-readable threshold names, scale unit labels, and improved data-source insertion into the metric builder
+- `Completed (0.4.5-alpha)`: added threshold selector dropdown to the custom metric builder
+- `Completed (0.4.5-alpha)`: removed the `UNIQUE` constraint on `BudgetHealthMatrix.budgetid` and added migration `a1b2c3d4e5f6` to support multiple matrices per budget (one active, others inactive)
 - `Completed`: added `health_tone` selector (`supportive`/`factual`/`friendly`) to budget settings and health evidence rendering
 - `Completed`: updated `BudgetsPage.jsx` to consume the engine health endpoint and render contextual drill-down links in health modals
 - `Completed`: removed the legacy fixed health endpoint implementation and consolidated all health traffic through the engine
@@ -476,6 +484,8 @@ Status:
 - `Completed`: added dedicated backend unit tests for formula evaluator, all four metric executors, executor registry, `evaluate_period_health`, and `evaluate_budget_health` (`test_health_engine.py`, 22 tests)
 - `Completed`: updated `test_lifecycle_and_health.py` to verify closeout health snapshots remain historical after live threshold changes
 - `Completed`: updated `PersonalisationTab.test.jsx` to cover new View/Edit toggle, formula display, and scale-aware threshold controls
+- `Completed (0.4.5-alpha)`: added backend tests for `GET /health-matrix/templates`, `POST /health-matrix/apply-template`, and `is_customized` detection in `test_health_matrices.py`
+- `Completed (0.4.5-alpha)`: renamed `PersonalisationTab.test.jsx` to `BudgetHealthTab.test.jsx` and expanded coverage for template selector, scope filtering, inline weight/sensitivity visibility, and metric builder threshold selection
 
 #### Activity Group: Demo Data Alignment
 

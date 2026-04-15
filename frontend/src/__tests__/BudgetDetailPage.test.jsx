@@ -19,7 +19,7 @@ jest.mock('../pages/tabs/IncomeTypesTab', () => () => <div>Income Sources Tab</d
 jest.mock('../pages/tabs/ExpenseItemsTab', () => () => <div>Expense Items Tab</div>)
 jest.mock('../pages/tabs/InvestmentItemsTab', () => () => <div>Investment Items Tab</div>)
 jest.mock('../pages/tabs/BalanceTypesTab', () => () => <div>Balance Types Tab</div>)
-jest.mock('../pages/tabs/PersonalisationTab', () => () => <div>Personalisation Tab</div>)
+jest.mock('../pages/tabs/BudgetHealthTab', () => () => <div>Budget Health Engine</div>)
 jest.mock('../pages/tabs/SettingsTab', () => () => <div>Settings Tab</div>)
 
 const client = require('../api/client')
@@ -310,9 +310,9 @@ describe('BudgetDetailPage', () => {
       path: '/budgets/:budgetId/setup',
     })
 
-    expect(await screen.findByTitle('Expand thresholds & tolerances')).toBeTruthy()
-    fireEvent.click(screen.getByTitle('Expand thresholds & tolerances'))
-    expect(screen.getByText('Personalisation Tab')).toBeTruthy()
+    expect(await screen.findByTitle('Expand budget health engine')).toBeTruthy()
+    fireEvent.click(screen.getByTitle('Expand budget health engine'))
+    expect(screen.getByRole('heading', { name: 'Budget Health Engine' })).toBeTruthy()
 
     firstRender.unmount()
 
@@ -321,8 +321,8 @@ describe('BudgetDetailPage', () => {
       path: '/budgets/:budgetId/setup',
     })
 
-    expect(await screen.findByTitle('Collapse thresholds & tolerances')).toBeTruthy()
-    expect(screen.getByText('Personalisation Tab')).toBeTruthy()
+    expect(await screen.findByTitle('Collapse budget health engine')).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Budget Health Engine' })).toBeTruthy()
   })
 
   it('hides the setup assessment card when budget cycles already exist', async () => {

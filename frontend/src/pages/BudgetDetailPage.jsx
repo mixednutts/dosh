@@ -9,7 +9,7 @@ import IncomeTypesTab from './tabs/IncomeTypesTab'
 import ExpenseItemsTab from './tabs/ExpenseItemsTab'
 import InvestmentItemsTab from './tabs/InvestmentItemsTab'
 import BalanceTypesTab from './tabs/BalanceTypesTab'
-import PersonalisationTab from './tabs/PersonalisationTab'
+import BudgetHealthTab from './tabs/BudgetHealthTab'
 import SettingsTab from './tabs/SettingsTab'
 import { getPreferredTransactionLabel } from '../utils/accountNaming'
 
@@ -19,7 +19,7 @@ const SECTIONS = [
   { id: 'income-types', label: 'Income Sources' },
   { id: 'expense-items', label: 'Expense Items' },
   { id: 'investments', label: 'Investments' },
-  { id: 'personalisation', label: 'Thresholds & Tolerances' },
+  { id: 'budget-health', label: 'Budget Health Engine' },
   { id: 'settings', label: 'Settings' },
 ]
 
@@ -29,11 +29,11 @@ const SETUP_ISSUE_SECTION_ORDER = {
   'income-types': 2,
   'expense-items': 3,
   investments: 4,
-  personalisation: 5,
+  'budget-health': 5,
   settings: 6,
 }
 
-const COLLAPSIBLE_SECTIONS = new Set(['personalisation', 'settings'])
+const COLLAPSIBLE_SECTIONS = new Set(['budget-health', 'settings'])
 const SECTION_SESSION_KEY_PREFIX = 'dosh-setup-section-collapsed'
 
 function countLabel(count, singular, plural = `${singular}s`) {
@@ -58,8 +58,8 @@ function getIssueSectionId(issue) {
   if (lower.includes('investment')) {
     return 'investments'
   }
-  if (lower.includes('personalisation')) {
-    return 'personalisation'
+  if (lower.includes('personalisation') || lower.includes('health')) {
+    return 'budget-health'
   }
   if (lower.includes('setting')) {
     return 'settings'
@@ -272,11 +272,11 @@ export default function BudgetDetailPage() {
   const [showReturnTop, setShowReturnTop] = useState(false)
   const [collapsedSections, setCollapsedSections] = useState(() => {
     if (typeof globalThis === 'undefined') {
-      return { personalisation: true, settings: true }
+      return { 'budget-health': true, settings: true }
     }
 
     return {
-      personalisation: globalThis.sessionStorage.getItem(`${SECTION_SESSION_KEY_PREFIX}:personalisation`) !== 'false',
+      'budget-health': globalThis.sessionStorage.getItem(`${SECTION_SESSION_KEY_PREFIX}:budget-health`) !== 'false',
       settings: globalThis.sessionStorage.getItem(`${SECTION_SESSION_KEY_PREFIX}:settings`) !== 'false',
     }
   })
@@ -462,14 +462,14 @@ export default function BudgetDetailPage() {
       </SectionShell>
 
       <SectionShell
-        id="personalisation"
-        title="Thresholds & Tolerances"
+        id="budget-health"
+        title="Budget Health Engine"
         summary="Tell Dosh what feels important to you so the health checks can be a little more aligned with your budgeting style."
-        collapsible={COLLAPSIBLE_SECTIONS.has('personalisation')}
-        collapsed={collapsedSections.personalisation}
-        onToggle={() => toggleSection('personalisation')}
+        collapsible={COLLAPSIBLE_SECTIONS.has('budget-health')}
+        collapsed={collapsedSections['budget-health']}
+        onToggle={() => toggleSection('budget-health')}
       >
-        <PersonalisationTab budgetId={id} budget={budget} />
+        <BudgetHealthTab budgetId={id} budget={budget} />
       </SectionShell>
 
       <SectionShell
