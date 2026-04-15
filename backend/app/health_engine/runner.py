@@ -78,42 +78,26 @@ def _build_data_source_params(
 
 
 def _load_threshold_value(
-    db: Session,
-    budgetid: int,
+    item,
     metric,
 ) -> Decimal | None:
-    """Load the effective threshold value for a metric."""
-    from ..models import BudgetMetricThreshold, HealthThresholdDefinition
+    """Load the effective threshold value for a metric from its matrix item or metric default."""
+    value_json = None
+    if item and getattr(item, "threshold_value_json", None) is not None:
+        value_json = item.threshold_value_json
+    elif metric and getattr(metric, "default_value_json", None) is not None:
+        value_json = metric.default_value_json
 
-    if not metric.threshold_key:
+    if value_json is None:
         return None
 
-    bmt = db.query(BudgetMetricThreshold).filter_by(
-        budgetid=budgetid, metric_id=metric.metric_id
-    ).first()
-
-    if bmt:
-        try:
-            raw = json.loads(bmt.value_json)
-            if raw is None:
-                return None
-            return Decimal(str(raw)) if isinstance(raw, (int, float, str, Decimal)) else None
-        except (json.JSONDecodeError, ValueError):
-            pass
-
-    # Fall back to definition default
-    td = db.query(HealthThresholdDefinition).filter_by(
-        threshold_key=metric.threshold_key
-    ).first()
-    if td:
-        try:
-            raw = json.loads(td.default_value_json)
-            if raw is None:
-                return None
-            return Decimal(str(raw)) if isinstance(raw, (int, float, str, Decimal)) else None
-        except (json.JSONDecodeError, ValueError):
+    try:
+        raw = json.loads(value_json)
+        if raw is None:
             return None
-    return None
+        return Decimal(str(raw)) if isinstance(raw, (int, float, str, Decimal)) else None
+    except (json.JSONDecodeError, ValueError):
+        return None
 
 
 def evaluate_period_health(
@@ -163,7 +147,7 @@ def evaluate_period_health(
             formula_result = Decimal(0)
 
         # Load threshold
-        threshold_value = _load_threshold_value(db, budget.budgetid, metric)
+        threshold_value = _load_threshold_value(item, metric)
 
         # Execute metric logic
         executor = get_executor(metric.template_key or "")

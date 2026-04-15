@@ -206,14 +206,14 @@ For document changes, follow [DOCUMENTATION_FRAMEWORK.md](./docs/DOCUMENTATION_F
 
 ## Current Project State (Snapshot)
 
-**Version:** 0.4.4-alpha
-**Schema Revisions:** d3091a75b8ff, e4f5a6b7c8d9, f1a2b3c4d5e6, b10a29f14a8f, 559cbaa1dce7, 4bf1bf54b0bb, 7a8b9c0d1e2f, 009297f69b52
+**Version:** 0.4.6-alpha
+**Schema Revisions:** d3091a75b8ff, e4f5a6b7c8d9, f1a2b3c4d5e6, b10a29f14a8f, 559cbaa1dce7, 4bf1bf54b0bb, 7a8b9c0d1e2f, 009297f69b52, a1b2c3d4e5f6, 9c0f8d72a04c
 
 **Recent Work:**
 - **Fix Empty Health Metric Data After Threshold Terminology Refactor (COMPLETED):** Aligned SQLAlchemy models (`backend/app/models.py`) and Alembic migrations to use the correct renamed threshold table/column names (`healththresholddefinitions`, `budgetmetricthresholds`, `threshold_key`); made the rename migration idempotent so it works for both fresh installs and upgrades; restored populated health payloads to the Budgets page
 - **Budget Health Engine Refinement (COMPLETED):** Removed legacy threshold sliders and made metric cards the single source of truth with scale-aware View/Edit controls; refactored `setup_health` and `current_period_check` executors to consume `formula_result` instead of querying the DB directly; migrated closeout preview to use the health engine directly
 - **Budget Health Engine (COMPLETED):** Transitioned from fixed health implementation to a fully configurable Budget Health Engine
-  - Added 11 new data models (`HealthDataSource`, `HealthMetricTemplate`, `HealthScale`, `BudgetHealthMatrix`, `BudgetHealthMatrixItem`, `BudgetMetricThreshold`, `PeriodHealthResult`, `BudgetHealthSummary`, `HealthThresholdDefinition`, `HealthMatrixTemplate`, and supporting tables)
+  - Added core data models (`HealthDataSource`, `HealthMetricTemplate`, `HealthScale`, `BudgetHealthMatrix`, `BudgetHealthMatrixItem`, `PeriodHealthResult`, `BudgetHealthSummary`, `HealthMatrixTemplate`, and supporting tables)
   - Implemented safe formula parser and engine runner (`health_engine/runner.py`) supporting `+`, `-`, `*`, `/`, parentheses, and data source references
   - Added code-backed data source executors and metric executors for the four core templates (`setup_health`, `budget_discipline`, `planning_stability`, `current_period_check`)
   - Added `PeriodHealthResult` persistence so close-out workflows preserve historical health meaning when engine logic evolves

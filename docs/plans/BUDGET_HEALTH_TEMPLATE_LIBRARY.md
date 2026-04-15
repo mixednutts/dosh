@@ -29,12 +29,12 @@
 ```
 Data Sources  →  Formula  →  Threshold  →  Metric Executor  →  Score + Evidence
      ↑                                               ↓
-HealthScale / HealthThresholdDefinition      Matrix Weighting  →  Overall Health
+         HealthScale / Metric Default Value      Matrix Weighting  →  Overall Health
 ```
 
 1. **Data Sources** are code-backed functions that pull live values from the database (e.g. total budgeted income for a period).
 2. **Formulas** combine data sources using safe arithmetic (`+`, `-`, `*`, `/`, parentheses).
-3. **Thresholds** provide user-tunable benchmarks (e.g. "acceptable expense overrun = 10%").
+3. **Thresholds** provide user-tunable benchmarks stored directly on each matrix item (e.g. "acceptable expense overrun = 10%"), falling back to the metric's default value when unset.
 4. **Metric Executors** take the `formula_result`, threshold value, and `scoring_sensitivity` (0-100) and produce a **score** (0-100), **status** (`Strong` / `Watch` / `Needs Attention`), and **evidence** lines.
 5. **Matrix Templates** group metrics with weights. The weighted average becomes the **overall health score**.
 
@@ -62,18 +62,9 @@ HealthScale / HealthThresholdDefinition      Matrix Weighting  →  Overall Heal
 
 ---
 
-## 3. Threshold Definitions Catalog
+## 3. Scale Catalog
 
-Thresholds are user-tunable benchmarks stored in `healththresholddefinitions`. Each metric can be linked to **one** threshold value via `budgetmetricthresholds`.
-
-| Key | Name | Scale | Default | What It Controls |
-|-----|------|-------|---------|------------------|
-| `acceptable_expense_overrun_pct` | Acceptable Expense Overrun | `percentage_0_100` (0-100%, step 1) | `10` | How much historical overspending is tolerated before `budget_discipline` score drops. |
-| `comfortable_surplus_buffer_pct` | Comfortable Surplus Buffer | `percentage_0_100` (0-100%, step 1) | `5` | Minimum surplus % that feels safe (available for future metric templates). |
-| `maximum_deficit_amount` | Maximum Deficit Amount | `dollar_amount` ($0+, step $0.01) | `null` | Largest deficit tolerated in the current period before `current_period_check` score drops sharply. When `null`, the executor defaults to `MAX(income × 10%, $50)`. |
-| `revision_sensitivity` | Revision Sensitivity | `ten_scale_1_10` (1-10, step 1) | `5` | How strongly revisions impact `planning_stability`. Higher sensitivity = fewer allowed revisions before penalty. |
-| `savings_priority` | Savings Priority | `ten_scale_1_10` (1-10, step 1) | `5` | Importance placed on savings contributions in overall health (available for future metric templates). |
-| `period_criticality_bias` | Period Criticality Bias | `ten_scale_1_10` (1-10, step 1) | `5` | How much timing within the period amplifies health concerns (available for future metric templates). |
+Scales are reusable value-range definitions stored in `healthscales`. Each metric template and metric references a single scale via `scale_key`, and carries a `default_value_json`. Matrix items can override the default with `threshold_value_json`.
 
 ### 3.1 Scale Types
 - **`percentage_0_100`** — Integer 0-100, typically used for tolerance percentages.
@@ -81,13 +72,13 @@ Thresholds are user-tunable benchmarks stored in `healththresholddefinitions`. E
 - **`dollar_amount`** — Numeric with 2 decimal places, used for absolute financial thresholds.
 - **`severity_low_med_high`** — Enum (`low`, `medium`, `high`) reserved for future severity-based metrics.
 
-### 3.2 Threshold → Metric Mapping (Current)
-| Metric Template | Linked Threshold | Fallback When Missing |
-|-----------------|------------------|-----------------------|
-| `setup_health` | None | N/A (no threshold used) |
-| `budget_discipline` | `acceptable_expense_overrun_pct` | `10%` |
-| `planning_stability` | `revision_sensitivity` | `5` |
-| `current_period_check` | `maximum_deficit_amount` | `MAX(income × 10%, $50)` |
+### 3.2 Scale & Default → Metric Mapping (Current)
+| Metric Template | Scale | Default Value | Fallback When Missing |
+|-----------------|-------|---------------|-----------------------|
+| `setup_health` | None | `null` | N/A (no threshold used) |
+| `budget_discipline` | `percentage_0_100` | `10` | `10%` |
+| `planning_stability` | `ten_scale_1_10` | `5` | `5` |
+| `current_period_check` | `dollar_amount` | `null` | `MAX(income × 10%, $50)` |
 
 ---
 
@@ -99,7 +90,8 @@ Thresholds are user-tunable benchmarks stored in `healththresholddefinitions`. E
 |-----------|-------|
 | **Scope** | `OVERALL` |
 | **Formula** | `income_source_count + active_expense_count + future_period_count` |
-| **Threshold** | None |
+| **Scale** | None |
+| **Default Value** | `null` |
 | **Drill-down** | Disabled |
 
 **Scoring Logic** (from [`../../backend/app/health_engine/metric_executors.py`](../../backend/app/health_engine/metric_executors.py)):
@@ -128,7 +120,8 @@ Thresholds are user-tunable benchmarks stored in `healththresholddefinitions`. E
 |-----------|-------|
 | **Scope** | `OVERALL` |
 | **Formula** | `historical_overrun_ratio` |
-| **Threshold** | `acceptable_expense_overrun_pct` |
+| **Scale** | `percentage_0_100` |
+| **Default Value** | `10` |
 | **Drill-down** | Enabled |
 
 **Scoring Logic:**
@@ -155,7 +148,8 @@ Thresholds are user-tunable benchmarks stored in `healththresholddefinitions`. E
 |-----------|-------|
 | **Scope** | `BOTH` (overall + current period views) |
 | **Formula** | `revised_line_count` |
-| **Threshold** | `revision_sensitivity` |
+| **Scale** | `ten_scale_1_10` |
+| **Default Value** | `5` |
 | **Drill-down** | Enabled |
 
 **Scoring Logic:**
@@ -183,7 +177,8 @@ Thresholds are user-tunable benchmarks stored in `healththresholddefinitions`. E
 |-----------|-------|
 | **Scope** | `CURRENT_PERIOD` |
 | **Formula** | `live_period_surplus + total_budgeted_income * 0` |
-| **Threshold** | `maximum_deficit_amount` |
+| **Scale** | `dollar_amount` |
+| **Default Value** | `null` |
 | **Drill-down** | Enabled (lists over-budget expenses) |
 
 **Scoring Logic:**
@@ -263,7 +258,7 @@ When proposing a new metric or matrix template, document the following:
 
 1. **Data Sources** — Which existing sources does it use? Are new executors needed in `health_engine_data_sources.py`?
 2. **Formula** — Write the arithmetic expression. Verify all referenced source keys exist.
-3. **Threshold** — Does it need a tunable threshold? If so, define the `HealthThresholdDefinition` (scale, default, rationale).
+3. **Threshold** — Does it need a tunable threshold? If so, choose a `scale_key` and define `default_value_json` for the metric template.
 4. **Scoring Logic** — How does `formula_result` map to a `0-100` score? What is the fallback if the threshold is missing?
 5. **Evidence & Tone** — Write factual, supportive, and friendly evidence strings. Keep them concise.
 6. **Scope** — `OVERALL`, `CURRENT_PERIOD`, or `BOTH`?
@@ -280,6 +275,6 @@ When proposing a new metric or matrix template, document the following:
 | Engine runner (formula evaluator) | [`../../backend/app/health_engine/runner.py`](../../backend/app/health_engine/runner.py) |
 | Seed / template definitions | [`../../backend/app/health_engine_seed.py`](../../backend/app/health_engine_seed.py) |
 | SQLAlchemy models | [`../../backend/app/models.py`](../../backend/app/models.py) |
-| API endpoints (matrices & thresholds) | [`../../backend/app/routers/health_matrices.py`](../../backend/app/routers/health_matrices.py) |
+| API endpoints (matrices & metrics) | [`../../backend/app/routers/health_matrices.py`](../../backend/app/routers/health_matrices.py) |
 
 **Last Updated:** 2026-04-15

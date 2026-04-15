@@ -46,7 +46,6 @@ describe('BudgetHealthTab', () => {
         scoring_sensitivity: 50,
         is_enabled: true,
         display_order: 0,
-        threshold_key: null,
         threshold_value: null,
         threshold_scale: null,
       },
@@ -62,8 +61,7 @@ describe('BudgetHealthTab', () => {
         scoring_sensitivity: 30,
         is_enabled: true,
         display_order: 1,
-        threshold_key: 'threshold',
-        threshold_value: 0.8,
+        threshold_value: 80,
         threshold_scale: {
           scale_key: 'percentage_0_100',
           scale_type: 'integer_range',
@@ -84,7 +82,6 @@ describe('BudgetHealthTab', () => {
         scoring_sensitivity: 50,
         is_enabled: true,
         display_order: 2,
-        threshold_key: null,
         threshold_value: null,
         threshold_scale: null,
       },
@@ -114,10 +111,11 @@ describe('BudgetHealthTab', () => {
           ],
         })
       }
-      if (url === '/budgets/1/health-matrix/definitions') {
+      if (url === '/budgets/1/health-matrix/scales') {
         return Promise.resolve({
           data: [
-            { threshold_key: 'threshold', name: 'Test Threshold', description: '', default_value: 0, scale: { scale_type: 'integer_range', min_value: 0, max_value: 100, unit_label: '%' } },
+            { scale_key: 'percentage_0_100', name: 'Percentage (0-100)', scale_type: 'integer_range', min_value: 0, max_value: 100, unit_label: '%' },
+            { scale_key: 'dollar_amount', name: 'Dollar Amount', scale_type: 'money', unit_label: '$' },
           ],
         })
       }
@@ -187,7 +185,7 @@ describe('BudgetHealthTab', () => {
           ],
         })
       }
-      if (url === '/budgets/1/health-matrix/definitions') {
+      if (url === '/budgets/1/health-matrix/scales') {
         return Promise.resolve({ data: [] })
       }
       return Promise.resolve({ data: {} })
@@ -294,16 +292,15 @@ describe('BudgetHealthTab', () => {
     const viewEditButtons = screen.getAllByRole('button', { name: 'View / Edit' })
     fireEvent.click(viewEditButtons[1])
 
-    const thresholdLabel = await screen.findByText(/Threshold: Test Threshold/)
+    const thresholdLabel = await screen.findByText(/Threshold/)
     expect(thresholdLabel).toBeTruthy()
 
     const slider = screen.getByLabelText('Value')
     fireEvent.change(slider, { target: { value: '95' } })
 
     await waitFor(() => {
-      expect(api.patch).toHaveBeenCalledWith('/budgets/1/health-matrix/thresholds/102', {
-        threshold_key: 'threshold',
-        value: 95,
+      expect(api.patch).toHaveBeenCalledWith('/budgets/1/health-matrix/items/102', {
+        threshold_value: 95,
       })
     })
   })
@@ -390,7 +387,7 @@ describe('BudgetHealthTab', () => {
           ],
         })
       }
-      if (url === '/budgets/1/health-matrix/definitions') {
+      if (url === '/budgets/1/health-matrix/scales') {
         return Promise.resolve({ data: [] })
       }
       if (url === '/budgets/1/health-matrix/templates') {

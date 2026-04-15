@@ -5,11 +5,10 @@ import {
   updateBudget,
   getBudgetHealthMatrix,
   getHealthDataSources,
-  getHealthThresholdDefinitions,
+  getHealthScales,
   createCustomMetric,
   removeMatrixItem,
   updateMatrixItem,
-  updateMetricThreshold,
   getHealthMatrixTemplates,
   applyHealthMatrixTemplate,
 } from '../../api/client'
@@ -162,7 +161,6 @@ function ThresholdControl({ scale, value, onChange }) {
 function MatrixItemCard({
   item,
   onUpdate,
-  onUpdateThreshold,
   onRemove,
   allowRemove,
 }) {
@@ -198,7 +196,7 @@ function MatrixItemCard({
 
   const commitThreshold = nextValue => {
     setLocalThreshold(nextValue)
-    onUpdateThreshold({ threshold_key: item.threshold_key, value: nextValue })
+    onUpdate({ threshold_value: nextValue })
   }
 
   const isCustom = !item.template_key
@@ -326,10 +324,10 @@ function MatrixItemCard({
             </div>
           </div>
 
-          {item.threshold_key && (
+          {item.threshold_scale && (
             <div className="rounded-md border border-gray-200 bg-gray-50/50 p-3 dark:border-gray-700 dark:bg-gray-800/40">
               <p className="text-xs font-medium text-gray-700 dark:text-gray-200">
-                Threshold: {item.threshold_name || item.threshold_key}
+                Threshold
                 {item.threshold_scale?.unit_label ? (
                   <span className="ml-1 text-[10px] text-gray-500 dark:text-gray-400">({item.threshold_scale.unit_label})</span>
                 ) : null}
@@ -347,15 +345,18 @@ function MatrixItemCard({
   )
 }
 
-function MetricBuilderCard({ dataSources, thresholdDefinitions, onCreate, onCancel }) {
+function MetricBuilderCard({ dataSources, scales, onCreate, onCancel }) {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [scope, setScope] = useState('OVERALL')
   const [formula, setFormula] = useState('')
-  const [thresholdKey, setThresholdKey] = useState('')
+  const [scaleKey, setScaleKey] = useState('')
+  const [defaultValue, setDefaultValue] = useState('')
   const [error, setError] = useState(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const formulaRef = useRef(null)
+
+  const selectedScale = useMemo(() => scales.find(s => s.scale_key === scaleKey) || null, [scales, scaleKey])
 
   const insertAtCursor = text => {
     const input = formulaRef.current
@@ -391,6 +392,17 @@ function MetricBuilderCard({ dataSources, thresholdDefinitions, onCreate, onCanc
     const sourceKeys = dataSources.map(ds => ds.source_key)
     const usedSources = sourceKeys.filter(key => trimmedFormula.includes(key))
 
+    let payloadDefaultValue = undefined
+    if (scaleKey && defaultValue !== '') {
+      if (selectedScale?.scale_type === 'money') {
+        payloadDefaultValue = Number(defaultValue)
+      } else if (selectedScale?.scale_type === 'integer_range') {
+        payloadDefaultValue = Number.parseInt(defaultValue, 10)
+      } else {
+        payloadDefaultValue = defaultValue
+      }
+    }
+
     setIsSubmitting(true)
     try {
       await onCreate({
@@ -399,12 +411,14 @@ function MetricBuilderCard({ dataSources, thresholdDefinitions, onCreate, onCanc
         scope,
         formula_expression: trimmedFormula,
         data_sources: usedSources,
-        threshold_key: thresholdKey || undefined,
+        scale_key: scaleKey || undefined,
+        default_value: payloadDefaultValue,
       })
       setName('')
       setDescription('')
       setFormula('')
-      setThresholdKey('')
+      setScaleKey('')
+      setDefaultValue('')
     } catch (e) {
       setError(e?.response?.data?.detail || 'Failed to create metric')
     } finally {
@@ -488,22 +502,51 @@ function MetricBuilderCard({ dataSources, thresholdDefinitions, onCreate, onCanc
           </div>
         </div>
 
-        {thresholdDefinitions.length > 0 && (
+        {scales.length > 0 && (
           <div>
-            <label htmlFor="metric-builder-threshold" className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Threshold (optional)</label>
+            <label htmlFor="metric-builder-scale" className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Scale (optional)</label>
             <select
-              id="metric-builder-threshold"
-              value={thresholdKey}
-              onChange={e => setThresholdKey(e.target.value)}
+              id="metric-builder-scale"
+              value={scaleKey}
+              onChange={e => {
+                setScaleKey(e.target.value)
+                setDefaultValue('')
+              }}
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900"
             >
               <option value="">None</option>
-              {thresholdDefinitions.map(td => (
-                <option key={td.threshold_key} value={td.threshold_key}>
-                  {td.name}
+              {scales.map(s => (
+                <option key={s.scale_key} value={s.scale_key}>
+                  {s.name}
                 </option>
               ))}
             </select>
+          </div>
+        )}
+
+        {selectedScale && (
+          <div>
+            <label htmlFor="metric-builder-default" className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Default Value (optional)</label>
+            {selectedScale.scale_type === 'money' ? (
+              <LocalizedAmountInput
+                id="metric-builder-default"
+                value={defaultValue}
+                onChange={setDefaultValue}
+                placeholder="Optional"
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900"
+              />
+            ) : (
+              <input
+                id="metric-builder-default"
+                type="number"
+                min={selectedScale.min_value ?? undefined}
+                max={selectedScale.max_value ?? undefined}
+                value={defaultValue}
+                onChange={e => setDefaultValue(e.target.value)}
+                placeholder="Optional"
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900"
+              />
+            )}
           </div>
         )}
 
@@ -665,22 +708,14 @@ export default function BudgetHealthTab({ budgetId, budget }) {
     enabled: !!budgetId,
   })
 
-  const definitionsQuery = useQuery({
-    queryKey: ['health-definitions', budgetId],
-    queryFn: () => getHealthThresholdDefinitions(budgetId),
+  const scalesQuery = useQuery({
+    queryKey: ['health-scales', budgetId],
+    queryFn: () => getHealthScales(budgetId),
     enabled: !!budgetId,
   })
 
   const updateMatrixItemMutation = useMutation({
     mutationFn: ({ metricId, data }) => updateMatrixItem(budgetId, metricId, data),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['health-matrix', budgetId] })
-      qc.invalidateQueries({ queryKey: ['budget-health', budgetId] })
-    },
-  })
-
-  const updateThresholdMutation = useMutation({
-    mutationFn: ({ metricId, data }) => updateMetricThreshold(budgetId, metricId, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['health-matrix', budgetId] })
       qc.invalidateQueries({ queryKey: ['budget-health', budgetId] })
@@ -729,19 +764,6 @@ export default function BudgetHealthTab({ budgetId, budget }) {
     if (activeScope === 'ALL') return items
     return items.filter(i => i.scope === activeScope || i.scope === 'BOTH')
   }, [matrixQuery.data, activeScope])
-
-  const itemsWithThresholdNames = useMemo(() => {
-    const defs = Array.isArray(definitionsQuery.data) ? definitionsQuery.data : []
-    const defsByKey = Object.fromEntries(defs.map(d => [d.threshold_key, d]))
-    return filteredItems.map(item => {
-      if (!item.threshold_key) return item
-      const def = defsByKey[item.threshold_key]
-      return {
-        ...item,
-        threshold_name: def?.name || item.threshold_key,
-      }
-    })
-  }, [filteredItems, definitionsQuery.data])
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -825,7 +847,7 @@ export default function BudgetHealthTab({ budgetId, budget }) {
           <div className="mb-4">
             <MetricBuilderCard
               dataSources={dataSourcesQuery.data || []}
-              thresholdDefinitions={definitionsQuery.data || []}
+              scales={scalesQuery.data || []}
               onCreate={handleCreateMetric}
               onCancel={() => setShowMetricBuilder(false)}
             />
@@ -843,17 +865,16 @@ export default function BudgetHealthTab({ budgetId, budget }) {
         )}
         {matrixQuery.data && (
           <div className="space-y-3">
-            {itemsWithThresholdNames.map(item => (
+            {filteredItems.map(item => (
               <MatrixItemCard
                 key={item.metric_id}
                 item={item}
                 onUpdate={data => updateMatrixItemMutation.mutate({ metricId: item.metric_id, data })}
-                onUpdateThreshold={data => updateThresholdMutation.mutate({ metricId: item.metric_id, data })}
                 onRemove={() => removeMatrixItemMutation.mutate(item.metric_id)}
                 allowRemove={!item.template_key}
               />
             ))}
-            {itemsWithThresholdNames.length === 0 && (
+            {filteredItems.length === 0 && (
               <p className="text-sm text-gray-500 dark:text-gray-400">No metrics match the selected scope.</p>
             )}
           </div>
@@ -909,8 +930,6 @@ MatrixItemCard.propTypes = {
     weight: PropTypes.number.isRequired,
     scoring_sensitivity: PropTypes.number.isRequired,
     is_enabled: PropTypes.bool.isRequired,
-    threshold_key: PropTypes.string,
-    threshold_name: PropTypes.string,
     threshold_value: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
     threshold_scale: PropTypes.shape({
       scale_type: PropTypes.string,
@@ -920,7 +939,6 @@ MatrixItemCard.propTypes = {
     }),
   }).isRequired,
   onUpdate: PropTypes.func.isRequired,
-  onUpdateThreshold: PropTypes.func.isRequired,
   onRemove: PropTypes.func.isRequired,
   allowRemove: PropTypes.bool,
 }
@@ -932,11 +950,13 @@ MetricBuilderCard.propTypes = {
     description: PropTypes.string,
     return_type: PropTypes.string.isRequired,
   })).isRequired,
-  thresholdDefinitions: PropTypes.arrayOf(PropTypes.shape({
-    threshold_key: PropTypes.string.isRequired,
+  scales: PropTypes.arrayOf(PropTypes.shape({
+    scale_key: PropTypes.string.isRequired,
     name: PropTypes.string.isRequired,
-    description: PropTypes.string,
-    scale: PropTypes.object,
+    scale_type: PropTypes.string,
+    min_value: PropTypes.number,
+    max_value: PropTypes.number,
+    unit_label: PropTypes.string,
   })).isRequired,
   onCreate: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,

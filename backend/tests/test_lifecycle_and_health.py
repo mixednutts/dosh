@@ -125,8 +125,8 @@ def test_closeout_health_snapshot_stays_historical_after_budget_preference_chang
     )
 
     threshold_update = client.patch(
-        f"/api/budgets/{budget.budgetid}/health-matrix/thresholds/{current_period_metric_id}",
-        json={"value_json": "1.00"},
+        f"/api/budgets/{budget.budgetid}/health-matrix/items/{current_period_metric_id}",
+        json={"threshold_value": "1.00"},
     )
     assert threshold_update.status_code == 200, threshold_update.text
 

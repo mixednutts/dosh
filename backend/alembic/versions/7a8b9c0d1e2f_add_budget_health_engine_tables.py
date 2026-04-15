@@ -11,8 +11,12 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.orm import Session
 
-# Import seed utilities — uses app models which require the new schema
-from app.health_engine_seed import seed_and_migrate  # noqa: E402
+# NOTE: Seeding logic for this migration has been moved to the follow-up
+# migration that collapses thresholds into metrics. This historical migration
+# now only creates the original schema so that the revision chain remains
+# valid. Fresh installs receive their seed data from the follow-up migration.
+def seed_and_migrate(session: Session) -> None:
+    pass
 
 
 # revision identifiers, used by Alembic.

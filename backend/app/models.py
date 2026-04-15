@@ -56,7 +56,6 @@ class Budget(Base):
     health_matrices = relationship("BudgetHealthMatrix", back_populates="budget", cascade="all, delete-orphan")
     health_summaries = relationship("BudgetHealthSummary", back_populates="budget", cascade="all, delete-orphan")
     health_metrics = relationship("HealthMetric", back_populates="budget", cascade="all, delete-orphan")
-    metric_thresholds = relationship("BudgetMetricThreshold", back_populates="budget", cascade="all, delete-orphan")
 
 
 class PayType(Base):
@@ -382,16 +381,6 @@ class HealthScaleOption(Base):
     option_order = Column(Integer, default=0)
 
 
-class HealthThresholdDefinition(Base):
-    __tablename__ = "healththresholddefinitions"
-    threshold_key = Column(String, primary_key=True)
-    name = Column(String, nullable=False)
-    description = Column(Text)
-    scale_key = Column(String, ForeignKey("healthscales.scale_key"), nullable=False)
-    default_value_json = Column(Text, nullable=False, default="{}")
-    scale = relationship("HealthScale")
-
-
 class HealthMetricTemplate(Base):
     __tablename__ = "healthmetrictemplates"
     template_key = Column(String, primary_key=True)
@@ -400,11 +389,14 @@ class HealthMetricTemplate(Base):
     scope = Column(String, nullable=False)
     formula_expression = Column(Text, nullable=False)
     formula_data_sources_json = Column(Text, nullable=False)
-    default_threshold_key = Column(String, ForeignKey("healththresholddefinitions.threshold_key"), nullable=True)
+    scale_key = Column(String, ForeignKey("healthscales.scale_key"), nullable=True)
+    default_value_json = Column(Text, nullable=False, default="{}")
     scoring_logic_json = Column(Text, nullable=False)
     evidence_template_json = Column(Text, nullable=False)
     drill_down_enabled = Column(Boolean, default=False)
     is_system = Column(Boolean, default=False)
+
+    scale = relationship("HealthScale")
 
 
 class HealthMetric(Base):
@@ -417,16 +409,17 @@ class HealthMetric(Base):
     scope = Column(String, nullable=False)
     formula_expression = Column(Text, nullable=False)
     formula_data_sources_json = Column(Text, nullable=False)
-    threshold_key = Column(String, ForeignKey("healththresholddefinitions.threshold_key"), nullable=True)
+    scale_key = Column(String, ForeignKey("healthscales.scale_key"), nullable=True)
+    default_value_json = Column(Text, nullable=False, default="{}")
     scoring_logic_json = Column(Text, nullable=False)
     evidence_template_json = Column(Text, nullable=False)
     drill_down_enabled = Column(Boolean, default=False)
     created_at = Column(UTCDateTime, default=lambda: dt.now(timezone.utc))
 
+    scale = relationship("HealthScale")
     budget = relationship("Budget", back_populates="health_metrics")
     matrix_items = relationship("BudgetHealthMatrixItem", back_populates="metric", cascade="all, delete-orphan")
     period_results = relationship("PeriodHealthResult", back_populates="metric", cascade="all, delete-orphan")
-    thresholds = relationship("BudgetMetricThreshold", back_populates="metric", cascade="all, delete-orphan")
 
 
 class HealthMatrixTemplate(Base):
@@ -469,21 +462,10 @@ class BudgetHealthMatrixItem(Base):
     scoring_sensitivity = Column(Integer, nullable=False, default=50)
     display_order = Column(Integer, default=0)
     is_enabled = Column(Boolean, default=True)
+    threshold_value_json = Column(Text, nullable=True)
 
     matrix = relationship("BudgetHealthMatrix", back_populates="items")
     metric = relationship("HealthMetric", back_populates="matrix_items")
-
-
-class BudgetMetricThreshold(Base):
-    __tablename__ = "budgetmetricthresholds"
-    budgetid = Column(Integer, ForeignKey("budgets.budgetid"), primary_key=True)
-    metric_id = Column(Integer, ForeignKey("healthmetrics.metric_id"), primary_key=True)
-    threshold_key = Column(String, ForeignKey("healththresholddefinitions.threshold_key"), nullable=False)
-    value_json = Column(Text, nullable=False)
-    updated_at = Column(UTCDateTime, default=lambda: dt.now(timezone.utc))
-
-    budget = relationship("Budget", back_populates="metric_thresholds")
-    metric = relationship("HealthMetric", back_populates="thresholds")
 
 
 class PeriodHealthResult(Base):

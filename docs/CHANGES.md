@@ -4,6 +4,46 @@ This document captures the key product and implementation changes made during re
 
 It is intended to complement [README.md](/home/ubuntu/dosh/README.md), not replace it.
 
+## Latest Session: Budget Health Engine Simplification — Collapse Threshold Definitions
+
+This session simplified the Budget Health Engine by removing the separate `HealthThresholdDefinition` and `BudgetMetricThreshold` abstractions. Threshold values are now stored directly on `HealthMetric`/`HealthMetricTemplate` (via `scale_key` and `default_value_json`) and on `BudgetHealthMatrixItem` (via `threshold_value_json`).
+
+### What changed
+
+- **Architecture simplification:**
+  - Removed `HealthThresholdDefinition` and `BudgetMetricThreshold` models, tables, and API endpoints.
+  - Added `scale_key` and `default_value_json` to `HealthMetricTemplate` and `HealthMetric`.
+  - Added `threshold_value_json` to `BudgetHealthMatrixItem`.
+  - Engine runner `_load_threshold_value` now resolves thresholds from the matrix item first, then falls back to the metric default.
+
+- **Migration:**
+  - Created `backend/alembic/versions/9c0f8d72a04c_collapse_health_thresholds_into_metrics_and_matrix_items.py` to migrate existing threshold data into the new columns and drop the old tables.
+  - Stubbed the old migration `7a8b9c0d1e2f_add_budget_health_engine_tables.py` to prevent import errors after model removal.
+
+- **Backend API and seed data:**
+  - Updated `backend/app/health_engine_seed.py` so metric templates carry their scale and default value directly.
+  - Updated `backend/app/routers/health_matrices.py`: removed `/definitions` and `/thresholds/{metric_id}` endpoints; threshold updates now go through `PATCH /items/{metric_id}` with `threshold_value`; added `GET /scales`.
+  - Custom metric creation now accepts `scale_key` and `default_value` instead of a `threshold_key`.
+
+- **Frontend:**
+  - Updated `frontend/src/api/client.js`: replaced `getHealthThresholdDefinitions` with `getHealthScales`, removed `updateMetricThreshold`.
+  - Updated `frontend/src/pages/tabs/BudgetHealthTab.jsx`: metric builder uses scales and default values; threshold edits patch matrix items directly.
+
+- **Tests:**
+  - Updated `backend/tests/test_health_matrices.py`, `frontend/src/__tests__/BudgetHealthTab.test.jsx`, and `frontend/src/__tests__/client.test.js` to match the new API shapes.
+
+- **Documentation:**
+  - Updated `docs/plans/BUDGET_HEALTH_ENGINE_PLAN.md` and `docs/plans/BUDGET_HEALTH_TEMPLATE_LIBRARY.md` to reflect the simplified data model.
+  - Updated `AGENTS.md` and `docs/DEVELOPMENT_ACTIVITIES.md` to remove references to the deleted models.
+
+### Verification
+
+- Full backend suite: **190 passed**
+- Full frontend suite: **203 passed**
+- Alembic upgrade/downgrade tested locally
+
+---
+
 ## Latest Session: Fix Empty Health Metric Data After Threshold Terminology Refactor
 
 This session fixed a critical bug introduced in `0.4.3-alpha` where the Budget Health Engine was returning empty/null health payloads, causing the Budgets page to show blank placeholder circles instead of actual health scores and navigation.

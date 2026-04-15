@@ -387,8 +387,8 @@ Status:
 
 - `Completed`
 
-- `Completed`: created 11 new data models for the Budget Health Engine (`HealthDataSource`, `HealthMetricTemplate`, `HealthScale`, `BudgetHealthMatrix`, `BudgetHealthMatrixItem`, `BudgetMetricThreshold`, `PeriodHealthResult`, `BudgetHealthSummary`, `HealthThresholdDefinition`, `HealthMatrixTemplate`, and supporting relationship tables)
-- `Completed`: added Alembic migration `7a8b9c0d1e2f_add_budget_health_engine_tables.py` and seeded catalogs (`HealthDataSource`, `HealthScale`, `HealthThresholdDefinition`)
+- `Completed`: created core data models for the Budget Health Engine (`HealthDataSource`, `HealthMetricTemplate`, `HealthScale`, `BudgetHealthMatrix`, `BudgetHealthMatrixItem`, `PeriodHealthResult`, `BudgetHealthSummary`, `HealthMatrixTemplate`, and supporting relationship tables)
+- `Completed`: added Alembic migration `7a8b9c0d1e2f_add_budget_health_engine_tables.py` and seeded catalogs (`HealthDataSource`, `HealthScale`)
 - `Completed`: migrated all existing budgets to `BudgetHealthMatrix` instances with default `Standard Budget Health` matrices
 - `Completed`: implemented safe formula parser and engine runner (`health_engine/runner.py`) supporting `+`, `-`, `*`, `/`, parentheses, and data source references
 - `Completed`: implemented code-backed data source executors and metric executors for the four core templates (`setup_health`, `budget_discipline`, `planning_stability`, `current_period_check`)
@@ -405,7 +405,7 @@ Status:
 
 - `Completed`: removed legacy threshold sliders from `PersonalisationTab.jsx` and embedded scale-aware threshold controls directly into each metric card
 - `Completed`: added View/Edit toggle to metric cards with formula display and data-source badges
-- `Completed`: added `GET /budgets/{id}/health-matrix/definitions` endpoint to drive scale-aware threshold UI controls
+- `Completed`: added `GET /budgets/{id}/health-matrix/scales` endpoint to drive scale-aware threshold UI controls
 - `Completed`: expanded `PersonalisationTab.jsx` to manage matrix items (enable/disable, weight, sensitivity) and custom metric creation
 - `Completed (0.4.5-alpha)`: renamed `PersonalisationTab.jsx` to `BudgetHealthTab.jsx` and updated the budget setup section label from `Thresholds & Tolerances` to `Budget Health Engine`
 - `Completed (0.4.5-alpha)`: added matrix template selector with apply/reset actions and a `Customized` badge that detects when matrix items or thresholds diverge from template defaults
@@ -413,7 +413,7 @@ Status:
 - `Completed (0.4.5-alpha)`: added scope filter tabs (`All`, `Overall`, `Current Period`, `Both`) to the health matrix so users can see which metrics affect which health checks
 - `Completed (0.4.5-alpha)`: improved matrix item cards to show weight (with progress bar), sensitivity, and enabled state inline without expanding
 - `Completed (0.4.5-alpha)`: enhanced expanded metric details with human-readable threshold names, scale unit labels, and improved data-source insertion into the metric builder
-- `Completed (0.4.5-alpha)`: added threshold selector dropdown to the custom metric builder
+- `Completed (0.4.5-alpha)`: added scale and default-value selector to the custom metric builder
 - `Completed (0.4.5-alpha)`: removed the `UNIQUE` constraint on `BudgetHealthMatrix.budgetid` and added migration `a1b2c3d4e5f6` to support multiple matrices per budget (one active, others inactive)
 - `Completed`: added `health_tone` selector (`supportive`/`factual`/`friendly`) to budget settings and health evidence rendering
 - `Completed`: updated `BudgetsPage.jsx` to consume the engine health endpoint and render contextual drill-down links in health modals
@@ -473,6 +473,7 @@ Status:
 - `Completed`: updated tests: backend tests referencing personalisation tables/keys, frontend `PersonalisationTab.test.jsx` labels, and API client tests
 - `Completed`: updated documentation: `DEVELOPMENT_ACTIVITIES.md`, `CHANGES.md`, `BUDGET_HEALTH_ENGINE_PLAN.md`, and `AGENTS.md` references to personalisation
 - `Fixed (0.4.4-alpha)`: corrected a model-migration mismatch where `backend/app/models.py` still referenced the old `personalisation` table names after the migration renamed them to `threshold_*`. This caused the health engine to query non-existent tables, resulting in empty health payloads and blank UI placeholders on the budget summary page. The fix aligned models, fresh-install migration, and upgrade migration to the same `threshold_*` naming.
+- `Completed (0.4.6-alpha)`: simplified the engine by collapsing `HealthThresholdDefinition` and `BudgetMetricThreshold` into `HealthMetric`/`HealthMetricTemplate` (`scale_key` + `default_value_json`) and `BudgetHealthMatrixItem` (`threshold_value_json`). This removes the fine-grained threshold-definition abstraction and makes scale + default value a direct metric property.
 - `Decision`: keep the `revision_sensitivity` threshold for `planning_stability` for now; the threshold is stored and surfaced in evidence but does not yet directly modulate scoring tolerance. A future session may decide to integrate it or remove it if it remains unused.
 
 #### Activity Group: Test Coverage

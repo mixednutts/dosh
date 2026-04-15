@@ -48,9 +48,9 @@ def test_update_matrix_item(client, db_session):
     assert matrix.is_enabled is False
 
 
-def test_update_metric_threshold(client, db_session):
+def test_update_matrix_item_threshold_value(client, db_session):
     budget = create_budget(db_session)
-    from app.models import BudgetHealthMatrix, HealthMetric, HealthThresholdDefinition, HealthScale
+    from app.models import BudgetHealthMatrix, HealthMetric, HealthScale
     bhm = db_session.query(BudgetHealthMatrix).filter_by(budgetid=budget.budgetid, is_active=True).first()
     matrix_item = (
         db_session.query(BudgetHealthMatrixItem)
@@ -59,28 +59,35 @@ def test_update_metric_threshold(client, db_session):
     )
     metric_id = matrix_item.metric_id
     metric = db_session.query(HealthMetric).filter_by(metric_id=metric_id).first()
-    scale = db_session.query(HealthScale).first()
+    scale = db_session.query(HealthScale).filter_by(scale_key="percentage_0_100").first()
     if not scale:
-        scale = HealthScale(scale_key="test_scale", name="Test Scale")
+        scale = HealthScale(scale_key="percentage_0_100", name="Percentage", scale_type="integer_range", min_value=0, max_value=100)
         db_session.add(scale)
         db_session.commit()
-    db_session.add(HealthThresholdDefinition(
-        threshold_key="test_threshold_key",
-        name="Test",
-        description="Test",
-        scale_key=scale.scale_key,
-        default_value_json="0",
-    ))
-    db_session.commit()
-    metric.threshold_key = "test_threshold_key"
+    metric.scale_key = scale.scale_key
+    metric.default_value_json = "0"
     db_session.commit()
 
     response = client.patch(
-        f"/api/budgets/{budget.budgetid}/health-matrix/thresholds/{metric_id}",
-        json={"value": 42.0},
+        f"/api/budgets/{budget.budgetid}/health-matrix/items/{metric_id}",
+        json={"threshold_value": 42},
     )
     assert response.status_code == 200
     assert response.json()["ok"] is True
+
+    db_session.refresh(matrix_item)
+    assert matrix_item.threshold_value_json == "42"
+
+
+def test_get_health_scales(client, db_session):
+    budget = create_budget(db_session)
+    response = client.get(f"/api/budgets/{budget.budgetid}/health-matrix/scales")
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, list)
+    for scale in data:
+        assert "scale_key" in scale
+        assert "name" in scale
 
 
 def test_get_data_sources(client, db_session):
@@ -102,6 +109,8 @@ def test_create_custom_metric(client, db_session):
         "scope": "CURRENT_PERIOD",
         "formula_expression": "total_budgeted_income - total_budgeted_expenses",
         "data_sources": ["total_budgeted_income", "total_budgeted_expenses"],
+        "scale_key": "percentage_0_100",
+        "default_value": 50,
     }
     response = client.post(
         f"/api/budgets/{budget.budgetid}/health-matrix/metrics",
@@ -114,6 +123,8 @@ def test_create_custom_metric(client, db_session):
 
     metric = db_session.query(HealthMetric).filter_by(metric_id=data["metric_id"]).first()
     assert metric is not None
+    assert metric.scale_key == "percentage_0_100"
+    assert metric.default_value_json == "50"
 
 
 def test_create_custom_metric_invalid_formula(client, db_session):

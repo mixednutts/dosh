@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 0.4.6-alpha | released | 2026-04-15
+
+### Changed
+
+- Simplified the Budget Health Engine by removing the separate threshold-definition layer. Scales and default values now live directly on each metric, and per-budget threshold overrides are stored on matrix items. This makes the engine easier to understand and extend without changing how scores are calculated.
+- Updated the custom metric builder to use scales and default values directly instead of linking to reusable threshold definitions.
+
 ## 0.4.5-alpha | released | 2026-04-15
 
 ### Changed

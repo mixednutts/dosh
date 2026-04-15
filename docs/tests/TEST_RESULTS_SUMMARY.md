@@ -2,6 +2,51 @@
 
 This document records meaningful automated test results from major working sessions.
 
+## Latest Session: Budget Health Engine Simplification (0.4.6-alpha)
+
+This session simplified the Budget Health Engine by collapsing `HealthThresholdDefinition` and `BudgetMetricThreshold` into direct metric/matrix-item properties, then deployed to the local Docker container.
+
+### Verification
+
+```bash
+cd /home/ubuntu/dosh/backend
+.venv/bin/python -m pytest tests/ -q
+```
+
+Result:
+
+- Full backend suite: **190 passed**
+- Migration tests (`test_auto_expense_migration.py`): clean upgrade to head and legacy upgrade both pass
+
+```bash
+cd /home/ubuntu/dosh/frontend
+npm test -- --watchAll=false
+```
+
+Result:
+
+- Full frontend suite: **203 passed** (18 test suites)
+- No regressions introduced
+
+### Deployment Verification
+
+```bash
+cd /home/ubuntu/dosh
+docker compose up --build -d
+curl -sS http://127.0.0.1:3080/api/health
+```
+
+Result:
+
+- Backend container rebuilt and restarted successfully
+- Frontend container rebuilt and restarted successfully
+- Health endpoint returned `{"status":"ok","app":"Dosh"}`
+- Version endpoint returned `0.4.6-alpha`
+- `/api/budgets/{id}/health` returned fully populated health payload with `overall_score`, `pillars`, `current_period_check`, and `momentum_status`
+
+---
+
+
 It exists separately from [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) so the strategy can stay stable while future sessions still have a record of what was actually run and verified.
 
 ## Latest Session: Fix Empty Health Metric Data After Threshold Terminology Refactor

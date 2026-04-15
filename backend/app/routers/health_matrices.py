@@ -1,11 +1,9 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
 from decimal import Decimal
 
 from fastapi import APIRouter, HTTPException
-from sqlalchemy.orm import Session
 
 from ..api_docs import DbSession, error_responses
 from ..health_engine_seed import create_matrix_from_template
@@ -13,13 +11,11 @@ from ..models import (
     Budget,
     BudgetHealthMatrix,
     BudgetHealthMatrixItem,
-    BudgetMetricThreshold,
     HealthDataSource,
     HealthMetric,
     HealthMatrixTemplate,
     HealthMatrixTemplateItem,
     HealthMetricTemplate,
-    HealthThresholdDefinition,
     HealthScale,
 )
 
@@ -41,8 +37,10 @@ def _serialize_scale(scale: HealthScale | None) -> dict | None:
     }
 
 
-def _parse_threshold_value(value_json: str, scale_type: str | None) -> int | float | str | None:
+def _parse_threshold_value(value_json: str | None, scale_type: str | None) -> int | float | str | None:
     """Parse a threshold value from JSON based on scale type."""
+    if value_json is None:
+        return None
     try:
         raw = json.loads(value_json)
     except json.JSONDecodeError:
@@ -75,11 +73,6 @@ def get_budget_health_matrix(budgetid: int, db: DbSession):
         .order_by(BudgetHealthMatrixItem.display_order)
         .all()
     )
-
-    threshold_defs = {
-        t.threshold_key: t
-        for t in db.query(HealthThresholdDefinition).all()
-    }
 
     template_defaults = {}
     if matrix.based_on_template_key:
@@ -116,21 +109,11 @@ def get_budget_health_matrix(budgetid: int, db: DbSession):
         elif metric.template_key:
             is_customized = True
 
-        threshold_value = None
-        threshold_def = None
-        if metric.threshold_key:
-            threshold_def = threshold_defs.get(metric.threshold_key)
-            bmt = db.query(BudgetMetricThreshold).filter_by(
-                budgetid=budgetid, metric_id=metric.metric_id
-            ).first()
-            if bmt:
-                scale_type = threshold_def.scale.scale_type if threshold_def and threshold_def.scale else None
-                threshold_value = _parse_threshold_value(bmt.value_json, scale_type)
-                if threshold_def and bmt.value_json != threshold_def.default_value_json:
-                    is_customized = True
-            else:
-                if threshold_def and threshold_def.default_value_json != json.dumps(None):
-                    is_customized = True
+        scale = metric.scale
+        threshold_value = _parse_threshold_value(item.threshold_value_json, scale.scale_type if scale else None)
+        default_value = _parse_threshold_value(metric.default_value_json, scale.scale_type if scale else None)
+        if threshold_value != default_value:
+            is_customized = True
 
         result_items.append({
             "matrix_item_id": f"{item.matrix_id}-{item.metric_id}",
@@ -145,9 +128,8 @@ def get_budget_health_matrix(budgetid: int, db: DbSession):
             "scoring_sensitivity": item.scoring_sensitivity,
             "is_enabled": item.is_enabled,
             "display_order": item.display_order,
-            "threshold_key": metric.threshold_key,
             "threshold_value": threshold_value,
-            "threshold_scale": _serialize_scale(threshold_def.scale) if threshold_def else None,
+            "threshold_scale": _serialize_scale(scale),
         })
 
     template_name = None
@@ -166,30 +148,6 @@ def get_budget_health_matrix(budgetid: int, db: DbSession):
         "is_customized": is_customized,
         "items": result_items,
     }
-
-
-@router.get("/definitions", responses=error_responses(404))
-def get_threshold_definitions(budgetid: int, db: DbSession):
-    """Get all available threshold definitions with their scales."""
-    budget = db.get(Budget, budgetid)
-    if not budget:
-        raise HTTPException(404, "Budget not found")
-
-    definitions = db.query(HealthThresholdDefinition).all()
-    result = []
-    for d in definitions:
-        try:
-            default_value = json.loads(d.default_value_json)
-        except json.JSONDecodeError:
-            default_value = d.default_value_json
-        result.append({
-            "threshold_key": d.threshold_key,
-            "name": d.name,
-            "description": d.description,
-            "default_value": default_value,
-            "scale": _serialize_scale(d.scale),
-        })
-    return result
 
 
 @router.get("/templates", responses=error_responses(404))
@@ -242,14 +200,14 @@ def apply_matrix_template(
     }
 
 
-@router.patch("/items/{metric_id}", responses=error_responses(404))
+@router.patch("/items/{metric_id}", responses=error_responses(404, 400))
 def update_matrix_item(
     budgetid: int,
     metric_id: int,
     payload: dict,
     db: DbSession,
 ):
-    """Update a matrix item's weight, sensitivity, or enablement."""
+    """Update a matrix item's weight, sensitivity, enablement, or threshold value."""
     budget = db.get(Budget, budgetid)
     if not budget:
         raise HTTPException(404, "Budget not found")
@@ -270,68 +228,25 @@ def update_matrix_item(
         item.scoring_sensitivity = payload["scoring_sensitivity"]
     if "is_enabled" in payload:
         item.is_enabled = payload["is_enabled"]
+    if "threshold_value" in payload:
+        value = payload["threshold_value"]
+        # Validate against metric scale if present
+        metric = item.metric
+        if metric and metric.scale:
+            scale = metric.scale
+            if scale.scale_type in ("integer_range", "decimal_range", "money") and value is not None:
+                try:
+                    num_value = float(value)
+                    if scale.min_value is not None and num_value < float(scale.min_value):
+                        raise HTTPException(400, f"Value must be >= {scale.min_value}")
+                    if scale.max_value is not None and num_value > float(scale.max_value):
+                        raise HTTPException(400, f"Value must be <= {scale.max_value}")
+                except ValueError:
+                    raise HTTPException(400, "Invalid numeric value")
+        item.threshold_value_json = json.dumps(value)
 
     db.commit()
     db.refresh(item)
-    return {"ok": True}
-
-
-@router.patch("/thresholds/{metric_id}", responses=error_responses(404, 400))
-def update_metric_threshold(
-    budgetid: int,
-    metric_id: int,
-    payload: dict,
-    db: DbSession,
-):
-    """Update the threshold value for a metric in this budget's matrix."""
-    budget = db.get(Budget, budgetid)
-    if not budget:
-        raise HTTPException(404, "Budget not found")
-
-    metric = db.query(HealthMetric).filter_by(metric_id=metric_id, budgetid=budgetid).first()
-    if not metric:
-        raise HTTPException(404, "Metric not found")
-
-    threshold_key = payload.get("threshold_key") or metric.threshold_key
-    value = payload.get("value")
-
-    if not threshold_key:
-        raise HTTPException(400, "No threshold key defined for this metric")
-
-    threshold_def = db.query(HealthThresholdDefinition).filter_by(
-        threshold_key=threshold_key
-    ).first()
-
-    if threshold_def and threshold_def.scale:
-        scale = threshold_def.scale
-        if scale.scale_type in ("integer_range", "decimal_range", "money") and value is not None:
-            try:
-                num_value = float(value)
-                if scale.min_value is not None and num_value < float(scale.min_value):
-                    raise HTTPException(400, f"Value must be >= {scale.min_value}")
-                if scale.max_value is not None and num_value > float(scale.max_value):
-                    raise HTTPException(400, f"Value must be <= {scale.max_value}")
-            except ValueError:
-                raise HTTPException(400, "Invalid numeric value")
-
-    bmt = db.query(BudgetMetricThreshold).filter_by(
-        budgetid=budgetid, metric_id=metric_id
-    ).first()
-
-    if bmt:
-        bmt.value_json = json.dumps(value)
-        bmt.threshold_key = threshold_key
-        bmt.updated_at = datetime.now(timezone.utc)
-    else:
-        bmt = BudgetMetricThreshold(
-            budgetid=budgetid,
-            metric_id=metric_id,
-            threshold_key=threshold_key,
-            value_json=json.dumps(value),
-        )
-        db.add(bmt)
-
-    db.commit()
     return {"ok": True}
 
 
@@ -354,6 +269,17 @@ def get_data_sources(budgetid: int, db: DbSession):
     ]
 
 
+@router.get("/scales", responses=error_responses(404))
+def get_health_scales(budgetid: int, db: DbSession):
+    """List available HealthScale catalog entries for metric building."""
+    budget = db.get(Budget, budgetid)
+    if not budget:
+        raise HTTPException(404, "Budget not found")
+
+    scales = db.query(HealthScale).order_by(HealthScale.name).all()
+    return [_serialize_scale(s) for s in scales]
+
+
 @router.post("/metrics", responses=error_responses(404, 400))
 def create_custom_metric(
     budgetid: int,
@@ -368,7 +294,8 @@ def create_custom_metric(
     - scope: str (OVERALL | CURRENT_PERIOD | BOTH)
     - formula_expression: str (e.g., "live_period_surplus / total_budgeted_income")
     - data_sources: list[str] (source_keys referenced in formula)
-    - threshold_key: str (optional)
+    - scale_key: str (optional)
+    - default_value: any (optional)
     """
     budget = db.get(Budget, budgetid)
     if not budget:
@@ -378,7 +305,8 @@ def create_custom_metric(
     scope = payload.get("scope", "OVERALL")
     formula = payload.get("formula_expression", "").strip()
     data_sources = payload.get("data_sources", [])
-    threshold_key = payload.get("threshold_key")
+    scale_key = payload.get("scale_key")
+    default_value = payload.get("default_value")
 
     if not name:
         raise HTTPException(400, "Metric name is required")
@@ -395,12 +323,19 @@ def create_custom_metric(
         if missing:
             raise HTTPException(400, f"Unknown data sources: {missing}")
 
-    if threshold_key:
-        threshold_def = db.query(HealthThresholdDefinition).filter_by(
-            threshold_key=threshold_key
-        ).first()
-        if not threshold_def:
-            raise HTTPException(400, f"Unknown threshold key: {threshold_key}")
+    if scale_key:
+        scale = db.query(HealthScale).filter_by(scale_key=scale_key).first()
+        if not scale:
+            raise HTTPException(400, f"Unknown scale key: {scale_key}")
+        if scale.scale_type in ("integer_range", "decimal_range", "money") and default_value is not None:
+            try:
+                num_value = float(default_value)
+                if scale.min_value is not None and num_value < float(scale.min_value):
+                    raise HTTPException(400, f"Value must be >= {scale.min_value}")
+                if scale.max_value is not None and num_value > float(scale.max_value):
+                    raise HTTPException(400, f"Value must be <= {scale.max_value}")
+            except ValueError:
+                raise HTTPException(400, "Invalid numeric value")
 
     from ..health_engine.formula_evaluator import evaluate_formula
     dummy_values = {k: Decimal(1) for k in data_sources}
@@ -417,7 +352,8 @@ def create_custom_metric(
         scope=scope,
         formula_expression=formula,
         formula_data_sources_json=json.dumps(data_sources),
-        threshold_key=threshold_key,
+        scale_key=scale_key,
+        default_value_json=json.dumps(default_value),
         scoring_logic_json=json.dumps({"type": "custom_metric_v1"}),
         evidence_template_json=json.dumps({
             "supportive": f"{name} looks good.",
@@ -440,6 +376,7 @@ def create_custom_metric(
             scoring_sensitivity=50,
             display_order=max_order,
             is_enabled=True,
+            threshold_value_json=json.dumps(default_value),
         ))
         db.commit()
 
@@ -473,10 +410,6 @@ def remove_matrix_item(
         raise HTTPException(404, "Matrix item not found")
 
     db.delete(item)
-
-    db.query(BudgetMetricThreshold).filter_by(
-        budgetid=budgetid, metric_id=metric_id
-    ).delete()
 
     metric = db.query(HealthMetric).filter_by(metric_id=metric_id, budgetid=budgetid).first()
     if metric and not metric.template_key:
