@@ -11,7 +11,7 @@ Read this alongside:
 - [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md)
 - [CHANGES.md](/home/ubuntu/dosh/docs/CHANGES.md)
 - [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_CYCLE_LIFECYCLE_PLAN.md)
-- [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/docs/plans/BUDGET_HEALTH_ADDENDUM.md)
+- [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/docs/archive/BUDGET_HEALTH_ADDENDUM.md)
 - [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md)
 - [TEST_EXPANSION_PLAN.md](/home/ubuntu/dosh/docs/tests/TEST_EXPANSION_PLAN.md)
 - [SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md](/home/ubuntu/dosh/docs/plans/SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md)
@@ -35,7 +35,7 @@ The relevant current-state facts already established elsewhere in the repository
 - close-out already exists as a first-class workflow with preview, carry-forward handling, snapshot storage, and next-cycle activation; see [README.md](/home/ubuntu/dosh/README.md) and [CHANGES.md](/home/ubuntu/dosh/docs/CHANGES.md)
 - close-out stores comments, goals, carry-forward amount, health snapshot JSON, and totals snapshot JSON as a dedicated historical artifact; see [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_CYCLE_LIFECYCLE_PLAN.md)
 - historical close-out meaning must remain point-in-time and must not be rewritten from later settings; see [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) and [CHANGES.md](/home/ubuntu/dosh/docs/CHANGES.md)
-- budget health Phase 2 already anticipates closer use of close-out commentary and revision signals; see [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/docs/plans/BUDGET_HEALTH_ADDENDUM.md)
+- budget health Phase 2 already anticipates closer use of close-out commentary and revision signals; see [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/docs/archive/BUDGET_HEALTH_ADDENDUM.md)
 - close-out hardening, consequence visibility, and snapshot-based reporting are already active development directions; see [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md)
 
 ## Discovery Framing

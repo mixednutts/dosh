@@ -99,31 +99,12 @@ describe('budget and health client helpers', () => {
     expect(updated).toEqual({ ok: true })
   })
 
-  it('manages health matrix items and custom metrics', async () => {
+  it('manages health matrix items', async () => {
     mockInstance.patch.mockResolvedValue({ data: { ok: true } })
-    mockInstance.post.mockResolvedValue({ data: { metric_id: 5 } })
-    mockInstance.delete.mockResolvedValue({ data: { ok: true } })
-    mockInstance.get.mockResolvedValue({ data: [] })
-    const {
-      updateMatrixItem,
-      createCustomMetric,
-      removeMatrixItem,
-      getHealthScales,
-    } = require('../api/client')
+    const { updateMatrixItem } = require('../api/client')
 
     await updateMatrixItem(1, 2, { weight: 0.5 })
     expect(mockInstance.patch).toHaveBeenCalledWith('/budgets/1/health-matrix/items/2', { weight: 0.5 })
-
-    const metric = await createCustomMetric(1, { name: 'M' })
-    expect(mockInstance.post).toHaveBeenCalledWith('/budgets/1/health-matrix/metrics', { name: 'M' })
-    expect(metric).toEqual({ metric_id: 5 })
-
-    await removeMatrixItem(1, 2)
-    expect(mockInstance.delete).toHaveBeenCalledWith('/budgets/1/health-matrix/items/2')
-
-    const scales = await getHealthScales(1)
-    expect(mockInstance.get).toHaveBeenCalledWith('/budgets/1/health-matrix/scales')
-    expect(scales).toEqual([])
   })
 })
 

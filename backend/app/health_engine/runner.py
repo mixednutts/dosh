@@ -2,102 +2,23 @@
 
 Orchestrates the evaluation of budget health by:
 1. Loading the budget's active health matrix
-2. Resolving and executing data sources
-3. Evaluating metric formulas
-4. Executing metric scoring logic
-5. Aggregating overall scores and momentum
-6. Persisting period snapshots when requested
+2. Executing metric scoring logic directly by metric key
+3. Aggregating overall scores and momentum
+4. Persisting period snapshots when requested
 """
 
 from __future__ import annotations
 
 import json
 from datetime import datetime, timezone
-from decimal import Decimal
 from typing import TYPE_CHECKING
 
 from sqlalchemy.orm import Session
 
-from .formula_evaluator import evaluate_formula
 from .metric_executors import get_executor
 
 if TYPE_CHECKING:
     from ..models import Budget, FinancialPeriod
-
-
-def _resolve_data_source(
-    db: Session,
-    source_key: str,
-    params: dict[str, int],
-    cache: dict[str, Decimal],
-) -> Decimal:
-    """Execute a HealthDataSource and cache the result per request."""
-    cache_key = f"{source_key}:{json.dumps(params, sort_keys=True)}"
-    if cache_key in cache:
-        return cache[cache_key]
-
-    from ..models import HealthDataSource
-
-    ds = db.query(HealthDataSource).filter_by(source_key=source_key).first()
-    if not ds:
-        raise ValueError(f"Unknown data source: {source_key}")
-
-    # Import and call the executor function by path
-    module_path, func_name = ds.executor_path.rsplit(".", 1)
-    module = __import__(module_path, fromlist=[func_name])
-    func = getattr(module, func_name)
-
-    result = func(db, **params)
-    decimal_result = Decimal(str(result or 0))
-    cache[cache_key] = decimal_result
-    return decimal_result
-
-
-def _build_data_source_params(
-    metric,
-    budgetid: int,
-    period: FinancialPeriod | None,
-) -> dict[str, dict[str, int]]:
-    """Map each referenced data source to its parameter values."""
-    source_keys = json.loads(metric.formula_data_sources_json or "[]")
-    params_map: dict[str, dict[str, int]] = {}
-    for source_key in source_keys:
-        # Simple parameter resolution based on known patterns
-        if source_key in {
-            "total_budgeted_income",
-            "total_budgeted_expenses",
-            "total_actual_expenses",
-            "revised_line_count",
-            "live_period_surplus",
-            "period_progress_ratio",
-        }:
-            params_map[source_key] = {"finperiodid": period.finperiodid} if period else {"finperiodid": -1}
-        else:
-            params_map[source_key] = {"budgetid": budgetid}
-    return params_map
-
-
-def _load_threshold_value(
-    item,
-    metric,
-) -> Decimal | None:
-    """Load the effective threshold value for a metric from its matrix item or metric default."""
-    value_json = None
-    if item and getattr(item, "threshold_value_json", None) is not None:
-        value_json = item.threshold_value_json
-    elif metric and getattr(metric, "default_value_json", None) is not None:
-        value_json = metric.default_value_json
-
-    if value_json is None:
-        return None
-
-    try:
-        raw = json.loads(value_json)
-        if raw is None:
-            return None
-        return Decimal(str(raw)) if isinstance(raw, (int, float, str, Decimal)) else None
-    except (json.JSONDecodeError, ValueError):
-        return None
 
 
 def evaluate_period_health(
@@ -124,56 +45,25 @@ def evaluate_period_health(
     )
 
     results = []
-    cache: dict[str, Decimal] = {}
 
     for item in items:
         metric = item.metric
         if not metric:
             continue
 
-        # Resolve data sources
-        source_params_map = _build_data_source_params(metric, budget.budgetid, period)
-        source_values: dict[str, Decimal] = {}
-        for source_key, params in source_params_map.items():
-            try:
-                source_values[source_key] = _resolve_data_source(db, source_key, params, cache)
-            except Exception:
-                source_values[source_key] = Decimal(0)
-
-        # Evaluate formula
         try:
-            formula_result = evaluate_formula(metric.formula_expression, source_values)
+            parameters = json.loads(item.parameters_json or "{}")
         except Exception:
-            formula_result = Decimal(0)
+            parameters = {}
 
-        # Load threshold
-        threshold_value = _load_threshold_value(item, metric)
-
-        # Execute metric logic
-        scoring_logic = {}
-        try:
-            scoring_logic = json.loads(metric.scoring_logic_json or "{}")
-        except Exception:
-            scoring_logic = {}
-
-        evidence_templates = {}
-        try:
-            evidence_templates = json.loads(metric.evidence_template_json or "{}")
-        except Exception:
-            evidence_templates = {}
-
-        executor = get_executor(metric.template_key or "", scoring_logic.get("type"))
+        executor = get_executor(metric.metric_key)
         metric_result = executor(
             db=db,
             budget=budget,
             period=period,
-            formula_result=formula_result,
-            threshold_value=threshold_value,
+            parameters=parameters,
             scoring_sensitivity=item.scoring_sensitivity,
             tone=tone,
-            source_values=source_values,
-            metric_name=metric.name,
-            evidence_templates=evidence_templates,
         )
 
         results.append({
@@ -185,7 +75,6 @@ def evaluate_period_health(
             "status": metric_result["status"],
             "summary": metric_result["summary"],
             "evidence": metric_result["evidence"],
-            "drill_down": metric_result.get("drill_down", []),
         })
 
     return results
@@ -200,8 +89,7 @@ def evaluate_budget_health(
     Returns a payload similar to the legacy BudgetHealthOut schema.
     """
     from ..models import Budget, BudgetHealthMatrix, BudgetHealthMatrixItem, FinancialPeriod
-    from ..cycle_constants import CURRENT_STAGE, PENDING_CLOSURE_STAGE, CLOSED
-    from datetime import datetime, timezone
+    from ..cycle_constants import CLOSED
 
     budget = db.get(Budget, budgetid)
     if not budget:
@@ -255,7 +143,6 @@ def evaluate_budget_health(
             "status": r["status"],
             "summary": r["summary"],
             "evidence": [{"label": e} for e in r["evidence"]],
-            "drill_down": r.get("drill_down", []),
         })
 
     # Current period check (for legacy compatibility)
@@ -275,7 +162,7 @@ def evaluate_budget_health(
         }
 
     return {
-        "version": "engine-phase2-v1",
+        "version": "engine-v1",
         "overall_score": overall_score,
         "overall_status": overall_status,
         "pillars": pillars,
@@ -297,7 +184,6 @@ def _health_status(score: int) -> str:
 def _compute_momentum(db: Session, budgetid: int, matrix) -> tuple[str, int]:
     """Compute momentum based on historical PeriodHealthResult snapshots."""
     from ..models import PeriodHealthResult, FinancialPeriod
-    from ..cycle_constants import CLOSED
 
     # For Phase B, use a simplified momentum based on overall score trend across last 6 closed periods
     closed_periods = (
@@ -376,7 +262,6 @@ def persist_period_health_snapshot(
             status=result["status"],
             summary=result["summary"],
             evidence_json=json.dumps(result["evidence"]),
-            drill_down_json=json.dumps(result.get("drill_down", [])),
             is_snapshot=True,
         ))
 

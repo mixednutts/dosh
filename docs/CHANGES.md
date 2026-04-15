@@ -4,7 +4,54 @@ This document captures the key product and implementation changes made during re
 
 It is intended to complement [README.md](/home/ubuntu/dosh/README.md), not replace it.
 
-## Latest Session: Budget Health Engine — Custom Metric Scoring Fix (0.4.8-alpha)
+## Latest Session: Budget Health Engine Simplification and Destructive Migration (0.5.0-alpha)
+
+This session radically simplified the Budget Health Engine to two hard-coded system metrics with user-tunable parameters. All template, data-source, scale, custom-metric, drill-down, and dynamic-formula concepts were removed. A destructive Alembic migration drops obsolete tables, recreates the simplified schema, and backfills every budget with fresh defaults.
+
+### What changed
+
+- **Schema simplification (`models.py` and destructive migration):**
+  - Removed `HealthMetricTemplate`, `HealthMatrixTemplate`, `HealthMatrixTemplateItem`, `HealthDataSource`, `HealthDataSourceParameter`, `HealthScale`, `HealthScaleOption`, `HealthThresholdDefinition`, and `BudgetMetricThreshold`.
+  - Simplified `HealthMetric` to `metric_id`, `budgetid`, `metric_key`, `name`, `description`, `scope`, `created_at`.
+  - Replaced `threshold_value_json` with `parameters_json` on `BudgetHealthMatrixItem`.
+  - Removed `drill_down_enabled` from `HealthMetric` and `drill_down_json` from `PeriodHealthResult`.
+  - Created `backend/alembic/versions/e1096e3868f0_simplify_budget_health_engine.py` as a destructive rebuild migration: drops all legacy health tables, recreates the four simplified tables (`healthmetrics`, `budgethealthmatrices`, `budgethealthmatrixitems`, `periodhealthresults`, `budgethealthsummaries`), then backfills every budget with `setup_health` and `budget_discipline`.
+
+- **Engine refactoring:**
+  - Rewrote `health_engine_seed.py` to only export `create_default_matrix_for_budget`, seeding the two metrics with fresh default parameters.
+  - Rewrote `metric_executors.py` with tone-aware `_setup_health_executor` and `_budget_discipline_executor`; removed `custom_metric_v1` and formula-driven executors.
+  - Deleted `formula_evaluator.py` and `health_engine_data_sources.py`.
+  - Rewrote `runner.py` to resolve executors directly by `metric_key` and pass `parameters_json` dicts.
+  - Simplified `health_matrices.py` router to only `GET /` and `PATCH /items/{metric_id}`.
+
+- **Frontend simplification:**
+  - Removed template selector, metric builder, scope tabs, Add Metric button, and dev-mode template controls from `BudgetHealthTab.jsx`.
+  - Rendered only two metric cards with enable/disable, weight, sensitivity, and exposed parameter inputs.
+  - Removed drill-down UI from `BudgetsPage.jsx` health modals.
+  - Removed obsolete API helpers from `client.js`.
+
+- **Cleanup and test updates:**
+  - Deleted orphaned backend scripts (`cleanup_empty_health_matrices.py`, `cleanup_orphaned_health_records.py`, `diagnose_orphaned_health_records.py`).
+  - Audited the entire codebase and removed all remaining references to deleted concepts.
+  - Rewrote `test_health_engine.py`, `test_health_matrices.py`, and `BudgetHealthTab.test.jsx`.
+  - Updated integration tests (`test_closeout_flow.py`, `test_lifecycle_and_health.py`) to expect valid health data from the simplified engine.
+  - All 21 backend tests and 19 frontend tests pass.
+
+- **Documentation:**
+  - Moved legacy plan documents (`BUDGET_HEALTH_ENGINE_PLAN.md`, `BUDGET_HEALTH_ADDENDUM.md`, `BUDGET_HEALTH_TEMPLATE_LIBRARY.md`) to `docs/archive/`.
+  - Updated `DOCUMENTATION_FRAMEWORK.md` with archive guidance and `DOCUMENT_REGISTER.md` with archived entries.
+  - Updated cross-references in `AGENTS.md`, `CHANGES.md`, `DEVELOPMENT_ACTIVITIES.md`, and other docs to point to `docs/archive/`.
+
+- **Deployment:**
+  - Rebuilt and redeployed the local Docker container using `INCLUDE_OVERRIDE=true ./scripts/release_with_migrations.sh`.
+  - Verified `/api/health` returns `{"status":"ok","app":"Dosh"}` post-deployment.
+
+- **Version bump:**
+  - Bumped version to `0.5.0-alpha` using `scripts/bump_version.py` because this is a breaking architectural simplification of the Budget Health Engine.
+
+---
+
+## Previous Session: Budget Health Engine — Custom Metric Scoring Fix (0.4.8-alpha)
 
 This session fixed custom metrics in the Budget Health Engine so they compute real scores instead of returning a fallback "Metric evaluation not yet implemented" result.
 
@@ -93,7 +140,7 @@ This session simplified the Budget Health Engine by removing the separate `Healt
   - Updated `backend/tests/test_health_matrices.py`, `frontend/src/__tests__/BudgetHealthTab.test.jsx`, and `frontend/src/__tests__/client.test.js` to match the new API shapes.
 
 - **Documentation:**
-  - Updated `docs/plans/BUDGET_HEALTH_ENGINE_PLAN.md` and `docs/plans/BUDGET_HEALTH_TEMPLATE_LIBRARY.md` to reflect the simplified data model.
+  - Updated `docs/archive/BUDGET_HEALTH_ENGINE_PLAN.md` and `docs/archive/BUDGET_HEALTH_TEMPLATE_LIBRARY.md` to reflect the simplified data model.
   - Updated `AGENTS.md` and `docs/DEVELOPMENT_ACTIVITIES.md` to remove references to the deleted models.
 
 ### Verification
@@ -139,7 +186,7 @@ Its purpose is to preserve decision-making context so future sessions can unders
 - what constraints or product rules now exist
 - what ideas were intentionally deferred rather than forgotten
 
-For staged budget health metrics direction, also read [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/docs/plans/BUDGET_HEALTH_ADDENDUM.md).
+For staged budget health metrics direction, also read [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/docs/archive/BUDGET_HEALTH_ADDENDUM.md).
 
 For the detailed budget-cycle lifecycle and close-out plan that informed this session's implementation, read [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_CYCLE_LIFECYCLE_PLAN.md).
 

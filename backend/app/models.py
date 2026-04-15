@@ -342,100 +342,19 @@ class SetupRevisionEvent(Base):
     budget = relationship("Budget", back_populates="setup_revision_events")
 
 
-class HealthDataSource(Base):
-    __tablename__ = "healthdatasources"
-    source_key = Column(String, primary_key=True)
-    name = Column(String, nullable=False)
-    description = Column(Text)
-    version = Column(Integer, nullable=False, default=1)
-    executor_path = Column(String, nullable=False)
-    return_type = Column(String, nullable=False)
-    cache_ttl_seconds = Column(Integer, default=0)
-
-
-class HealthDataSourceParameter(Base):
-    __tablename__ = "healthdatasourceparameters"
-    source_key = Column(String, ForeignKey("healthdatasources.source_key"), primary_key=True)
-    param_name = Column(String, primary_key=True)
-    param_type = Column(String, nullable=False)
-    default_value = Column(Text, nullable=True)
-    is_required = Column(Boolean, default=True)
-
-
-class HealthScale(Base):
-    __tablename__ = "healthscales"
-    scale_key = Column(String, primary_key=True)
-    name = Column(String, nullable=False)
-    scale_type = Column(String, nullable=False)
-    min_value = Column(Numeric, nullable=True)
-    max_value = Column(Numeric, nullable=True)
-    step_value = Column(Numeric, nullable=True)
-    unit_label = Column(String, nullable=True)
-
-
-class HealthScaleOption(Base):
-    __tablename__ = "healthscaleoptions"
-    scale_key = Column(String, ForeignKey("healthscales.scale_key"), primary_key=True)
-    option_value = Column(String, primary_key=True)
-    option_label = Column(String, nullable=False)
-    option_order = Column(Integer, default=0)
-
-
-class HealthMetricTemplate(Base):
-    __tablename__ = "healthmetrictemplates"
-    template_key = Column(String, primary_key=True)
-    name = Column(String, nullable=False)
-    description = Column(Text)
-    scope = Column(String, nullable=False)
-    formula_expression = Column(Text, nullable=False)
-    formula_data_sources_json = Column(Text, nullable=False)
-    scale_key = Column(String, ForeignKey("healthscales.scale_key"), nullable=True)
-    default_value_json = Column(Text, nullable=False, default="{}")
-    scoring_logic_json = Column(Text, nullable=False)
-    evidence_template_json = Column(Text, nullable=False)
-    drill_down_enabled = Column(Boolean, default=False)
-    is_system = Column(Boolean, default=False)
-
-    scale = relationship("HealthScale")
-
-
 class HealthMetric(Base):
     __tablename__ = "healthmetrics"
     metric_id = Column(Integer, primary_key=True, autoincrement=True)
-    template_key = Column(String, ForeignKey("healthmetrictemplates.template_key"), nullable=True)
-    budgetid = Column(Integer, ForeignKey("budgets.budgetid"), nullable=True)
+    budgetid = Column(Integer, ForeignKey("budgets.budgetid"), nullable=False)
+    metric_key = Column(String, nullable=False)
     name = Column(String, nullable=False)
     description = Column(Text)
     scope = Column(String, nullable=False)
-    formula_expression = Column(Text, nullable=False)
-    formula_data_sources_json = Column(Text, nullable=False)
-    scale_key = Column(String, ForeignKey("healthscales.scale_key"), nullable=True)
-    default_value_json = Column(Text, nullable=False, default="{}")
-    scoring_logic_json = Column(Text, nullable=False)
-    evidence_template_json = Column(Text, nullable=False)
-    drill_down_enabled = Column(Boolean, default=False)
     created_at = Column(UTCDateTime, default=lambda: dt.now(timezone.utc))
 
-    scale = relationship("HealthScale")
     budget = relationship("Budget", back_populates="health_metrics")
     matrix_items = relationship("BudgetHealthMatrixItem", back_populates="metric", cascade="all, delete-orphan")
     period_results = relationship("PeriodHealthResult", back_populates="metric", cascade="all, delete-orphan")
-
-
-class HealthMatrixTemplate(Base):
-    __tablename__ = "healthmatrixtemplates"
-    template_key = Column(String, primary_key=True)
-    name = Column(String, nullable=False)
-    description = Column(Text)
-    is_system = Column(Boolean, default=False)
-
-
-class HealthMatrixTemplateItem(Base):
-    __tablename__ = "healthmatrixtemplateitems"
-    template_key = Column(String, ForeignKey("healthmatrixtemplates.template_key"), primary_key=True)
-    metric_template_key = Column(String, ForeignKey("healthmetrictemplates.template_key"), primary_key=True)
-    weight = Column(Numeric(5, 4), nullable=False)
-    display_order = Column(Integer, default=0)
 
 
 class BudgetHealthMatrix(Base):
@@ -443,8 +362,6 @@ class BudgetHealthMatrix(Base):
     matrix_id = Column(Integer, primary_key=True, autoincrement=True)
     budgetid = Column(Integer, ForeignKey("budgets.budgetid"), nullable=False)
     name = Column(String, nullable=False)
-    based_on_template_key = Column(String, ForeignKey("healthmatrixtemplates.template_key"), nullable=True)
-    cloned_from_matrix_id = Column(Integer, ForeignKey("budgethealthmatrices.matrix_id"), nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(UTCDateTime, default=lambda: dt.now(timezone.utc))
 
@@ -462,7 +379,7 @@ class BudgetHealthMatrixItem(Base):
     scoring_sensitivity = Column(Integer, nullable=False, default=50)
     display_order = Column(Integer, default=0)
     is_enabled = Column(Boolean, default=True)
-    threshold_value_json = Column(Text, nullable=True)
+    parameters_json = Column(Text, nullable=False, default="{}")
 
     matrix = relationship("BudgetHealthMatrix", back_populates="items")
     metric = relationship("HealthMetric", back_populates="matrix_items")
@@ -479,7 +396,6 @@ class PeriodHealthResult(Base):
     status = Column(String, nullable=False)
     summary = Column(Text, nullable=False)
     evidence_json = Column(Text, nullable=False, default="[]")
-    drill_down_json = Column(Text, nullable=True)
     is_snapshot = Column(Boolean, default=False)
 
     period = relationship("FinancialPeriod", back_populates="health_results")

@@ -1,203 +1,166 @@
-from __future__ import annotations
-
-from datetime import datetime, timezone
 from decimal import Decimal
 
-from app.health_engine.formula_evaluator import evaluate_formula
 from app.health_engine.metric_executors import get_executor
-from app.health_engine.runner import evaluate_budget_health, evaluate_period_health
-from app.models import Budget, FinancialPeriod
-
-from .factories import create_budget, create_expense_item, create_income_type
+from app.health_engine.runner import evaluate_budget_health, evaluate_period_health, _compute_momentum
 
 
-def test_evaluate_formula_basic() -> None:
-    result = evaluate_formula("a + b * 2", {"a": Decimal("1"), "b": Decimal("3")})
-    assert result == Decimal("7")
-
-
-def test_evaluate_formula_division() -> None:
-    result = evaluate_formula("a / 2", {"a": Decimal("5")})
-    assert result == Decimal("2.5")
-
-
-def test_evaluate_formula_parentheses() -> None:
-    result = evaluate_formula("(a + b) * 2", {"a": Decimal("1"), "b": Decimal("2")})
-    assert result == Decimal("6")
-
-
-def test_evaluate_formula_zero_division_raises() -> None:
-    import pytest
-    with pytest.raises(ZeroDivisionError):
-        evaluate_formula("a / 0", {"a": Decimal("5")})
-
-
-def test_evaluate_formula_invalid_token_raises() -> None:
-    import pytest
-    with pytest.raises(ValueError):
-        evaluate_formula("a + $", {"a": Decimal("5")})
-
-
-def test_get_executor_returns_fallback_for_unknown_key() -> None:
-    executor = get_executor("nonexistent")
-    result = executor()
-    assert result["score"] == 50
-    assert result["status"] == "Watch"
-
-
-def test_get_executor_returns_fallback_for_legacy_keys() -> None:
-    """Legacy metric template keys no longer have dedicated executors."""
-    for key in ("setup_health", "budget_discipline", "planning_stability", "current_period_check"):
-        executor = get_executor(key)
-        result = executor()
-        assert result["score"] == 50
-        assert result["status"] == "Watch"
-
-
-def test_get_executor_returns_custom_metric_v1_for_scoring_logic_type() -> None:
-    executor = get_executor("", "custom_metric_v1")
+def test_get_executor_returns_setup_health_executor(client, db_session) -> None:
+    from tests.factories import create_budget
+    budget = create_budget(db_session)
+    executor = get_executor("setup_health")
     result = executor(
-        db=None,
-        budget=None,
+        db=db_session,
+        budget=budget,
         period=None,
-        formula_result=Decimal("0"),
-        threshold_value=Decimal("0"),
+        parameters={"min_income_lines": 1, "min_expense_lines": 1, "min_investment_lines": 1},
         scoring_sensitivity=50,
         tone="factual",
-        source_values={},
+    )
+    assert "score" in result
+    assert "status" in result
+    assert "summary" in result
+    assert "evidence" in result
+
+
+def test_setup_health_executor_perfect_score(client, db_session) -> None:
+    from tests.factories import create_budget
+    from app.models import IncomeType, ExpenseItem, InvestmentItem
+
+    budget = create_budget(db_session)
+    db_session.add(IncomeType(budgetid=budget.budgetid, incomedesc="Salary", amount=Decimal("1000")))
+    db_session.add(ExpenseItem(budgetid=budget.budgetid, expensedesc="Rent", active=True))
+    db_session.add(InvestmentItem(budgetid=budget.budgetid, investmentdesc="Shares", active=True))
+    db_session.commit()
+
+    executor = get_executor("setup_health")
+    result = executor(
+        db=db_session,
+        budget=budget,
+        period=None,
+        parameters={"min_income_lines": 1, "min_expense_lines": 1, "min_investment_lines": 1},
+        scoring_sensitivity=50,
+        tone="factual",
     )
     assert result["score"] == 100
     assert result["status"] == "Strong"
 
 
-def test_custom_metric_v1_executor_penalizes_above_threshold() -> None:
-    executor = get_executor("", "custom_metric_v1")
+def test_setup_health_executor_penalises_missing_items(client, db_session) -> None:
+    from tests.factories import create_budget
+
+    budget = create_budget(db_session)
+    executor = get_executor("setup_health")
     result = executor(
-        db=None,
-        budget=None,
+        db=db_session,
+        budget=budget,
         period=None,
-        formula_result=Decimal("50"),
-        threshold_value=Decimal("0"),
+        parameters={"min_income_lines": 1, "min_expense_lines": 1, "min_investment_lines": 1},
+        scoring_sensitivity=100,
+        tone="factual",
+    )
+    assert result["score"] < 100
+    assert result["status"] == "Needs Attention"
+
+
+def test_budget_discipline_executor_no_history(client, db_session) -> None:
+    from tests.factories import create_budget
+
+    budget = create_budget(db_session)
+    executor = get_executor("budget_discipline")
+    result = executor(
+        db=db_session,
+        budget=budget,
+        period=None,
+        parameters={"max_overrun_dollar": 0, "max_overrun_pct_of_expenses": 10},
         scoring_sensitivity=50,
         tone="factual",
-        source_values={},
+    )
+    assert result["score"] == 100
+    assert result["status"] == "Strong"
+    assert "No closed historical periods" in result["summary"]
+
+
+def test_budget_discipline_executor_penalises_overrun(client, db_session) -> None:
+    from datetime import datetime, timezone, timedelta
+    from tests.factories import create_budget
+    from app.models import FinancialPeriod, PeriodExpense, ExpenseItem
+
+    budget = create_budget(db_session)
+    db_session.add(ExpenseItem(budgetid=budget.budgetid, expensedesc="Rent", active=True, expenseamount=Decimal("500")))
+    db_session.commit()
+
+    now = datetime.now(timezone.utc)
+    period = FinancialPeriod(
+        budgetid=budget.budgetid,
+        startdate=now - timedelta(days=30),
+        enddate=now - timedelta(days=1),
+        islocked=True,
+    )
+    db_session.add(period)
+    db_session.flush()
+    db_session.add(PeriodExpense(finperiodid=period.finperiodid, budgetid=budget.budgetid, expensedesc="Rent", budgetamount=Decimal("500"), actualamount=Decimal("700")))
+    db_session.commit()
+
+    executor = get_executor("budget_discipline")
+    result = executor(
+        db=db_session,
+        budget=budget,
+        period=None,
+        parameters={"max_overrun_dollar": 0, "max_overrun_pct_of_expenses": 10},
+        scoring_sensitivity=50,
+        tone="factual",
     )
     assert result["score"] < 100
     assert result["status"] in ("Watch", "Needs Attention")
 
 
-def test_evaluate_period_health_with_empty_budget_matrix(client, db_session) -> None:
+def test_evaluate_budget_health_returns_structure(client, db_session) -> None:
+    from tests.factories import create_budget
+    from app.health_engine_seed import create_default_matrix_for_budget
+
     budget = create_budget(db_session)
-    create_income_type(db_session, budgetid=budget.budgetid)
-    create_expense_item(db_session, budgetid=budget.budgetid)
-
-    period = FinancialPeriod(
-        budgetid=budget.budgetid,
-        startdate=datetime(2025, 1, 1, tzinfo=timezone.utc),
-        enddate=datetime(2025, 1, 31, tzinfo=timezone.utc),
-    )
-    db_session.add(period)
+    create_default_matrix_for_budget(db_session, budget)
     db_session.commit()
-    db_session.refresh(period)
 
+    payload = evaluate_budget_health(db_session, budget.budgetid)
+    assert payload is not None
+    assert "overall_score" in payload
+    assert "overall_status" in payload
+    assert "pillars" in payload
+    assert "momentum_status" in payload
+    assert "current_period_check" in payload
+    assert payload["version"] == "engine-v1"
+
+
+def test_evaluate_period_health_returns_metrics(client, db_session) -> None:
+    from tests.factories import create_budget
+    from app.health_engine_seed import create_default_matrix_for_budget
     from app.models import BudgetHealthMatrix
 
-    matrix = db_session.query(BudgetHealthMatrix).filter_by(budgetid=budget.budgetid, is_active=True).first()
-    assert matrix is not None
-
-    results = evaluate_period_health(db_session, budget, period, matrix)
-    assert isinstance(results, list)
-
-
-def test_evaluate_budget_health_returns_none_for_missing_budget(db_session) -> None:
-    result = evaluate_budget_health(db_session, budgetid=-999)
-    assert result is None
-
-
-def test_evaluate_budget_health_returns_none_for_missing_matrix(client, db_session) -> None:
     budget = create_budget(db_session)
-    from app.models import BudgetHealthMatrix, BudgetHealthMatrixItem
-
-    matrix = db_session.query(BudgetHealthMatrix).filter_by(budgetid=budget.budgetid).first()
-    assert matrix is not None
-    db_session.query(BudgetHealthMatrixItem).filter_by(matrix_id=matrix.matrix_id).delete()
-    db_session.query(BudgetHealthMatrix).filter_by(budgetid=budget.budgetid).delete()
+    create_default_matrix_for_budget(db_session, budget)
     db_session.commit()
-
-    result = evaluate_budget_health(db_session, budget.budgetid)
-    assert result is None
-
-
-def test_evaluate_budget_health_returns_none_for_empty_matrix(client, db_session) -> None:
-    budget = create_budget(db_session)
-    create_income_type(db_session, budgetid=budget.budgetid)
-    create_expense_item(db_session, budgetid=budget.budgetid)
-
-    period = FinancialPeriod(
-        budgetid=budget.budgetid,
-        startdate=datetime(2025, 1, 1, tzinfo=timezone.utc),
-        enddate=datetime(2025, 1, 31, tzinfo=timezone.utc),
-    )
-    db_session.add(period)
-    db_session.commit()
-    db_session.refresh(period)
-
-    # Default matrix is empty (no metric templates seeded), so evaluation returns None
-    result = evaluate_budget_health(db_session, budget.budgetid)
-    assert result is None
-
-
-def test_evaluate_budget_health_returns_structure_with_custom_metric(client, db_session) -> None:
-    from app.models import BudgetHealthMatrix, BudgetHealthMatrixItem, HealthMetric, HealthScale, HealthDataSource
-    budget = create_budget(db_session)
-    create_income_type(db_session, budgetid=budget.budgetid)
-    create_expense_item(db_session, budgetid=budget.budgetid)
-
-    period = FinancialPeriod(
-        budgetid=budget.budgetid,
-        startdate=datetime(2025, 1, 1, tzinfo=timezone.utc),
-        enddate=datetime(2025, 1, 31, tzinfo=timezone.utc),
-    )
-    db_session.add(period)
-    db_session.commit()
-    db_session.refresh(period)
-
-    # Seed required catalog rows and add a custom metric to the matrix
-    if not db_session.query(HealthScale).filter_by(scale_key="percentage_0_100").first():
-        db_session.add(HealthScale(scale_key="percentage_0_100", name="Percentage", scale_type="integer_range", min_value=0, max_value=100, step_value=1))
-    if not db_session.query(HealthDataSource).filter_by(source_key="income_source_count").first():
-        db_session.add(HealthDataSource(source_key="income_source_count", name="Income Count", return_type="int", executor_path=""))
-    db_session.flush()
-
-    metric = HealthMetric(
-        budgetid=budget.budgetid,
-        name="Test Metric",
-        scope="OVERALL",
-        formula_expression="income_source_count",
-        formula_data_sources_json='["income_source_count"]',
-        scale_key="percentage_0_100",
-        default_value_json="0",
-        scoring_logic_json='{"type":"custom_metric_v1"}',
-        evidence_template_json='{"supportive":"Test Metric looks good.","factual":"Test Metric evaluated.","friendly":"Test Metric is doing fine!"}',
-    )
-    db_session.add(metric)
-    db_session.flush()
 
     matrix = db_session.query(BudgetHealthMatrix).filter_by(budgetid=budget.budgetid, is_active=True).first()
-    db_session.add(BudgetHealthMatrixItem(
-        matrix_id=matrix.matrix_id,
-        metric_id=metric.metric_id,
-        weight=1.0,
-        scoring_sensitivity=50,
-        display_order=0,
-        is_enabled=True,
-    ))
+    results = evaluate_period_health(db_session, budget, None, matrix)
+    assert len(results) == 2
+    for r in results:
+        assert "score" in r
+        assert "status" in r
+        assert "summary" in r
+        assert "evidence" in r
+
+
+def test_compute_momentum_stable_with_no_history(client, db_session) -> None:
+    from tests.factories import create_budget
+    from app.health_engine_seed import create_default_matrix_for_budget
+    from app.models import BudgetHealthMatrix
+
+    budget = create_budget(db_session)
+    create_default_matrix_for_budget(db_session, budget)
     db_session.commit()
 
-    result = evaluate_budget_health(db_session, budget.budgetid)
-    assert result is not None
-    assert "overall_score" in result
-    assert "overall_status" in result
-    assert "pillars" in result
-    assert "momentum_status" in result
-    assert 0 <= result["overall_score"] <= 100
+    matrix = db_session.query(BudgetHealthMatrix).filter_by(budgetid=budget.budgetid, is_active=True).first()
+    status, delta = _compute_momentum(db_session, budget.budgetid, matrix)
+    assert status == "Stable"
+    assert delta == 0

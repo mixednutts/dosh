@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException
 from ..api_docs import DbSession, error_responses
 from ..demo_budget import create_standard_demo_budget
 from ..health_engine import evaluate_budget_health
-from ..health_engine_seed import create_default_matrix_for_budget, create_standard_templates, seed_catalogs
+from ..health_engine_seed import create_default_matrix_for_budget
 from ..models import Budget
 from ..runtime_settings import dev_mode_enabled
 from ..schemas import (
@@ -31,9 +31,6 @@ def create_budget(payload: BudgetCreate, db: DbSession):
     db.add(budget)
     db.commit()
     db.refresh(budget)
-    # Ensure catalogs and templates exist, then create default matrix for this budget
-    seed_catalogs(db)
-    create_standard_templates(db)
     create_default_matrix_for_budget(db, budget)
     db.commit()
     db.refresh(budget)

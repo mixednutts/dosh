@@ -115,11 +115,14 @@ def test_closeout_health_snapshot_stays_historical_after_budget_preference_chang
     stored_snapshot = json.loads(closeout_payload["closeout_snapshot"]["health_snapshot_json"])
     assert stored_snapshot == preview_health
 
-    # The Standard Budget Health matrix is now an empty shell, so the live health
-    # endpoint returns 404 (no meaningful matrix to evaluate). The important
-    # invariant is that the persisted snapshot never changes.
+    # After simplification, every budget gets a default health matrix with two
+    # system metrics, so the live health endpoint should return a valid result.
     health_response = client.get(f"/api/budgets/{budget.budgetid}/health")
-    assert health_response.status_code == 404, health_response.text
+    assert health_response.status_code == 200, health_response.text
+    health_payload = health_response.json()
+    assert "overall_score" in health_payload
+    assert "overall_status" in health_payload
+    assert "pillars" in health_payload
 
     period_detail = client.get(f"/api/periods/{active_period['finperiodid']}")
     assert period_detail.status_code == 200, period_detail.text

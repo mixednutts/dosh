@@ -1,8 +1,10 @@
-"""Metric executors — code-backed scoring logic for each metric template.
+"""Metric executors — code-backed scoring logic for each system metric.
 
 Each executor receives:
-- formula_result: Decimal from evaluating the metric's formula
-- threshold_value: the user's threshold/benchmark value for this metric
+- db: SQLAlchemy Session
+- budget: Budget model instance
+- period: FinancialPeriod model instance (may be None for OVERALL metrics)
+- parameters: dict parsed from BudgetHealthMatrixItem.parameters_json
 - scoring_sensitivity: int 0-100 controlling steepness of penalty curves
 - tone: str "supportive" | "factual" | "friendly"
 
@@ -11,14 +13,13 @@ Returns a dict with:
 - status: str "Strong" | "Watch" | "Needs Attention"
 - summary: str (tone-aware message)
 - evidence: list[str] (supporting details)
-- drill_down: list[dict] (optional structured references)
 """
 
 from __future__ import annotations
 
 import json
 from decimal import Decimal
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -38,93 +39,211 @@ def _health_status(score: int) -> str:
     return HEALTH_ATTENTION
 
 
-def _select_summary(template: dict, tone: str) -> str:
-    """Select summary text based on tone preference.
-
-    Supports both nested {"summary_templates": {"tone": ...}} and
-    flat {"supportive": ..., "factual": ..., "friendly": ...} formats.
-    """
-    if "summary_templates" in template:
-        templates = template.get("summary_templates", {})
-        return templates.get(tone, templates.get("factual", "Health check completed."))
-    # Flat format fallback
-    return template.get(tone, template.get("factual", "Health check completed."))
+def _clamp(value: int | float, min_val: int | float, max_val: int | float) -> int | float:
+    return max(min_val, min(max_val, value))
 
 
-# Registry mapping metric template keys to executor functions.
-METRIC_EXECUTORS: dict[str, Any] = {}
-
-
-# Registry mapping scoring logic types to executor functions.
-SCORING_LOGIC_EXECUTORS: dict[str, Any] = {}
-
-
-def _custom_metric_v1_executor(
+def _setup_health_executor(
     *,
-    db,
-    budget,
-    period,
-    formula_result,
-    threshold_value,
-    scoring_sensitivity,
-    tone,
-    source_values,
-    metric_name="Metric",
-    evidence_templates=None,
+    db: Session,
+    budget: Budget,
+    period: FinancialPeriod | None,
+    parameters: dict,
+    scoring_sensitivity: int,
+    tone: str,
     **kwargs,
-):
-    """Generic threshold-based executor for custom metrics.
+) -> dict:
+    """Evaluate setup completeness based on count of income, expense, and investment lines."""
+    from ..models import IncomeType, ExpenseItem, InvestmentItem
 
-    Interprets formula_result as 'lower is better' against threshold_value.
-    """
-    from decimal import Decimal
+    min_income = max(0, int(parameters.get("min_income_lines", 1)))
+    min_expense = max(0, int(parameters.get("min_expense_lines", 1)))
+    min_investment = max(0, int(parameters.get("min_investment_lines", 1)))
 
-    threshold = threshold_value if threshold_value is not None else Decimal(0)
+    income_count = db.query(IncomeType).filter_by(budgetid=budget.budgetid).count()
+    expense_count = db.query(ExpenseItem).filter_by(budgetid=budget.budgetid, active=True).count()
+    investment_count = db.query(InvestmentItem).filter_by(budgetid=budget.budgetid, active=True).count()
 
-    if formula_result <= threshold:
-        score = 100
-        status = HEALTH_STRONG
+    checks = {
+        "income": (income_count >= min_income, income_count, min_income, "income source"),
+        "expense": (expense_count >= min_expense, expense_count, min_expense, "active expense"),
+        "investment": (investment_count >= min_investment, investment_count, min_investment, "active investment"),
+    }
+
+    passed = sum(1 for ok, _, _, _ in checks.values() if ok)
+    total = len(checks)
+    base_score = int((passed / total) * 100) if total else 100
+
+    # Sensitivity adjusts how harshly missing items are penalised
+    sensitivity_factor = max(0.01, scoring_sensitivity / 50.0)
+    if base_score < 100:
+        penalty = (100 - base_score) * (sensitivity_factor - 1.0) * 0.5
+        score = int(_clamp(base_score - penalty, 0, 100))
     else:
-        delta = float(formula_result - threshold)
-        penalty = delta * max(0.01, scoring_sensitivity / 50.0)
-        score = max(0, int(100 - penalty))
-        status = _health_status(score)
+        score = 100
 
-    summary = _select_summary(evidence_templates or {}, tone)
-    if summary == "Health check completed.":
-        if score >= 80:
-            summary = f"{metric_name} is within target."
+    status = _health_status(score)
+
+    summaries = {
+        "supportive": (
+            "Your budget setup looks solid with the current income, expenses, and period coverage."
+            if score >= 80
+            else "It looks like a few setup pieces are still missing — adding them will help the budget health check."
+        ),
+        "factual": (
+            "Income sources, active expenses, and investment counts are within expected ranges."
+            if score >= 80
+            else "Income sources, active expenses, or investment counts are below the configured minimums."
+        ),
+        "friendly": (
+            "Looks like your budget is set up nicely — income, expenses, and investments are all in order!"
+            if score >= 80
+            else "A few more setup details and your budget will be looking great!"
+        ),
+    }
+
+    evidence = []
+    for ok, count, minimum, label in checks.values():
+        if ok:
+            evidence.append(f"{count} {label}{'s' if count != 1 else ''} configured (minimum {minimum})")
         else:
-            summary = f"{metric_name} has exceeded the threshold."
-
-    evidence = [f"{metric_name}: {formula_result:.2f} (threshold: {threshold:.2f})"]
+            evidence.append(f"{count} {label}{'s' if count != 1 else ''} configured — need at least {minimum}")
 
     return {
         "score": score,
         "status": status,
-        "summary": summary,
+        "summary": summaries.get(tone, summaries["factual"]),
         "evidence": evidence,
-        "drill_down": [],
     }
 
 
-SCORING_LOGIC_EXECUTORS["custom_metric_v1"] = _custom_metric_v1_executor
+def _budget_discipline_executor(
+    *,
+    db: Session,
+    budget: Budget,
+    period: FinancialPeriod | None,
+    parameters: dict,
+    scoring_sensitivity: int,
+    tone: str,
+    **kwargs,
+) -> dict:
+    """Evaluate historical expense overrun against user-defined dollar and percentage limits."""
+    from datetime import datetime, timezone
+    from ..models import FinancialPeriod, PeriodExpense
+
+    max_overrun_dollar = Decimal(str(parameters.get("max_overrun_dollar", 0)))
+    max_overrun_pct = Decimal(str(parameters.get("max_overrun_pct_of_expenses", 10)))
+
+    now = datetime.now(timezone.utc)
+    closed_periods = (
+        db.query(FinancialPeriod)
+        .filter(
+            FinancialPeriod.budgetid == budget.budgetid,
+            FinancialPeriod.enddate < now,
+            FinancialPeriod.islocked == True,
+        )
+        .all()
+    )
+
+    if not closed_periods:
+        score = 100
+        status = HEALTH_STRONG
+        summaries = {
+            "supportive": "Not enough history to judge discipline yet — check back after a few periods close out.",
+            "factual": "No closed historical periods available to evaluate budget discipline.",
+            "friendly": "No history yet — once a few periods wrap up, this score will come alive!",
+        }
+        evidence = ["No closed periods found"]
+        return {
+            "score": score,
+            "status": status,
+            "summary": summaries.get(tone, summaries["factual"]),
+            "evidence": evidence,
+        }
+
+    overruns = []
+    total_budgeted = Decimal(0)
+    total_actual = Decimal(0)
+    for p in closed_periods:
+        expenses = db.query(PeriodExpense).filter_by(finperiodid=p.finperiodid).all()
+        pb = sum((e.budgetamount or Decimal(0)) for e in expenses)
+        pa = sum((e.actualamount or Decimal(0)) for e in expenses)
+        total_budgeted += pb
+        total_actual += pa
+        if pb > 0:
+            overrun_dollar = pa - pb
+            overrun_pct = ((pa / pb) - Decimal(1)) * Decimal(100)
+            overruns.append({"dollar": overrun_dollar, "pct": overrun_pct, "budgeted": pb, "actual": pa})
+
+    if total_budgeted > 0:
+        avg_overrun_dollar = total_actual - total_budgeted
+        avg_overrun_pct = ((total_actual / total_budgeted) - Decimal(1)) * Decimal(100)
+    else:
+        avg_overrun_dollar = Decimal(0)
+        avg_overrun_pct = Decimal(0)
+
+    dollar_excess = max(Decimal(0), avg_overrun_dollar - max_overrun_dollar)
+    pct_excess = max(Decimal(0), avg_overrun_pct - max_overrun_pct)
+
+    sensitivity_factor = max(0.01, Decimal(scoring_sensitivity) / Decimal(50))
+
+    # Compute score
+    score = 100
+    if dollar_excess > 0:
+        score -= int(_clamp(float(dollar_excess) * float(sensitivity_factor) * 2, 0, 50))
+    if pct_excess > 0:
+        score -= int(_clamp(float(pct_excess) * float(sensitivity_factor) * 3, 0, 50))
+    score = int(_clamp(score, 0, 100))
+    status = _health_status(score)
+
+    summaries = {
+        "supportive": (
+            "Your historical spending is tracking within the tolerance you set."
+            if score >= 80
+            else "Historical spending has run a bit over budget compared to the tolerance you set."
+        ),
+        "factual": (
+            "Historical expense overrun is within configured limits."
+            if score >= 80
+            else "Historical expense overrun exceeds configured limits."
+        ),
+        "friendly": (
+            "Nice work keeping historical spending in line with your plan!"
+            if score >= 80
+            else "Looks like spending has crept past your set tolerance — worth a look."
+        ),
+    }
+
+    evidence = [
+        f"Average overrun: ${avg_overrun_dollar:.2f} (limit: ${max_overrun_dollar:.2f})",
+        f"Average overrun: {avg_overrun_pct:.1f}% of budgeted expenses (limit: {max_overrun_pct:.1f}%)",
+        f"Periods evaluated: {len(closed_periods)}",
+    ]
+
+    return {
+        "score": score,
+        "status": status,
+        "summary": summaries.get(tone, summaries["factual"]),
+        "evidence": evidence,
+    }
 
 
-def get_executor(metric_template_key: str, scoring_logic_type: str | None = None):
-    """Get the executor function for a metric template key or scoring logic type."""
-    executor = METRIC_EXECUTORS.get(metric_template_key)
-    if executor is None and scoring_logic_type:
-        executor = SCORING_LOGIC_EXECUTORS.get(scoring_logic_type)
+METRIC_EXECUTORS = {
+    "setup_health": _setup_health_executor,
+    "budget_discipline": _budget_discipline_executor,
+}
+
+
+def get_executor(metric_key: str):
+    """Get the executor function for a metric key."""
+    executor = METRIC_EXECUTORS.get(metric_key)
     if executor is None:
-        # Default fallback — return neutral score
         def fallback_executor(*args, **kwargs):
             return {
                 "score": 50,
                 "status": HEALTH_WATCH,
                 "summary": "Metric evaluation not yet implemented.",
                 "evidence": [],
-                "drill_down": [],
             }
         return fallback_executor
     return executor

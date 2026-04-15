@@ -12,8 +12,8 @@ Use it when:
 
 ## Current Baseline
 
-- current canonical app version: `0.4.8-alpha`
-- current UI display format: `v0.4.8-alpha`
+- current canonical app version: `0.5.0-alpha`
+- current UI display format: `v0.5.0-alpha`
 - current app state classification: `alpha`
 - current schema management authority: Alembic
 - current deployment path: Docker Compose

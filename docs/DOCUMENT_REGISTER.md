@@ -277,104 +277,6 @@ Maintenance notes:
 
 - should remain the main design reference for setup assessment and protection
 
-### BUDGET_HEALTH_ADDENDUM.md
-
-Document:
-
-- [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/docs/plans/BUDGET_HEALTH_ADDENDUM.md)
-
-Document type:
-
-- domain or workflow plan
-
-Primary purpose:
-
-- define budget health direction and staged health design considerations
-
-Primary source-of-truth scope:
-
-- health design direction
-- health interpretation and planned evolution
-
-Key relationships:
-
-- informs health-related roadmap work in [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md)
-- complements current-state descriptions in [README.md](/home/ubuntu/dosh/README.md)
-
-Maintenance notes:
-
-- should remain focused on health design direction rather than become a duplicate implementation log
-
-### BUDGET_HEALTH_ENGINE_PLAN.md
-
-Document:
-
-- [BUDGET_HEALTH_ENGINE_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_HEALTH_ENGINE_PLAN.md)
-
-Document type:
-
-- domain or workflow plan
-
-Primary purpose:
-
-- define the complete Budget Health Engine architecture, data models, personalization framework, execution flow, and transition plan
-
-Primary source-of-truth scope:
-
-- health engine data models (HealthDataSource, HealthMetricTemplate, HealthScale, BudgetHealthMatrix, PeriodHealthResult, etc.)
-- three-knob design (personalisation, scoring sensitivity, matrix weight)
-- safe formula evaluation boundaries
-- engine execution flow and metric executor patterns
-- phase-by-phase transition plan from legacy to engine
-- rollback procedures for each phase
-
-Key relationships:
-
-- implements the configurable health direction from [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/docs/plans/BUDGET_HEALTH_ADDENDUM.md)
-- informs health-related roadmap work in [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md)
-- implementation recorded in [CHANGES.md](/home/ubuntu/dosh/docs/CHANGES.md)
-- referenced by [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) for engine test coverage expectations
-
-Maintenance notes:
-
-- should remain the canonical design reference for the Budget Health Engine implementation
-- should be updated when engine behavior or data models change materially
-- transition phase status should be kept current until all phases are complete
-
-### BUDGET_HEALTH_TEMPLATE_LIBRARY.md
-
-Document:
-
-- [BUDGET_HEALTH_TEMPLATE_LIBRARY.md](/home/ubuntu/dosh/docs/plans/BUDGET_HEALTH_TEMPLATE_LIBRARY.md)
-
-Document type:
-
-- domain or workflow plan
-
-Primary purpose:
-
-- catalog current health engine templates, data sources, thresholds, and scoring logic
-- support future template design with documented examples and a design checklist
-
-Primary source-of-truth scope:
-
-- current data source executors and parameters
-- current metric templates (`setup_health`, `budget_discipline`, `planning_stability`, `current_period_check`)
-- current threshold definitions, scales, and metric mappings
-- current matrix template (`standard_budget_health`)
-- design checklist for new templates
-
-Key relationships:
-
-- references [BUDGET_HEALTH_ENGINE_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_HEALTH_ENGINE_PLAN.md) for architecture and data models
-- linked from [AGENTS.md](/home/ubuntu/dosh/AGENTS.md) as the operational template reference
-- informs health-related roadmap work in [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md)
-
-Maintenance notes:
-
-- should be updated whenever a new data source, metric template, threshold, or matrix template is added
-- should remain the canonical working reference for template definitions and real-world examples
-
 ### CASH_MANAGEMENT_WORKFLOW_PLAN.md
 
 Document:
@@ -1077,6 +979,86 @@ Key relationships:
 Maintenance notes:
 
 - should remain generic and reusable rather than project-policy-heavy
+
+## Archived Documents
+
+### BUDGET_HEALTH_ADDENDUM.md
+
+Document:
+
+- [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/docs/archive/BUDGET_HEALTH_ADDENDUM.md)
+
+Document type:
+
+- archived document
+
+Primary purpose:
+
+- historical reference for the original budget health addendum and staged design considerations
+
+Primary source-of-truth scope:
+
+- none (archived for historical context only)
+
+Key relationships:
+
+- superseded by the simplified Budget Health Engine implementation
+
+Maintenance notes:
+
+- do not update; preserved for historical context only
+
+### BUDGET_HEALTH_ENGINE_PLAN.md
+
+Document:
+
+- [BUDGET_HEALTH_ENGINE_PLAN.md](/home/ubuntu/dosh/docs/archive/BUDGET_HEALTH_ENGINE_PLAN.md)
+
+Document type:
+
+- archived document
+
+Primary purpose:
+
+- historical reference for the original full Budget Health Engine architecture, data models, personalization framework, execution flow, and transition plan
+
+Primary source-of-truth scope:
+
+- none (archived for historical context only)
+
+Key relationships:
+
+- superseded by the simplified Budget Health Engine implementation
+
+Maintenance notes:
+
+- do not update; preserved for historical context only
+
+### BUDGET_HEALTH_TEMPLATE_LIBRARY.md
+
+Document:
+
+- [BUDGET_HEALTH_TEMPLATE_LIBRARY.md](/home/ubuntu/dosh/docs/archive/BUDGET_HEALTH_TEMPLATE_LIBRARY.md)
+
+Document type:
+
+- archived document
+
+Primary purpose:
+
+- historical reference for the original health engine templates, data sources, thresholds, and scoring logic catalog
+
+Primary source-of-truth scope:
+
+- none (archived for historical context only)
+
+Key relationships:
+
+- superseded by the simplified Budget Health Engine implementation
+
+Maintenance notes:
+
+- do not update; preserved for historical context only
 
 ## Operational Helper Scripts
 

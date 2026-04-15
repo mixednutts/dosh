@@ -19,7 +19,7 @@ It complements:
 - [AGENTS.md](/home/ubuntu/dosh/AGENTS.md) for operational constraints and current state
 - [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md) for roadmap ownership and follow-up work
 - [CHANGES.md](/home/ubuntu/dosh/docs/CHANGES.md) for implementation history
-- [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/docs/plans/BUDGET_HEALTH_ADDENDUM.md) for broader health-direction guidance
+- [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/docs/archive/BUDGET_HEALTH_ADDENDUM.md) for broader health-direction guidance
 - [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) for validation posture
 
 ## Scope
@@ -35,7 +35,7 @@ This plan covers:
 This plan does not replace:
 
 - lifecycle and close-out rules in [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_CYCLE_LIFECYCLE_PLAN.md)
-- broad health scoring direction in [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/docs/plans/BUDGET_HEALTH_ADDENDUM.md)
+- broad health scoring direction in [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/docs/archive/BUDGET_HEALTH_ADDENDUM.md)
 - migration-strategy work, which still belongs elsewhere
 
 ## Definitions
@@ -173,6 +173,6 @@ Still-open follow-up that may build on this plan:
 - [AGENTS.md](/home/ubuntu/dosh/AGENTS.md)
 - [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md)
 - [CHANGES.md](/home/ubuntu/dosh/docs/CHANGES.md)
-- [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/docs/plans/BUDGET_HEALTH_ADDENDUM.md)
+- [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/docs/archive/BUDGET_HEALTH_ADDENDUM.md)
 - [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_CYCLE_LIFECYCLE_PLAN.md)
 - [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md)

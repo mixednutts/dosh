@@ -73,8 +73,11 @@ project-root/
     ├── plans/
     │   ├── <plan documents>
     │   └── ...
-    └── tests/
-        ├── <testing documents>
+    ├── tests/
+    │   ├── <testing documents>
+    │   └── ...
+    └── archive/
+        ├── <superseded or obsolete documents>
         └── ...
 ```
 
@@ -84,6 +87,7 @@ Folder guidance:
 - store most managed project documentation under `docs/`
 - group plan-type documents under `docs/plans/`
 - group testing documents under `docs/tests/`
+- group superseded or obsolete documents under `docs/archive/`
 - use additional subfolders only when they improve clarity and remain easy to navigate
 - avoid scattering managed documentation across unrelated project directories unless the document must live with code or tooling for a specific reason
 
@@ -282,6 +286,24 @@ Recommended structure:
 - constraints or guardrails
 - practical starting points
 - linked source documents
+
+### Archived Documents
+
+Purpose:
+
+- preserve superseded or obsolete documents that are no longer active sources of truth but still hold historical value
+
+Examples:
+
+- legacy plans that have been fully replaced by a new design
+- deprecated runbooks or workflow descriptions
+- old addenda that no longer apply to the current system
+
+Recommended structure:
+
+- move the original document into `docs/archive/` without rewriting its content
+- add a short header note indicating it is archived and optionally why
+- update `DOCUMENT_REGISTER.md` to list the document under the archive category
 
 ### Framework and Governance Documents
 

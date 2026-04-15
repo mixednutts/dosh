@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy.orm import Session
 
 from app.models import BalanceType, Budget, ExpenseItem, IncomeType, InvestmentItem
-from app.health_engine_seed import seed_catalogs, create_standard_templates, create_default_matrix_for_budget
+from app.health_engine_seed import create_default_matrix_for_budget
 
 
 def local_midnight_utc(value: datetime, timezone_str: str = "Australia/Sydney") -> datetime:
@@ -34,9 +34,6 @@ def create_budget(
     db.add(budget)
     db.commit()
     db.refresh(budget)
-    # Ensure catalogs/templates exist and create default matrix for this budget
-    seed_catalogs(db)
-    create_standard_templates(db)
     create_default_matrix_for_budget(db, budget)
     db.commit()
     db.refresh(budget)

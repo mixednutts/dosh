@@ -19,7 +19,7 @@ It complements:
 - [ROADMAP.md](/home/ubuntu/dosh/docs/ROADMAP.md) for the release-shaped overall delivery path across beta, Phase 2, and longer-view opportunities
 - [README.md](/home/ubuntu/dosh/README.md) for current-state product and technical overview
 - [CHANGES.md](/home/ubuntu/dosh/docs/CHANGES.md) for recorded product decisions and recent implementation history
-- [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/docs/plans/BUDGET_HEALTH_ADDENDUM.md) for staged budget health direction
+- [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/docs/archive/BUDGET_HEALTH_ADDENDUM.md) for staged budget health direction
 - [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_CYCLE_LIFECYCLE_PLAN.md) for the detailed cycle lifecycle and close-out plan that is now partially implemented
 - [LOCALISATION_SUPPORT_PLAN.md](/home/ubuntu/dosh/docs/plans/LOCALISATION_SUPPORT_PLAN.md) for the implemented regional formatting, numeric masked amount input, operator-triggered calculator behavior, and preference-resolution boundaries
 - [BUDGET_ADJUSTMENT_REVISION_HISTORY_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_ADJUSTMENT_REVISION_HISTORY_PLAN.md) for the budget-adjustment, revision-history, and setup-history rules implemented this session
@@ -378,8 +378,8 @@ The fixed budget health implementation has been replaced with a configurable Bud
 
 Reference:
 
-- [BUDGET_HEALTH_ENGINE_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_HEALTH_ENGINE_PLAN.md)
-- [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/docs/plans/BUDGET_HEALTH_ADDENDUM.md)
+- [BUDGET_HEALTH_ENGINE_PLAN.md](/home/ubuntu/dosh/docs/archive/BUDGET_HEALTH_ENGINE_PLAN.md)
+- [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/docs/archive/BUDGET_HEALTH_ADDENDUM.md)
 
 #### Activity Group: Engine Foundation
 
@@ -396,6 +396,8 @@ Status:
 - `Completed`: updated `live_period_surplus` data source to include investments, aligning with closeout surplus calculation
 - `Completed`: added `PeriodHealthResult` persistence for close-out workflows so historical health meaning is preserved when engine logic evolves
 - `Completed`: migrated closeout preview to evaluate period health through the engine directly, removing dependence on legacy `closeout_health.py`
+- `Completed (0.5.0-alpha)`: radically simplified the engine to two hard-coded system metrics (`setup_health` and `budget_discipline`) with user-tunable `parameters_json`. Removed templates, data sources, scales, custom metric builder, formula evaluator, and drill-down concepts.
+- `Completed (0.5.0-alpha)`: created destructive Alembic migration `e1096e3868f0_simplify_budget_health_engine.py` that drops all legacy health tables, recreates the simplified schema, and backfills every budget with fresh defaults.
 
 #### Activity Group: Frontend Integration
 
@@ -419,6 +421,9 @@ Status:
 - `Completed`: updated `BudgetsPage.jsx` to consume the engine health endpoint and render contextual drill-down links in health modals
 - `Completed`: removed the legacy fixed health endpoint implementation and consolidated all health traffic through the engine
 - `Fixed (0.4.2-alpha)`: corrected the frontend `getBudgetHealth` API path from `/health-engine` to `/health` so the dashboard health card loads correctly
+- `Completed (0.5.0-alpha)`: removed template selector, metric builder, scope tabs, Add Metric button, and dev-mode template controls from `BudgetHealthTab.jsx`.
+- `Completed (0.5.0-alpha)`: simplified the `BudgetHealthTab` UI to only the two metric cards with enable/disable, weight, sensitivity, and exposed parameter inputs.
+- `Completed (0.5.0-alpha)`: removed drill-down UI and links from `BudgetsPage.jsx` health modals.
 
 #### Activity Group: Scoring and Momentum
 
@@ -494,6 +499,8 @@ Status:
 - `Completed`: updated `PersonalisationTab.test.jsx` to cover new View/Edit toggle, formula display, and scale-aware threshold controls
 - `Completed (0.4.5-alpha)`: added backend tests for `GET /health-matrix/templates`, `POST /health-matrix/apply-template`, and `is_customized` detection in `test_health_matrices.py`
 - `Completed (0.4.5-alpha)`: renamed `PersonalisationTab.test.jsx` to `BudgetHealthTab.test.jsx` and expanded coverage for template selector, scope filtering, inline weight/sensitivity visibility, and metric builder threshold selection
+- `Completed (0.5.0-alpha)`: rewrote `test_health_engine.py`, `test_health_matrices.py`, and `BudgetHealthTab.test.jsx` for the simplified two-metric framework.
+- `Completed (0.5.0-alpha)`: updated integration tests (`test_closeout_flow.py`, `test_lifecycle_and_health.py`) to expect valid health responses from the simplified engine.
 
 #### Activity Group: Demo Data Alignment
 

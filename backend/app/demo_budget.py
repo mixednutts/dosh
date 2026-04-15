@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from .cycle_constants import ACTIVE, CLOSED, PLANNED
 from .cycle_management import assign_period_lifecycle_states, close_cycle, ordered_budget_periods
-from .health_engine_seed import seed_catalogs, create_standard_templates, create_default_matrix_for_budget
+from .health_engine_seed import create_default_matrix_for_budget
 from .models import BalanceType, Budget, ExpenseItem, IncomeType, InvestmentItem, PeriodIncome
 from .routers.periods import generate_period
 from .schemas import PeriodGenerateRequest
@@ -48,9 +48,6 @@ def _create_demo_setup(db: Session) -> Budget:
     db.add(budget)
     db.flush()
 
-    # Ensure catalogs/templates exist and create default matrix for demo budget
-    seed_catalogs(db)
-    create_standard_templates(db)
     create_default_matrix_for_budget(db, budget)
     db.flush()
 

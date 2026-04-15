@@ -2,7 +2,52 @@
 
 This document records meaningful automated test results from major working sessions.
 
-## Latest Session: Budget Health Engine — Custom Metric Scoring Fix (0.4.8-alpha)
+## Latest Session: Budget Health Engine Simplification (0.5.0-alpha)
+
+This session radically simplified the Budget Health Engine to two hard-coded system metrics with user-tunable parameters. All template, data-source, scale, custom-metric, drill-down, and dynamic-formula concepts were removed, and tests were rewritten for the simplified framework.
+
+### Verification
+
+```bash
+cd /home/ubuntu/dosh/backend
+.venv/bin/pytest tests/test_health_engine.py tests/test_health_matrices.py tests/test_lifecycle_and_health.py tests/test_closeout_flow.py -v
+```
+
+Result:
+
+- `test_health_engine.py`: **8 passed**
+- `test_health_matrices.py`: **5 passed**
+- `test_lifecycle_and_health.py`: **5 passed**
+- `test_closeout_flow.py`: **3 passed**
+- No regressions introduced
+
+```bash
+cd /home/ubuntu/dosh/frontend
+npm test -- --watchAll=false --testPathPatterns="BudgetHealthTab.test|client.test"
+```
+
+Result:
+
+- `BudgetHealthTab.test.jsx`: passed
+- `client.test.js`: passed
+- Full frontend suite: **19 passed** (2 test suites)
+
+### Deployment Verification
+
+```bash
+cd /home/ubuntu/dosh
+INCLUDE_OVERRIDE=true ./scripts/release_with_migrations.sh
+curl -sS http://127.0.0.1:3080/api/health
+```
+
+Result:
+
+- Backend container rebuilt and restarted successfully
+- Frontend container rebuilt and restarted successfully
+- Destructive Alembic migration `e1096e3868f0_simplify_budget_health_engine` applied successfully
+- Health endpoint returned `{"status":"ok","app":"Dosh"}`
+
+## Previous Session: Budget Health Engine — Custom Metric Scoring Fix (0.4.8-alpha)
 
 This session implemented `custom_metric_v1` scoring logic so custom metrics created in the Budget Health Engine UI compute real scores instead of returning a fallback "Metric evaluation not yet implemented" result.
 

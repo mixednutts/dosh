@@ -731,4 +731,4 @@ git push origin main --force-with-lease  # if needed
 ## Budget Health Engine Reference
 
 Template and data source details have been moved to:
-- [docs/plans/BUDGET_HEALTH_TEMPLATE_LIBRARY.md](docs/plans/BUDGET_HEALTH_TEMPLATE_LIBRARY.md)
+- [docs/archive/BUDGET_HEALTH_TEMPLATE_LIBRARY.md](docs/archive/BUDGET_HEALTH_TEMPLATE_LIBRARY.md)
