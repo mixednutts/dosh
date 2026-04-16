@@ -1,6 +1,7 @@
 import os
 
 from fastapi import FastAPI
+from starlette.exceptions import HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.staticfiles import StaticFiles
 
@@ -105,7 +106,12 @@ class SPAStaticFiles(StaticFiles):
     """Static files that fall back to index.html for SPA routing."""
 
     async def get_response(self, path: str, scope):
-        response = await super().get_response(path, scope)
+        try:
+            response = await super().get_response(path, scope)
+        except HTTPException as exc:
+            if exc.status_code == 404 and not path.startswith("api/"):
+                return await super().get_response("index.html", scope)
+            raise
         if response.status_code == 404 and not path.startswith("api/"):
             return await super().get_response("index.html", scope)
         return response

@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.6.2-alpha | released | 2026-04-16
+
+### Fixed
+
+- Fixed page refresh on deep links (such as `/budgets/1` or `/budgets/2/periods/23`) so the app loads correctly instead of showing a "Not Found" error. The backend static file handler now properly falls back to `index.html` for React Router routes.
+
 ## 0.6.1-alpha | released | 2026-04-16
 
 ### Changed

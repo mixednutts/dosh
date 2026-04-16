@@ -820,6 +820,7 @@ Status:
 - `Completed`: fixed account detail text wrapping in `InvestmentSection.jsx` to prevent truncation with long account names
 - `Completed`: fix investment and expense budget totals on the period detail page so the total row correctly sums budgeted amounts rather than substituting actuals for paid lines
 - `Completed`: fix budget cycle lifecycle state not refreshing automatically when a new cycle start date passes; `cycle_stage()` now derives `CURRENT`/`PENDING_CLOSURE`/`PLANNED` from actual dates rather than blindly trusting the persisted `cycle_status`, and the daily auto-expense scheduler now refreshes all lifecycle states before processing expenses
+- `Completed`: fix page refresh on deep links (e.g., `/budgets/1` or `/budgets/2/periods/23`) returning a "Not Found" error. The `SPAStaticFiles` handler was catching `fastapi.HTTPException` instead of `starlette.exceptions.HTTPException`, so the missing-file exception was not falling back to `index.html` correctly
 
 Cross-links:
 

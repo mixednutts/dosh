@@ -4,6 +4,26 @@ This document captures the key product and implementation changes made during re
 
 It is intended to complement [README.md](/home/ubuntu/dosh/README.md), not replace it.
 
+## Latest Session: Fix SPA Deep-Link Refresh (0.6.2-alpha)
+
+This session fixed a bug where refreshing a page on a React Router deep link (e.g., `/budgets/1` or `/budgets/2/periods/23`) returned a `{"detail":"Not Found"}` JSON response instead of loading the app.
+
+### What changed
+
+- **Backend entrypoint (`backend/app/main.py`):**
+  - Fixed the `SPAStaticFiles.get_response()` exception handling to catch `starlette.exceptions.HTTPException` instead of `fastapi.HTTPException`.
+  - Starlette's `StaticFiles` raises `starlette.exceptions.HTTPException(404)` for missing files, which was not being caught by the existing `except` block. This caused the 404 exception to bubble up as a JSON error instead of falling back to `index.html`.
+  - The fix ensures both returned `404` responses and raised `HTTPException(404)` correctly serve `index.html` for non-API paths.
+
+- **Backend tests (`backend/tests/test_spa_static_files.py`):**
+  - Added dedicated regression tests for `SPAStaticFiles` verifying fallback to `index.html` for SPA routes (`/budgets/1`, `/budgets/2/periods/23`) and preservation of `404` for `/api/` paths.
+
+- **Deployment:**
+  - Rebuilt and redeployed the local Docker container using `docker compose up --build -d backend` with the existing `docker-compose.override.yml`.
+  - Verified `GET /budgets/1` and `GET /budgets/2/periods/23` now return `200` with `index.html`, and `GET /api/health` remains unaffected.
+
+---
+
 ## Latest Session: Docker Compose Stack Consolidation (0.6.1-alpha)
 
 This session consolidated the multi-service Docker Compose stack into a single backend service that builds and serves the React frontend directly.
