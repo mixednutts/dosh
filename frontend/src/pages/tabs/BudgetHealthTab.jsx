@@ -175,10 +175,10 @@ function MatrixItemCard({ item, onUpdate }) {
         <div className="mt-4 border-t border-gray-100 pt-4 dark:border-gray-700">
           <div className="mb-3 grid gap-3 sm:grid-cols-2">
             <div>
-              <label htmlFor={`weight-${item.metric_id}`} className="text-xs font-medium text-gray-600 dark:text-gray-300">Weight</label>
+              <label htmlFor={`weight-${item.metric_key}`} className="text-xs font-medium text-gray-600 dark:text-gray-300">Weight</label>
               <div className="flex items-center gap-2">
                 <input
-                  id={`weight-${item.metric_id}`}
+                  id={`weight-${item.metric_key}`}
                   type="range"
                   min={0}
                   max={1}
@@ -193,10 +193,10 @@ function MatrixItemCard({ item, onUpdate }) {
               </div>
             </div>
             <div>
-              <label htmlFor={`sensitivity-${item.metric_id}`} className="text-xs font-medium text-gray-600 dark:text-gray-300">Scoring Sensitivity</label>
+              <label htmlFor={`sensitivity-${item.metric_key}`} className="text-xs font-medium text-gray-600 dark:text-gray-300">Scoring Sensitivity</label>
               <div className="flex items-center gap-2">
                 <input
-                  id={`sensitivity-${item.metric_id}`}
+                  id={`sensitivity-${item.metric_key}`}
                   type="range"
                   min={0}
                   max={100}
@@ -238,23 +238,87 @@ function MatrixItemCard({ item, onUpdate }) {
             </div>
           )}
 
-          {item.metric_key === 'budget_discipline' && (
+          {item.metric_key === 'budget_vs_actual_amount' && (
             <div className="rounded-md border border-gray-200 bg-gray-50/50 p-3 dark:border-gray-700 dark:bg-gray-800/40">
               <p className="mb-2 text-xs font-medium text-gray-700 dark:text-gray-200">Parameters</p>
               <div className="grid gap-3 sm:grid-cols-2">
                 <CurrencyInput
-                  label="Max overrun ($)"
+                  label="Upper tolerance amount"
                   helper="Dollar amount above budgeted expenses"
-                  value={localParams.max_overrun_dollar ?? 0}
-                  onChange={v => commitParameter('max_overrun_dollar', Number(v) || 0)}
+                  value={localParams.upper_tolerance_amount ?? 50}
+                  onChange={v => commitParameter('upper_tolerance_amount', Number(v) || 0)}
                 />
                 <PercentSlider
-                  label="Max overrun % of expenses"
+                  label="Upper tolerance percentage"
                   helper="Percentage of total budgeted expenses"
-                  value={localParams.max_overrun_pct_of_expenses ?? 10}
+                  value={localParams.upper_tolerance_pct ?? 5}
                   min={0}
                   max={100}
-                  onChange={v => commitParameter('max_overrun_pct_of_expenses', v)}
+                  onChange={v => commitParameter('upper_tolerance_pct', v)}
+                />
+              </div>
+            </div>
+          )}
+
+          {item.metric_key === 'budget_vs_actual_lines' && (
+            <div className="rounded-md border border-gray-200 bg-gray-50/50 p-3 dark:border-gray-700 dark:bg-gray-800/40">
+              <p className="mb-2 text-xs font-medium text-gray-700 dark:text-gray-200">Parameters</p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <IntInput
+                  label="Upper tolerance instances"
+                  helper="Number of over-budget lines allowed"
+                  value={localParams.upper_tolerance_instances ?? 2}
+                  onChange={v => commitParameter('upper_tolerance_instances', v)}
+                />
+                <PercentSlider
+                  label="Upper tolerance percentage"
+                  helper="Percentage of total expense lines"
+                  value={localParams.upper_tolerance_pct ?? 10}
+                  min={0}
+                  max={100}
+                  onChange={v => commitParameter('upper_tolerance_pct', v)}
+                />
+              </div>
+            </div>
+          )}
+
+          {item.metric_key === 'in_cycle_budget_adjustments' && (
+            <div className="rounded-md border border-gray-200 bg-gray-50/50 p-3 dark:border-gray-700 dark:bg-gray-800/40">
+              <p className="mb-2 text-xs font-medium text-gray-700 dark:text-gray-200">Parameters</p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <IntInput
+                  label="Upper tolerance instances"
+                  helper="Number of budget adjustment transactions allowed"
+                  value={localParams.upper_tolerance_instances ?? 1}
+                  onChange={v => commitParameter('upper_tolerance_instances', v)}
+                />
+              </div>
+            </div>
+          )}
+
+          {item.metric_key === 'revisions_on_paid_expenses' && (
+            <div className="rounded-md border border-gray-200 bg-gray-50/50 p-3 dark:border-gray-700 dark:bg-gray-800/40">
+              <p className="mb-2 text-xs font-medium text-gray-700 dark:text-gray-200">Parameters</p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <IntInput
+                  label="Upper tolerance instances"
+                  helper="Number of revision transactions allowed"
+                  value={localParams.upper_tolerance_instances ?? 2}
+                  onChange={v => commitParameter('upper_tolerance_instances', v)}
+                />
+              </div>
+            </div>
+          )}
+
+          {item.metric_key === 'budget_cycles_pending_closeout' && (
+            <div className="rounded-md border border-gray-200 bg-gray-50/50 p-3 dark:border-gray-700 dark:bg-gray-800/40">
+              <p className="mb-2 text-xs font-medium text-gray-700 dark:text-gray-200">Parameters</p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <IntInput
+                  label="Upper tolerance instances"
+                  helper="Number of budget cycles pending close-out allowed"
+                  value={localParams.upper_tolerance_instances ?? 0}
+                  onChange={v => commitParameter('upper_tolerance_instances', v)}
                 />
               </div>
             </div>
@@ -275,7 +339,7 @@ export default function BudgetHealthTab({ budgetId, budget }) {
   })
 
   const updateMatrixItemMutation = useMutation({
-    mutationFn: ({ metricId, data }) => updateMatrixItem(budgetId, metricId, data),
+    mutationFn: ({ metricKey, data }) => updateMatrixItem(budgetId, metricKey, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['health-matrix', budgetId] })
       qc.invalidateQueries({ queryKey: ['budget-health', budgetId] })
@@ -341,9 +405,9 @@ export default function BudgetHealthTab({ budgetId, budget }) {
           <div className="space-y-3">
             {items.map(item => (
               <MatrixItemCard
-                key={item.metric_id}
+                key={item.metric_key}
                 item={item}
-                onUpdate={data => updateMatrixItemMutation.mutate({ metricId: item.metric_id, data })}
+                onUpdate={data => updateMatrixItemMutation.mutate({ metricKey: item.metric_key, data })}
               />
             ))}
             {items.length === 0 && (
@@ -381,7 +445,6 @@ CurrencyInput.propTypes = {
 
 MatrixItemCard.propTypes = {
   item: PropTypes.shape({
-    metric_id: PropTypes.number.isRequired,
     metric_key: PropTypes.string.isRequired,
     name: PropTypes.string.isRequired,
     description: PropTypes.string,

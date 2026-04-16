@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException
 
 from ..api_docs import DbSession, error_responses
 from ..models import Budget, BudgetHealthMatrix, BudgetHealthMatrixItem
+from ..health_engine.system_metrics import get_system_metric, SYSTEM_METRICS
 
 router = APIRouter(prefix="/budgets/{budgetid}/health-matrix", tags=["health-matrices"])
 
@@ -30,20 +31,19 @@ def get_budget_health_matrix(budgetid: int, db: DbSession):
 
     result_items = []
     for item in items:
-        metric = item.metric
-        if not metric:
+        metric_def = get_system_metric(item.metric_key)
+        if not metric_def:
             continue
         try:
-            parameters = json.loads(item.parameters_json or "{}")
+            parameters = json.loads(item.health_metric_parameters or "{}")
         except Exception:
             parameters = {}
 
         result_items.append({
-            "metric_id": metric.metric_id,
-            "metric_key": metric.metric_key,
-            "name": metric.name,
-            "description": metric.description,
-            "scope": metric.scope,
+            "metric_key": item.metric_key,
+            "name": metric_def["name"],
+            "description": metric_def["description"],
+            "scope": metric_def["scope"],
             "weight": float(item.weight),
             "scoring_sensitivity": item.scoring_sensitivity,
             "is_enabled": item.is_enabled,
@@ -59,14 +59,17 @@ def get_budget_health_matrix(budgetid: int, db: DbSession):
     }
 
 
-@router.patch("/items/{metric_id}", responses=error_responses(404, 400))
+@router.patch("/items/{metric_key}", responses=error_responses(404, 400))
 def update_matrix_item(
     budgetid: int,
-    metric_id: int,
+    metric_key: str,
     payload: dict,
     db: DbSession,
 ):
     """Update a matrix item's weight, sensitivity, enablement, or parameters."""
+    if metric_key not in SYSTEM_METRICS:
+        raise HTTPException(404, "Metric not found")
+
     budget = db.get(Budget, budgetid)
     if not budget:
         raise HTTPException(404, "Budget not found")
@@ -76,7 +79,7 @@ def update_matrix_item(
         raise HTTPException(404, "Health matrix not found")
 
     item = db.query(BudgetHealthMatrixItem).filter_by(
-        matrix_id=matrix.matrix_id, metric_id=metric_id
+        matrix_id=matrix.matrix_id, metric_key=metric_key
     ).first()
     if not item:
         raise HTTPException(404, "Matrix item not found")
@@ -90,12 +93,12 @@ def update_matrix_item(
     if "parameters" in payload:
         # Merge parameters
         try:
-            current = json.loads(item.parameters_json or "{}")
+            current = json.loads(item.health_metric_parameters or "{}")
         except Exception:
             current = {}
         current.update(payload["parameters"])
-        item.parameters_json = json.dumps(current)
+        item.health_metric_parameters = json.dumps(current)
 
     db.commit()
     db.refresh(item)
-    return {"ok": True}
+    return get_budget_health_matrix(budgetid, db)

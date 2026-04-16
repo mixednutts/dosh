@@ -229,26 +229,22 @@ For document changes, follow [DOCUMENTATION_FRAMEWORK.md](./docs/DOCUMENTATION_F
 
 ## Current Project State (Snapshot)
 
-**Version:** 0.5.1-alpha
-**Schema Revisions:** d3091a75b8ff, e4f5a6b7c8d9, f1a2b3c4d5e6, b10a29f14a8f, 559cbaa1dce7, 4bf1bf54b0bb, 7a8b9c0d1e2f, 009297f69b52, a1b2c3d4e5f6, 9c0f8d72a04c
+**Version:** 0.6.0-alpha
+**Schema Revisions:** d3091a75b8ff, e4f5a6b7c8d9, f1a2b3c4d5e6, b10a29f14a8f, 559cbaa1dce7, 4bf1bf54b0bb, 7a8b9c0d1e2f, 009297f69b52, a1b2c3d4e5f6, 9c0f8d72a04c, e1096e3868f0, fb246c4482b7
 
 **Recent Work:**
+- **Budget Health Engine — Global Metrics and Expanded Scoring (COMPLETED):** Assessed, planned, and implemented a refined Budget Health Engine built around a global code-based metric registry instead of per-budget DB metric rows.
+  - Removed the `HealthMetric` DB table; metrics are now defined globally in `backend/app/health_engine/system_metrics.py`.
+  - Changed `BudgetHealthMatrixItem` primary key from `metric_id` (foreign key) to `metric_key` (string), and renamed `parameters_json` to `health_metric_parameters`.
+  - Replaced the two-metric set (`setup_health`, `budget_discipline`) with six metrics: `setup_health`, `budget_cycles_pending_closeout`, `budget_vs_actual_amount`, `budget_vs_actual_lines`, `in_cycle_budget_adjustments`, `revisions_on_paid_expenses`.
+  - Implemented tone-aware executors for all six metrics in `backend/app/health_engine/metric_executors.py`.
+  - Created destructive Alembic migration `fb246c4482b7_rebuild_health_engine_with_global_.py` that drops and recreates health tables and backfills every budget with the new default matrix.
+  - Fixed prior migration `e1096e3868f0` to avoid importing the now-deleted `HealthMetric` model.
+  - Updated `BudgetHealthTab.jsx` to render parameter inputs for all six metrics and removed remaining drill-down UI fallbacks.
+  - Rewrote the metric library as `docs/BUDGET_HEALTH_METRIC_LIBRARY.md` (active doc, not archive).
+  - All backend and frontend tests updated and passing; deployed to local Docker with override and verified.
 - **Fix Missing Budget Cycles in Sidebar (COMPLETED):** Removed the trailing slash from the frontend `getPeriodsForBudget` API call so the endpoint (`/budgets/${budgetId}/periods`) matches the backend router path. This restored budget cycle shortcuts in the left sidebar. Aligned backend tests and frontend routing references across the codebase. Deployed to local Docker with override and verified.
-- **Custom Metric Scoring Fix (COMPLETED):** Implemented `custom_metric_v1` executor in `metric_executors.py` and wired `scoring_logic_json` resolution into `runner.py` so custom metrics built in the UI now compute real scores instead of returning a fallback "Metric evaluation not yet implemented" result. Added backend tests to lock in the behavior.
-- **Fix Empty Health Metric Data After Threshold Terminology Refactor (COMPLETED):** Aligned SQLAlchemy models (`backend/app/models.py`) and Alembic migrations to use the correct renamed threshold table/column names (`healththresholddefinitions`, `budgetmetricthresholds`, `threshold_key`); made the rename migration idempotent so it works for both fresh installs and upgrades; restored populated health payloads to the Budgets page
-- **Budget Health Engine Refinement (COMPLETED):** Removed legacy threshold sliders and made metric cards the single source of truth with scale-aware View/Edit controls; refactored `setup_health` and `current_period_check` executors to consume `formula_result` instead of querying the DB directly; migrated closeout preview to use the health engine directly
-- **Budget Health Engine (COMPLETED):** Transitioned from fixed health implementation to a fully configurable Budget Health Engine
-  - Added core data models (`HealthDataSource`, `HealthMetricTemplate`, `HealthScale`, `BudgetHealthMatrix`, `BudgetHealthMatrixItem`, `PeriodHealthResult`, `BudgetHealthSummary`, `HealthMatrixTemplate`, and supporting tables)
-  - Implemented safe formula parser and engine runner (`health_engine/runner.py`) supporting `+`, `-`, `*`, `/`, parentheses, and data source references
-  - Added code-backed data source executors and metric executors for the four core templates (`setup_health`, `budget_discipline`, `planning_stability`, `current_period_check`)
-  - Added `PeriodHealthResult` persistence so close-out workflows preserve historical health meaning when engine logic evolves
-  - Migrated all existing budgets to `BudgetHealthMatrix` instances with default `Standard Budget Health` matrices
-  - Removed legacy `budget_health.py` and consolidated all health traffic through the engine
-  - Added `health_tone` selector (`supportive`/`factual`/`friendly`) to budget settings and health evidence rendering
-  - Expanded `PersonalisationTab.jsx` to manage matrix items (enable/disable, weight, sensitivity) and custom metric creation
-  - Updated `BudgetsPage.jsx` to consume engine health endpoint and render contextual drill-down links in health modals
-  - Created Alembic migration `7a8b9c0d1e2f` for all engine tables; deployed successfully to local Docker with override
-  - All 153 backend tests and 176 frontend tests passing
+- **Budget Health Engine Simplification (COMPLETED):** Radically simplified the engine to two hard-coded system metrics with user-tunable parameters. Removed templates, data sources, scales, custom metric builder, formula evaluator, and drill-down concepts. Created destructive migration `e1096e3868f0_simplify_budget_health_engine.py` and backfilled all budgets with fresh defaults.
 - **Dynamic Account Balance Calculation (COMPLETED):** Implemented dynamic balance computation from last frozen anchor with forward-cycle limit
   - Added `compute_dynamic_period_balances()`, propagation via `sync_period_state`, and `max_forward_balance_cycles` setting (default 10, range 1-50)
   - Integrated into API endpoints with explicit limit-exceeded signaling; frontend banner and settings UI added
@@ -266,7 +262,7 @@ For document changes, follow [DOCUMENTATION_FRAMEWORK.md](./docs/DOCUMENTATION_F
 
 **Active Focus Areas:**
 - Budget Health refinement (threshold behavior, evidence language, test coverage)
-- Testing infrastructure hardening (all 166 backend tests passing, 192 frontend tests passing)
+- Testing infrastructure hardening (all 166 backend tests passing, 183 frontend tests passing)
 - Documentation framework compliance
 - Release process reliability
 - SonarQube maintainability follow-through

@@ -374,7 +374,7 @@ Roadmap alignment:
 
 - `Beta Release > Budget Health Engine`
 
-The fixed budget health implementation has been replaced with a configurable Budget Health Engine. The core engine, personalization framework, point-in-time snapshots, tone selection, drill-down links, and metric builder are now live.
+The fixed budget health implementation has been replaced with a configurable Budget Health Engine. The core engine, personalization framework, point-in-time snapshots, and tone selection are now live.
 
 Reference:
 
@@ -398,6 +398,10 @@ Status:
 - `Completed`: migrated closeout preview to evaluate period health through the engine directly, removing dependence on legacy `closeout_health.py`
 - `Completed (0.5.0-alpha)`: radically simplified the engine to two hard-coded system metrics (`setup_health` and `budget_discipline`) with user-tunable `parameters_json`. Removed templates, data sources, scales, custom metric builder, formula evaluator, and drill-down concepts.
 - `Completed (0.5.0-alpha)`: created destructive Alembic migration `e1096e3868f0_simplify_budget_health_engine.py` that drops all legacy health tables, recreates the simplified schema, and backfills every budget with fresh defaults.
+- `Completed (0.6.0-alpha)`: replaced per-budget `HealthMetric` DB rows with a global code-based metric registry in `backend/app/health_engine/system_metrics.py`.
+- `Completed (0.6.0-alpha)`: expanded the engine from two metrics to six (`setup_health`, `budget_cycles_pending_closeout`, `budget_vs_actual_amount`, `budget_vs_actual_lines`, `in_cycle_budget_adjustments`, `revisions_on_paid_expenses`).
+- `Completed (0.6.0-alpha)`: changed `BudgetHealthMatrixItem` PK from `metric_id` to `metric_key` and renamed `parameters_json` to `health_metric_parameters`.
+- `Completed (0.6.0-alpha)`: created destructive Alembic migration `fb246c4482b7_rebuild_health_engine_with_global_.py` and fixed `e1096e3868f0` to not import the deleted model.
 
 #### Activity Group: Frontend Integration
 
@@ -424,6 +428,8 @@ Status:
 - `Completed (0.5.0-alpha)`: removed template selector, metric builder, scope tabs, Add Metric button, and dev-mode template controls from `BudgetHealthTab.jsx`.
 - `Completed (0.5.0-alpha)`: simplified the `BudgetHealthTab` UI to only the two metric cards with enable/disable, weight, sensitivity, and exposed parameter inputs.
 - `Completed (0.5.0-alpha)`: removed drill-down UI and links from `BudgetsPage.jsx` health modals.
+- `Completed (0.6.0-alpha)`: updated `BudgetHealthTab.jsx` to use `metric_key`, render parameter inputs for all six metrics, and remove remaining drill-down defensive fallbacks.
+- `Completed (0.6.0-alpha)`: updated `client.js` `updateMatrixItem` signature to accept `metricKey` instead of `metricId`.
 
 #### Activity Group: Scoring and Momentum
 
@@ -501,6 +507,7 @@ Status:
 - `Completed (0.4.5-alpha)`: renamed `PersonalisationTab.test.jsx` to `BudgetHealthTab.test.jsx` and expanded coverage for template selector, scope filtering, inline weight/sensitivity visibility, and metric builder threshold selection
 - `Completed (0.5.0-alpha)`: rewrote `test_health_engine.py`, `test_health_matrices.py`, and `BudgetHealthTab.test.jsx` for the simplified two-metric framework.
 - `Completed (0.5.0-alpha)`: updated integration tests (`test_closeout_flow.py`, `test_lifecycle_and_health.py`) to expect valid health responses from the simplified engine.
+- `Completed (0.6.0-alpha)`: updated `test_health_engine.py`, `test_health_matrices.py`, `migration_helpers.py`, `BudgetHealthTab.test.jsx`, and `client.test.js` for the global-metric, six-metric framework.
 
 #### Activity Group: Demo Data Alignment
 

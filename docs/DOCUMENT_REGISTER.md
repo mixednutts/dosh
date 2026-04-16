@@ -1034,6 +1034,38 @@ Maintenance notes:
 
 - do not update; preserved for historical context only
 
+### BUDGET_HEALTH_METRIC_LIBRARY.md
+
+Document:
+
+- [BUDGET_HEALTH_METRIC_LIBRARY.md](/home/ubuntu/dosh/docs/BUDGET_HEALTH_METRIC_LIBRARY.md)
+
+Document type:
+
+- domain or workflow plan
+
+Primary purpose:
+
+- canonical reference for the current Budget Health Engine system metrics, their calculations, parameters, and evidence strings
+
+Primary source-of-truth scope:
+
+- global metric registry definitions
+- metric executor behavior and parameters
+- default matrix composition and weights
+- tone-aware evidence language
+
+Key relationships:
+
+- informed by `backend/app/health_engine/system_metrics.py` and `backend/app/health_engine/metric_executors.py`
+- referenced by `DEVELOPMENT_ACTIVITIES.md` under Budget Health activities
+- supersedes the archived `docs/archive/BUDGET_HEALTH_TEMPLATE_LIBRARY.md`
+
+Maintenance notes:
+
+- should be updated whenever a system metric is added, removed, or materially changed
+- should remain the canonical human-readable reference for metric behavior
+
 ### BUDGET_HEALTH_TEMPLATE_LIBRARY.md
 
 Document:
@@ -1054,7 +1086,7 @@ Primary source-of-truth scope:
 
 Key relationships:
 
-- superseded by the simplified Budget Health Engine implementation
+- superseded by [BUDGET_HEALTH_METRIC_LIBRARY.md](/home/ubuntu/dosh/docs/BUDGET_HEALTH_METRIC_LIBRARY.md)
 
 Maintenance notes:
 

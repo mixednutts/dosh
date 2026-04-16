@@ -7,7 +7,8 @@ from decimal import Decimal
 
 from sqlalchemy.orm import Session
 
-from app.models import Budget, BudgetHealthMatrix, BudgetHealthMatrixItem, HealthMetric
+from app.models import Budget, BudgetHealthMatrix, BudgetHealthMatrixItem
+from app.health_engine.system_metrics import SYSTEM_METRICS
 
 
 def create_default_matrix_for_budget(db: Session, budget: Budget) -> BudgetHealthMatrix:
@@ -24,42 +25,16 @@ def create_default_matrix_for_budget(db: Session, budget: Budget) -> BudgetHealt
     db.add(matrix)
     db.flush()
 
-    setup_metric = HealthMetric(
-        budgetid=budget.budgetid,
-        metric_key="setup_health",
-        name="Setup Health",
-        description="Checks whether the budget has the minimum required setup lines.",
-        scope="CURRENT_PERIOD",
-    )
-    discipline_metric = HealthMetric(
-        budgetid=budget.budgetid,
-        metric_key="budget_discipline",
-        name="Budget Discipline",
-        description="Measures historical expense overrun against your tolerance.",
-        scope="OVERALL",
-    )
-    db.add(setup_metric)
-    db.add(discipline_metric)
-    db.flush()
-
-    db.add(BudgetHealthMatrixItem(
-        matrix_id=matrix.matrix_id,
-        metric_id=setup_metric.metric_id,
-        weight=Decimal("0.30"),
-        scoring_sensitivity=50,
-        display_order=0,
-        is_enabled=True,
-        parameters_json=json.dumps({"min_income_lines": 1, "min_expense_lines": 1, "min_investment_lines": 1}),
-    ))
-    db.add(BudgetHealthMatrixItem(
-        matrix_id=matrix.matrix_id,
-        metric_id=discipline_metric.metric_id,
-        weight=Decimal("0.70"),
-        scoring_sensitivity=50,
-        display_order=1,
-        is_enabled=True,
-        parameters_json=json.dumps({"max_overrun_dollar": 0, "max_overrun_pct_of_expenses": 10}),
-    ))
+    for metric_key, definition in SYSTEM_METRICS.items():
+        db.add(BudgetHealthMatrixItem(
+            matrix_id=matrix.matrix_id,
+            metric_key=metric_key,
+            weight=definition["default_weight"],
+            scoring_sensitivity=50,
+            display_order=definition["default_display_order"],
+            is_enabled=True,
+            health_metric_parameters=json.dumps(definition["default_parameters"]),
+        ))
     db.flush()
 
     return matrix

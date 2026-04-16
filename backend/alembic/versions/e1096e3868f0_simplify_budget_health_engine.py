@@ -20,72 +20,83 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def _backfill_simplified_health(db: Session) -> None:
-    """Delete all legacy matrix items and metrics, then recreate the two simplified system metrics."""
-    from app.models import Budget, BudgetHealthMatrix, BudgetHealthMatrixItem, HealthMetric
+    """Delete all legacy matrix items and metrics, then recreate the two simplified system metrics.
 
-    budgets = db.query(Budget).all()
-    for budget in budgets:
-        matrices = db.query(BudgetHealthMatrix).filter_by(budgetid=budget.budgetid).all()
-        active_matrix = None
-        for m in matrices:
-            if m.is_active and active_matrix is None:
-                active_matrix = m
+    This function uses inline table definitions instead of importing models,
+    because the model classes may change in later revisions.
+    """
+    from sqlalchemy import Column, Integer, String, Text, Boolean, Numeric, DateTime, ForeignKey
+    from sqlalchemy.ext.declarative import declarative_base
+    from sqlalchemy.orm import relationship
+
+    Base = declarative_base()
+
+    class _HealthMetric(Base):
+        __tablename__ = "healthmetrics"
+        metric_id = Column(Integer, primary_key=True, autoincrement=True)
+        budgetid = Column(Integer, ForeignKey("budgets.budgetid"), nullable=False)
+        metric_key = Column(String, nullable=False)
+        name = Column(String, nullable=False)
+        description = Column(Text)
+        scope = Column(String, nullable=False)
+        created_at = Column(DateTime, default=sa.func.now())
+
+    class _BudgetHealthMatrix(Base):
+        __tablename__ = "budgethealthmatrices"
+        matrix_id = Column(Integer, primary_key=True, autoincrement=True)
+        budgetid = Column(Integer, ForeignKey("budgets.budgetid"), nullable=False)
+        name = Column(String, nullable=False)
+        is_active = Column(Boolean, default=True)
+        created_at = Column(DateTime, default=sa.func.now())
+
+    class _BudgetHealthMatrixItem(Base):
+        __tablename__ = "budgethealthmatrixitems"
+        matrix_id = Column(Integer, ForeignKey("budgethealthmatrices.matrix_id"), primary_key=True)
+        metric_id = Column(Integer, ForeignKey("healthmetrics.metric_id"), primary_key=True)
+        weight = Column(Numeric(5, 4), nullable=False)
+        scoring_sensitivity = Column(Integer, nullable=False, default=50)
+        display_order = Column(Integer, default=0)
+        is_enabled = Column(Boolean, default=True)
+        parameters_json = Column(Text, nullable=False, default="{}")
+
+    budgets = db.execute(sa.text("SELECT budgetid FROM budgets")).fetchall()
+    for (budgetid,) in budgets:
+        matrices = db.execute(sa.text("SELECT matrix_id, is_active FROM budgethealthmatrices WHERE budgetid = :bid"), {"bid": budgetid}).fetchall()
+        active_matrix_id = None
+        for matrix_id, is_active in matrices:
+            if is_active and active_matrix_id is None:
+                active_matrix_id = matrix_id
             else:
-                db.delete(m)
-        if active_matrix is None:
-            active_matrix = BudgetHealthMatrix(
-                budgetid=budget.budgetid,
-                name="Budget Health",
-                is_active=True,
-            )
-            db.add(active_matrix)
-            db.flush()
+                db.execute(sa.text("DELETE FROM budgethealthmatrixitems WHERE matrix_id = :mid"), {"mid": matrix_id})
+                db.execute(sa.text("DELETE FROM budgethealthmatrices WHERE matrix_id = :mid"), {"mid": matrix_id})
+
+        if active_matrix_id is None:
+            result = db.execute(sa.text("INSERT INTO budgethealthmatrices (budgetid, name, is_active) VALUES (:bid, 'Budget Health', 1)"), {"bid": budgetid})
+            active_matrix_id = result.lastrowid
         else:
-            items = db.query(BudgetHealthMatrixItem).filter_by(matrix_id=active_matrix.matrix_id).all()
-            for item in items:
-                metric = item.metric
-                db.delete(item)
-                if metric:
-                    db.delete(metric)
-            db.flush()
+            db.execute(sa.text("DELETE FROM budgethealthmatrixitems WHERE matrix_id = :mid"), {"mid": active_matrix_id})
+            db.execute(sa.text("DELETE FROM healthmetrics WHERE budgetid = :bid"), {"bid": budgetid})
 
-        setup_metric = HealthMetric(
-            budgetid=budget.budgetid,
-            metric_key="setup_health",
-            name="Setup Health",
-            description="Checks whether the budget has the minimum required setup lines.",
-            scope="CURRENT_PERIOD",
+        setup_result = db.execute(
+            sa.text("INSERT INTO healthmetrics (budgetid, metric_key, name, description, scope) VALUES (:bid, 'setup_health', 'Setup Health', 'Checks whether the budget has the minimum required setup lines.', 'CURRENT_PERIOD')"),
+            {"bid": budgetid}
         )
-        discipline_metric = HealthMetric(
-            budgetid=budget.budgetid,
-            metric_key="budget_discipline",
-            name="Budget Discipline",
-            description="Measures historical expense overrun against your tolerance.",
-            scope="OVERALL",
-        )
-        db.add(setup_metric)
-        db.add(discipline_metric)
-        db.flush()
+        setup_metric_id = setup_result.lastrowid
 
-        db.add(BudgetHealthMatrixItem(
-            matrix_id=active_matrix.matrix_id,
-            metric_id=setup_metric.metric_id,
-            weight=sa.cast(0.30, sa.Numeric(5, 4)),
-            scoring_sensitivity=50,
-            display_order=0,
-            is_enabled=True,
-            parameters_json=json.dumps({"min_income_lines": 1, "min_expense_lines": 1, "min_investment_lines": 1}),
-        ))
-        db.add(BudgetHealthMatrixItem(
-            matrix_id=active_matrix.matrix_id,
-            metric_id=discipline_metric.metric_id,
-            weight=sa.cast(0.70, sa.Numeric(5, 4)),
-            scoring_sensitivity=50,
-            display_order=1,
-            is_enabled=True,
-            parameters_json=json.dumps({"max_overrun_dollar": 0, "max_overrun_pct_of_expenses": 10}),
-        ))
-        db.flush()
+        discipline_result = db.execute(
+            sa.text("INSERT INTO healthmetrics (budgetid, metric_key, name, description, scope) VALUES (:bid, 'budget_discipline', 'Budget Discipline', 'Measures historical expense overrun against your tolerance.', 'OVERALL')"),
+            {"bid": budgetid}
+        )
+        discipline_metric_id = discipline_result.lastrowid
+
+        db.execute(
+            sa.text("INSERT INTO budgethealthmatrixitems (matrix_id, metric_id, weight, scoring_sensitivity, display_order, is_enabled, parameters_json) VALUES (:mid, :moid, 0.30, 50, 0, 1, :params)"),
+            {"mid": active_matrix_id, "moid": setup_metric_id, "params": json.dumps({"min_income_lines": 1, "min_expense_lines": 1, "min_investment_lines": 1})}
+        )
+        db.execute(
+            sa.text("INSERT INTO budgethealthmatrixitems (matrix_id, metric_id, weight, scoring_sensitivity, display_order, is_enabled, parameters_json) VALUES (:mid, :moid, 0.70, 50, 1, 1, :params)"),
+            {"mid": active_matrix_id, "moid": discipline_metric_id, "params": json.dumps({"max_overrun_dollar": 0, "max_overrun_pct_of_expenses": 10})}
+        )
 
 
 def upgrade() -> None:

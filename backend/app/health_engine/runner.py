@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy.orm import Session
 
 from .metric_executors import get_executor
+from .system_metrics import get_system_metric
 
 if TYPE_CHECKING:
     from ..models import Budget, FinancialPeriod
@@ -47,16 +48,16 @@ def evaluate_period_health(
     results = []
 
     for item in items:
-        metric = item.metric
-        if not metric:
+        metric_def = get_system_metric(item.metric_key)
+        if not metric_def:
             continue
 
         try:
-            parameters = json.loads(item.parameters_json or "{}")
+            parameters = json.loads(item.health_metric_parameters or "{}")
         except Exception:
             parameters = {}
 
-        executor = get_executor(metric.metric_key)
+        executor = get_executor(item.metric_key)
         metric_result = executor(
             db=db,
             budget=budget,
@@ -67,9 +68,9 @@ def evaluate_period_health(
         )
 
         results.append({
-            "metric_id": metric.metric_id,
-            "name": metric.name,
-            "scope": metric.scope,
+            "metric_key": item.metric_key,
+            "name": metric_def["name"],
+            "scope": metric_def["scope"],
             "weight": float(item.weight),
             "score": metric_result["score"],
             "status": metric_result["status"],
@@ -256,7 +257,7 @@ def persist_period_health_snapshot(
         db.add(PeriodHealthResult(
             finperiodid=period.finperiodid,
             matrix_id=matrix.matrix_id,
-            metric_id=result["metric_id"],
+            metric_key=result["metric_key"],
             evaluated_at=datetime.now(timezone.utc),
             score=result["score"],
             status=result["status"],

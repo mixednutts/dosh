@@ -4,7 +4,7 @@ Each executor receives:
 - db: SQLAlchemy Session
 - budget: Budget model instance
 - period: FinancialPeriod model instance (may be None for OVERALL metrics)
-- parameters: dict parsed from BudgetHealthMatrixItem.parameters_json
+- parameters: dict parsed from BudgetHealthMatrixItem.health_metric_parameters
 - scoring_sensitivity: int 0-100 controlling steepness of penalty curves
 - tone: str "supportive" | "factual" | "friendly"
 
@@ -17,7 +17,6 @@ Returns a dict with:
 
 from __future__ import annotations
 
-import json
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
@@ -117,7 +116,7 @@ def _setup_health_executor(
     }
 
 
-def _budget_discipline_executor(
+def _budget_vs_actual_amount_executor(
     *,
     db: Session,
     budget: Budget,
@@ -127,97 +126,370 @@ def _budget_discipline_executor(
     tone: str,
     **kwargs,
 ) -> dict:
-    """Evaluate historical expense overrun against user-defined dollar and percentage limits."""
-    from datetime import datetime, timezone
-    from ..models import FinancialPeriod, PeriodExpense
+    """Evaluate aggregate expense overrun amount against tolerance."""
+    from ..models import PeriodExpense
 
-    max_overrun_dollar = Decimal(str(parameters.get("max_overrun_dollar", 0)))
-    max_overrun_pct = Decimal(str(parameters.get("max_overrun_pct_of_expenses", 10)))
+    upper_tolerance_amount = Decimal(str(parameters.get("upper_tolerance_amount", 50)))
+    upper_tolerance_pct = Decimal(str(parameters.get("upper_tolerance_pct", 5)))
 
-    now = datetime.now(timezone.utc)
-    closed_periods = (
-        db.query(FinancialPeriod)
-        .filter(
-            FinancialPeriod.budgetid == budget.budgetid,
-            FinancialPeriod.enddate < now,
-            FinancialPeriod.islocked == True,
-        )
-        .all()
-    )
-
-    if not closed_periods:
-        score = 100
-        status = HEALTH_STRONG
-        summaries = {
-            "supportive": "Not enough history to judge discipline yet — check back after a few periods close out.",
-            "factual": "No closed historical periods available to evaluate budget discipline.",
-            "friendly": "No history yet — once a few periods wrap up, this score will come alive!",
-        }
-        evidence = ["No closed periods found"]
+    if period is None:
         return {
-            "score": score,
-            "status": status,
-            "summary": summaries.get(tone, summaries["factual"]),
-            "evidence": evidence,
+            "score": 100,
+            "status": HEALTH_STRONG,
+            "summary": "No current period to evaluate.",
+            "evidence": ["No current period available"],
         }
 
-    overruns = []
-    total_budgeted = Decimal(0)
-    total_actual = Decimal(0)
-    for p in closed_periods:
-        expenses = db.query(PeriodExpense).filter_by(finperiodid=p.finperiodid).all()
-        pb = sum((e.budgetamount or Decimal(0)) for e in expenses)
-        pa = sum((e.actualamount or Decimal(0)) for e in expenses)
-        total_budgeted += pb
-        total_actual += pa
-        if pb > 0:
-            overrun_dollar = pa - pb
-            overrun_pct = ((pa / pb) - Decimal(1)) * Decimal(100)
-            overruns.append({"dollar": overrun_dollar, "pct": overrun_pct, "budgeted": pb, "actual": pa})
+    expenses = db.query(PeriodExpense).filter_by(finperiodid=period.finperiodid).all()
+    total_budgeted = sum((e.budgetamount or Decimal(0)) for e in expenses)
+    overrun = sum(
+        ((e.actualamount or Decimal(0)) - (e.budgetamount or Decimal(0)))
+        for e in expenses
+        if (e.actualamount or Decimal(0)) > (e.budgetamount or Decimal(0))
+    )
+    overrun = max(Decimal(0), overrun)
 
-    if total_budgeted > 0:
-        avg_overrun_dollar = total_actual - total_budgeted
-        avg_overrun_pct = ((total_actual / total_budgeted) - Decimal(1)) * Decimal(100)
-    else:
-        avg_overrun_dollar = Decimal(0)
-        avg_overrun_pct = Decimal(0)
-
-    dollar_excess = max(Decimal(0), avg_overrun_dollar - max_overrun_dollar)
-    pct_excess = max(Decimal(0), avg_overrun_pct - max_overrun_pct)
+    tolerance_pct_value = (total_budgeted * upper_tolerance_pct) / Decimal(100)
+    tolerance = min(upper_tolerance_amount, tolerance_pct_value) if total_budgeted > 0 else upper_tolerance_amount
 
     sensitivity_factor = max(0.01, Decimal(scoring_sensitivity) / Decimal(50))
 
-    # Compute score
-    score = 100
-    if dollar_excess > 0:
-        score -= int(_clamp(float(dollar_excess) * float(sensitivity_factor) * 2, 0, 50))
-    if pct_excess > 0:
-        score -= int(_clamp(float(pct_excess) * float(sensitivity_factor) * 3, 0, 50))
+    if overrun <= 0:
+        score = 100
+    elif overrun <= tolerance:
+        ratio = float(overrun) / float(tolerance) if tolerance > 0 else 0
+        score = int(100 - (ratio * 30))
+    else:
+        excess = overrun - tolerance
+        score = int(70 - (float(excess) * float(sensitivity_factor) * 2))
+
     score = int(_clamp(score, 0, 100))
     status = _health_status(score)
 
     summaries = {
         "supportive": (
-            "Your historical spending is tracking within the tolerance you set."
+            "Your spending is within the tolerance you set."
             if score >= 80
-            else "Historical spending has run a bit over budget compared to the tolerance you set."
+            else "Spending has exceeded your set tolerance — worth reviewing."
         ),
         "factual": (
-            "Historical expense overrun is within configured limits."
+            "Expense overrun is within configured limits."
             if score >= 80
-            else "Historical expense overrun exceeds configured limits."
+            else "Expense overrun exceeds configured limits."
         ),
         "friendly": (
-            "Nice work keeping historical spending in line with your plan!"
+            "Nice work keeping spending in line with your plan!"
             if score >= 80
             else "Looks like spending has crept past your set tolerance — worth a look."
         ),
     }
 
     evidence = [
-        f"Average overrun: ${avg_overrun_dollar:.2f} (limit: ${max_overrun_dollar:.2f})",
-        f"Average overrun: {avg_overrun_pct:.1f}% of budgeted expenses (limit: {max_overrun_pct:.1f}%)",
-        f"Periods evaluated: {len(closed_periods)}",
+        f"Overrun amount: ${overrun:.2f} (limit: ${upper_tolerance_amount:.2f})",
+        f"Overrun percentage limit: {upper_tolerance_pct:.1f}% of budgeted expenses",
+    ]
+    if total_budgeted > 0:
+        evidence.append(f"Budgeted expenses: ${total_budgeted:.2f}")
+
+    return {
+        "score": score,
+        "status": status,
+        "summary": summaries.get(tone, summaries["factual"]),
+        "evidence": evidence,
+    }
+
+
+def _budget_vs_actual_lines_executor(
+    *,
+    db: Session,
+    budget: Budget,
+    period: FinancialPeriod | None,
+    parameters: dict,
+    scoring_sensitivity: int,
+    tone: str,
+    **kwargs,
+) -> dict:
+    """Evaluate count of over-budget expense lines against tolerance."""
+    from ..models import PeriodExpense
+
+    upper_tolerance_instances = max(0, int(parameters.get("upper_tolerance_instances", 2)))
+    upper_tolerance_pct = Decimal(str(parameters.get("upper_tolerance_pct", 10)))
+
+    if period is None:
+        return {
+            "score": 100,
+            "status": HEALTH_STRONG,
+            "summary": "No current period to evaluate.",
+            "evidence": ["No current period available"],
+        }
+
+    expenses = db.query(PeriodExpense).filter_by(finperiodid=period.finperiodid).all()
+    total_lines = len(expenses)
+    overrun_lines = sum(
+        1 for e in expenses if (e.actualamount or Decimal(0)) > (e.budgetamount or Decimal(0))
+    )
+
+    tolerance_pct_instances = int((Decimal(total_lines) * upper_tolerance_pct) / Decimal(100)) if total_lines > 0 else 0
+    tolerance = min(upper_tolerance_instances, tolerance_pct_instances) if total_lines > 0 else upper_tolerance_instances
+
+    sensitivity_factor = max(0.01, Decimal(scoring_sensitivity) / Decimal(50))
+
+    if overrun_lines <= 0:
+        score = 100
+    elif tolerance > 0 and overrun_lines <= tolerance:
+        ratio = overrun_lines / tolerance
+        score = int(100 - (ratio * 30))
+    else:
+        excess = overrun_lines - tolerance
+        score = int(70 - (excess * 15 * float(sensitivity_factor)))
+
+    score = int(_clamp(score, 0, 100))
+    status = _health_status(score)
+
+    summaries = {
+        "supportive": (
+            "The number of over-budget lines is within your tolerance."
+            if score >= 80
+            else "Quite a few lines are over budget — it may be time to review."
+        ),
+        "factual": (
+            "Over-budget line count is within configured limits."
+            if score >= 80
+            else "Over-budget line count exceeds configured limits."
+        ),
+        "friendly": (
+            "You're keeping most lines under budget — nice one!"
+            if score >= 80
+            else "A few too many lines have gone over budget — maybe take a look?"
+        ),
+    }
+
+    evidence = [
+        f"Over-budget lines: {overrun_lines} (limit: {upper_tolerance_instances})",
+    ]
+    if total_lines > 0:
+        evidence.append(f"Total expense lines: {total_lines}")
+
+    return {
+        "score": score,
+        "status": status,
+        "summary": summaries.get(tone, summaries["factual"]),
+        "evidence": evidence,
+    }
+
+
+def _in_cycle_budget_adjustments_executor(
+    *,
+    db: Session,
+    budget: Budget,
+    period: FinancialPeriod | None,
+    parameters: dict,
+    scoring_sensitivity: int,
+    tone: str,
+    **kwargs,
+) -> dict:
+    """Evaluate in-cycle budget adjustments against tolerance."""
+    from ..models import PeriodTransaction
+
+    upper_tolerance_instances = max(0, int(parameters.get("upper_tolerance_instances", 1)))
+
+    if period is None:
+        return {
+            "score": 100,
+            "status": HEALTH_STRONG,
+            "summary": "No current period to evaluate.",
+            "evidence": ["No current period available"],
+        }
+
+    adjustment_count = (
+        db.query(PeriodTransaction)
+        .filter(
+            PeriodTransaction.finperiodid == period.finperiodid,
+            PeriodTransaction.entry_kind == "budget_adjustment",
+            PeriodTransaction.entrydate > period.startdate,
+        )
+        .count()
+    )
+
+    sensitivity_factor = max(0.01, Decimal(scoring_sensitivity) / Decimal(50))
+
+    if adjustment_count <= 0:
+        score = 100
+    elif adjustment_count <= upper_tolerance_instances:
+        score = int(100 - (adjustment_count * 15))
+    else:
+        excess = adjustment_count - upper_tolerance_instances
+        score = int(70 - (excess * 20 * float(sensitivity_factor)))
+
+    score = int(_clamp(score, 0, 100))
+    status = _health_status(score)
+
+    summaries = {
+        "supportive": (
+            "Budget adjustments this period are within your tolerance."
+            if score >= 80
+            else "There have been several budget adjustments this period — consider locking the plan."
+        ),
+        "factual": (
+            "In-cycle budget adjustments are within configured limits."
+            if score >= 80
+            else "In-cycle budget adjustments exceed configured limits."
+        ),
+        "friendly": (
+            "Only a few budget tweaks so far — looking stable!"
+            if score >= 80
+            else "Lots of budget changes this period — maybe time to settle on a plan?"
+        ),
+    }
+
+    evidence = [
+        f"Budget adjustments: {adjustment_count} (limit: {upper_tolerance_instances})",
+    ]
+
+    return {
+        "score": score,
+        "status": status,
+        "summary": summaries.get(tone, summaries["factual"]),
+        "evidence": evidence,
+    }
+
+
+def _revisions_on_paid_expenses_executor(
+    *,
+    db: Session,
+    budget: Budget,
+    period: FinancialPeriod | None,
+    parameters: dict,
+    scoring_sensitivity: int,
+    tone: str,
+    **kwargs,
+) -> dict:
+    """Evaluate revisions on paid expenses against tolerance."""
+    from ..models import PeriodTransaction
+
+    upper_tolerance_instances = max(0, int(parameters.get("upper_tolerance_instances", 2)))
+
+    if period is None:
+        return {
+            "score": 100,
+            "status": HEALTH_STRONG,
+            "summary": "No current period to evaluate.",
+            "evidence": ["No current period available"],
+        }
+
+    revision_count = (
+        db.query(PeriodTransaction)
+        .filter(
+            PeriodTransaction.finperiodid == period.finperiodid,
+            PeriodTransaction.entry_kind == "status_change",
+        )
+        .count()
+    )
+
+    sensitivity_factor = max(0.01, Decimal(scoring_sensitivity) / Decimal(50))
+
+    if revision_count <= 0:
+        score = 100
+    elif revision_count <= upper_tolerance_instances:
+        score = int(100 - (revision_count * 15))
+    else:
+        excess = revision_count - upper_tolerance_instances
+        score = int(70 - (excess * 20 * float(sensitivity_factor)))
+
+    score = int(_clamp(score, 0, 100))
+    status = _health_status(score)
+
+    summaries = {
+        "supportive": (
+            "Revisions on paid expenses are within your tolerance."
+            if score >= 80
+            else "There have been several revisions on paid expenses — review your workflow."
+        ),
+        "factual": (
+            "Paid expense revisions are within configured limits."
+            if score >= 80
+            else "Paid expense revisions exceed configured limits."
+        ),
+        "friendly": (
+            "Not many paid expense revisions — things look steady!"
+            if score >= 80
+            else "Quite a few paid expense revisions — maybe double-check entries?"
+        ),
+    }
+
+    evidence = [
+        f"Paid expense revisions: {revision_count} (limit: {upper_tolerance_instances})",
+    ]
+
+    return {
+        "score": score,
+        "status": status,
+        "summary": summaries.get(tone, summaries["factual"]),
+        "evidence": evidence,
+    }
+
+
+def _budget_cycles_pending_closeout_executor(
+    *,
+    db: Session,
+    budget: Budget,
+    period: FinancialPeriod | None,
+    parameters: dict,
+    scoring_sensitivity: int,
+    tone: str,
+    **kwargs,
+) -> dict:
+    """Evaluate pending close-out cycles against tolerance."""
+    from datetime import datetime, timezone
+    from ..models import FinancialPeriod
+    from ..cycle_constants import CLOSED
+
+    upper_tolerance_instances = max(0, int(parameters.get("upper_tolerance_instances", 0)))
+
+    now = datetime.now(timezone.utc)
+    pending_count = (
+        db.query(FinancialPeriod)
+        .filter(
+            FinancialPeriod.budgetid == budget.budgetid,
+            FinancialPeriod.enddate < now,
+            FinancialPeriod.cycle_status != CLOSED,
+        )
+        .count()
+    )
+
+    sensitivity_factor = max(0.01, Decimal(scoring_sensitivity) / Decimal(50))
+
+    if pending_count <= 0:
+        score = 100
+    elif pending_count <= upper_tolerance_instances:
+        score = int(100 - (pending_count * 20))
+    else:
+        excess = pending_count - upper_tolerance_instances
+        score = int(70 - (excess * 25 * float(sensitivity_factor)))
+
+    score = int(_clamp(score, 0, 100))
+    status = _health_status(score)
+
+    summaries = {
+        "supportive": (
+            "Your budget cycles are up to date."
+            if score >= 80
+            else "Some budget cycles are awaiting close-out — it's worth catching up."
+        ),
+        "factual": (
+            "Pending close-out cycles are within configured limits."
+            if score >= 80
+            else "Pending close-out cycles exceed configured limits."
+        ),
+        "friendly": (
+            "All caught up on budget cycles — great job!"
+            if score >= 80
+            else "A few budget cycles are still waiting to close out — time to tidy up!"
+        ),
+    }
+
+    evidence = [
+        f"Pending close-out cycles: {pending_count} (limit: {upper_tolerance_instances})",
     ]
 
     return {
@@ -230,7 +502,11 @@ def _budget_discipline_executor(
 
 METRIC_EXECUTORS = {
     "setup_health": _setup_health_executor,
-    "budget_discipline": _budget_discipline_executor,
+    "budget_vs_actual_amount": _budget_vs_actual_amount_executor,
+    "budget_vs_actual_lines": _budget_vs_actual_lines_executor,
+    "in_cycle_budget_adjustments": _in_cycle_budget_adjustments_executor,
+    "revisions_on_paid_expenses": _revisions_on_paid_expenses_executor,
+    "budget_cycles_pending_closeout": _budget_cycles_pending_closeout_executor,
 }
 
 

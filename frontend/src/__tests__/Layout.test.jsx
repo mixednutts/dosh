@@ -82,16 +82,16 @@ describe('Layout navigation', () => {
     ])
     client.getAppInfo.mockResolvedValue({
       app: 'Dosh',
-      version: '0.5.1-alpha',
+      version: '0.6.0-alpha',
       schema_revision: 'baseline_current_schema',
     })
     client.getReleaseNotes.mockResolvedValue({
-      current_version: '0.5.1-alpha',
+      current_version: '0.6.0-alpha',
       update_available: false,
       newer_release_count: 0,
       previous_release_count: 1,
       current_release: {
-        version: '0.5.1-alpha',
+        version: '0.6.0-alpha',
         status: 'released',
         release_date: '2026-04-08',
         summary: 'Dosh now lets the release-notes modal reveal earlier released versions on demand.',
@@ -102,7 +102,7 @@ describe('Layout navigation', () => {
       newer_releases: [],
       previous_releases: [
         {
-          version: '0.5.1-alpha',
+          version: '0.6.0-alpha',
           status: 'released',
           release_date: '2026-04-08',
           summary: 'Dosh now hardens release-notes parsing against regex-driven denial-of-service risk.',
@@ -148,17 +148,17 @@ describe('Layout navigation', () => {
   it('shows the canonical release version in the sidebar chrome', async () => {
     renderLayout('/budgets')
 
-    expect(await screen.findByText('v0.5.1-alpha')).toBeTruthy()
+    expect(await screen.findByText('v0.6.0-alpha')).toBeTruthy()
 
     fireEvent.click(screen.getByTitle('Collapse sidebar'))
 
-    expect(await screen.findByText('v0.5.1-alpha')).toBeTruthy()
+    expect(await screen.findByText('v0.6.0-alpha')).toBeTruthy()
   })
 
   it('opens release notes from the version label', async () => {
     renderLayout('/budgets')
 
-    fireEvent.click(await screen.findByRole('button', { name: /v0.5.1-alpha/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /v0.6.0-alpha/i }))
 
     expect(await screen.findByRole('heading', { name: 'Release Notes' })).toBeTruthy()
     expect(await screen.findByText(/running version/i)).toBeTruthy()
@@ -168,7 +168,7 @@ describe('Layout navigation', () => {
   it('can reveal previous released versions from the release notes modal', async () => {
     renderLayout('/budgets')
 
-    fireEvent.click(await screen.findByRole('button', { name: /v0.5.1-alpha/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /v0.6.0-alpha/i }))
     fireEvent.click(await screen.findByRole('button', { name: /view previous releases \(1\)/i }))
 
     expect(await screen.findByText(/Dosh now hardens release-notes parsing against regex-driven denial-of-service risk/i)).toBeTruthy()
@@ -177,12 +177,12 @@ describe('Layout navigation', () => {
 
   it('can expand newer released versions to show their details', async () => {
     client.getReleaseNotes.mockResolvedValue({
-      current_version: '0.5.1-alpha',
+      current_version: '0.6.0-alpha',
       update_available: true,
       newer_release_count: 1,
       previous_release_count: 0,
       current_release: {
-        version: '0.5.1-alpha',
+        version: '0.6.0-alpha',
         status: 'released',
         release_date: '2026-04-08',
         summary: 'Current version summary.',
@@ -192,7 +192,7 @@ describe('Layout navigation', () => {
       },
       newer_releases: [
         {
-          version: '0.5.1-alpha',
+          version: '0.6.0-alpha',
           status: 'released',
           release_date: '2026-04-09',
           summary: 'Update summary.',
@@ -206,7 +206,7 @@ describe('Layout navigation', () => {
 
     renderLayout('/budgets')
 
-    fireEvent.click(await screen.findByRole('button', { name: /v0.5.1-alpha/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /v0.6.0-alpha/i }))
 
     expect(await screen.findByText('Update summary.')).toBeTruthy()
     expect(screen.queryByText('Expanded release details are available on demand')).toBeNull()
@@ -222,12 +222,12 @@ describe('Layout navigation', () => {
     HTMLElement.prototype.scrollIntoView = scrollIntoViewMock
 
     client.getReleaseNotes.mockResolvedValue({
-      current_version: '0.5.1-alpha',
+      current_version: '0.6.0-alpha',
       update_available: true,
       newer_release_count: 1,
       previous_release_count: 0,
       current_release: {
-        version: '0.5.1-alpha',
+        version: '0.6.0-alpha',
         status: 'released',
         release_date: '2026-04-08',
         summary: 'Current version summary.',
@@ -237,7 +237,7 @@ describe('Layout navigation', () => {
       },
       newer_releases: [
         {
-          version: '0.5.1-alpha',
+          version: '0.6.0-alpha',
           status: 'released',
           release_date: '2026-04-09',
           summary: 'Update summary.',
@@ -251,7 +251,7 @@ describe('Layout navigation', () => {
 
     renderLayout('/budgets')
 
-    fireEvent.click(await screen.findByRole('button', { name: /v0.5.1-alpha/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /v0.6.0-alpha/i }))
     fireEvent.click(await screen.findByRole('button', { name: /1 newer release available/i }))
 
     await waitFor(() => {

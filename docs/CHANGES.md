@@ -4,6 +4,67 @@ This document captures the key product and implementation changes made during re
 
 It is intended to complement [README.md](/home/ubuntu/dosh/README.md), not replace it.
 
+## Latest Session: Budget Health Engine — Global Metrics and Expanded Scoring (0.6.0-alpha)
+
+This session replaced the per-budget health metrics database table with a global metric registry defined in code, expanded the engine from two metrics to six, and removed drill-down support.
+
+### What changed
+
+- **Backend schema and models (`models.py`):**
+  - Removed the `HealthMetric` SQLAlchemy model and its relationship from `Budget`.
+  - Changed `BudgetHealthMatrixItem` primary key from `metric_id` (foreign key to `healthmetrics`) to `metric_key` (string).
+  - Renamed `BudgetHealthMatrixItem.parameters_json` to `health_metric_parameters`.
+  - Updated `PeriodHealthResult` to store `metric_key` instead of `metric_id`.
+
+- **Global metric registry (`system_metrics.py`):**
+  - Created `backend/app/health_engine/system_metrics.py` to own the canonical definitions for all six system metrics: `setup_health`, `budget_cycles_pending_closeout`, `budget_vs_actual_amount`, `budget_vs_actual_lines`, `in_cycle_budget_adjustments`, `revisions_on_paid_expenses`.
+  - Each metric carries `name`, `description`, `scope`, `default_weight`, and default `health_metric_parameters`.
+
+- **Metric executors (`metric_executors.py`):**
+  - Replaced the two-metric executor set with six tone-aware executors.
+  - `_setup_health_executor` validates minimum income, expense, and investment lines.
+  - `_budget_cycles_pending_closeout_executor` scores based on overdue unclosed cycles.
+  - `_budget_vs_actual_amount_executor` evaluates aggregate expense overrun against dollar and percentage tolerances.
+  - `_budget_vs_actual_lines_executor` evaluates the count of over-budget expense lines.
+  - `_in_cycle_budget_adjustments_executor` penalizes post-start budget adjustments.
+  - `_revisions_on_paid_expenses_executor` counts `status_change` transactions in the current period.
+
+- **Engine runner and seed (`runner.py`, `health_engine_seed.py`):**
+  - Updated `runner.py` to resolve metric metadata via `get_system_metric(item.metric_key)` and pass `health_metric_parameters` to executors.
+  - Updated `health_engine_seed.py` to seed all six metrics for every new budget using the global registry defaults.
+
+- **API endpoints (`health_matrices.py`):**
+  - `GET /budgets/{id}/health-matrix` now returns items keyed by `metric_key`, pulling names and descriptions from the global registry.
+  - `PATCH /budgets/{id}/health-matrix/items/{metric_key}` updates by string `metric_key`.
+
+- **Alembic migrations:**
+  - Created `fb246c4482b7_rebuild_health_engine_with_global_.py` as a destructive migration that drops health tables, recreates them under the new schema, and backfills every budget with the six-metric default matrix.
+  - Fixed the prior migration `e1096e3868f0_simplify_budget_health_engine.py` to avoid importing the now-deleted `HealthMetric` model, using inline table definitions instead.
+
+- **Frontend (`BudgetHealthTab.jsx`, `client.js`):**
+  - Updated the health matrix tab to work with `metric_key` and `health_metric_parameters`.
+  - Added parameter input blocks for all six metrics (e.g., `upper_tolerance_amount`, `upper_tolerance_instances`).
+  - Removed remaining drill-down defensive fallbacks.
+
+- **Documentation:**
+  - Created `docs/BUDGET_HEALTH_METRIC_LIBRARY.md` as the active canonical reference for metric definitions, calculations, parameters, evidence strings, and file map.
+  - Updated `DEVELOPMENT_ACTIVITIES.md`, `CHANGES.md`, `RELEASE_NOTES.md`, and `TEST_RESULTS_SUMMARY.md` to remove obsolete drill-down references and record the new work.
+  - Archived the old `BUDGET_HEALTH_TEMPLATE_LIBRARY.md` (superseded by the new library).
+
+- **Tests:**
+  - Updated `test_health_engine.py`, `test_health_matrices.py`, `migration_helpers.py`, `BudgetHealthTab.test.jsx`, and `client.test.js` to align with the new schema and metric set.
+  - All backend tests passing (166).
+  - All frontend tests passing (183).
+
+- **Deployment:**
+  - Rebuilt and redeployed the local Docker container using `INCLUDE_OVERRIDE=true ./scripts/release_with_migrations.sh`.
+  - Verified `/api/health` returns `{"status":"ok","app":"Dosh"}` post-deployment.
+
+- **Version bump:**
+  - Bumped version to `0.6.0-alpha` using `scripts/bump_version.py` because this is a breaking architectural change to the Budget Health Engine data model and metric surface.
+
+---
+
 ## Latest Session: Fix Missing Budget Cycles in Sidebar and Period Routing Hardening (0.5.1-alpha)
 
 This session fixed a bug where the left sidebar showed "No budget cycles yet" even when cycles existed, and systematically hardened period routing across the frontend and backend.
@@ -34,7 +95,7 @@ This session fixed a bug where the left sidebar showed "No budget cycles yet" ev
 
 ## Latest Session: Budget Health Engine Simplification and Destructive Migration (0.5.0-alpha)
 
-This session radically simplified the Budget Health Engine to two hard-coded system metrics with user-tunable parameters. All template, data-source, scale, custom-metric, drill-down, and dynamic-formula concepts were removed. A destructive Alembic migration drops obsolete tables, recreates the simplified schema, and backfills every budget with fresh defaults.
+This session radically simplified the Budget Health Engine to two hard-coded system metrics with user-tunable parameters. All template, data-source, scale, custom-metric, and dynamic-formula concepts were removed. A destructive Alembic migration drops obsolete tables, recreates the simplified schema, and backfills every budget with fresh defaults.
 
 ### What changed
 
@@ -42,7 +103,7 @@ This session radically simplified the Budget Health Engine to two hard-coded sys
   - Removed `HealthMetricTemplate`, `HealthMatrixTemplate`, `HealthMatrixTemplateItem`, `HealthDataSource`, `HealthDataSourceParameter`, `HealthScale`, `HealthScaleOption`, `HealthThresholdDefinition`, and `BudgetMetricThreshold`.
   - Simplified `HealthMetric` to `metric_id`, `budgetid`, `metric_key`, `name`, `description`, `scope`, `created_at`.
   - Replaced `threshold_value_json` with `parameters_json` on `BudgetHealthMatrixItem`.
-  - Removed `drill_down_enabled` from `HealthMetric` and `drill_down_json` from `PeriodHealthResult`.
+
   - Created `backend/alembic/versions/e1096e3868f0_simplify_budget_health_engine.py` as a destructive rebuild migration: drops all legacy health tables, recreates the four simplified tables (`healthmetrics`, `budgethealthmatrices`, `budgethealthmatrixitems`, `periodhealthresults`, `budgethealthsummaries`), then backfills every budget with `setup_health` and `budget_discipline`.
 
 - **Engine refactoring:**
@@ -55,7 +116,7 @@ This session radically simplified the Budget Health Engine to two hard-coded sys
 - **Frontend simplification:**
   - Removed template selector, metric builder, scope tabs, Add Metric button, and dev-mode template controls from `BudgetHealthTab.jsx`.
   - Rendered only two metric cards with enable/disable, weight, sensitivity, and exposed parameter inputs.
-  - Removed drill-down UI from `BudgetsPage.jsx` health modals.
+
   - Removed obsolete API helpers from `client.js`.
 
 - **Cleanup and test updates:**

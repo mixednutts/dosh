@@ -62,25 +62,24 @@ def test_setup_health_executor_penalises_missing_items(client, db_session) -> No
     assert result["status"] == "Needs Attention"
 
 
-def test_budget_discipline_executor_no_history(client, db_session) -> None:
+def test_budget_vs_actual_amount_executor_no_overrun(client, db_session) -> None:
     from tests.factories import create_budget
 
     budget = create_budget(db_session)
-    executor = get_executor("budget_discipline")
+    executor = get_executor("budget_vs_actual_amount")
     result = executor(
         db=db_session,
         budget=budget,
         period=None,
-        parameters={"max_overrun_dollar": 0, "max_overrun_pct_of_expenses": 10},
+        parameters={"upper_tolerance_amount": 50, "upper_tolerance_pct": 5},
         scoring_sensitivity=50,
         tone="factual",
     )
     assert result["score"] == 100
     assert result["status"] == "Strong"
-    assert "No closed historical periods" in result["summary"]
 
 
-def test_budget_discipline_executor_penalises_overrun(client, db_session) -> None:
+def test_budget_vs_actual_amount_executor_penalises_overrun(client, db_session) -> None:
     from datetime import datetime, timezone, timedelta
     from tests.factories import create_budget
     from app.models import FinancialPeriod, PeriodExpense, ExpenseItem
@@ -93,20 +92,20 @@ def test_budget_discipline_executor_penalises_overrun(client, db_session) -> Non
     period = FinancialPeriod(
         budgetid=budget.budgetid,
         startdate=now - timedelta(days=30),
-        enddate=now - timedelta(days=1),
-        islocked=True,
+        enddate=now + timedelta(days=1),
+        islocked=False,
     )
     db_session.add(period)
     db_session.flush()
     db_session.add(PeriodExpense(finperiodid=period.finperiodid, budgetid=budget.budgetid, expensedesc="Rent", budgetamount=Decimal("500"), actualamount=Decimal("700")))
     db_session.commit()
 
-    executor = get_executor("budget_discipline")
+    executor = get_executor("budget_vs_actual_amount")
     result = executor(
         db=db_session,
         budget=budget,
-        period=None,
-        parameters={"max_overrun_dollar": 0, "max_overrun_pct_of_expenses": 10},
+        period=period,
+        parameters={"upper_tolerance_amount": 50, "upper_tolerance_pct": 5},
         scoring_sensitivity=50,
         tone="factual",
     )
@@ -143,7 +142,7 @@ def test_evaluate_period_health_returns_metrics(client, db_session) -> None:
 
     matrix = db_session.query(BudgetHealthMatrix).filter_by(budgetid=budget.budgetid, is_active=True).first()
     results = evaluate_period_health(db_session, budget, None, matrix)
-    assert len(results) == 2
+    assert len(results) == 6
     for r in results:
         assert "score" in r
         assert "status" in r

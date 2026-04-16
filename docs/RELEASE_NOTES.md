@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+## 0.6.0-alpha | released | 2026-04-16
+
+### Changed
+
+- Replaced the per-budget health metrics database table with a global metric registry defined in code. This simplifies the engine while still letting each budget tune weights, sensitivity, and parameters.
+- Expanded the Budget Health Engine from two metrics to six: Setup Health, Budget Cycles Pending Close-Out, Budget vs Actual (Amount), Budget vs Actual (Lines), In-Cycle Budget Adjustments, and Revisions on Paid Expenses.
+- Renamed metric parameter storage from `parameters_json` to `health_metric_parameters` for clearer intent.
+- Removed drill-down support from budget health surfaces to keep the experience focused on scores and evidence.
+
+### Fixed
+
+- Cleaned up obsolete backend and frontend code left over from the previous health engine simplification, including legacy metric template references and drill-down fallbacks.
+
 ## 0.5.1-alpha | released | 2026-04-15
 
 ### Fixed
@@ -13,7 +26,7 @@
 
 ### Changed
 
-- Simplified the Budget Health Engine down to two core metrics: Setup Health and Budget Discipline. Removed templates, data sources, scales, custom metric builder, formula evaluation, and drill-down links so the engine is easier to understand and tune.
+- Simplified the Budget Health Engine down to two core metrics: Setup Health and Budget Discipline. Removed templates, data sources, scales, custom metric builder, and formula evaluation so the engine is easier to understand and tune.
 - Replaced threshold-based scoring with user-tunable parameters on each metric. Setup Health lets you set the minimum number of income, expense, and investment lines. Budget Discipline lets you set a dollar and percentage tolerance for historical expense overrun.
 - Updated the Budget Health setup page to show only the two metric cards with enable/disable, weight, sensitivity, and direct parameter controls.
 
