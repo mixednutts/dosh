@@ -233,6 +233,12 @@ For document changes, follow [DOCUMENTATION_FRAMEWORK.md](./docs/DOCUMENTATION_F
 **Schema Revisions:** d3091a75b8ff, e4f5a6b7c8d9, f1a2b3c4d5e6, b10a29f14a8f, 559cbaa1dce7, 4bf1bf54b0bb, 7a8b9c0d1e2f, 009297f69b52, a1b2c3d4e5f6, 9c0f8d72a04c, e1096e3868f0, fb246c4482b7
 
 **Recent Work:**
+- **Docker Compose Stack Consolidation (COMPLETED):** Consolidated the runtime from separate `backend` and `frontend` services into a single `backend` service.
+  - `backend/Dockerfile` now uses a multi-stage build: Node stage compiles the React frontend, then the Python stage copies `dist/` into `/app/frontend_dist`.
+  - `backend/app/main.py` serves the static SPA via a custom `SPAStaticFiles` mount with `index.html` fallback for React Router.
+  - `docker-compose.yml` simplified to one service; `docker-compose.override.yml` Traefik labels moved to `backend`.
+  - Updated `scripts/release_with_migrations.sh` and `scripts/bump_version.py` to reflect the single-image build.
+  - Deployed to local Docker with override and verified `/api/health` and root `/` serving the app correctly.
 - **Budget Health Engine — Global Metrics and Expanded Scoring (COMPLETED):** Assessed, planned, and implemented a refined Budget Health Engine built around a global code-based metric registry instead of per-budget DB metric rows.
   - Removed the `HealthMetric` DB table; metrics are now defined globally in `backend/app/health_engine/system_metrics.py`.
   - Changed `BudgetHealthMatrixItem` primary key from `metric_id` (foreign key) to `metric_key` (string), and renamed `parameters_json` to `health_metric_parameters`.

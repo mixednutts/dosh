@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.6.1-alpha | released | 2026-04-16
+
+### Changed
+
+- Simplified the Docker Compose stack into a single backend service. The backend image now builds the React frontend directly and serves it alongside the API, making deployments easier to build and maintain.
+
 ## 0.6.0-alpha | released | 2026-04-16
 
 ### Changed

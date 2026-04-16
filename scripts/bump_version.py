@@ -9,7 +9,6 @@ This will update:
 - backend/app/version.py (canonical)
 - docker-compose.yml
 - backend/Dockerfile
-- frontend/Dockerfile
 - frontend/package.json
 - frontend/package-lock.json (via npm install --package-lock-only)
 - frontend/src/components/Layout.jsx
@@ -73,12 +72,6 @@ def bump_backend_dockerfile(version: str) -> None:
     path = ROOT_DIR / "backend" / "Dockerfile"
     pattern = re.compile(r'(ENV APP_VERSION=)([^\s]+)')
     update_file(path, pattern, rf'\g<1>{version}', "backend/Dockerfile")
-
-
-def bump_frontend_dockerfile(version: str) -> None:
-    path = ROOT_DIR / "frontend" / "Dockerfile"
-    pattern = re.compile(r'(ARG APP_VERSION=)([^\s]+)')
-    update_file(path, pattern, rf'\g<1>{version}', "frontend/Dockerfile")
 
 
 def bump_package_json(version: str) -> None:
@@ -242,7 +235,6 @@ def main():
     bump_backend_version(args.version)
     bump_docker_compose(args.version)
     bump_backend_dockerfile(args.version)
-    bump_frontend_dockerfile(args.version)
     bump_package_json(args.version)
     if not args.skip_npm:
         bump_package_lock(args.version)

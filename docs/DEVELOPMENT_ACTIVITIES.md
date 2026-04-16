@@ -888,8 +888,8 @@ Status:
 - `Completed`: align the deployed SQLite schema to the new budget-adjustment and transaction-line-state code after deployment exposed the gap
 - `Completed`: align the live SQLite schema again after setup-history revision support exposed the missing `periodtransactions.revisionnum` column and `setuprevisionevents` table
 - `Completed`: pin frontend install behavior more reliably by keeping the Vite toolchain on a patched release and restoring a clean `npm audit` baseline
+- `Completed`: consolidated the Docker Compose stack from separate `backend` and `frontend` services into a single `backend` service. The backend Dockerfile now builds the React frontend in a multi-stage Node stage, and FastAPI serves the static SPA directly. This simplifies shipping, reduces moving parts, and keeps Traefik/HTTPS networking via the override on the single service.
 - keep the Node 20 frontend Docker baseline healthy and revisit newer LTS adoption only when the toolchain is ready
-- verify compose assumptions around networks and Traefik usage
 - document expected production vs local deployment differences
 - confirm build and startup paths remain clean as the app grows
 - `Completed`: introduce route-level lazy loading for major pages in [App.jsx](/home/ubuntu/dosh/frontend/src/App.jsx) so the frontend stops shipping one oversized initial Vite chunk

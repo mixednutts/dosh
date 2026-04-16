@@ -26,7 +26,7 @@ For new AI or agent sessions:
 - Backend: FastAPI, SQLAlchemy, SQLite
 - Frontend: React 18, Vite, React Query, React Router
 - Testing: `pytest`, Jest with React Testing Library, Playwright
-- Deployment path: Docker Compose
+- Deployment path: Docker Compose (single backend service; the backend image builds and serves the React frontend directly)
 - Docker Compose note: when working on Docker-related deployment or runtime setup, always check for [docker-compose.override.yml](/home/ubuntu/dosh/docker-compose.override.yml) and apply it when present in the development environment
 - Core product shape: guided budgeting, explicit budget-cycle lifecycle, ledger-backed transaction movement, close-out flow, setup assessment, budget health, app-wide localisation for regional display, date handling, amount input, and calendar-based timing visibility on the budget overview
 

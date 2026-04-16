@@ -4,6 +4,41 @@ This document captures the key product and implementation changes made during re
 
 It is intended to complement [README.md](/home/ubuntu/dosh/README.md), not replace it.
 
+## Latest Session: Docker Compose Stack Consolidation (0.6.1-alpha)
+
+This session consolidated the multi-service Docker Compose stack into a single backend service that builds and serves the React frontend directly.
+
+### What changed
+
+- **Backend Dockerfile (`backend/Dockerfile`):**
+  - Converted to a multi-stage build. Stage 1 uses `node:20-alpine` to install frontend dependencies and run `npm run build`. Stage 2 is the existing Python runtime, which copies the built `dist/` folder into `/app/frontend_dist`.
+
+- **Backend entrypoint (`backend/app/main.py`):**
+  - Added a custom `SPAStaticFiles` mount that serves static files from `/app/frontend_dist`.
+  - The custom class falls back to `index.html` on 404 responses, enabling React Router deep links without a separate catch-all FastAPI route that conflicts with `StaticFiles`.
+  - CORS middleware is now only added when `DEV_MODE=true`, since the production deployment serves frontend and API from the same origin.
+
+- **Docker Compose (`docker-compose.yml`):**
+  - Removed the separate `frontend` service entirely.
+  - The `backend` service now exposes port `3080:80` directly.
+  - Removed explicit network definitions; Docker Compose default networking is sufficient for the single service.
+
+- **Docker Compose override (`docker-compose.override.yml`):**
+  - Moved Traefik labels and the external `frontend` network from the old `frontend` service to the `backend` service.
+
+- **Release script (`scripts/release_with_migrations.sh`):**
+  - Updated to build only `backend` instead of `backend frontend`.
+
+- **Version bump script (`scripts/bump_version.py`):**
+  - Removed the `frontend/Dockerfile` bump step since the frontend is now built inside `backend/Dockerfile`.
+  - Updated the script docstring to reflect the new touchpoint list.
+
+- **Deployment verification:**
+  - Built and deployed the consolidated image locally using `INCLUDE_OVERRIDE=true ./scripts/release_with_migrations.sh`.
+  - Verified `/api/health`, `/api/info`, and root `/` (serving the React SPA) all respond correctly on port 3080.
+
+---
+
 ## Latest Session: Budget Health Engine — Global Metrics and Expanded Scoring (0.6.0-alpha)
 
 This session replaced the per-budget health metrics database table with a global metric registry defined in code, expanded the engine from two metrics to six, and removed drill-down support.

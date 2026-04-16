@@ -1,5 +1,8 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.staticfiles import StaticFiles
 
 from .api_docs import error_responses
 from .auto_expense import start_auto_expense_scheduler
@@ -10,6 +13,7 @@ from .models import PayType
 from .release_notes import release_notes_payload
 from .schemas import ReleaseNotesResponseOut
 from .version import APP_VERSION, get_schema_revision
+from .runtime_settings import dev_mode_enabled
 from .routers import (
     budgets,
     periods,
@@ -26,12 +30,14 @@ from .routers import (
 
 app = FastAPI(title="Dosh API", version=APP_VERSION)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# CORS only needed in dev mode when frontend may be served separately
+if dev_mode_enabled():
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 app.include_router(budgets.router, prefix="/api")
 app.include_router(periods.router, prefix="/api")
@@ -78,7 +84,6 @@ def health():
 
 @app.get("/api/info")
 def info():
-    from .runtime_settings import dev_mode_enabled
     return {
         "app": "Dosh",
         "version": APP_VERSION,
@@ -94,3 +99,19 @@ def info():
 )
 def release_notes():
     return release_notes_payload(APP_VERSION)
+
+
+class SPAStaticFiles(StaticFiles):
+    """Static files that fall back to index.html for SPA routing."""
+
+    async def get_response(self, path: str, scope):
+        response = await super().get_response(path, scope)
+        if response.status_code == 404 and not path.startswith("api/"):
+            return await super().get_response("index.html", scope)
+        return response
+
+
+# Mount static files from built frontend
+STATIC_DIR = "/app/frontend_dist"
+if os.path.isdir(STATIC_DIR):
+    app.mount("/", SPAStaticFiles(directory=STATIC_DIR, html=True), name="static")

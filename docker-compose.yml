@@ -1,38 +1,22 @@
 services:
   backend:
-    build: ./backend
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      args:
+        APP_VERSION: "0.6.1-alpha"
+        DEV_MODE: "true"
     container_name: dosh-backend
     restart: unless-stopped
     volumes:
       - dosh-data:/app/data
     environment:
-      - APP_VERSION=0.6.0-alpha
+      - APP_VERSION=0.6.1-alpha
       - DEV_MODE=true
       - DATABASE_URL=sqlite:////app/data/dosh.db
       - TZ=Australia/Sydney
-    networks:
-      - dosh-net
-
-  frontend:
-    build:
-      context: ./frontend
-      args:
-        APP_VERSION: "0.6.0-alpha"
-        DEV_MODE: "true"
-    container_name: dosh-frontend
-    restart: unless-stopped
-    environment:
-      - TZ=Australia/Sydney
     ports:
       - "3080:80"
-    depends_on:
-      - backend
-    networks:
-      - dosh-net
-
-networks:
-  dosh-net:
-    driver: bridge
 
 volumes:
   dosh-data:

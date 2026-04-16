@@ -49,7 +49,7 @@ else
   alembic upgrade head
 fi'
 
-docker compose "${compose_args[@]}" build backend frontend
+docker compose "${compose_args[@]}" build backend
 docker compose "${compose_args[@]}" run --rm backend sh -lc "$backup_cmd && $bootstrap_or_upgrade_cmd"
 docker compose "${compose_args[@]}" up -d
 
