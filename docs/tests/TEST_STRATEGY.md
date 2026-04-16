@@ -504,6 +504,8 @@ Backend scaffold now present:
   - locked active cycles continue to allow actual recording and transaction entry while still protecting structural edits
   - period-detail income actual entry now uses a dedicated income transaction modal rather than inline set or add controls
   - income transaction UI coverage now exists alongside expense and investment transaction coverage
+  - removed the orphaned `backend/app/health_engine/closeout_health.py` module (legacy closeout preview logic now lives in `cycle_management.py` and the health engine runner)
+  - added frontend component coverage for `CloseoutModal`, `TransactionListPanel`, `periodCalculations`, and `AddIncomeLineModal` in dedicated test files under `frontend/src/__tests__`
 - initial Playwright end-to-end scaffold in [playwright.config.js](/home/ubuntu/dosh/frontend/playwright.config.js) and [budget-smoke.spec.js](/home/ubuntu/dosh/frontend/e2e/budget-smoke.spec.js)
   The current smoke paths now run successfully in Chromium locally, covering blocked setup handoff, minimum-setup first-cycle generation, first expense-transaction activity with linked account movement, close-out into the next active cycle, and budget-cycle export download validation.
   The current Playwright backend harness now runs `alembic upgrade head` against a fresh SQLite database before booting the backend server, so end-to-end flows exercise a migrated schema instead of an uninitialized file.
