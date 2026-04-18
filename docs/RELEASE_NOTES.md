@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+## 0.6.3-alpha | released | 2026-04-18
+
+### Changed
+
+- Renamed "Projected Savings" to "Projected Investment" throughout the app to better reflect that the value represents planned investment allocations rather than generic savings.
+
+### Fixed
+
+- Fixed `Surplus (Budget)` showing different values on the budget cycles summary page versus the period detail page. Both surfaces now use the same calculation so the numbers match.
+- Fixed `Projected Investment` on the budget cycles summary page to use live computed account balances instead of potentially stale stored values, matching the detail page behavior.
+- Fixed a balance chain corruption issue where creating a new budget cycle during close-out could initialize account balances from the wrong source, breaking the opening-to-closing chain across periods.
+- Fixed a SQLite datetime comparison bug that could cause balance propagation to incorrectly include the source period when updating later periods.
+
 ## 0.6.2-alpha | released | 2026-04-16
 
 ### Fixed

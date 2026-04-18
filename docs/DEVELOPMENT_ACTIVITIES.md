@@ -62,7 +62,7 @@ Recent progress worth carrying forward:
 - the budget cycles list and sidebar now use the aligned stage order `Current`, `Planned`, `Pending Closure`, and `Historic`, with session-persisted expand or collapse state
 - budget-cycle lifecycle hardening now distinguishes explicit persisted lifecycle state from derived user-facing stage, allowing multiple overdue `Pending Closure` cycles while preserving one `Current` cycle
 - the demo seed now includes rolling-window `Closed`, `Pending Closure`, `Current`, and `Planned` scenarios plus transaction-direction and budget-adjustment examples for walkthroughs
-- the period-detail page now surfaces `Projected Savings` and `Remaining Expenses` in a single 8-card summary grid
+- the period-detail page now surfaces `Projected Investment` and `Remaining Expenses` in a single 8-card summary grid
 - backend tests now run against an isolated SQLite database per test case, making mixed-area sessions much safer
 - Docker Compose deployment was rebuilt and verified successfully from the current working tree
 - income actual entry in the period detail page now uses a dedicated transaction modal instead of inline actual overrides
@@ -821,10 +821,18 @@ Status:
 - `Completed`: fix investment and expense budget totals on the period detail page so the total row correctly sums budgeted amounts rather than substituting actuals for paid lines
 - `Completed`: fix budget cycle lifecycle state not refreshing automatically when a new cycle start date passes; `cycle_stage()` now derives `CURRENT`/`PENDING_CLOSURE`/`PLANNED` from actual dates rather than blindly trusting the persisted `cycle_status`, and the daily auto-expense scheduler now refreshes all lifecycle states before processing expenses
 - `Completed`: fix page refresh on deep links (e.g., `/budgets/1` or `/budgets/2/periods/23`) returning a "Not Found" error. The `SPAStaticFiles` handler was catching `fastapi.HTTPException` instead of `starlette.exceptions.HTTPException`, so the missing-file exception was not falling back to `index.html` correctly
+- `Completed`: rename "Projected Savings" to "Projected Investment" across backend, frontend, and tests to align terminology with the investment-focused surplus workflow
+- `Completed`: fix `Projected Investment` calculation in the budget cycles summary to use dynamically computed account balances instead of stored (potentially stale) `PeriodBalance` rows, matching the detail endpoint behavior
+- `Completed`: fix surplus budget mismatch between budget cycles summary and period detail. The summary now uses the same surplus-contribution logic as the detail page (actual + positive remaining for outflows, actual-or-budget for income), so `Surplus (Budget)` is consistent across both surfaces
+- `Completed`: fix `create_next_cycle` initializing new period balances from `BalanceType.opening_balance` instead of the previous period's closing balance, which could cause balance chain corruption when cycles were created during close-out
+- `Completed`: fix SQLite datetime text-comparison bug in `propagate_balance_changes_from_period` and related queries where SQLAlchemy's space-separated datetime parameters did not match SQLite's `T`-separator storage format, causing the source period to be incorrectly included in "later periods" results
+- `Completed`: fix trailing-slash mismatch in backend tests (`/balance-types` vs `/balance-types/`) that caused 405 Method Not Allowed after FastAPI strict routing changes
+- `Completed`: fix demo-budget test failing in containers with `DEV_MODE=true` by explicitly monkeypatching the environment variable in the test
 
 Cross-links:
 
 - Cash Management
+- Reporting and Analysis
 
 #### Activity Group: Enhancements
 

@@ -538,7 +538,7 @@ class PeriodSummaryOut(BaseModel):
     investment_actual: Decimal = Decimal("0")
     surplus_budget: Decimal = Decimal("0")
     surplus_actual: Decimal = Decimal("0")
-    projected_savings: Decimal = Decimal("0")
+    projected_investment: Decimal = Decimal("0")
     can_delete: bool = False
     delete_mode: Optional[str] = None
     delete_reason: Optional[str] = None
@@ -944,7 +944,7 @@ class PeriodDetailOut(BaseModel):
     investments: list[PeriodInvestmentOut] = []
     balances: list[PeriodBalanceOut] = []
     balances_limit_exceeded: bool = False
-    projected_savings: Decimal = Decimal("0")
+    projected_investment: Decimal = Decimal("0")
     closeout_snapshot: Optional[PeriodCloseoutSnapshotOut] = None
 
 

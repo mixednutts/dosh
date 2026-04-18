@@ -214,6 +214,7 @@ def next_period_for(period: FinancialPeriod, db: Session) -> FinancialPeriod | N
         .filter(
             FinancialPeriod.budgetid == period.budgetid,
             FinancialPeriod.startdate > period.startdate,
+            FinancialPeriod.finperiodid != period.finperiodid,
         )
         .order_by(FinancialPeriod.startdate, FinancialPeriod.finperiodid)
         .first()
@@ -317,21 +318,25 @@ def create_next_cycle(period: FinancialPeriod, budget: Budget, db: Session) -> F
             ))
 
     for balance_type in balance_types:
+        prev_pb = db.get(PeriodBalance, (period.finperiodid, balance_type.balancedesc))
+        opening = Decimal(str(prev_pb.closing_amount)) if prev_pb else Decimal(str(balance_type.opening_balance))
         db.add(PeriodBalance(
             finperiodid=next_period.finperiodid,
             budgetid=budget.budgetid,
             balancedesc=balance_type.balancedesc,
-            opening_amount=Decimal(str(balance_type.opening_balance)),
-            closing_amount=Decimal(str(balance_type.opening_balance)),
+            opening_amount=opening,
+            closing_amount=opening,
         ))
 
     for investment_item in investment_items:
+        prev_pi = db.get(PeriodInvestment, (period.finperiodid, investment_item.investmentdesc))
+        opening = Decimal(str(prev_pi.closing_value)) if prev_pi else Decimal(str(investment_item.initial_value))
         db.add(PeriodInvestment(
             finperiodid=next_period.finperiodid,
             budgetid=budget.budgetid,
             investmentdesc=investment_item.investmentdesc,
-            opening_value=Decimal(str(investment_item.initial_value)),
-            closing_value=Decimal(str(investment_item.initial_value)),
+            opening_value=opening,
+            closing_value=opening,
             budgeted_amount=Decimal(str(investment_item.planned_amount or 0)),
             actualamount=Decimal("0.00"),
             revision_snapshot=investment_item.revisionnum,

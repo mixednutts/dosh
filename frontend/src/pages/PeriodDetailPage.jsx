@@ -240,7 +240,7 @@ export default function PeriodDetailPage() {
     })
   ), 0)
   const surplusBudget = budgetIncomeContribution - budgetExpenseContribution - budgetInvestmentContribution
-  const projectedSavings = Number(data.projected_savings ?? 0)
+  const projectedInvestment = Number(data.projected_investment ?? 0)
   const filteredExpenses = expenses.filter(expense => expenseStatusFilter === 'all' || expense.status === expenseStatusFilter)
 
   const handleMarkPaid = expense => {
@@ -383,7 +383,7 @@ export default function PeriodDetailPage() {
           { label: 'Expense Budget', value: effectiveExpenseBudget, cls: 'text-gray-700 dark:text-gray-300' },
           { label: 'Expense Actual', value: totalExpenseActual, cls: 'text-red-700 dark:text-red-400' },
           { label: 'Remaining Expenses', value: totalExpenseRemaining, cls: totalExpenseRemaining >= 0 ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400' },
-          { label: 'Projected Savings', value: projectedSavings },
+          { label: 'Projected Investment', value: projectedInvestment },
           { label: 'Surplus (Budget)', value: surplusBudget },
           { label: 'Surplus (Actual)', value: surplusActual },
         ].map(({ label, value, cls }) => (

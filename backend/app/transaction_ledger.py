@@ -200,6 +200,7 @@ def propagate_balance_changes_from_period(
         .filter(
             FinancialPeriod.budgetid == period.budgetid,
             FinancialPeriod.startdate > period.startdate,
+            FinancialPeriod.finperiodid != period.finperiodid,
         )
         .order_by(FinancialPeriod.startdate, FinancialPeriod.finperiodid)
         .all()

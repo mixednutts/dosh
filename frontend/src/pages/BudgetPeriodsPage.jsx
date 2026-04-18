@@ -102,7 +102,7 @@ function PeriodSummaryRow({ summary, onDelete }) {
   const stage = getCycleStage(period)
   const surplusBudgetTone = Number(summary.surplus_budget) >= 0 ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'
   const surplusActualTone = Number(summary.surplus_actual) >= 0 ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'
-  const projectedSavingsTone = Number(summary.projected_savings) >= 0 ? 'text-success-700 dark:text-success-400' : 'text-red-600 dark:text-red-400'
+  const projectedInvestmentTone = Number(summary.projected_investment) >= 0 ? 'text-success-700 dark:text-success-400' : 'text-red-600 dark:text-red-400'
   const startLabel = formatDate(period.startdate)
   const endLabel = formatDate(period.enddate)
   let cycleBadgeClass = 'badge-green'
@@ -138,7 +138,7 @@ function PeriodSummaryRow({ summary, onDelete }) {
       <td className="table-cell text-right col-actual text-red-600 dark:text-red-400">{formatCurrency(summary.expense_actual)}</td>
       <td className="table-cell-muted text-right col-budget">{formatCurrency(summary.investment_budget)}</td>
       <td className="table-cell text-right col-actual text-success-700 dark:text-success-400">{formatCurrency(summary.investment_actual)}</td>
-      <td className={clsx('table-cell text-right font-semibold', projectedSavingsTone)}>{formatCurrency(summary.projected_savings)}</td>
+      <td className={clsx('table-cell text-right font-semibold', projectedInvestmentTone)}>{formatCurrency(summary.projected_investment)}</td>
       <td className={clsx('table-cell text-right font-semibold', surplusBudgetTone)}>{formatCurrency(summary.surplus_budget)}</td>
       <td className={clsx('table-cell text-right font-semibold', surplusActualTone)}>{formatCurrency(summary.surplus_actual)}</td>
       <td className="table-cell">
@@ -254,7 +254,7 @@ function PeriodSummaryGroup({ title, summaries, collapsed = false, collapsible =
                 <th className="table-header-cell text-right col-actual">Actual</th>
                 <th className="table-header-cell text-right col-budget">Budget</th>
                 <th className="table-header-cell text-right col-actual">Actual</th>
-                <th className="table-header-cell text-right">Projected Savings</th>
+                <th className="table-header-cell text-right">Projected Investment</th>
                 <th className="table-header-cell text-right">Surplus Budget</th>
                 <th className="table-header-cell text-right">Surplus Actual</th>
                 <th className="table-header-cell text-right">Actions</th>

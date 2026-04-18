@@ -229,10 +229,12 @@ For document changes, follow [DOCUMENTATION_FRAMEWORK.md](./docs/DOCUMENTATION_F
 
 ## Current Project State (Snapshot)
 
-**Version:** 0.6.0-alpha
+**Version:** 0.6.3-alpha
 **Schema Revisions:** d3091a75b8ff, e4f5a6b7c8d9, f1a2b3c4d5e6, b10a29f14a8f, 559cbaa1dce7, 4bf1bf54b0bb, 7a8b9c0d1e2f, 009297f69b52, a1b2c3d4e5f6, 9c0f8d72a04c, e1096e3868f0, fb246c4482b7
 
 **Recent Work:**
+- **Projected Investment Rename and Surplus Alignment (COMPLETED):** Renamed "Projected Savings" to "Projected Investment" across backend, frontend, and tests. Fixed surplus budget calculation mismatch between budget cycles summary and period detail pages. Fixed projected investment in summary to use dynamic balance computation matching the detail endpoint.
+- **PeriodBalance Corruption Prevention (COMPLETED):** Fixed `create_next_cycle` initializing new period balances from `BalanceType.opening_balance` instead of previous period's closing. Fixed SQLite datetime text-comparison bug in `propagate_balance_changes_from_period` where SQLAlchemy's space-separated parameters didn't match SQLite's T-separator storage format. Added `finperiodid !=` exclusion to all affected datetime range queries as defensive measure.
 - **Docker Compose Stack Consolidation (COMPLETED):** Consolidated the runtime from separate `backend` and `frontend` services into a single `backend` service.
   - `backend/Dockerfile` now uses a multi-stage build: Node stage compiles the React frontend, then the Python stage copies `dist/` into `/app/frontend_dist`.
   - `backend/app/main.py` serves the static SPA via a custom `SPAStaticFiles` mount with `index.html` fallback for React Router.
@@ -268,10 +270,11 @@ For document changes, follow [DOCUMENTATION_FRAMEWORK.md](./docs/DOCUMENTATION_F
 
 **Active Focus Areas:**
 - Budget Health refinement (threshold behavior, evidence language, test coverage)
-- Testing infrastructure hardening (all 166 backend tests passing, 183 frontend tests passing)
+- Testing infrastructure hardening (all 169 backend tests passing, 220 frontend tests passing)
 - Documentation framework compliance
 - Release process reliability
 - SonarQube maintainability follow-through
+- Balance chain integrity (dynamic balance computation for non-closed periods, stored values for closed cycles)
 
 **Guardrails in Effect:**
 - Test-by-change discipline (tests with behavior changes)

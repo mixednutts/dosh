@@ -136,6 +136,7 @@ def _future_unlocked_periods(period: FinancialPeriod, db: Session) -> list[Finan
         .filter(
             FinancialPeriod.budgetid == period.budgetid,
             FinancialPeriod.startdate > period.startdate,
+            FinancialPeriod.finperiodid != period.finperiodid,
             FinancialPeriod.islocked == False,  # noqa: E712
             FinancialPeriod.cycle_status != CLOSED,
         )
@@ -259,16 +260,29 @@ def _period_status(period: FinancialPeriod) -> str:
     return "Closed"
 
 
-def _projected_savings(period_status: str, savings_budget: Decimal, savings_actual: Decimal) -> Decimal:
-    if period_status == "Closed":
-        return savings_actual
-    if period_status in {"Current", "Pending Closure"}:
-        if savings_actual <= Decimal("0"):
-            return savings_budget
-        if savings_actual < savings_budget:
-            return savings_budget - savings_actual
-        return savings_actual
-    return savings_budget
+def _projected_investment_for_period(
+    period_status: str,
+    investments: list[PeriodInvestmentOut],
+    period_balances: list[PeriodBalanceOut],
+) -> Decimal:
+    """Compute projected investment based on linked account balances + budgeted amounts."""
+    balance_by_account = {pb.balancedesc: pb for pb in period_balances}
+    total = Decimal("0.00")
+    for inv in investments:
+        linked_account = getattr(inv, "linked_account_desc", None)
+        if period_status in {"Closed", "Pending Closure"}:
+            # For closed or pending-closure periods, use the linked account's closing balance
+            if linked_account and linked_account in balance_by_account:
+                total += Decimal(str(balance_by_account[linked_account].closing_amount or 0))
+            else:
+                total += Decimal(str(inv.closing_value or 0))
+        else:
+            # For current/planned: linked account opening + budgeted amount
+            if linked_account and linked_account in balance_by_account:
+                total += Decimal(str(balance_by_account[linked_account].opening_amount or 0)) + Decimal(str(inv.budgeted_amount or 0))
+            else:
+                total += Decimal(str(inv.opening_value or 0)) + Decimal(str(inv.budgeted_amount or 0))
+    return total
 
 
 def _effective_expense_budget(expense: PeriodExpenseOut) -> Decimal:
@@ -281,6 +295,40 @@ def _effective_investment_budget(investment: PeriodInvestmentOut) -> Decimal:
     if (getattr(investment, "status", WORKING) or WORKING) == PAID:
         return Decimal(str(investment.actualamount or 0))
     return Decimal(str(investment.budgeted_amount or 0))
+
+
+def _surplus_contribution_for_income(income: PeriodIncome) -> Decimal:
+    """Income surplus contribution: actual if non-zero, else budget."""
+    actual = Decimal(str(income.actualamount or 0))
+    if actual != Decimal("0.00"):
+        return actual
+    return Decimal(str(income.budgetamount or 0))
+
+
+def _surplus_contribution_for_expense(expense: PeriodExpense) -> Decimal:
+    """Expense surplus contribution: actual + positive remaining."""
+    actual = Decimal(str(expense.actualamount or 0))
+    status = getattr(expense, "status", WORKING) or WORKING
+    if status == PAID:
+        return actual
+    budget = Decimal(str(expense.budgetamount or 0))
+    remaining = budget - actual
+    if remaining > Decimal("0.00"):
+        return actual + remaining
+    return actual
+
+
+def _surplus_contribution_for_investment(investment: PeriodInvestment) -> Decimal:
+    """Investment surplus contribution: actual + positive remaining."""
+    actual = Decimal(str(investment.actualamount or 0))
+    status = getattr(investment, "status", WORKING) or WORKING
+    if status == PAID:
+        return actual
+    budget = Decimal(str(investment.budgeted_amount or 0))
+    remaining = budget - actual
+    if remaining > Decimal("0.00"):
+        return actual + remaining
+    return actual
 
 
 def _serialize_export_value(value):
@@ -348,8 +396,6 @@ def _load_period_detail_components(period: FinancialPeriod, db: Session) -> dict
     expense_out = _enrich_expenses(expenses, db)
     investment_out = _enrich_investments(investments, db)
     period_status = _period_status(period)
-    investment_budget = sum((_effective_investment_budget(row) for row in investment_out), Decimal("0.00"))
-    investment_actual = sum((Decimal(str(row.actualamount or 0)) for row in investment_out), Decimal("0.00"))
 
     return {
         "incomes": income_out,
@@ -357,7 +403,7 @@ def _load_period_detail_components(period: FinancialPeriod, db: Session) -> dict
         "investments": investment_out,
         "balances": enriched_balances,
         "balances_limit_exceeded": balances_limit_exceeded,
-        "projected_savings": _projected_savings(period_status, investment_budget, investment_actual),
+        "projected_investment": _projected_investment_for_period(period_status, investment_out, enriched_balances),
     }
 
 
@@ -794,7 +840,6 @@ def list_period_summaries_for_budget(budgetid: int, db: DbSession):
         investments_by_period[row.finperiodid].append(row)
 
     summaries: list[PeriodSummaryOut] = []
-    cumulative_projected_savings = Decimal("0.00")
 
     for period in periods:
         incomes = incomes_by_period.get(period.finperiodid, [])
@@ -813,9 +858,6 @@ def list_period_summaries_for_budget(budgetid: int, db: DbSession):
             for row in investments
         ), Decimal("0.00"))
         investment_actual = sum((Decimal(str(row.actualamount or 0)) for row in investments), Decimal("0.00"))
-
-        savings_budget = investment_budget
-        savings_actual = investment_actual
 
         period_status = _period_status(period)
         later_periods = [candidate for candidate in periods if candidate.startdate > period.startdate]
@@ -845,7 +887,21 @@ def list_period_summaries_for_budget(budgetid: int, db: DbSession):
         elif delete_mode == "future_chain":
             delete_reason = "Deleting this cycle requires deleting it and all upcoming cycles to preserve continuity."
 
-        cumulative_projected_savings += _projected_savings(period_status, savings_budget, savings_actual)
+        # Compute projected investment from dynamically computed linked account balances
+        budget = db.get(Budget, period.budgetid)
+        max_cycles = budget.max_forward_balance_cycles if budget else 10
+        dynamic_balances = compute_dynamic_period_balances(period.finperiodid, db, max_forward_cycles=max_cycles)
+        if dynamic_balances is not None:
+            balance_out = dynamic_balances
+        else:
+            balance_out = []
+        enriched_investments = _enrich_investments(investments, db)
+        projected_investment = _projected_investment_for_period(period_status, enriched_investments, balance_out)
+
+        # Compute surplus contributions using the same logic as the frontend detail page
+        income_surplus_contrib = sum((_surplus_contribution_for_income(row) for row in incomes), Decimal("0.00"))
+        expense_surplus_contrib = sum((_surplus_contribution_for_expense(row) for row in expenses), Decimal("0.00"))
+        investment_surplus_contrib = sum((_surplus_contribution_for_investment(row) for row in investments), Decimal("0.00"))
 
         summaries.append(PeriodSummaryOut(
             period=PeriodOut.model_validate(period),
@@ -856,9 +912,9 @@ def list_period_summaries_for_budget(budgetid: int, db: DbSession):
             expense_actual=expense_actual,
             investment_budget=investment_budget,
             investment_actual=investment_actual,
-            surplus_budget=income_budget - expense_budget - investment_budget,
+            surplus_budget=income_surplus_contrib - expense_surplus_contrib - investment_surplus_contrib,
             surplus_actual=income_actual - expense_actual - investment_actual,
-            projected_savings=cumulative_projected_savings,
+            projected_investment=projected_investment,
             can_delete=can_delete,
             delete_mode=delete_mode,
             delete_reason=delete_reason,
@@ -879,7 +935,7 @@ def get_period_detail(budgetid: int, finperiodid: int, db: DbSession):
         investments=detail["investments"],
         balances=detail["balances"],
         balances_limit_exceeded=detail.get("balances_limit_exceeded", False),
-        projected_savings=detail["projected_savings"],
+        projected_investment=detail["projected_investment"],
         closeout_snapshot=period.closeout_snapshot,
     )
 
@@ -1124,6 +1180,7 @@ def add_expense_to_period(budgetid: int,
             .filter(
                 FinancialPeriod.budgetid == payload.budgetid,
                 FinancialPeriod.startdate > period.startdate,
+                FinancialPeriod.finperiodid != period.finperiodid,
                 FinancialPeriod.islocked == False,  # noqa: E712
             )
             .all()
@@ -1235,6 +1292,7 @@ def add_income_to_period(budgetid: int,
             .filter(
                 FinancialPeriod.budgetid == payload.budgetid,
                 FinancialPeriod.startdate > period.startdate,
+                FinancialPeriod.finperiodid != period.finperiodid,
                 FinancialPeriod.islocked == False,  # noqa: E712
             )
             .all()

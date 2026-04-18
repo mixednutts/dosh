@@ -260,7 +260,7 @@ describe('BudgetsPage', () => {
       ],
       investments: [],
       balances: [],
-      projected_savings: 0,
+      projected_investment: 0,
       closeout_snapshot: null,
     })
 
@@ -352,7 +352,7 @@ describe('BudgetsPage', () => {
         expenses: [],
         investments: [],
         balances: [],
-        projected_savings: 0,
+        projected_investment: 0,
         closeout_snapshot: null,
       })
       .mockResolvedValueOnce({
@@ -388,7 +388,7 @@ describe('BudgetsPage', () => {
         }],
         investments: [],
         balances: [],
-        projected_savings: 0,
+        projected_investment: 0,
         closeout_snapshot: null,
       })
 
@@ -469,7 +469,7 @@ describe('BudgetsPage', () => {
       ],
       investments: [],
       balances: [],
-      projected_savings: 0,
+      projected_investment: 0,
       closeout_snapshot: null,
     })
 
@@ -521,7 +521,7 @@ describe('BudgetsPage', () => {
       expenses: [],
       investments: [],
       balances: [],
-      projected_savings: 0,
+      projected_investment: 0,
       closeout_snapshot: null,
     })
 

@@ -17,7 +17,7 @@ import { getAppInfo, getBudgets, getBudgetSetupAssessment, getPeriodDetail, getP
 import { getCycleStage } from '../utils/periodStage'
 
 function displayVersion(version) {
-  return `v${version || '0.6.2-alpha'}`
+  return `v${version || '0.6.3-alpha'}`
 }
 
 function PeriodShortcutGroup({ title, periods, activePeriodId, onNav, budgetId, emptyMessage = null, moreText = null, moreTo = null, moreSubtle = false }) {

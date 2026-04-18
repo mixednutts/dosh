@@ -4,6 +4,49 @@ This document captures the key product and implementation changes made during re
 
 It is intended to complement [README.md](/home/ubuntu/dosh/README.md), not replace it.
 
+## Latest Session: Projected Investment Rename, Surplus Alignment, and Balance Chain Fixes
+
+### What changed
+
+- **Terminology alignment:**
+  - Renamed "Projected Savings" to "Projected Investment" across backend (`backend/app/routers/periods.py`, `backend/app/schemas.py`), frontend (`frontend/src/pages/BudgetPeriodsPage.jsx`, `frontend/src/pages/PeriodDetailPage.jsx`), and tests.
+  - Changed schema field from `projected_savings` to `projected_investment` in `PeriodSummaryOut` and `PeriodDetailOut`.
+
+- **Projected Investment calculation fix:**
+  - Updated `_projected_investment_for_period` to compute from linked account balances plus budgeted amounts instead of using investment line closing values.
+  - For Closed/Pending Closure periods: uses linked account closing balance.
+  - For Current/Planned periods: uses linked account opening balance + budgeted amount.
+  - Fixed summary endpoint (`list_period_summaries_for_budget`) to use `compute_dynamic_period_balances()` per period, matching the detail endpoint behavior and avoiding stale stored `PeriodBalance` data.
+
+- **Surplus budget alignment:**
+  - Added `_surplus_contribution_for_income`, `_surplus_contribution_for_expense`, and `_surplus_contribution_for_investment` helper functions to the backend.
+  - These match the frontend's `getOutflowSurplusContribution` logic: actual + positive remaining for outflows, actual-or-budget for income.
+  - The summary endpoint now uses these for `surplus_budget`, ensuring the budget cycles summary and period detail page show identical values.
+
+- **PeriodBalance corruption prevention:**
+  - Fixed `create_next_cycle` in `backend/app/cycle_management.py` to initialize new period `PeriodBalance` and `PeriodInvestment` openings from the previous period's closing values instead of `BalanceType.opening_balance` / `InvestmentItem.initial_value`.
+  - This prevents balance chain breaks when cycles are created during close-out.
+
+- **SQLite datetime comparison bug fix:**
+  - Fixed `propagate_balance_changes_from_period`, `next_period_for`, `_future_unlocked_periods`, and future-period queries in expense/income setup to exclude the source period via `finperiodid !=` filter.
+  - Root cause: SQLAlchemy generates space-separated datetime parameters (`2026-03-30 13:00:00+00:00`) while SQLite stores ISO format with `T` separator (`2026-03-30T13:00:00+00:00`). In text comparison, `'T' > ' '`, so `startdate > '... '` incorrectly matched the stored value.
+
+- **Test fixes:**
+  - Fixed `test_demo_budget_endpoint_returns_not_found_when_dev_mode_is_disabled` to monkeypatch `DEV_MODE=false` since the container runs with `DEV_MODE=true`.
+  - Fixed balance-type creation tests to use trailing slashes (`/balance-types/`) matching FastAPI's strict routing.
+
+- **Production data fix:**
+  - Created backup `/app/data/backups/dosh-pre-periodbalance-fix-20260418-100040.db`.
+  - Manually corrected corrupted `PeriodBalance` rows for budget 1 period 1 and propagated fixes through the chain using correct transaction-derived movements.
+
+### Decisions preserved
+
+- The surplus contribution formula (actual + positive remaining for outflows) is now the canonical backend behavior, ensuring summary/detail consistency.
+- Dynamic balance computation (`compute_dynamic_period_balances`) is the preferred path for non-closed periods; stored `PeriodBalance` is only trusted for closed cycles.
+- The `finperiodid !=` exclusion pattern should be applied to all SQL datetime range queries as a defensive measure against SQLite text-comparison quirks.
+
+---
+
 ## Latest Session: Fix SPA Deep-Link Refresh (0.6.2-alpha)
 
 This session fixed a bug where refreshing a page on a React Router deep link (e.g., `/budgets/1` or `/budgets/2/periods/23`) returned a `{"detail":"Not Found"}` JSON response instead of loading the app.

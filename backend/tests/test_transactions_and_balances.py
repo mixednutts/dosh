@@ -193,7 +193,7 @@ def test_creating_active_balance_type_creates_period_balances_for_existing_perio
     assert len(periods) == 2
 
     response = client.post(
-        f"/api/budgets/{budget.budgetid}/balance-types",
+        f"/api/budgets/{budget.budgetid}/balance-types/",
         json={
             "balancedesc": "New Account",
             "balance_type": "Transaction",
@@ -239,7 +239,7 @@ def test_creating_active_balance_type_skips_closed_and_pending_closure_periods(c
     assert close_response.status_code == 200, close_response.text
 
     response = client.post(
-        f"/api/budgets/{budget.budgetid}/balance-types",
+        f"/api/budgets/{budget.budgetid}/balance-types/",
         json={
             "balancedesc": "Late Account",
             "balance_type": "Transaction",

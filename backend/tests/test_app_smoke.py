@@ -18,7 +18,7 @@ def test_info_endpoint_returns_app_version(client):
 
     assert response.status_code == 200
     assert response.json()["app"] == "Dosh"
-    assert response.json()["version"] == "0.6.2-alpha"
+    assert response.json()["version"] == "0.6.3-alpha"
 
 
 def test_release_notes_endpoint_returns_current_release(client, monkeypatch):
@@ -43,10 +43,10 @@ def test_release_notes_endpoint_returns_current_release(client, monkeypatch):
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["current_version"] == "0.6.2-alpha"
+    assert payload["current_version"] == "0.6.3-alpha"
     assert payload["update_available"] is False
     assert payload["newer_release_count"] == 0
-    assert payload["current_release"]["version"] == "0.6.2-alpha"
+    assert payload["current_release"]["version"] == "0.6.3-alpha"
 
 
 def test_generate_period_creates_expected_core_rows(client, db_session):
@@ -175,7 +175,8 @@ def test_budget_can_be_deleted_after_setup_revision_history_exists(client, db_se
     ) == 0
 
 
-def test_demo_budget_endpoint_returns_not_found_when_dev_mode_is_disabled(client):
+def test_demo_budget_endpoint_returns_not_found_when_dev_mode_is_disabled(client, monkeypatch):
+    monkeypatch.setenv("DEV_MODE", "false")
     response = client.post("/api/budgets/demo")
 
     assert response.status_code == 404
