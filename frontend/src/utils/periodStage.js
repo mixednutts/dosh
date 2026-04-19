@@ -10,5 +10,5 @@ export function getCycleStageLabel(stage) {
   if (stage === 'CURRENT') return 'Current'
   if (stage === 'PENDING_CLOSURE') return 'Pending Closure'
   if (stage === 'CLOSED') return 'Closed'
-  return 'Planned'
+  return 'Upcoming'
 }

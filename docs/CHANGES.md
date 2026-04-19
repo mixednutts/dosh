@@ -4,6 +4,64 @@ This document captures the key product and implementation changes made during re
 
 It is intended to complement [README.md](/home/ubuntu/dosh/README.md), not replace it.
 
+## Latest Session: UI Polish — Return to Top, Label Relabeling, Banner Styling, and Paid Status Enhancements (2026-04-19)
+
+### What changed
+
+- **Return to Top buttons:**
+  - Added floating "Return to Top" buttons to the Budget Cycles Summary (`BudgetPeriodsPage.jsx`) and Budget Cycle Details (`PeriodDetailPage.jsx`) pages, matching the existing Budget Setup implementation.
+  - Buttons appear after scrolling past 420px and smoothly scroll to top on click.
+
+- **Label relabeling:**
+  - Renamed all user-facing "Planned" budget cycle stage labels to "Upcoming" across frontend pages (`BudgetPeriodsPage`, `Layout` sidebar shortcuts, `BalanceSection`), utility (`periodStage.js`), backend status derivation (`periods.py`), and test expectations (`BalanceSection.test.jsx`).
+
+- **Banner styling system-wide:**
+  - Standardized all banner-style alert/info boxes (locked, closed, error, warning states) to a consistent visual pattern.
+  - Changes: `rounded-md` → `rounded-xl`, softer border opacity (`/70` light, `/30` dark), softer background opacity (`/60` light, `/10` dark), `py-2` → `py-2.5`, and `font-bold` text.
+  - Added `LockClosedIcon` to locked and closed cycle banners for visual scannability.
+  - Applied across `PeriodDetailPage`, `BudgetDetailPage`, `BudgetPeriodsPage`, all setup tabs (`ExpenseItemsTab`, `IncomeTypesTab`, `BalanceTypesTab`, `InvestmentItemsTab`, `SettingsTab`), `SetupItemHistoryModal`, and `ExportCycleModal`.
+
+- **Paid status surplus/deficit visibility:**
+  - When an income, expense, or investment line is marked Paid, the status pill now shows the variance amount suffixed (e.g., `Paid -$60.00`, `Paid +$20.00`).
+  - Expenses: deficit (over budget) is red, surplus is green.
+  - Income: always green because deficit represents unrealised income.
+  - Investments: deficit is red, surplus is green.
+  - Values are locale-formatted with explicit `+` / `-` signs.
+  - The Remaining column reverts to plain "Paid" text when a line is paid.
+
+- **Sidebar default state:**
+  - Changed the default `budgetsExpanded` state from `false` to `true` so the Budget List is visible on page refresh, matching the behaviour of clicking the Do$h banner logo.
+
+### Files touched
+
+- `frontend/src/pages/BudgetPeriodsPage.jsx`
+- `frontend/src/pages/PeriodDetailPage.jsx`
+- `frontend/src/pages/BudgetDetailPage.jsx`
+- `frontend/src/components/Layout.jsx`
+- `frontend/src/components/period-sections/ExpenseSection.jsx`
+- `frontend/src/components/period-sections/IncomeSection.jsx`
+- `frontend/src/components/period-sections/InvestmentSection.jsx`
+- `frontend/src/components/period-sections/BalanceSection.jsx`
+- `frontend/src/components/status/ProgressStatusPill.jsx`
+- `frontend/src/components/SetupItemHistoryModal.jsx`
+- `frontend/src/components/modals/ExportCycleModal.jsx`
+- `frontend/src/pages/tabs/ExpenseItemsTab.jsx`
+- `frontend/src/pages/tabs/IncomeTypesTab.jsx`
+- `frontend/src/pages/tabs/BalanceTypesTab.jsx`
+- `frontend/src/pages/tabs/InvestmentItemsTab.jsx`
+- `frontend/src/pages/tabs/SettingsTab.jsx`
+- `frontend/src/utils/periodStage.js`
+- `frontend/src/__tests__/BalanceSection.test.jsx`
+- `backend/app/routers/periods.py`
+
+### Decisions preserved
+
+- Banner styling should blend rather than dominate the page; lower opacity backgrounds and borders make alerts feel integrated.
+- Income deficits are always shown in green because under-received income is a positive opportunity, not a negative outflow.
+- Paid status pills are the right place for variance visibility because they already communicate the line's final state.
+
+---
+
 ## Latest Session: Close-Out Carry-Forward Optionality and Preview Totals Alignment (0.6.4-alpha)
 
 ### What changed

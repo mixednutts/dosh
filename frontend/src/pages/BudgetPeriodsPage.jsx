@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import PropTypes from 'prop-types'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronDownIcon, ChevronRightIcon, PlusIcon, Cog6ToothIcon, TrashIcon } from '@heroicons/react/24/outline'
+import { ChevronDownIcon, ChevronRightIcon, PlusIcon, Cog6ToothIcon, TrashIcon, ArrowUpIcon } from '@heroicons/react/24/outline'
 import { addDays, format, parseISO } from 'date-fns'
 import { deleteBudget, deletePeriod, getBudget, getBudgetSetupAssessment, getPeriodDeleteOptions, getPeriodSummariesForBudget, generatePeriod } from '../api/client'
 import clsx from 'clsx'
@@ -71,7 +71,7 @@ function PeriodGenerateForm({ initialStartDate, onSubmit, onClose, loading, erro
         </p>
       </div>
       {error && (
-        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300">
+        <div className="rounded-xl border border-red-200/70 bg-red-50/60 px-3 py-2.5 text-sm font-bold text-red-700 dark:border-red-800/30 dark:bg-red-950/10 dark:text-red-300">
           {error}
         </div>
       )}
@@ -286,6 +286,7 @@ export default function BudgetPeriodsPage() {
   const [generateError, setGenerateError] = useState('')
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [deleteMode, setDeleteMode] = useState('single')
+  const [showReturnTop, setShowReturnTop] = useState(false)
 
   const { data: budget, isLoading: budgetLoading } = useQuery({
     queryKey: ['budget', id],
@@ -301,6 +302,13 @@ export default function BudgetPeriodsPage() {
     queryFn: () => getBudgetSetupAssessment(id),
     enabled: !!budget,
   })
+
+  useEffect(() => {
+    const handleScroll = () => setShowReturnTop(globalThis.scrollY > 420)
+    handleScroll()
+    globalThis.addEventListener('scroll', handleScroll, { passive: true })
+    return () => globalThis.removeEventListener('scroll', handleScroll)
+  }, [])
 
   const periods = useMemo(
     () => periodSummaries.map(summary => summary.period),
@@ -447,7 +455,7 @@ export default function BudgetPeriodsPage() {
             />
             <PeriodSummaryGroup
               key={`upcoming-${id}`}
-              title="Planned"
+              title="Upcoming"
               summaries={groupedSummaries.upcoming}
               collapsed
               collapsible
@@ -502,6 +510,18 @@ export default function BudgetPeriodsPage() {
           onClose={() => setDeleteTarget(null)}
         />
       )}
+
+      {showReturnTop && (
+        <button
+          type="button"
+          onClick={() => globalThis.scrollTo({ top: 0, behavior: 'smooth' })}
+          className="fixed bottom-6 right-6 z-20 inline-flex items-center gap-2 rounded-full bg-dosh-600 px-4 py-2 text-sm font-medium text-white shadow-lg transition-colors hover:bg-dosh-700 dark:bg-dosh-700 dark:hover:bg-dosh-600"
+          title="Return to top"
+        >
+          <ArrowUpIcon className="h-4 w-4" />
+          Return to Top
+        </button>
+      )}
     </div>
   )
 }
@@ -541,7 +561,7 @@ function DeleteCycleModal({ deleteTarget, deleteMode, setDeleteMode, removePerio
           <p className="text-sm text-gray-600 dark:text-gray-300">This budget cycle will be deleted.</p>
         ) : null}
         {removePeriod.isError && (
-          <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300">
+          <div className="rounded-xl border border-red-200/70 bg-red-50/60 px-3 py-2.5 text-sm font-bold text-red-700 dark:border-red-800/30 dark:bg-red-950/10 dark:text-red-300">
             {formatApiError(removePeriod.error, 'Unable to delete this budget cycle right now.')}
           </div>
         )}

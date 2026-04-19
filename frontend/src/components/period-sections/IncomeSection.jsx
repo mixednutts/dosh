@@ -100,7 +100,7 @@ export function IncomeSection({
                     {i.status === 'Paid' ? (
                       <span className="font-medium text-success-600 dark:text-success-400">Paid</span>
                     ) : (
-                      <span className={`font-medium ${remaining >= 0 ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'}`}>
+                      <span className="font-medium text-success-600 dark:text-success-400">
                         {fmt(remaining)}
                       </span>
                     )}
@@ -164,7 +164,7 @@ export function IncomeSection({
               <td className="px-4 py-2 text-right text-gray-600 dark:text-gray-400 text-sm">{fmt(totalIncomeBudget)}</td>
               <td className="px-4 py-2 text-right text-success-700 dark:text-success-400 text-sm">{fmt(totalIncomeActual)}</td>
               <td className="px-4 py-2 text-right text-sm">
-                <span className={totalIncomeActual >= totalIncomeBudget ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'}>
+                <span className="text-success-600 dark:text-success-400">
                   {fmt(totalIncomeActual - totalIncomeBudget)}
                 </span>
               </td>

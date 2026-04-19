@@ -1,7 +1,7 @@
 import PropTypes from 'prop-types'
 import { getProgressToneClasses } from '../../utils/periodCalculations'
 
-export function ProgressStatusPill({ item, budgetAmount, actualAmount, remainingAmount, status, onMarkPaid, onRevise, formatters }) {
+export function ProgressStatusPill({ item, budgetAmount, actualAmount, remainingAmount, status, onMarkPaid, onRevise, formatters, category = 'expense' }) {
   const budget = Number(budgetAmount ?? 0)
   const actual = Number(actualAmount ?? 0)
   const remaining = Number(remainingAmount ?? 0)
@@ -18,6 +18,21 @@ export function ProgressStatusPill({ item, budgetAmount, actualAmount, remaining
     const paidCls = isOver
       ? 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/40 dark:text-red-300 dark:hover:bg-red-900/60'
       : 'bg-dosh-100 text-dosh-700 hover:bg-dosh-200 dark:bg-dosh-900/40 dark:text-dosh-300 dark:hover:bg-dosh-900/60'
+
+    const displayValue = category === 'income'
+      ? actual - budget
+      : budget - actual
+
+    const varianceText = displayValue !== 0
+      ? (displayValue > 0 ? `+${formatters.fmt(displayValue)}` : formatters.fmt(displayValue))
+      : null
+
+    const varianceCls = category === 'income'
+      ? 'text-success-600 dark:text-success-400'
+      : displayValue >= 0
+        ? 'text-success-600 dark:text-success-400'
+        : 'text-red-600 dark:text-red-400'
+
     return (
       <button
         type="button"
@@ -26,6 +41,9 @@ export function ProgressStatusPill({ item, budgetAmount, actualAmount, remaining
         className={`inline-flex min-w-[108px] items-center justify-center rounded-full px-2.5 py-1 text-xs font-semibold transition-colors ${paidCls}`}
       >
         Paid
+        {varianceText && (
+          <span className={`ml-1 ${varianceCls}`}>{varianceText}</span>
+        )}
       </button>
     )
   }
@@ -61,6 +79,7 @@ ProgressStatusPill.propTypes = {
   onMarkPaid: PropTypes.func.isRequired,
   onRevise: PropTypes.func.isRequired,
   formatters: PropTypes.object.isRequired,
+  category: PropTypes.oneOf(['expense', 'income', 'investment']),
 }
 
 export function ExpenseStatusPill({ expense, onMarkPaid, onRevise, formatters }) {
@@ -74,6 +93,7 @@ export function ExpenseStatusPill({ expense, onMarkPaid, onRevise, formatters })
       onMarkPaid={onMarkPaid}
       onRevise={onRevise}
       formatters={formatters}
+      category="expense"
     />
   )
 }
@@ -96,6 +116,7 @@ export function InvestmentStatusPill({ investment, onMarkPaid, onRevise, formatt
       onMarkPaid={onMarkPaid}
       onRevise={onRevise}
       formatters={formatters}
+      category="investment"
     />
   )
 }
@@ -118,6 +139,7 @@ export function IncomeStatusPill({ income, onMarkPaid, onRevise, formatters }) {
       onMarkPaid={onMarkPaid}
       onRevise={onRevise}
       formatters={formatters}
+      category="income"
     />
   )
 }

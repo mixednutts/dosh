@@ -188,7 +188,7 @@ function BalanceTypeForm({
           </label>
         </div>
         {structureLocked && (
-          <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-300">
+          <div className="rounded-xl border border-amber-200/70 bg-amber-50/60 px-3 py-2.5 text-sm font-bold text-amber-800 dark:border-amber-800/30 dark:bg-amber-950/10 dark:text-amber-300">
             This account is already in use. Structural changes are locked while it is referenced downstream.
             {lockReasons.length > 0 ? ` ${lockReasons.join('. ')}.` : ''}
           </div>
@@ -321,7 +321,7 @@ export default function BalanceTypesTab({ budgetId, budget }) {
       </div>
 
       {actionError && (
-        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300">
+        <div className="rounded-xl border border-red-200/70 bg-red-50/60 px-3 py-2.5 text-sm font-bold text-red-700 dark:border-red-800/30 dark:bg-red-950/10 dark:text-red-300">
           {actionError}
         </div>
       )}

@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+## 0.6.5-alpha | released | 2026-04-19
+
+### Added
+
+- Added "Return to Top" floating buttons to the Budget Cycles Summary and Budget Cycle Details pages for easier navigation on long pages.
+
+### Changed
+
+- Renamed "Planned" budget cycles to "Upcoming" across the app, including sidebar shortcuts, lists, and status labels.
+- Improved banner styling for locked, closed, error, and warning states with softer colours, rounded corners, bold text, and a lock icon for cycle state banners.
+- When a budget line is marked Paid, the status pill now shows the surplus or deficit amount (for example, "Paid -$60.00" or "Paid +$20.00") so you can see variance at a glance.
+- The left sidebar now starts with the Budget List expanded by default after a page refresh.
+
 ## 0.6.4-alpha | released | 2026-04-19
 
 ### Changed

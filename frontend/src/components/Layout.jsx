@@ -17,7 +17,7 @@ import { getAppInfo, getBudgets, getBudgetSetupAssessment, getPeriodDetail, getP
 import { getCycleStage } from '../utils/periodStage'
 
 function displayVersion(version) {
-  return `v${version || '0.6.4-alpha'}`
+  return `v${version || '0.6.5-alpha'}`
 }
 
 function PeriodShortcutGroup({ title, periods, activePeriodId, onNav, budgetId, emptyMessage = null, moreText = null, moreTo = null, moreSubtle = false }) {
@@ -244,7 +244,7 @@ function CurrentBudgetPanel({ budget, activePeriodId, onNav, shortcutsExpanded =
                 emptyMessage="No current budget cycle right now."
               />
               <PeriodShortcutGroup
-                title="Planned"
+                title="Upcoming"
                 budgetId={budget.budgetid}
                 periods={futurePeriods}
                 activePeriodId={activePeriodId}
@@ -342,7 +342,7 @@ function LayoutNav({ budgets, currentBudgetId, activePeriodId, budgetsExpanded, 
 export default function Layout() {
   const [open, setOpen] = useState(false)
   const [dark, setDark] = useDarkMode()
-  const [budgetsExpanded, setBudgetsExpanded] = useState(false)
+  const [budgetsExpanded, setBudgetsExpanded] = useState(true)
   const [releaseNotesOpen, setReleaseNotesOpen] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     if (typeof window === 'undefined') return false

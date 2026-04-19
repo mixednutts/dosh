@@ -13,7 +13,7 @@ export function BalanceSection({
     return (
       <div className="card">
         <div className="px-4 py-6 text-center text-sm text-gray-600 dark:text-gray-400">
-          The Planned budget cycles exceeds allowed limits for forward calculation.
+          The Upcoming budget cycles exceeds allowed limits for forward calculation.
           <br />
           <span className="text-xs text-gray-500">
             Adjust the limit in Budget Settings if needed.

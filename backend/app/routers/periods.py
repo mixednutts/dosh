@@ -256,7 +256,7 @@ def _period_status(period: FinancialPeriod) -> str:
     if stage == PENDING_CLOSURE_STAGE:
         return "Pending Closure"
     if stage == PLANNED:
-        return "Planned"
+        return "Upcoming"
     return "Closed"
 
 

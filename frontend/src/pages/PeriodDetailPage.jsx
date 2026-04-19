@@ -3,7 +3,7 @@ import { useParams, Link, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   LockClosedIcon, LockOpenIcon, ChevronRightIcon, ChevronLeftIcon,
-  ArrowDownTrayIcon,
+  ArrowDownTrayIcon, ArrowUpIcon,
 } from '@heroicons/react/24/outline'
 import {
   getPeriodDetail, getBudget, setPeriodLock, getPeriodsForBudget, getPeriodBalances,
@@ -74,6 +74,7 @@ export default function PeriodDetailPage() {
   const [expensePayTypeWarning, setExpensePayTypeWarning] = useState(null)
 
   const [investmentModal, setInvestmentModal] = useState(null)
+  const [showReturnTop, setShowReturnTop] = useState(false)
 
   const [localExpenses, setLocalExpenses] = useState(null)
   const [dragOver, setDragOver] = useState(null)
@@ -99,6 +100,13 @@ export default function PeriodDetailPage() {
     queryFn: () => getPeriodsForBudget(data.period.budgetid),
     enabled: !!data?.period?.budgetid,
   })
+
+  useEffect(() => {
+    const handleScroll = () => setShowReturnTop(globalThis.scrollY > 420)
+    handleScroll()
+    globalThis.addEventListener('scroll', handleScroll, { passive: true })
+    return () => globalThis.removeEventListener('scroll', handleScroll)
+  }, [])
 
   const lock = useMutation({ mutationFn: islocked => setPeriodLock(budgetid, id, islocked), onSuccess: () => { qc.invalidateQueries({ queryKey: ['period', id] }); qc.invalidateQueries({ queryKey: ['period-balances', id] }) } })
   const setExpenseStatus = useMutation({ mutationFn: ({ desc, status, revisionComment = null }) => setPeriodExpenseStatus(budgetid, id, desc, status, revisionComment), onSuccess: () => { qc.invalidateQueries({ queryKey: ['period', id] }); qc.invalidateQueries({ queryKey: ['period-balances', id] }) } })
@@ -310,14 +318,20 @@ export default function PeriodDetailPage() {
       </div>
 
       {closed && (
-        <div className="rounded-md bg-slate-100 border border-slate-200 dark:bg-slate-900/30 dark:border-slate-700 px-4 py-2 text-sm text-slate-700 dark:text-slate-300">
-          This budget cycle is closed. Values are frozen for historical reporting, and later corrections should happen through reconciliation.
+        <div className="rounded-xl border border-slate-200/70 bg-slate-50/60 px-4 py-2.5 text-sm font-bold text-slate-700 dark:border-slate-700/40 dark:bg-slate-900/15 dark:text-slate-300">
+          <span className="inline-flex items-center gap-2">
+            <LockClosedIcon className="h-4 w-4 shrink-0" />
+            This budget cycle is closed. Values are frozen for historical reporting, and later corrections should happen through reconciliation.
+          </span>
         </div>
       )}
 
       {locked && !closed && (
-        <div className="rounded-md bg-amber-50 border border-amber-200 dark:bg-amber-900/20 dark:border-amber-700 px-4 py-2 text-sm text-amber-800 dark:text-amber-300">
-          Budget cycle is locked. You can still record actuals and transactions, but budget amounts and cycle line structure are protected until you unlock it.
+        <div className="rounded-xl border border-amber-200/70 bg-amber-50/60 px-4 py-2.5 text-sm font-bold text-amber-800 dark:border-amber-800/30 dark:bg-amber-950/10 dark:text-amber-300">
+          <span className="inline-flex items-center gap-2">
+            <LockClosedIcon className="h-4 w-4 shrink-0" />
+            Budget cycle is locked. You can still record actuals and transactions, but budget amounts and cycle line structure are protected until you unlock it.
+          </span>
         </div>
       )}
 
@@ -614,6 +628,18 @@ export default function PeriodDetailPage() {
             </div>
           </div>
         </Modal>
+      )}
+
+      {showReturnTop && (
+        <button
+          type="button"
+          onClick={() => globalThis.scrollTo({ top: 0, behavior: 'smooth' })}
+          className="fixed bottom-6 right-6 z-20 inline-flex items-center gap-2 rounded-full bg-dosh-600 px-4 py-2 text-sm font-medium text-white shadow-lg transition-colors hover:bg-dosh-700 dark:bg-dosh-700 dark:hover:bg-dosh-600"
+          title="Return to top"
+        >
+          <ArrowUpIcon className="h-4 w-4" />
+          Return to Top
+        </button>
       )}
     </div>
   )

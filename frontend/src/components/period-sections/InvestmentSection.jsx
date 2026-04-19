@@ -65,7 +65,13 @@ export function InvestmentSection({
                   </td>
                   <td className="table-cell text-right col-actual font-semibold text-gray-800 dark:text-gray-200">{fmt(inv.actualamount)}</td>
                   <td className="table-cell text-right">
-                    <span className={`font-medium ${remaining >= 0 ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'}`}>{fmt(remaining)}</span>
+                    {inv.status === 'Paid' ? (
+                      <span className="font-medium text-success-600 dark:text-success-400">Paid</span>
+                    ) : (
+                      <span className={`font-medium ${remaining >= 0 ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'}`}>
+                        {fmt(remaining)}
+                      </span>
+                    )}
                   </td>
                   <td className="table-cell-muted text-sm">
                     {inv.source_account_desc || inv.linked_account_desc ? (

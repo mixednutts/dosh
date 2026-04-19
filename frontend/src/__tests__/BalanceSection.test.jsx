@@ -54,7 +54,7 @@ describe('BalanceSection', () => {
     )
 
     expect(
-      screen.getByText(/The Planned budget cycles exceeds allowed limits for forward calculation/i)
+      screen.getByText(/The Upcoming budget cycles exceeds allowed limits for forward calculation/i)
     ).toBeTruthy()
     expect(
       screen.getByText(/Adjust the limit in Budget Settings if needed/i)

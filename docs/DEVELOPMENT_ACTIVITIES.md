@@ -753,6 +753,11 @@ Status:
 - `Next`
 
 - `Completed`: consolidate Budget Setup and Period Detail add-expense scheduling onto a shared field set based on the Period Detail flow, standardize `Effective Date` wording, keep period-only note and include controls out of Budget Setup, and finish the accepted date-picker, fixed-day guidance, quick-fill, and neutral action-button polish in the touched expense workflows
+- `Completed`: add floating "Return to Top" buttons to Budget Cycles Summary and Budget Cycle Details pages, matching the existing Budget Setup implementation
+- `Completed`: relabel all user-facing "Planned" budget cycle stage text to "Upcoming" across pages, sidebar, utility logic, backend derivation, and tests
+- `Completed`: standardize banner-style alert boxes (locked, closed, error, warning) system-wide with softer border/background opacity, rounded-xl shape, bold text, and lock icons on cycle state banners
+- `Completed`: show surplus/deficit amount inside the Paid status pill for income, expense, and investment lines, with green for income (unrealised income is positive context), red for expense/investment deficit, and explicit +/- prefixes
+- `Completed`: change sidebar default so the Budget List starts expanded on page refresh, matching the Do$h banner logo behaviour
 - `Completed`: extend the release-notes modal so newly available versions can expand inline for details without losing the current-version focus
 - `Completed`: make the "N newer release available" badge in the release-notes modal clickable so it scrolls directly to the Available Updates section
 - provide clear definitions and calculation explanations for the period-detail summary cards, likely through hover helper text or another suitable method, with implementation approach to be confirmed before work starts
