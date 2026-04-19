@@ -134,7 +134,7 @@ def current_period_totals(period: FinancialPeriod) -> dict[str, Decimal]:
     # Surplus contributions aligned with PeriodDetailPage.jsx / get_period_detail
     def _income_surplus(income):
         actual = _to_decimal(income.actualamount)
-        return actual if actual != Decimal("0.00") else _to_decimal(income.budgetamount)
+        return actual if actual else _to_decimal(income.budgetamount)
 
     def _outflow_surplus(row, budget_attr="budgetamount"):
         actual = _to_decimal(row.actualamount)
