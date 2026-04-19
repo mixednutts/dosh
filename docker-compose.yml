@@ -2,7 +2,7 @@ services:
   backend:
     build:
       context: .
-      dockerfile: backend/Dockerfile
+      dockerfile: Dockerfile
       args:
         APP_VERSION: "0.6.5-alpha"
         DEV_MODE: "true"
