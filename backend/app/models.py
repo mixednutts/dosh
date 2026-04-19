@@ -320,6 +320,7 @@ class PeriodCloseoutSnapshot(Base):
     comments = Column(Text, nullable=True)
     goals = Column(Text, nullable=True)
     carry_forward_amount = Column(Numeric(10, 2), nullable=False, default=0)
+    carry_forward_applied = Column(Boolean, nullable=False, default=False)
     health_snapshot_json = Column(Text, nullable=False, default="{}")
     totals_snapshot_json = Column(Text, nullable=False, default="{}")
     created_at = Column(UTCDateTime, default=lambda: dt.now(timezone.utc), nullable=False)

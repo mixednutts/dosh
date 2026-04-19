@@ -118,7 +118,7 @@ def test_carried_forward_uses_income_transactions_but_stays_structurally_protect
 
     closeout = client.post(
         f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/closeout",
-        json={"create_next_cycle": False, "comments": "Carry it forward"},
+        json={"create_next_cycle": False, "carry_forward": True, "comments": "Carry it forward"},
     )
     assert closeout.status_code == 200, closeout.text
 

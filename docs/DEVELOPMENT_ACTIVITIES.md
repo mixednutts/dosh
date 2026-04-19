@@ -282,6 +282,8 @@ Status:
 
 - finish the end-of-cycle review experience so it feels complete and trustworthy
 - refine the close-out modal and summary surfaces
+- `Completed`: added explicit "Carry forward surplus" checkbox to the close-out modal, defaulting to unchecked and hidden when surplus ≤ 0, so users must opt in to carrying surplus forward
+- `Completed`: aligned close-out preview totals (`expense_budget`, `investment_budget`, `surplus_budget`) with the Budget Cycle Details page calculation logic so the modal reflects true values
 - decide which historical views should show close-out comments, goals, and snapshotted health data
 - keep the new `Pending Closure` affordances, direct close-out shortcuts, and compact budget-summary prompts aligned across the budgets page, sidebar, and cycle list
 
@@ -293,6 +295,7 @@ Status:
 
 - make closed-cycle read-only behavior consistent across remaining write paths
 - add clearer read-only and reconciliation messaging on closed cycles
+- `Completed`: added `carry_forward_applied` to `PeriodCloseoutSnapshot` so historical close-out records explicitly state whether surplus was carried forward
 - extend end-to-end coverage from the close-out happy path into post-close correction and reconciliation workflows
 - determine whether additional sign-off or audit fields are needed once user identity exists
 

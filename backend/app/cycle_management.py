@@ -115,19 +115,42 @@ def _quantize_money(value: Decimal) -> Decimal:
 
 
 def current_period_totals(period: FinancialPeriod) -> dict[str, Decimal]:
-    """Calculate budget and actual totals for a period."""
+    """Calculate budget and actual totals for a period.
+
+    surplus_budget mirrors the detail-page logic: income uses actual when activity
+    exists (else budget), and outflows use actual + positive remaining (except Paid
+    lines, which freeze at actual).  This ensures the close-out preview matches what
+    the user sees on the Budget Cycle Details page.
+    """
     income_budget = sum((_to_decimal(income.budgetamount) for income in period.period_incomes), Decimal("0"))
     income_actual = sum((_to_decimal(income.actualamount) for income in period.period_incomes), Decimal("0"))
-    expense_budget = sum((
-        _to_decimal(expense.actualamount if (getattr(expense, "status", "Current") or "Current") == "Paid" else expense.budgetamount)
-        for expense in period.period_expenses
-    ), Decimal("0"))
+    # expense_budget and investment_budget are raw budget sums (not affected by Paid status)
+    # so they match the Budget Cycle Details page summary cards.
+    expense_budget = sum((_to_decimal(expense.budgetamount) for expense in period.period_expenses), Decimal("0"))
     expense_actual = sum((_to_decimal(expense.actualamount) for expense in period.period_expenses), Decimal("0"))
-    investment_budget = sum((
-        _to_decimal(investment.actualamount if (getattr(investment, "status", "Current") or "Current") == "Paid" else investment.budgeted_amount)
-        for investment in period.period_investments
-    ), Decimal("0"))
+    investment_budget = sum((_to_decimal(investment.budgeted_amount) for investment in period.period_investments), Decimal("0"))
     investment_actual = sum((_to_decimal(investment.actualamount) for investment in period.period_investments), Decimal("0"))
+
+    # Surplus contributions aligned with PeriodDetailPage.jsx / get_period_detail
+    def _income_surplus(income):
+        actual = _to_decimal(income.actualamount)
+        return actual if actual != Decimal("0.00") else _to_decimal(income.budgetamount)
+
+    def _outflow_surplus(row, budget_attr="budgetamount"):
+        actual = _to_decimal(row.actualamount)
+        status = getattr(row, "status", WORKING) or WORKING
+        if status == PAID:
+            return actual
+        budget = _to_decimal(getattr(row, budget_attr))
+        remaining = budget - actual
+        return actual + remaining if remaining > Decimal("0.00") else actual
+
+    surplus_budget = (
+        sum((_income_surplus(i) for i in period.period_incomes), Decimal("0"))
+        - sum((_outflow_surplus(e) for e in period.period_expenses), Decimal("0"))
+        - sum((_outflow_surplus(i, "budgeted_amount") for i in period.period_investments), Decimal("0"))
+    )
+
     return {
         "income_budget": income_budget,
         "income_actual": income_actual,
@@ -135,7 +158,7 @@ def current_period_totals(period: FinancialPeriod) -> dict[str, Decimal]:
         "expense_actual": expense_actual,
         "investment_budget": investment_budget,
         "investment_actual": investment_actual,
-        "surplus_budget": income_budget - expense_budget - investment_budget,
+        "surplus_budget": surplus_budget,
         "surplus_actual": income_actual - expense_actual - investment_actual,
     }
 
@@ -201,7 +224,11 @@ def recalculate_budget_chain(budgetid: int, db: Session) -> None:
     for period in periods:
         rebalance_period_openings(period, previous_period, db)
         if previous_period is not None and previous_period.closed_at is not None:
-            upsert_carried_forward_line(period.finperiodid, period.budgetid, carry_forward_amount_for_period(previous_period), db)
+            snapshot = db.get(PeriodCloseoutSnapshot, previous_period.finperiodid)
+            if snapshot is not None and snapshot.carry_forward_applied:
+                upsert_carried_forward_line(period.finperiodid, period.budgetid, carry_forward_amount_for_period(previous_period), db)
+            else:
+                remove_carried_forward_line(period.finperiodid, db)
         else:
             remove_carried_forward_line(period.finperiodid, db)
         sync_period_state(period.finperiodid, db)
@@ -390,7 +417,7 @@ def build_closeout_preview(period: FinancialPeriod, budget: Budget, db: Session)
     }
 
 
-def close_cycle(period: FinancialPeriod, budget: Budget, comments: str | None, goals: str | None, create_next_cycle_if_missing: bool, db: Session) -> tuple[FinancialPeriod, FinancialPeriod | None]:
+def close_cycle(period: FinancialPeriod, budget: Budget, comments: str | None, goals: str | None, create_next_cycle_if_missing: bool, carry_forward: bool, db: Session) -> tuple[FinancialPeriod, FinancialPeriod | None]:
     next_period = next_period_for(period, db)
     if next_period is None and create_next_cycle_if_missing:
         next_period = create_next_cycle(period, budget, db)
@@ -422,6 +449,7 @@ def close_cycle(period: FinancialPeriod, budget: Budget, comments: str | None, g
     snapshot.comments = comments or None
     snapshot.goals = goals or None
     snapshot.carry_forward_amount = preview["carry_forward_amount"]
+    snapshot.carry_forward_applied = carry_forward
     snapshot.health_snapshot_json = json.dumps(preview["health"])
     snapshot.totals_snapshot_json = json.dumps(preview["totals"])
 

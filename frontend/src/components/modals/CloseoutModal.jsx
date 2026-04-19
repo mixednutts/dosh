@@ -10,6 +10,7 @@ export function CloseoutModal({ periodId, budgetId, onClose }) {
   const [comments, setComments] = useState('')
   const [goals, setGoals] = useState('')
   const [createNextCycle, setCreateNextCycle] = useState(false)
+  const [carryForward, setCarryForward] = useState(false)
   const formatters = useFormatters()
   const { data: preview, isLoading } = useQuery({
     queryKey: ['period-closeout-preview', periodId],
@@ -17,7 +18,7 @@ export function CloseoutModal({ periodId, budgetId, onClose }) {
   })
 
   const closeout = useMutation({
-    mutationFn: () => closeOutPeriod(budgetId, periodId, { comments, goals, create_next_cycle: createNextCycle }),
+    mutationFn: () => closeOutPeriod(budgetId, periodId, { comments, goals, create_next_cycle: createNextCycle, carry_forward: carryForward }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['period', periodId] })
       qc.invalidateQueries({ queryKey: ['period-balances', periodId] })
@@ -32,6 +33,8 @@ export function CloseoutModal({ periodId, budgetId, onClose }) {
     return <div className="flex justify-center py-8"><Spinner /></div>
   }
 
+  const hasPositiveSurplus = Number(preview.carry_forward_amount) > 0
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
@@ -42,10 +45,12 @@ export function CloseoutModal({ periodId, budgetId, onClose }) {
           </div>
         ))}
       </div>
-      <div className="rounded-xl border border-dosh-200 bg-dosh-50 px-4 py-3 text-sm text-dosh-900 dark:border-dosh-800 dark:bg-dosh-900/20 dark:text-dosh-100">
-        <p className="font-semibold">Carry Forward</p>
-        <p className="mt-1">{formatters.fmt(preview.carry_forward_amount)} will be placed into the next cycle as a `Carried Forward` income budget line.</p>
-      </div>
+      {hasPositiveSurplus && (
+        <label htmlFor="carry-forward" className="flex items-center gap-2 text-sm cursor-pointer rounded-xl border border-dosh-200 bg-dosh-50 px-4 py-3 text-dosh-900 dark:border-dosh-800 dark:bg-dosh-900/20 dark:text-dosh-100">
+          <input id="carry-forward" type="checkbox" checked={carryForward} onChange={e => setCarryForward(e.target.checked)} />
+          <span>A surplus amount of {formatters.fmt(preview.carry_forward_amount)} exists for this period. Carry this amount forward to the next budget cycle?</span>
+        </label>
+      )}
       <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/50">
         <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{preview.health.summary}</p>
         <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Score {preview.health.score} • {preview.health.status}</p>

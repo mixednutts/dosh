@@ -4,6 +4,43 @@ This document captures the key product and implementation changes made during re
 
 It is intended to complement [README.md](/home/ubuntu/dosh/README.md), not replace it.
 
+## Latest Session: Close-Out Carry-Forward Optionality and Preview Totals Alignment (0.6.4-alpha)
+
+### What changed
+
+- **Close-out carry-forward optionality:**
+  - Added explicit "Carry forward surplus" checkbox to the close-out modal, defaulting to unchecked and hidden when surplus ≤ 0.
+  - Added `carry_forward: bool = False` to `PeriodCloseoutRequest` schema.
+  - Added `carry_forward_applied: bool = False` to `PeriodCloseoutSnapshot` model and new Alembic migration `8e182dad69ad_add_carry_forward_applied_to_.py`.
+  - Updated `close_cycle()` to persist the user's choice in the snapshot.
+  - Updated `recalculate_budget_chain()` to only create/retain the `Carried Forward` income line when the previous period's snapshot has `carry_forward_applied = True`.
+  - Frontend modal label: "A surplus amount of {n} exists for this period. Carry this amount forward to the next budget cycle?"
+  - Demo budget close-out updated to pass `carry_forward=True` so historical demo behavior is preserved.
+
+- **Close-out preview totals alignment:**
+  - Fixed `current_period_totals()` in `cycle_management.py` so `expense_budget` and `investment_budget` use raw budget sums (not status-adjusted), matching the Budget Cycle Details page summary cards.
+  - Fixed `surplus_budget` in the same function to use the same contribution logic as the detail page: income uses actual when activity exists (else budget), outflows use actual + positive remaining (Paid lines freeze at actual).
+  - Removed on-the-fly `projected_investment` computation from preview totals (not displayed in the modal and caused unnecessary import complexity).
+
+- **Tests:**
+  - Rewrote `CloseoutModal.test.jsx` to cover checkbox visibility when surplus > 0, hidden when surplus = 0, and inclusion of `carry_forward` in the API call.
+  - Updated `PeriodDetailPage.test.jsx` close-out modal assertions to match the new checkbox behavior.
+  - Updated backend close-out tests to pass `"carry_forward": True` where carry-forward behavior is expected.
+  - Updated `migration_helpers.HEAD_REVISION` to `8e182dad69ad`.
+
+- **Version bump:**
+  - Bumped version from `0.6.3-alpha` to `0.6.4-alpha` using `scripts/bump_version.py`.
+  - Updated `docs/RELEASE_NOTES.md` with a proper released entry for `0.6.4-alpha`.
+  - Updated `docs/MIGRATION_AND_RELEASE_MANAGEMENT.md` baseline version.
+
+### Decisions preserved
+
+- Carry-forward should be opt-in, not automatic. This gives users explicit control over whether surplus rolls into the next cycle.
+- Close-out snapshot values (`totals_snapshot_json`) are the point-in-time historical record and should match what the user saw on the Budget Cycle Details page at the moment of close-out.
+- The `carry_forward_applied` flag is stored on the close-out snapshot so historical records remain accurate even if default behavior changes in the future.
+
+---
+
 ## Latest Session: Projected Investment Rename, Surplus Alignment, and Balance Chain Fixes
 
 ### What changed

@@ -1969,7 +1969,7 @@ def get_closeout_preview(budgetid: int, finperiodid: int, db: DbSession):
 
 
 @router.post("/{finperiodid}/closeout", response_model=PeriodDetailOut, responses=error_responses(404, 409))
-def close_out_period(budgetid: int, 
+def close_out_period(budgetid: int,
     finperiodid: int,
     payload: PeriodCloseoutRequest,
     db: DbSession,
@@ -1979,7 +1979,7 @@ def close_out_period(budgetid: int,
     if cycle_stage(period) not in {CURRENT_STAGE, PENDING_CLOSURE_STAGE}:
         raise HTTPException(409, "Only the current or pending-closure cycle can be closed")
     try:
-        close_cycle(period, budget, payload.comments, payload.goals, payload.create_next_cycle, db)
+        close_cycle(period, budget, payload.comments, payload.goals, payload.create_next_cycle, payload.carry_forward, db)
     except ValueError as exc:
         raise HTTPException(409, str(exc)) from exc
     db.commit()

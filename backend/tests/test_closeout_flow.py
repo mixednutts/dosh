@@ -57,6 +57,7 @@ def test_closeout_preview_and_closeout_persist_snapshot_and_carry_forward(client
         f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/closeout",
         json={
             "create_next_cycle": False,
+            "carry_forward": True,
             "comments": "Closed comfortably.",
             "goals": "Keep the saving momentum going.",
         },

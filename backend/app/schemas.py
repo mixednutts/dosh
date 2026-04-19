@@ -754,6 +754,7 @@ class PeriodCloseoutSnapshotOut(BaseModel):
     comments: Optional[str] = None
     goals: Optional[str] = None
     carry_forward_amount: Decimal = Decimal("0")
+    carry_forward_applied: bool = False
     health_snapshot_json: str
     totals_snapshot_json: str
     created_at: datetime
@@ -772,6 +773,7 @@ class PeriodCloseoutPreviewOut(BaseModel):
 
 class PeriodCloseoutRequest(BaseModel):
     create_next_cycle: bool = False
+    carry_forward: bool = False
     comments: Optional[str] = None
     goals: Optional[str] = None
 

@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## 0.6.4-alpha | released | 2026-04-19
+
+### Changed
+
+- Close-out now asks whether to carry forward surplus instead of doing it automatically. A checkbox appears in the close-out modal when surplus is positive, defaulting to unchecked. If left unchecked, the next cycle will not receive a "Carried Forward" income line.
+
+### Fixed
+
+- Fixed close-out modal summary totals so they match the Budget Cycle Details page. Expense Budget, Investment Budget, and Surplus (Budget) now use the same calculation as the detail page, ensuring the preview reflects true values before the cycle is closed.
+
 ## 0.6.3-alpha | released | 2026-04-18
 
 ### Changed

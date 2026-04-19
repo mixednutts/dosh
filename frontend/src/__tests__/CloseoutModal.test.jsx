@@ -29,16 +29,39 @@ describe('CloseoutModal', () => {
     renderWithProviders(<CloseoutModal periodId={10} budgetId={1} onClose={jest.fn()} />)
 
     expect(await screen.findByText('Tracking well.')).toBeTruthy()
-    expect(screen.getByText(/Carry Forward/i)).toBeTruthy()
-    // Carry-forward amount appears in the carry-forward banner
-    const banner = screen.getByText(/Carry Forward/i).closest('div')
-    expect(banner.textContent).toMatch(/\$250\.00/)
+    // Carry-forward checkbox shown because surplus > 0
+    expect(screen.getByLabelText(/Carry this amount forward/i)).toBeTruthy()
     expect(screen.getByText(/Create the next budget cycle automatically during close-out/i)).toBeTruthy()
 
     const closeButton = screen.getByText('Close Out Cycle')
     expect(closeButton.disabled).toBe(true)
 
-    fireEvent.click(screen.getByRole('checkbox'))
+    // Check both required checkboxes
+    fireEvent.click(screen.getByLabelText(/Carry this amount forward/i))
+    fireEvent.click(screen.getByLabelText(/Create the next budget cycle automatically during close-out/i))
+    expect(closeButton.disabled).toBe(false)
+  })
+
+  it('hides carry-forward checkbox when surplus is zero or negative', async () => {
+    client.getPeriodCloseoutPreview.mockResolvedValue({
+      period: { finperiodid: 10, cycle_status: 'ACTIVE' },
+      next_period: null,
+      carry_forward_amount: '0.00',
+      totals: { income_budget: '1000.00', surplus_budget: '0.00' },
+      health: { summary: 'Tracking well.', score: 85, status: 'Strong' },
+      next_cycle_exists: false,
+      can_close_early: true,
+    })
+
+    renderWithProviders(<CloseoutModal periodId={10} budgetId={1} onClose={jest.fn()} />)
+
+    await screen.findByText('Tracking well.')
+    expect(screen.queryByLabelText(/Carry this amount forward/i)).toBeNull()
+
+    const closeButton = screen.getByText('Close Out Cycle')
+    expect(closeButton.disabled).toBe(true)
+
+    fireEvent.click(screen.getByLabelText(/Create the next budget cycle automatically during close-out/i))
     expect(closeButton.disabled).toBe(false)
   })
 
@@ -65,6 +88,7 @@ describe('CloseoutModal', () => {
     fireEvent.change(screen.getByLabelText(/Goals Going Forward/i), {
       target: { value: 'Save more.' },
     })
+    fireEvent.click(screen.getByLabelText(/Carry this amount forward/i))
 
     fireEvent.click(closeButton)
 
@@ -73,6 +97,7 @@ describe('CloseoutModal', () => {
         comments: 'Good month.',
         goals: 'Save more.',
         create_next_cycle: false,
+        carry_forward: true,
       })
     })
   })

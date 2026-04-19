@@ -20,7 +20,7 @@ def test_cannot_remove_system_managed_carried_forward_income(client, db_session)
 
     closeout = client.post(
         f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/closeout",
-        json={"create_next_cycle": False, "comments": "Close and carry forward"},
+        json={"create_next_cycle": False, "carry_forward": True, "comments": "Close and carry forward"},
     )
     assert closeout.status_code == 200, closeout.text
 

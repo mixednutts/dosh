@@ -79,7 +79,7 @@ def test_delete_and_regenerate_trailing_cycle_recomputes_carried_forward(client,
 
     closeout = client.post(
         f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/closeout",
-        json={"create_next_cycle": False},
+        json={"create_next_cycle": False, "carry_forward": True},
     )
     assert closeout.status_code == 200, closeout.text
 

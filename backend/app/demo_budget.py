@@ -537,6 +537,7 @@ def create_standard_demo_budget(db: Session) -> Budget:
         closed_pattern["comments"],
         closed_pattern["goals"],
         False,
+        True,
         db,
     )
     assign_period_lifecycle_states(budget.budgetid, db)

@@ -446,12 +446,12 @@ describe('PeriodDetailPage', () => {
     expect(await screen.findByText('Close Out Budget Cycle')).toBeTruthy()
     expect(await screen.findByText(/Closing this cycle makes it read-only\./i)).toBeTruthy()
     expect(screen.getByText(/Create the next budget cycle automatically during close-out/i)).toBeTruthy()
-    expect(screen.getByText(/\$150\.00 will be placed into the next cycle as a `Carried Forward` income budget line\./i)).toBeTruthy()
+    expect(screen.getByLabelText(/Carry this amount forward/i)).toBeTruthy()
 
     const closeButton = screen.getByText('Close Out Cycle')
     expect(closeButton.disabled).toBe(true)
 
-    fireEvent.click(screen.getByRole('checkbox'))
+    fireEvent.click(screen.getByLabelText(/Create the next budget cycle automatically during close-out/i))
     expect(closeButton.disabled).toBe(false)
   })
 

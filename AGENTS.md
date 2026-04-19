@@ -229,8 +229,8 @@ For document changes, follow [DOCUMENTATION_FRAMEWORK.md](./docs/DOCUMENTATION_F
 
 ## Current Project State (Snapshot)
 
-**Version:** 0.6.3-alpha
-**Schema Revisions:** d3091a75b8ff, e4f5a6b7c8d9, f1a2b3c4d5e6, b10a29f14a8f, 559cbaa1dce7, 4bf1bf54b0bb, 7a8b9c0d1e2f, 009297f69b52, a1b2c3d4e5f6, 9c0f8d72a04c, e1096e3868f0, fb246c4482b7
+**Version:** 0.6.4-alpha
+**Schema Revisions:** d3091a75b8ff, e4f5a6b7c8d9, f1a2b3c4d5e6, b10a29f14a8f, 559cbaa1dce7, 4bf1bf54b0bb, 7a8b9c0d1e2f, 009297f69b52, a1b2c3d4e5f6, 9c0f8d72a04c, e1096e3868f0, fb246c4482b7, 8e182dad69ad
 
 **Recent Work:**
 - **Projected Investment Rename and Surplus Alignment (COMPLETED):** Renamed "Projected Savings" to "Projected Investment" across backend, frontend, and tests. Fixed surplus budget calculation mismatch between budget cycles summary and period detail pages. Fixed projected investment in summary to use dynamic balance computation matching the detail endpoint.
@@ -270,11 +270,23 @@ For document changes, follow [DOCUMENTATION_FRAMEWORK.md](./docs/DOCUMENTATION_F
 
 **Active Focus Areas:**
 - Budget Health refinement (threshold behavior, evidence language, test coverage)
-- Testing infrastructure hardening (all 169 backend tests passing, 220 frontend tests passing)
+- Testing infrastructure hardening (all 169 backend tests passing, 221 frontend tests passing)
 - Documentation framework compliance
 - Release process reliability
 - SonarQube maintainability follow-through
 - Balance chain integrity (dynamic balance computation for non-closed periods, stored values for closed cycles)
+- Close-out workflow trust (preview accuracy, carry-forward optionality, snapshot integrity)
+
+**Recent Work (this session):**
+- **Close-Out Carry-Forward Optionality (COMPLETED):** Added an explicit "Carry forward surplus" checkbox to the close-out modal, defaulting to unchecked and hidden when surplus ≤ 0. Users must now opt in to carrying forward surplus to the next cycle.
+  - Added `carry_forward_applied` Boolean to `PeriodCloseoutSnapshot` and new Alembic migration `8e182dad69ad`.
+  - Updated `close_cycle()` and `recalculate_budget_chain()` to only create the `Carried Forward` income line when `carry_forward_applied = True`.
+  - Frontend modal updated with checkbox label: "A surplus amount of {n} exists for this period. Carry this amount forward to the next budget cycle?"
+  - All backend and frontend tests updated and passing; deployed to local Docker with override.
+- **Close-Out Preview Totals Alignment (COMPLETED):** Fixed close-out modal summary values so they match the Budget Cycle Details page and budget cycles summary.
+  - `expense_budget` and `investment_budget` now use raw budget sums (not status-adjusted), matching the detail page.
+  - `surplus_budget` now uses the same contribution logic as the detail page: income uses actual when activity exists (else budget), outflows use actual + positive remaining (Paid lines freeze at actual).
+  - Close-out snapshot stores these values as a point-in-time historical record in `periodcloseouts.totals_snapshot_json`.
 
 **Guardrails in Effect:**
 - Test-by-change discipline (tests with behavior changes)
