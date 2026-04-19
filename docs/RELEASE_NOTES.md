@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Fixed
+
+- Fixed `Projected Investment` calculation so it correctly reflects the linked savings account balance plus planned contributions. Previous values were overstated because they did not properly use linked-account balances and did not accumulate correctly across upcoming periods.
+- Upcoming budget cycles now carry forward the prior period's projected investment balance so the cumulative value grows as expected.
+
 ## 0.6.5-alpha | released | 2026-04-19
 
 ### Added

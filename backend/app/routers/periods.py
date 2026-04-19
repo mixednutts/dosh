@@ -260,29 +260,106 @@ def _period_status(period: FinancialPeriod) -> str:
     return "Closed"
 
 
+def _committed_investment_amount(investment: PeriodInvestmentOut) -> Decimal:
+    status = getattr(investment, "status", WORKING) or WORKING
+    if status == PAID:
+        return Decimal(str(investment.actualamount or 0))
+    return max(
+        Decimal(str(investment.budgeted_amount or 0)),
+        Decimal(str(investment.actualamount or 0)),
+    )
+
+
 def _projected_investment_for_period(
     period_status: str,
     investments: list[PeriodInvestmentOut],
-    period_balances: list[PeriodBalanceOut],
+    period_balances: list[PeriodBalanceOut] | None = None,
 ) -> Decimal:
-    """Compute projected investment based on linked account balances + budgeted amounts."""
-    balance_by_account = {pb.balancedesc: pb for pb in period_balances}
+    """Compute projected investment for a single period.
+
+    - Closed periods use linked-account closing balances.
+    - Current / Pending Closure / Upcoming use linked-account opening balances
+      plus the committed amount for each investment line.
+    """
+    balance_by_account = {pb.balancedesc: pb for pb in (period_balances or [])}
     total = Decimal("0.00")
+
     for inv in investments:
         linked_account = getattr(inv, "linked_account_desc", None)
-        if period_status in {"Closed", "Pending Closure"}:
-            # For closed or pending-closure periods, use the linked account's closing balance
+        if period_status == "Closed":
             if linked_account and linked_account in balance_by_account:
                 total += Decimal(str(balance_by_account[linked_account].closing_amount or 0))
             else:
                 total += Decimal(str(inv.closing_value or 0))
         else:
-            # For current/planned: linked account opening + budgeted amount
             if linked_account and linked_account in balance_by_account:
-                total += Decimal(str(balance_by_account[linked_account].opening_amount or 0)) + Decimal(str(inv.budgeted_amount or 0))
+                total += Decimal(str(balance_by_account[linked_account].opening_amount or 0))
             else:
-                total += Decimal(str(inv.opening_value or 0)) + Decimal(str(inv.budgeted_amount or 0))
+                total += Decimal(str(inv.opening_value or 0))
+            total += _committed_investment_amount(inv)
+
     return total
+
+
+def _compute_projected_investment_for_period(
+    target_period: FinancialPeriod,
+    db: Session,
+) -> Decimal:
+    """Compute projected investment for target period.
+
+    - Closed periods use linked-account closing balances.
+    - Current / Pending Closure use linked-account opening + committed for that period only.
+    - Upcoming periods carry forward the most recent non-closed period's projected value
+      plus their own committed amount.
+    """
+    all_periods = ordered_budget_periods(target_period.budgetid, db)
+    last_non_closed_projected: Decimal | None = None
+
+    for period in all_periods:
+        investments = (
+            db.query(PeriodInvestment)
+            .filter(PeriodInvestment.finperiodid == period.finperiodid)
+            .all()
+        )
+        enriched = _enrich_investments(investments, db)
+        period_status = _period_status(period)
+
+        if period_status == "Closed":
+            balance_rows = db.query(PeriodBalance).filter(PeriodBalance.finperiodid == period.finperiodid).all()
+            enriched_balances = []
+            for pb in balance_rows:
+                bt = db.get(BalanceType, (pb.budgetid, pb.balancedesc))
+                balance = PeriodBalanceOut.model_validate(pb)
+                balance.balance_type = bt.balance_type if bt else None
+                enriched_balances.append(balance)
+            projected = _projected_investment_for_period(period_status, enriched, enriched_balances)
+            last_non_closed_projected = None
+        elif period_status == "Upcoming" and last_non_closed_projected is not None:
+            committed_total = sum((_committed_investment_amount(inv) for inv in enriched), Decimal("0.00"))
+            projected = last_non_closed_projected + committed_total
+            last_non_closed_projected = projected
+        else:
+            # Current or Pending Closure – need linked-account opening balances
+            budget = db.get(Budget, period.budgetid)
+            max_cycles = budget.max_forward_balance_cycles if budget else 10
+            dynamic_balances = compute_dynamic_period_balances(period.finperiodid, db, max_forward_cycles=max_cycles)
+            if dynamic_balances is not None:
+                balance_out = dynamic_balances
+            else:
+                balance_rows = db.query(PeriodBalance).filter(PeriodBalance.finperiodid == period.finperiodid).all()
+                balance_out = []
+                for pb in balance_rows:
+                    bt = db.get(BalanceType, (pb.budgetid, pb.balancedesc))
+                    balance = PeriodBalanceOut.model_validate(pb)
+                    balance.balance_type = bt.balance_type if bt else None
+                    balance_out.append(balance)
+            projected = _projected_investment_for_period(period_status, enriched, balance_out)
+            last_non_closed_projected = projected
+
+        if period.finperiodid == target_period.finperiodid:
+            return projected
+
+    return Decimal("0.00")
 
 
 def _effective_expense_budget(expense: PeriodExpenseOut) -> Decimal:
@@ -403,7 +480,7 @@ def _load_period_detail_components(period: FinancialPeriod, db: Session) -> dict
         "investments": investment_out,
         "balances": enriched_balances,
         "balances_limit_exceeded": balances_limit_exceeded,
-        "projected_investment": _projected_investment_for_period(period_status, investment_out, enriched_balances),
+        "projected_investment": _compute_projected_investment_for_period(period, db),
     }
 
 
@@ -840,6 +917,7 @@ def list_period_summaries_for_budget(budgetid: int, db: DbSession):
         investments_by_period[row.finperiodid].append(row)
 
     summaries: list[PeriodSummaryOut] = []
+    running_projected: Decimal | None = None
 
     for period in periods:
         incomes = incomes_by_period.get(period.finperiodid, [])
@@ -887,16 +965,39 @@ def list_period_summaries_for_budget(budgetid: int, db: DbSession):
         elif delete_mode == "future_chain":
             delete_reason = "Deleting this cycle requires deleting it and all upcoming cycles to preserve continuity."
 
-        # Compute projected investment from dynamically computed linked account balances
-        budget = db.get(Budget, period.budgetid)
-        max_cycles = budget.max_forward_balance_cycles if budget else 10
-        dynamic_balances = compute_dynamic_period_balances(period.finperiodid, db, max_forward_cycles=max_cycles)
-        if dynamic_balances is not None:
-            balance_out = dynamic_balances
-        else:
-            balance_out = []
+        # Compute projected investment sequentially with committed funds logic
         enriched_investments = _enrich_investments(investments, db)
-        projected_investment = _projected_investment_for_period(period_status, enriched_investments, balance_out)
+        if period_status == "Closed":
+            balance_rows = db.query(PeriodBalance).filter(PeriodBalance.finperiodid == period.finperiodid).all()
+            balance_out = []
+            for pb in balance_rows:
+                bt = db.get(BalanceType, (pb.budgetid, pb.balancedesc))
+                balance = PeriodBalanceOut.model_validate(pb)
+                balance.balance_type = bt.balance_type if bt else None
+                balance_out.append(balance)
+            projected_investment = _projected_investment_for_period(period_status, enriched_investments, balance_out)
+            running_projected = None
+        elif period_status == "Upcoming" and running_projected is not None:
+            committed_total = sum((_committed_investment_amount(inv) for inv in enriched_investments), Decimal("0.00"))
+            projected_investment = running_projected + committed_total
+            running_projected = projected_investment
+        else:
+            # Current or Pending Closure – need linked-account opening balances
+            budget = db.get(Budget, period.budgetid)
+            max_cycles = budget.max_forward_balance_cycles if budget else 10
+            dynamic_balances = compute_dynamic_period_balances(period.finperiodid, db, max_forward_cycles=max_cycles)
+            if dynamic_balances is not None:
+                balance_out = dynamic_balances
+            else:
+                balance_rows = db.query(PeriodBalance).filter(PeriodBalance.finperiodid == period.finperiodid).all()
+                balance_out = []
+                for pb in balance_rows:
+                    bt = db.get(BalanceType, (pb.budgetid, pb.balancedesc))
+                    balance = PeriodBalanceOut.model_validate(pb)
+                    balance.balance_type = bt.balance_type if bt else None
+                    balance_out.append(balance)
+            projected_investment = _projected_investment_for_period(period_status, enriched_investments, balance_out)
+            running_projected = projected_investment
 
         # Compute surplus contributions using the same logic as the frontend detail page
         income_surplus_contrib = sum((_surplus_contribution_for_income(row) for row in incomes), Decimal("0.00"))

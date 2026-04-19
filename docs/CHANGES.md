@@ -4,6 +4,36 @@ This document captures the key product and implementation changes made during re
 
 It is intended to complement [README.md](/home/ubuntu/dosh/README.md), not replace it.
 
+## Latest Session: Projected Investment Cumulative Fix (2026-04-19)
+
+### What changed
+
+- **Projected Investment calculation fix:**
+  - Rewrote `_projected_investment_for_period` to use linked-account balances plus committed investment amounts.
+  - Closed periods use the linked account closing balance.
+  - Current and Pending Closure periods use the linked account opening balance plus the committed investment amount for the period.
+  - Upcoming periods carry forward the most recent non-closed period's projected value plus their own committed amount.
+  - Committed funds logic: `max(budgeted_amount, actualamount)`, with `PAID` status using `actualamount` regardless of budget.
+
+- **Summary endpoint alignment:**
+  - The budget cycles summary now computes projected investment sequentially, matching the detail endpoint.
+  - `last_non_closed_projected` is reset after each Closed period and accumulated across Upcoming periods.
+
+- **Tests added:**
+  - `backend/tests/test_projected_investment.py` covers cumulative projected investment across multiple periods and committed funds logic for under-budget, over-budget, and PAID scenarios.
+
+### Files touched
+
+- `backend/app/routers/periods.py`
+- `backend/tests/test_projected_investment.py`
+
+### Decisions preserved
+
+- Projected investment should reflect the linked savings/investment account balance plus planned contributions, not the sum of investment line closing values which could double-count.
+- Upcoming periods must accumulate sequentially so each period carries forward the prior projected balance.
+
+---
+
 ## Latest Session: UI Polish — Return to Top, Label Relabeling, Banner Styling, and Paid Status Enhancements (2026-04-19)
 
 ### What changed

@@ -278,6 +278,15 @@ For document changes, follow [DOCUMENTATION_FRAMEWORK.md](./docs/DOCUMENTATION_F
 - Close-out workflow trust (preview accuracy, carry-forward optionality, snapshot integrity)
 
 **Recent Work (this session):**
+- **Projected Investment Cumulative Fix (COMPLETED):**
+  - Fixed `_projected_investment_for_period` to use linked-account balances plus committed investment amounts.
+  - Closed periods use linked account closing balance.
+  - Current / Pending Closure periods use linked account opening balance plus committed amount.
+  - Upcoming periods carry forward the most recent non-closed projected value plus their own committed amount.
+  - Committed funds logic: `max(budgeted, actual)` with `PAID` using `actual`.
+  - Added `backend/tests/test_projected_investment.py` covering cumulative behaviour and committed funds scenarios.
+  - All 171 backend tests pass; deployed to local Docker with override and verified.
+
 - **UI Polish — Return to Top, Label Relabeling, Banner Styling, and Paid Status Enhancements (COMPLETED):**
   - Added floating "Return to Top" buttons to `BudgetPeriodsPage` and `PeriodDetailPage`, matching the existing Budget Setup implementation.
   - Renamed all user-facing "Planned" budget cycle labels to "Upcoming" across frontend, backend, utilities, and tests.
