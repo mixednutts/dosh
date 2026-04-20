@@ -131,8 +131,7 @@ describe('Layout navigation', () => {
   it('keeps the budget list above the current budget panel and keeps setup actions off the budget cycles sidebar baseline', async () => {
     renderLayout('/budgets/1')
 
-    fireEvent.click(await screen.findByTitle('Show budget list'))
-
+    // Budget list now starts expanded by default
     const budgetListHeading = await screen.findByText('Budget List')
     const currentBudgetHeading = screen.getByText('Current Budget')
     expect(
@@ -272,8 +271,7 @@ describe('Layout navigation', () => {
 
     renderLayout('/budgets/1')
 
-    fireEvent.click(await screen.findByTitle('Show budget list'))
-
+    // Budget list now starts expanded by default
     expect(await screen.findByText('Budget Cycle Shortcuts')).toBeTruthy()
     expect(screen.getByText('Current Budget')).toBeTruthy()
 
@@ -287,7 +285,7 @@ describe('Layout navigation', () => {
   it('keeps the setup route sidebar collapsed until the budget layer is expanded', async () => {
     renderLayout('/budgets/1/setup')
 
-    expect(await screen.findByTitle('Show budget list')).toBeTruthy()
+    expect(await screen.findByTitle('Hide budget list')).toBeTruthy()
     expect(screen.queryByText('Current Budget')).toBeNull()
     expect(screen.queryByRole('link', { name: 'Budget Cycles' })).toBeNull()
     expect(screen.queryByRole('link', { name: 'Setup' })).toBeNull()
@@ -360,11 +358,10 @@ describe('Layout navigation', () => {
 
     renderLayout('/budgets/1')
 
-    fireEvent.click(await screen.findByTitle('Show budget list'))
-
+    // Budget list now starts expanded by default
     expect(await screen.findByText('Historic')).toBeTruthy()
 
-    const upcomingMore = screen.getByRole('link', { name: 'View all 3 planned cycles (1 more)' })
+    const upcomingMore = screen.getByRole('link', { name: 'View all 3 upcoming cycles (1 more)' })
     expect(upcomingMore.getAttribute('href')).toBe('/budgets/1#upcoming')
 
     const historicalMore = screen.getByRole('link', { name: 'View all 5 historic cycles (1 more)' })

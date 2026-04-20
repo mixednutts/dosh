@@ -249,7 +249,7 @@ function CurrentBudgetPanel({ budget, activePeriodId, onNav, shortcutsExpanded =
                 periods={futurePeriods}
                 activePeriodId={activePeriodId}
                 onNav={onNav}
-                moreText={hasMoreFuturePeriods ? `View all ${allFuturePeriods.length} planned cycles (${hiddenFutureCount} more)` : null}
+                moreText={hasMoreFuturePeriods ? `View all ${allFuturePeriods.length} upcoming cycles (${hiddenFutureCount} more)` : null}
                 moreTo={hasMoreFuturePeriods ? `/budgets/${budget.budgetid}#upcoming` : null}
                 moreSubtle={hasMoreFuturePeriods && viewingBudgetContext}
               />

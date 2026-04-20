@@ -109,7 +109,7 @@ describe('BudgetPeriodsPage', () => {
     })
 
     expect(await screen.findByText('Budget Cycles')).toBeTruthy()
-    fireEvent.click(screen.getByTitle('Expand planned budget cycles'))
+    fireEvent.click(screen.getByTitle('Expand upcoming budget cycles'))
     fireEvent.click(screen.getByTitle('Delete budget cycle'))
 
     expect(await screen.findByText(/Delete this cycle and all upcoming cycles \(3\)/)).toBeTruthy()
@@ -162,7 +162,7 @@ describe('BudgetPeriodsPage', () => {
     })
 
     expect(await screen.findByText('Budget Cycles')).toBeTruthy()
-    fireEvent.click(screen.getByTitle('Expand planned budget cycles'))
+    fireEvent.click(screen.getByTitle('Expand upcoming budget cycles'))
     fireEvent.click(screen.getByTitle('Delete budget cycle'))
 
     expect(await screen.findByText('This budget cycle will be deleted.')).toBeTruthy()
@@ -485,7 +485,7 @@ describe('BudgetPeriodsPage', () => {
       budget: { locale: 'en-AU', currency: 'AUD', timezone: 'Australia/Sydney', date_format: 'short' },
     })
 
-    expect(await screen.findByTitle('Collapse planned budget cycles')).toBeTruthy()
+    expect(await screen.findByTitle('Collapse upcoming budget cycles')).toBeTruthy()
     expect(screen.getByText('30 June 26')).toBeTruthy()
 
     firstRender.unmount()
@@ -496,7 +496,7 @@ describe('BudgetPeriodsPage', () => {
       budget: { locale: 'en-AU', currency: 'AUD', timezone: 'Australia/Sydney', date_format: 'short' },
     })
 
-    expect(await screen.findByTitle('Collapse planned budget cycles')).toBeTruthy()
+    expect(await screen.findByTitle('Collapse upcoming budget cycles')).toBeTruthy()
     expect(screen.getByText('30 June 26')).toBeTruthy()
   })
 
@@ -545,7 +545,7 @@ describe('BudgetPeriodsPage', () => {
     })
 
     expect(await screen.findByText('Budget Cycles')).toBeTruthy()
-    fireEvent.click(screen.getByTitle('Expand planned budget cycles'))
+    fireEvent.click(screen.getByTitle('Expand upcoming budget cycles'))
     fireEvent.click(screen.getByTitle('Delete budget cycle'))
     fireEvent.click(await screen.findByLabelText(/Delete this cycle and all upcoming cycles/i))
     fireEvent.click(screen.getByRole('button', { name: 'Delete Budget Cycle' }))
