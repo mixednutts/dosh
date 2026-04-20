@@ -128,7 +128,8 @@ Goal:
 
 Status:
 
-- in progress: Docker image publishing to GHCR now available as a manual workflow with a path to automation; standardized logging remains the active remaining item
+- substantially complete for beta: Alembic migration discipline, repeatable release sequencing, CI quality-gate follow-through, and Docker image publishing to GHCR verified with successful cross-server deployment
+- standardized logging output utilizing syslog naming conventions remains the single active item before beta
 
 Includes:
 
@@ -139,6 +140,24 @@ Includes:
 - CI and quality-gate follow-through
 - deployment and startup reliability
 - standardized logging output utilizing syslog logging naming conventions
+
+---
+
+## Beta Release Summary
+
+The five beta roadmap areas are now substantially complete:
+
+| Area | Status | Remaining |
+|------|--------|-----------|
+| Close Out Process | Substantially complete | Inter-period expense movement deferred to Phase 2 |
+| Cash Management | Complete for beta | Cash pressure visibility deferred |
+| Localisation | Complete for beta | Full text translation deferred |
+| Budget Health Engine | Substantially complete | Scoring credibility / momentum logic for future refinement |
+| Maintainability | Substantially complete | Standardized syslog logging |
+
+**Single remaining beta item:** Implement standardized logging output utilizing syslog naming conventions for backend services.
+
+Once logging is in place, Dosh meets the beta threshold: a coherent, trustworthy budgeting workflow with operational stability and a verified deployment path.
 
 ## Phase 2
 
