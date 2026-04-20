@@ -135,7 +135,7 @@ function PeriodSummaryRow({ summary, onDelete }) {
       <td className="table-cell-muted text-right col-budget">{formatCurrency(summary.income_budget)}</td>
       <td className="table-cell text-right col-actual text-success-700 dark:text-success-400">{formatCurrency(summary.income_actual)}</td>
       <td className="table-cell-muted text-right col-budget">{formatCurrency(summary.expense_budget)}</td>
-      <td className="table-cell text-right col-actual text-red-600 dark:text-red-400">{formatCurrency(summary.expense_actual)}</td>
+      <td className={`table-cell text-right col-actual ${Number(summary.expense_actual) <= Number(summary.expense_budget) ? 'text-success-700 dark:text-success-400' : 'text-red-600 dark:text-red-400'}`}>{formatCurrency(summary.expense_actual)}</td>
       <td className="table-cell-muted text-right col-budget">{formatCurrency(summary.investment_budget)}</td>
       <td className="table-cell text-right col-actual text-success-700 dark:text-success-400">{formatCurrency(summary.investment_actual)}</td>
       <td className={clsx('table-cell text-right font-semibold', projectedInvestmentTone)}>{formatCurrency(summary.projected_investment)}</td>

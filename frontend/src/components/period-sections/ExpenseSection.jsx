@@ -205,7 +205,7 @@ export function ExpenseSection({
               <td />
               <td className="px-4 py-2 text-gray-700 dark:text-gray-300 text-sm">Total Expenses</td>
               <td className="px-4 py-2 text-right text-gray-600 dark:text-gray-400 text-sm">{fmt(effectiveExpenseBudget)}</td>
-              <td className="px-4 py-2 text-right text-red-700 dark:text-red-400 text-sm">{fmt(totalExpenseActual)}</td>
+              <td className={`px-4 py-2 text-right text-sm ${totalExpenseActual <= effectiveExpenseBudget ? 'text-success-700 dark:text-success-400' : 'text-red-700 dark:text-red-400'}`}>{fmt(totalExpenseActual)}</td>
               <td className="px-4 py-2 text-right text-sm">
                 <span className={`font-medium ${totalExpenseRemaining >= 0 ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'}`}>{fmt(totalExpenseRemaining)}</span>
               </td>

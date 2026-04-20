@@ -229,10 +229,18 @@ For document changes, follow [DOCUMENTATION_FRAMEWORK.md](./docs/DOCUMENTATION_F
 
 ## Current Project State (Snapshot)
 
-**Version:** 0.6.6-alpha
+**Version:** 0.6.7-alpha
 **Schema Revisions:** d3091a75b8ff, e4f5a6b7c8d9, f1a2b3c4d5e6, b10a29f14a8f, 559cbaa1dce7, 4bf1bf54b0bb, 7a8b9c0d1e2f, 009297f69b52, a1b2c3d4e5f6, 9c0f8d72a04c, e1096e3868f0, fb246c4482b7, 8e182dad69ad
 
 **Recent Work:**
+- **Budget Cycle Details Close-Out Polish and UX Hardening (0.6.6-alpha) (COMPLETED):**
+  - Locked-cycle banner is now dismissible for the current page session via a `DISMISS` anchor link.
+  - Close-Out modal warning uses a `Dismiss` button with `localStorage` persistence (`dosh_dismiss_closeout_warning`).
+  - Closed-cycle banner text simplified to "This budget cycle is closed. All data for this budget cycle is now read-only."
+  - Close-out health snapshot renders using the shared `<CurrentPeriodCheckPanel>` component with metric cards collapsed by default.
+  - Close-out comments sit under a "Budget Cycle Notes & Observations" heading.
+  - Cycle navigation chevrons moved above the close-out snapshot for consistent positioning.
+  - `CurrentPeriodCheckPanel` enhanced with `defaultMetricCardsOpen` prop for consumer-controlled initial visibility.
 - **Projected Investment Rename and Surplus Alignment (COMPLETED):** Renamed "Projected Savings" to "Projected Investment" across backend, frontend, and tests. Fixed surplus budget calculation mismatch between budget cycles summary and period detail pages. Fixed projected investment in summary to use dynamic balance computation matching the detail endpoint.
 - **PeriodBalance Corruption Prevention (COMPLETED):** Fixed `create_next_cycle` initializing new period balances from `BalanceType.opening_balance` instead of previous period's closing. Fixed SQLite datetime text-comparison bug in `propagate_balance_changes_from_period` where SQLAlchemy's space-separated parameters didn't match SQLite's T-separator storage format. Added `finperiodid !=` exclusion to all affected datetime range queries as defensive measure.
 - **Docker Compose Stack Consolidation (COMPLETED):** Consolidated the runtime from separate `backend` and `frontend` services into a single `backend` service.
@@ -278,22 +286,15 @@ For document changes, follow [DOCUMENTATION_FRAMEWORK.md](./docs/DOCUMENTATION_F
 - Phase 2 preparation: Reconciliation Module and Reporting Module foundations
 
 **Recent Work (this session):**
-- **Budget Health Modal Rework — Evidence, Formula, and Close-Out Integration (COMPLETED):**
-  - Structured evidence: all six metric executors in `metric_executors.py` now return evidence objects with `label`, `value`, `raw_value`, `raw_unit`, `limit`, `raw_limit`, and `detail`.
-  - Added per-executor `calculation` strings showing exact arithmetic (e.g., "Overrun = $120.00. Tolerance = $50.00. Ratio = 2.4000. Score = 100 - (2.4000 × 30) = 70.") and propagated them through `runner.py`.
-  - Frontend `BudgetsPage.jsx` now renders collapsed metric cards by default with RHS "Show Details" button, expandable evidence rows, and a "Show Formula" button beneath evidence that reveals scoring curve description, calculation trace, weight, and weighted contribution.
-  - Extracted shared `CurrentPeriodCheckPanel` component from `BudgetsPage.jsx`, exported for reuse by both the Current Period Check modal and the Close-Out modal.
-  - Close-Out modal (`CloseoutModal.jsx`) now uses `CurrentPeriodCheckPanel` with `showMetricCards={false}` (collapsed to summary only) and displays past-tense tone-aware summaries via new `_closed_period_summary(score, tone)` in `runner.py`.
-  - Replaced generic `current_period_check.summary` with tone-aware `_current_period_summary(score, tone)` mapping score bands to supportive / friendly / direct messaging.
-  - Removed `TrafficLight` component and indicators from budget summary; replaced with enlarged score circle (h-12 w-12) centered above "Health Details" button on the RHS of each budget card.
-  - Budget Health card relabeled to "Overall Health Details"; button fonts reduced for better fit.
-  - Pending Closure section: added "Open" button linking to period detail, reduced font sizes, improved date wrapping.
-  - Calendar modal: merged "Today {date}" label and "Today" button into a single clickable "Today" label.
-  - Close-Out warning updated to "Closing a budget cycle makes it read-only and prevents further changes from being made." with localStorage-dismiss support (`dosh_dismiss_closeout_warning`).
-  - Tests updated and passing: `test_health_engine.py` (evidence shape + calculation assertions), `BudgetsPage.test.jsx`, `PeriodDetailPage.test.jsx`, `CloseoutModal.test.jsx`. Total backend tests passing; total frontend tests passing (223/223).
-  - Deployed to local Docker container with override and verified.
-
-- **Version bump to `0.6.6-alpha`** using `scripts/bump_version.py` (with manual fallback for `backend/Dockerfile` path change) and updated all touchpoints.
+- **Expense Actual Color Logic (COMPLETED):** Fixed expense actual values to display green when under budget and red when over budget across `BudgetPeriodsPage`, `PeriodDetailPage`, `ExpenseSection`, and `Dashboard`.
+- **Locked Banner Dismiss Persistence (COMPLETED):** Added `sessionStorage` persistence (`dosh_dismiss_lock_banner:${periodId}`) so the dismissed locked banner stays hidden across browser refreshes for the same period. Banner reappears when the period is unlocked or a different period is viewed.
+- **Repository Hygiene (COMPLETED):** Removed `dosh.db.backup-pre-test-removal-*` from git tracking and added `*.db.backup*` and `AGENTS.md` to `.gitignore`. `AGENTS.md` remains on local filesystem.
+- **Budget Health Card Inner Circle Removal (COMPLETED):** Removed the inner momentum circle from the overall budget health score display on `BudgetsPage.jsx` until the health score trending framework is implemented.
+- **Close-Out Snapshot Card Restructuring (COMPLETED):** Restructured the close-out snapshot section on `PeriodDetailPage.jsx` into a parent "Close Out Details" card containing three child cards: "Budget Health" (with `CurrentPeriodCheckPanel`), "Budget Cycle Notes & Observations", and "Carried Forward" (conditional on non-zero carry-forward amount).
+- **CurrentPeriodCheckPanel Spacing Tightening (COMPLETED):** Reduced `space-y-5` to `space-y-2` in `CurrentPeriodCheckPanel` to tighten the gap between the Show details toggle and the card bottom.
+- **DEV_MODE Removal and Demo Budget Unconditional (COMPLETED):** Removed `dev_mode` evaluation from frontend (`BudgetsPage.jsx`), backend (`budgets.py`, `main.py`), and tests. The "Create Demo Budget" option is now unconditionally available. Added duplicate prevention (`HTTPException 409`) in `create_standard_demo_budget` with frontend `onError` alert.
+- **Demo Budget Label Update (COMPLETED):** Changed the create-budget modal label from "Developer shortcut" to "Demonstration and Evaluation".
+- **All changes deployed to local Docker with override and verified** (`INCLUDE_OVERRIDE=true ./scripts/release_with_migrations.sh`); `/api/health` returns `{"status":"ok","app":"Dosh"}`.
 
 **Guardrails in Effect:**
 - Test-by-change discipline (tests with behavior changes)

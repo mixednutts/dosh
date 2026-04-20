@@ -14,7 +14,6 @@ from .models import PayType
 from .release_notes import release_notes_payload
 from .schemas import ReleaseNotesResponseOut
 from .version import APP_VERSION, get_schema_revision
-from .runtime_settings import dev_mode_enabled
 from .routers import (
     budgets,
     periods,
@@ -31,14 +30,12 @@ from .routers import (
 
 app = FastAPI(title="Dosh API", version=APP_VERSION)
 
-# CORS only needed in dev mode when frontend may be served separately
-if dev_mode_enabled():
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(budgets.router, prefix="/api")
 app.include_router(periods.router, prefix="/api")
@@ -89,7 +86,6 @@ def info():
         "app": "Dosh",
         "version": APP_VERSION,
         "schema_revision": get_schema_revision(),
-        "dev_mode": dev_mode_enabled(),
     }
 
 

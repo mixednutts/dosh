@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from decimal import Decimal
 
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from .cycle_constants import ACTIVE, CLOSED, PLANNED
@@ -417,6 +418,9 @@ def _add_pending_closure_adjustments(period, db: Session) -> None:
 
 
 def create_standard_demo_budget(db: Session) -> Budget:
+    existing = db.query(Budget).filter_by(budgetowner="Dosh Demo", description="Demo Household Budget").first()
+    if existing:
+        raise HTTPException(409, "Demo budget already exists.")
     budget = _create_demo_setup(db)
 
     now = app_now_naive()

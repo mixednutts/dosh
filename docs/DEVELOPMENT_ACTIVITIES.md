@@ -290,6 +290,8 @@ Status:
 - `Completed`: close-out comments on the Budget Cycle Details page now appear under a "Budget Cycle Notes & Observations" heading
 - `Completed`: cycle navigation chevrons moved above the close-out snapshot for consistent positioning
 - `Completed`: keep the new `Pending Closure` affordances, direct close-out shortcuts, and compact budget-summary prompts aligned across the budgets page, sidebar, and cycle list
+- `Completed`: restructured close-out snapshot section into a parent "Close Out Details" card with three child cards (Budget Health, Notes & Observations, Carried Forward) for clearer visual separation
+- `Completed`: carried forward section is now conditional on a non-zero carry-forward system transaction existing for the next period
 
 #### Activity Group: Historical Integrity and Read-Only Behavior
 
@@ -304,6 +306,7 @@ Status:
 - `Completed`: locked-cycle banner is now dismissible for the current page session via a `DISMISS` anchor link
 - `Completed`: extend end-to-end coverage from the close-out happy path into post-close correction and reconciliation workflows
 - `Completed`: determine whether additional sign-off or audit fields are needed once user identity exists
+- `Completed`: locked banner dismiss state now persists across browser refreshes via `sessionStorage` key `dosh_dismiss_lock_banner:${periodId}`; banner reappears when the period unlocks or a different period is viewed
 
 Cross-links:
 
@@ -545,6 +548,10 @@ Status:
 - `Completed`: update the rolling demo seed so new walkthroughs include `Closed`, multiple `Pending Closure`, `Current`, and `Planned` cycle stages together with transaction-direction and budget-adjustment examples
 - `Completed`: expand the demo seed to include expense items with varied types and recurrence patterns (Fixed Day of Month, Every N Days) and mixed AUTO/MANUAL payment types so calendar, timing, cash-flow routing, and workflow walkthroughs better reflect real use
 - `Completed`: consider whether more than one demo seed profile is needed later, such as `healthy`, `under pressure`, or `recovery`, without weakening the current additive-only demo import behavior
+- `Completed`: removed `DEV_MODE` gating from frontend and backend; the "Create Demo Budget" option is now unconditionally available in the create-budget modal
+- `Completed`: added duplicate-prevention validation in `create_standard_demo_budget` so attempting to create a demo budget when one already exists returns `HTTP 409` with "Demo budget already exists."
+- `Completed`: frontend `createDemo` mutation now surfaces the 409 error via a browser alert
+- `Completed`: renamed the create-budget modal demo section label from "Developer shortcut" to "Demonstration and Evaluation"
 
 Cross-links:
 
@@ -772,7 +779,9 @@ Status:
 
 - `Next`
 
-- `Completed`: consolidate Budget Setup and Period Detail add-expense scheduling onto a shared field set based on the Period Detail flow, standardize `Effective Date` wording, keep period-only note and include controls out of Budget Setup, and finish the accepted date-picker, fixed-day guidance, quick-fill, and neutral action-button polish in the touched expense workflows
+- `Completed`: expense actual values now display green when under budget and red when over budget, matching the semantic color used for projected investment amounts
+- `Completed`: removed the inner momentum circle from the overall budget health score display on the budget summary page until the health score trending framework is implemented
+- `Completed`: consolidated Budget Setup and Period Detail add-expense scheduling onto a shared field set based on the Period Detail flow, standardize `Effective Date` wording, keep period-only note and include controls out of Budget Setup, and finish the accepted date-picker, fixed-day guidance, quick-fill, and neutral action-button polish in the touched expense workflows
 - `Completed`: add floating "Return to Top" buttons to Budget Cycles Summary and Budget Cycle Details pages, matching the existing Budget Setup implementation
 - `Completed`: relabel all user-facing "Planned" budget cycle stage text to "Upcoming" across pages, sidebar, utility logic, backend derivation, and tests
 - `Completed`: standardize banner-style alert boxes (locked, closed, error, warning) system-wide with softer border/background opacity, rounded-xl shape, bold text, and lock icons on cycle state banners
@@ -810,6 +819,7 @@ Status:
 
 - `Completed`
 
+- `Completed`: fix expense actual color so values display green when under budget and red when over budget, aligning with the semantic color pattern used for projected investment amounts
 - `Completed`: fix shared add-expense scheduling and transaction-entry inconsistencies including the expense modal icon mismatch, native-date-control replacement, clickable calendar icon behavior, fixed-day `31` rollover handling, and shared quick-fill rule drift across income, expense, and investment directions
 - `Completed`: fix `Surplus (Budget)` so current mixed-actual periods and untouched future periods both roll up correctly from line-level budget, actual, and remaining values rather than relying on one top-level actual-based shortcut
 - `Completed`: prevent account-setup edits or deletes from leaving the budget with no active primary transaction account, while defaulting the first transaction account to primary and warning before switching primary status
@@ -984,10 +994,10 @@ If we want a practical order of work rather than just a thematic roadmap, this i
 
 ## Implementation Notes To Preserve
 
-- Docker Compose is now the active control point for `DEV_MODE`; future work should avoid drifting back to a separate checked-in frontend-only flag for demo gating.
 - Demo-budget creation is intentionally additive only. It should keep creating a new budget rather than overwriting or deleting existing budgets.
 - Because the frontend is built with Vite and served as static assets, changes to frontend dev-mode visibility require a rebuild, not only a container restart.
 - Backend enforcement should continue to exist even when the frontend hides the control, so dev-only workflows are not protected by UI state alone.
+- The `DEV_MODE` environment variable and its associated frontend/backend gating have been removed. The "Create Demo Budget" option is now unconditionally available. Duplicate prevention is enforced server-side via `HTTPException(409)` in `create_standard_demo_budget`.
 
 ## Canonical Near-Term References
 

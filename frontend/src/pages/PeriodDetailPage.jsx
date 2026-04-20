@@ -76,7 +76,10 @@ export default function PeriodDetailPage() {
 
   const [investmentModal, setInvestmentModal] = useState(null)
   const [showReturnTop, setShowReturnTop] = useState(false)
-  const [dismissLockedBanner, setDismissLockedBanner] = useState(false)
+  const LOCK_BANNER_KEY = `dosh_dismiss_lock_banner:${id}`
+  const [dismissLockedBanner, setDismissLockedBanner] = useState(() => {
+    try { return sessionStorage.getItem(LOCK_BANNER_KEY) === 'true' } catch { return false }
+  })
 
   const [localExpenses, setLocalExpenses] = useState(null)
   const [dragOver, setDragOver] = useState(null)
@@ -154,6 +157,18 @@ export default function PeriodDetailPage() {
   useEffect(() => { setLocalExpenses(null) }, [data])
 
   const period = data?.period ?? null
+
+  useEffect(() => {
+    try { setDismissLockedBanner(sessionStorage.getItem(LOCK_BANNER_KEY) === 'true') } catch { setDismissLockedBanner(false) }
+  }, [id, LOCK_BANNER_KEY])
+
+  useEffect(() => {
+    if (period && !period.islocked) {
+      try { sessionStorage.removeItem(LOCK_BANNER_KEY) } catch { /* ignore */ }
+      setDismissLockedBanner(false)
+    }
+  }, [period?.islocked, LOCK_BANNER_KEY])
+
   const cycleStage = getCycleStage(period)
   const activeCycle = cycleStage === 'CURRENT' || cycleStage === 'PENDING_CLOSURE'
 
@@ -338,7 +353,11 @@ export default function PeriodDetailPage() {
             <a
               href="#"
               className="shrink-0 text-xs font-semibold uppercase tracking-wide text-amber-700 hover:text-amber-900 dark:text-amber-400 dark:hover:text-amber-200"
-              onClick={(e) => { e.preventDefault(); setDismissLockedBanner(true) }}
+              onClick={(e) => {
+                e.preventDefault()
+                try { sessionStorage.setItem(LOCK_BANNER_KEY, 'true') } catch { /* ignore */ }
+                setDismissLockedBanner(true)
+              }}
             >
               Dismiss
             </a>
@@ -385,17 +404,25 @@ export default function PeriodDetailPage() {
 
       {closed && data.closeout_snapshot && (
         <div className="card p-4 space-y-3">
-          <div>
-            <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Close-out Snapshot</p>
-            <p className="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">Carry Forward: {fmt(data.closeout_snapshot.carry_forward_amount)}</p>
-          </div>
+          <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Close Out Details</p>
           {closeoutHealth && (
-            <CurrentPeriodCheckPanel assessment={closeoutHealth} showMetricCards defaultMetricCardsOpen={false} />
+            <div className="card p-4">
+              <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Budget Health</p>
+              <div className="mt-1">
+                <CurrentPeriodCheckPanel assessment={closeoutHealth} showMetricCards defaultMetricCardsOpen={false} />
+              </div>
+            </div>
           )}
           {data.closeout_snapshot.comments && (
-            <div>
+            <div className="card p-4">
               <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Budget Cycle Notes & Observations</p>
               <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">{data.closeout_snapshot.comments}</p>
+            </div>
+          )}
+          {Number(data.closeout_snapshot.carry_forward_amount || 0) !== 0 && (
+            <div className="card p-4">
+              <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Carried Forward</p>
+              <p className="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">{fmt(data.closeout_snapshot.carry_forward_amount)}</p>
             </div>
           )}
         </div>
@@ -407,7 +434,7 @@ export default function PeriodDetailPage() {
           { label: 'Income Budget',  value: totalIncomeBudget,  cls: 'text-gray-700 dark:text-gray-300' },
           { label: 'Income Actual',  value: totalIncomeActual,  cls: 'text-success-700 dark:text-success-400' },
           { label: 'Expense Budget', value: effectiveExpenseBudget, cls: 'text-gray-700 dark:text-gray-300' },
-          { label: 'Expense Actual', value: totalExpenseActual, cls: 'text-red-700 dark:text-red-400' },
+          { label: 'Expense Actual', value: totalExpenseActual, cls: totalExpenseActual <= effectiveExpenseBudget ? 'text-success-700 dark:text-success-400' : 'text-red-700 dark:text-red-400' },
           { label: 'Remaining Expenses', value: totalExpenseRemaining, cls: totalExpenseRemaining >= 0 ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400' },
           { label: 'Projected Investment', value: projectedInvestment },
           { label: 'Surplus (Budget)', value: surplusBudget },

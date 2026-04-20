@@ -31,7 +31,6 @@ describe('BudgetsPage', () => {
     jest.clearAllMocks()
     jest.useFakeTimers()
     jest.setSystemTime(Date.parse('2026-04-10T09:30:00Z'))
-    global.__DEV_MODE__ = false
     client.getBudgets.mockResolvedValue([])
     client.getPeriodsForBudget.mockResolvedValue([])
     client.getBudgetHealth.mockResolvedValue(null)
@@ -54,20 +53,7 @@ describe('BudgetsPage', () => {
     jest.useRealTimers()
   })
 
-  it('hides the demo budget action when dev mode is disabled', async () => {
-    renderWithProviders(<BudgetsPage />, {
-      route: '/budgets',
-      path: '/budgets',
-    })
-
-    fireEvent.click(await screen.findByText('Create Budget'))
-
-    expect(screen.queryByRole('button', { name: 'Create Demo Budget' })).toBeNull()
-  })
-
-  it('shows and runs the demo budget action when dev mode is enabled', async () => {
-    global.__DEV_MODE__ = true
-
+  it('shows and runs the demo budget action', async () => {
     renderWithProviders(<BudgetsPage />, {
       route: '/budgets',
       path: '/budgets',

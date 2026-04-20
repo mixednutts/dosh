@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+### Changed
+
+- Expense actual values now show green when under budget and red when over budget, matching the semantic color pattern used for projected investment amounts.
+- The inner momentum circle has been removed from the overall budget health score display until the health score trending framework is implemented.
+- The close-out snapshot on the budget cycle details page is now presented inside a clearer "Close Out Details" card with three child cards for Budget Health, Notes & Observations, and Carried Forward.
+- The "Create Demo Budget" option is now always available in the create-budget modal, renamed from "Developer shortcut" to "Demonstration and Evaluation".
+
+### Fixed
+
+- The locked-cycle banner now stays dismissed across browser refreshes for the same budget cycle. It reappears when the cycle is unlocked or a different cycle is viewed.
+- Duplicate demo budget creation is now prevented with a clear error message if a demo budget already exists.
+
 ## 0.6.7-alpha | released | 2026-04-20
 
 ### Added

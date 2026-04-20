@@ -4,8 +4,10 @@ backend/db_backups/
 *.db
 *.db-shm
 *.db-wal
+*.db.backup*
 backend/coverage.xml
 frontend/coverage/
 docker-compose.override.yml
 .env
 .donotupdate
+AGENTS.md

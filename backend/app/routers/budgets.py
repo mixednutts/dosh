@@ -4,7 +4,6 @@ from ..demo_budget import create_standard_demo_budget
 from ..health_engine import evaluate_budget_health
 from ..health_engine_seed import create_default_matrix_for_budget
 from ..models import Budget
-from ..runtime_settings import dev_mode_enabled
 from ..schemas import (
     BudgetCreate,
     BudgetOut,
@@ -39,8 +38,6 @@ def create_budget(payload: BudgetCreate, db: DbSession):
 
 @router.post("/demo", response_model=BudgetOut, status_code=201, responses=error_responses(404))
 def create_demo_budget(db: DbSession):
-    if not dev_mode_enabled():
-        raise HTTPException(404, "Not found")
     return create_standard_demo_budget(db)
 
 

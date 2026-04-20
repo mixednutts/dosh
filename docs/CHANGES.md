@@ -4,7 +4,75 @@ This document captures the key product and implementation changes made during re
 
 It is intended to complement [README.md](/home/ubuntu/dosh/README.md), not replace it.
 
-## Latest Session: Budget Cycle Details Close-Out Polish and UX Hardening (0.6.6-alpha) (2026-04-20)
+## Latest Session: UX Polish, Dev Mode Removal, and Demo Budget Hardening (0.6.7-alpha) (2026-04-20)
+
+### What changed
+
+- **Expense actual color logic fixed:**
+  - Expense actual values now display green when under budget and red when over budget.
+  - Applied consistently across `BudgetPeriodsPage.jsx`, `PeriodDetailPage.jsx`, `ExpenseSection.jsx`, and `Dashboard.jsx`.
+  - Rationale: being under budget is positive; only exceeding budget is negative.
+
+- **Locked banner dismiss persistence:**
+  - `PeriodDetailPage.jsx` now uses `sessionStorage` key `dosh_dismiss_lock_banner:${periodId}` to persist the dismissed state across browser refreshes.
+  - A `useEffect` resets the dismiss state when the period's `islocked` changes to `false`, so the banner reappears after unlock.
+
+- **Repository hygiene:**
+  - Removed `dosh.db.backup-pre-test-removal-*` from git tracking.
+  - Added `*.db.backup*` and `AGENTS.md` to `.gitignore`.
+  - `AGENTS.md` remains on the local filesystem.
+
+- **Budget health card inner circle removed:**
+  - Removed the inner momentum circle from the overall budget health score display on `BudgetsPage.jsx`.
+  - The outer score circle and status label remain. Inner circle will return when the health score trending framework is implemented.
+
+- **Close-out snapshot restructuring:**
+  - The close-out snapshot on `PeriodDetailPage.jsx` is now wrapped in a parent "Close Out Details" card.
+  - Three child cards inside: "Budget Health" (with `CurrentPeriodCheckPanel`), "Budget Cycle Notes & Observations", and "Carried Forward".
+  - The "Carried Forward" card is conditional on a non-zero carry-forward amount.
+
+- **CurrentPeriodCheckPanel spacing tightened:**
+  - Reduced root spacing from `space-y-5` to `space-y-2` to tighten the gap between the Show details toggle and the bottom of the inner card.
+
+- **DEV_MODE removed and demo budget made unconditional:**
+  - Removed `isDevModeEnabled()` helper and `__DEV_MODE__` dependency from `BudgetsPage.jsx`.
+  - Removed `dev_mode_enabled` import and guard from `backend/app/routers/budgets.py` `/demo` endpoint.
+  - Removed `dev_mode_enabled` import from `backend/app/main.py`; CORS now applied unconditionally.
+  - Removed `"dev_mode"` from `/api/health` response.
+  - The "Create Demo Budget" option is now always visible in the create-budget modal.
+  - Added duplicate-prevention check in `create_standard_demo_budget`: returns `HTTPException(409, "Demo budget already exists.")` if a demo budget already exists.
+  - Frontend `createDemo` mutation now shows a browser alert on 409 errors.
+  - Tests updated: removed `global.__DEV_MODE__` mocking from `BudgetsPage.test.jsx`; merged dev-mode conditional tests into unconditional demo test; removed `monkeypatch` from backend smoke test; added `test_demo_budget_endpoint_returns_409_when_duplicate`.
+
+- **Demo budget label updated:**
+  - Changed create-budget modal label from "Developer shortcut" to "Demonstration and Evaluation".
+
+### Files touched
+
+- `frontend/src/pages/BudgetsPage.jsx`
+- `frontend/src/pages/PeriodDetailPage.jsx`
+- `frontend/src/pages/BudgetPeriodsPage.jsx`
+- `frontend/src/pages/Dashboard.jsx`
+- `frontend/src/components/period-sections/ExpenseSection.jsx`
+- `frontend/src/__tests__/BudgetsPage.test.jsx`
+- `frontend/src/__tests__/PeriodDetailPage.test.jsx`
+- `backend/app/demo_budget.py`
+- `backend/app/routers/budgets.py`
+- `backend/app/main.py`
+- `backend/tests/test_app_smoke.py`
+- `.gitignore`
+
+### Decisions preserved
+
+- Expense actual color uses the same green/red semantic as projected investment: green = under budget (good), red = over budget (bad).
+- Locked banner dismiss persists per-period across refreshes via `sessionStorage`, not `localStorage`, because lock state is transient and the user may want to re-see the banner after a significant time gap.
+- The inner momentum circle is intentionally removed (not hidden) until the trending framework exists, to avoid presenting a static decorative element as if it carries meaning.
+- Demo budget creation remains additive-only; duplicate prevention is a server-side guard, not a client-side hide.
+- `DEV_MODE` was removed entirely rather than fixed because the Vite build-time `define` approach (`__DEV_MODE__`) could not read runtime `docker-compose.override.yml` environment variables without significant build plumbing changes.
+
+---
+
+## Previous Session: Budget Cycle Details Close-Out Polish and UX Hardening (0.6.6-alpha) (2026-04-20)
 
 ### What changed
 

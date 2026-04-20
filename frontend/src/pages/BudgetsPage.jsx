@@ -13,7 +13,6 @@ import { getCycleStage } from '../utils/periodStage'
 
 const FREQUENCIES = ['Weekly', 'Fortnightly', 'Monthly']
 const CUSTOM_DAY_CYCLE_VALUE = '__custom_day_cycle__'
-const isDevModeEnabled = () => (typeof __DEV_MODE__ !== 'undefined' ? __DEV_MODE__ : false)
 
 const emptyForm = { description: '', budgetowner: '', budget_frequency: 'Fortnightly' }
 
@@ -780,16 +779,6 @@ function BudgetStats({ budgetId, budgetName, periods = [], currentPeriodDetail, 
               <div className={`flex h-20 w-20 items-center justify-center rounded-full shadow-sm ${healthCircleClass(health.overall_status)}`}>
                 <span className="text-3xl font-light tracking-tight">{health.overall_score}</span>
               </div>
-              <div className={`
-                absolute bottom-0 right-0 flex h-10 w-10 items-center justify-center rounded-full
-                border-2 border-white text-xs font-semibold shadow-sm dark:border-gray-800
-                ${healthCircleClass(health.overall_status)}
-              `}>
-                <div className="flex flex-col items-center leading-none">
-                  <MomentumIcon status={health.momentum_status} />
-                  <span className="mt-0.5 text-[10px]">{formatMomentumDelta(health.momentum_delta)}</span>
-                </div>
-              </div>
             </div>
             <button type="button" className="rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-[11px] font-medium text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700" onClick={onOpenHealth}>
               Overall Health Details
@@ -958,7 +947,7 @@ export function CurrentPeriodCheckPanel({ assessment, evaluatedAt, showMetricCar
   const metrics = assessment.metrics || []
   const [metricsOpen, setMetricsOpen] = useState(defaultMetricCardsOpen)
   return (
-    <div className="space-y-5">
+    <div className="space-y-2">
       <div className="rounded-lg border border-gray-200 bg-gradient-to-r from-gray-50 to-white px-4 py-4 dark:border-gray-700 dark:bg-gray-900 dark:bg-none">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-2">
@@ -1028,16 +1017,6 @@ function BudgetHealthModal({ budget, health, onClose }) {
             <div className="relative flex h-24 w-24 shrink-0 items-center justify-center">
               <div className={`flex h-20 w-20 items-center justify-center rounded-full shadow-sm ${healthCircleClass(health.overall_status)}`}>
                 <span className="text-3xl font-light tracking-tight">{health.overall_score}</span>
-              </div>
-              <div className={`
-                absolute bottom-0 right-0 flex h-10 w-10 items-center justify-center rounded-full
-                border-2 border-white text-xs font-semibold shadow-sm dark:border-gray-800
-                ${healthCircleClass(health.overall_status)}
-              `}>
-                <div className="flex flex-col items-center leading-none">
-                  <MomentumIcon status={health.momentum_status} />
-                  <span className="mt-0.5 text-[10px]">{formatMomentumDelta(health.momentum_delta)}</span>
-                </div>
               </div>
             </div>
             <div className="min-w-0">
@@ -1217,7 +1196,7 @@ function BudgetForm({ initial = emptyForm, onSubmit, onCreateDemo, onClose, load
 
       {showDemoOption ? (
         <div className="rounded-lg border border-dashed border-dosh-200 bg-dosh-50/60 px-4 py-4 dark:border-dosh-800 dark:bg-dosh-950/30">
-          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Developer shortcut</p>
+          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Demonstration and Evaluation</p>
           <p className="mt-1 text-xs text-gray-600 dark:text-gray-300">
             Create a fully populated demo budget with historical close-outs, a live current cycle, linked savings and investment setup, and several upcoming cycles.
           </p>
@@ -1305,6 +1284,10 @@ export default function BudgetsPage() {
       qc.invalidateQueries({ queryKey: ['budgets'] })
       setModal(null)
       navigate(`/budgets/${newBudget.budgetid}`)
+    },
+    onError: (error) => {
+      const msg = error?.response?.data?.detail || 'Unable to create demo budget right now.'
+      globalThis.alert(msg)
     },
   })
 
@@ -1409,7 +1392,7 @@ export default function BudgetsPage() {
             onClose={() => setModal(null)}
             loading={create.isPending}
             demoLoading={createDemo.isPending}
-            showDemoOption={isDevModeEnabled()}
+            showDemoOption
           />
         </Modal>
       )}

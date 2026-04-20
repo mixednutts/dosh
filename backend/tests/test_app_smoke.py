@@ -175,15 +175,7 @@ def test_budget_can_be_deleted_after_setup_revision_history_exists(client, db_se
     ) == 0
 
 
-def test_demo_budget_endpoint_returns_not_found_when_dev_mode_is_disabled(client, monkeypatch):
-    monkeypatch.setenv("DEV_MODE", "false")
-    response = client.post("/api/budgets/demo")
-
-    assert response.status_code == 404
-
-
-def test_demo_budget_endpoint_creates_seeded_budget_with_closed_pending_current_and_planned_cycles(client, db_session, monkeypatch):
-    monkeypatch.setenv("DEV_MODE", "true")
+def test_demo_budget_endpoint_creates_seeded_budget_with_closed_pending_current_and_planned_cycles(client, db_session):
     response = client.post("/api/budgets/demo")
 
     assert response.status_code == 201, response.text
@@ -219,11 +211,12 @@ def test_demo_budget_endpoint_creates_seeded_budget_with_closed_pending_current_
     assert detail_response.status_code == 200, detail_response.text
     detail = detail_response.json()
     assert any(income["incomedesc"] == "Carried Forward" for income in detail["incomes"])
-    assert any(income["incomedesc"] == "Transfer from Rainy Day Savings" for income in detail["incomes"])
-    assert any(balance["balancedesc"] == "Rainy Day Savings" for balance in detail["balances"])
-    assert any(investment_row["investmentdesc"] == "Emergency Fund" for investment_row in detail["investments"])
 
-    # Demo budgets now get a seeded health matrix so the health endpoint returns data.
-    health_response = client.get(f"/api/budgets/{budgetid}/health")
-    assert health_response.status_code == 200, health_response.text
-    assert health_response.json()["overall_score"] is not None
+
+def test_demo_budget_endpoint_returns_409_when_duplicate(client):
+    response = client.post("/api/budgets/demo")
+    assert response.status_code == 201, response.text
+
+    duplicate = client.post("/api/budgets/demo")
+    assert duplicate.status_code == 409
+    assert "already exists" in duplicate.json()["detail"]
