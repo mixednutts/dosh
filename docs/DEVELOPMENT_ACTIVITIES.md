@@ -284,7 +284,11 @@ Status:
 - refine the close-out modal and summary surfaces
 - `Completed`: added explicit "Carry forward surplus" checkbox to the close-out modal, defaulting to unchecked and hidden when surplus ≤ 0, so users must opt in to carrying surplus forward
 - `Completed`: aligned close-out preview totals (`expense_budget`, `investment_budget`, `surplus_budget`) with the Budget Cycle Details page calculation logic so the modal reflects true values
-- decide which historical views should show close-out comments, goals, and snapshotted health data
+- `Completed`: removed "Goals Going Forward" field from the close-out modal frontend UI; backend field preserved for future enrichment
+- `Completed`: close-out modal warning now uses a `Dismiss` button instead of a checkbox preference
+- `Completed`: Budget Cycle Details page now shows close-out health snapshot with the same `CurrentPeriodCheckPanel` component used by the Current Period Check, with metric cards collapsed by default and a `Show details` toggle
+- `Completed`: close-out comments on the Budget Cycle Details page now appear under a "Budget Cycle Notes & Observations" heading
+- `Completed`: cycle navigation chevrons moved above the close-out snapshot for consistent positioning
 - keep the new `Pending Closure` affordances, direct close-out shortcuts, and compact budget-summary prompts aligned across the budgets page, sidebar, and cycle list
 
 #### Activity Group: Historical Integrity and Read-Only Behavior
@@ -296,6 +300,8 @@ Status:
 - make closed-cycle read-only behavior consistent across remaining write paths
 - add clearer read-only and reconciliation messaging on closed cycles
 - `Completed`: added `carry_forward_applied` to `PeriodCloseoutSnapshot` so historical close-out records explicitly state whether surplus was carried forward
+- `Completed`: closed-cycle banner text simplified to "This budget cycle is closed. All data for this budget cycle is now read-only."
+- `Completed`: locked-cycle banner is now dismissible for the current page session via a `DISMISS` anchor link
 - extend end-to-end coverage from the close-out happy path into post-close correction and reconciliation workflows
 - determine whether additional sign-off or audit fields are needed once user identity exists
 

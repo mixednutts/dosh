@@ -953,9 +953,10 @@ ScoreBreakdown.propTypes = {
   label: PropTypes.string.isRequired,
 }
 
-export function CurrentPeriodCheckPanel({ assessment, evaluatedAt, showMetricCards = true }) {
+export function CurrentPeriodCheckPanel({ assessment, evaluatedAt, showMetricCards = true, defaultMetricCardsOpen = true }) {
   const { formatDateTime, timezone } = useLocalisation()
   const metrics = assessment.metrics || []
+  const [metricsOpen, setMetricsOpen] = useState(defaultMetricCardsOpen)
   return (
     <div className="space-y-5">
       <div className="rounded-lg border border-gray-200 bg-gradient-to-r from-gray-50 to-white px-4 py-4 dark:border-gray-700 dark:bg-gray-900 dark:bg-none">
@@ -975,9 +976,24 @@ export function CurrentPeriodCheckPanel({ assessment, evaluatedAt, showMetricCar
         </div>
       </div>
 
-      {showMetricCards && metrics.map(metric => (
-        <MetricCard key={metric.key || metric.name} metric={metric} />
-      ))}
+      {showMetricCards && (
+        <div>
+          <button
+            type="button"
+            onClick={() => setMetricsOpen(v => !v)}
+            className="text-xs font-medium text-dosh-700 hover:text-dosh-800 dark:text-dosh-300 dark:hover:text-dosh-200"
+          >
+            {metricsOpen ? '[-] Hide details' : '[+] Show details'}
+          </button>
+          {metricsOpen && (
+            <div className="mt-3 space-y-3">
+              {metrics.map(metric => (
+                <MetricCard key={metric.key || metric.name} metric={metric} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -991,6 +1007,7 @@ CurrentPeriodCheckPanel.propTypes = {
   }).isRequired,
   evaluatedAt: PropTypes.string,
   showMetricCards: PropTypes.bool,
+  defaultMetricCardsOpen: PropTypes.bool,
 }
 
 function CurrentPeriodCheckModal({ budget, assessment, evaluatedAt, onClose }) {

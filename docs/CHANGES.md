@@ -4,7 +4,49 @@ This document captures the key product and implementation changes made during re
 
 It is intended to complement [README.md](/home/ubuntu/dosh/README.md), not replace it.
 
-## Latest Session: Budget Health Modal Rework — Evidence, Formula, and Close-Out Integration (0.6.6-alpha) (2026-04-20)
+## Latest Session: Budget Cycle Details Close-Out Polish and UX Hardening (0.6.6-alpha) (2026-04-20)
+
+### What changed
+
+- **Locked-cycle banner is now dismissible:**
+  - `PeriodDetailPage.jsx` adds local `dismissLockedBanner` state.
+  - The amber locked banner shows a `DISMISS` text link (styled anchor, not a button) that hides the banner for the current page session.
+  - Banner text updated from `"...protected until you unlock it."` to `"...protected unless you unlock it."`.
+
+- **Close-Out modal warning uses a Dismiss button:**
+  - `CloseoutModal.jsx` replaced the `"Don't show this message again"` checkbox with a `Dismiss` `<button>`.
+  - Clicking immediately hides the warning and persists the choice via `localStorage`.
+  - Removed the `"Goals Going Forward"` textarea from the frontend UI; the API still sends `goals: ''` so the backend schema remains intact for future use.
+
+- **Closed-cycle details page improvements:**
+  - Closed banner text simplified to `"This budget cycle is closed. All data for this budget cycle is now read-only."`.
+  - Close-out health snapshot now renders using the shared `<CurrentPeriodCheckPanel>` component, showing the full score circle, summary, collapsible score breakdown, and per-metric cards.
+  - Metric cards on the cycle details page start collapsed (via new `defaultMetricCardsOpen` prop); a `[+] Show details` / `[-] Hide details` toggle expands them.
+  - Close-out comments now sit under a `"Budget Cycle Notes & Observations"` heading.
+  - Cycle navigation chevrons moved above the close-out snapshot so their position stays consistent regardless of whether the snapshot block is present.
+
+- **`CurrentPeriodCheckPanel` enhanced with collapsible metric cards:**
+  - Added `defaultMetricCardsOpen` prop (defaults to `true` for backward compatibility).
+  - Wraps metric cards in local state with a toggle button so consumers can choose initial visibility.
+
+### Files touched
+
+- `frontend/src/pages/PeriodDetailPage.jsx`
+- `frontend/src/pages/BudgetsPage.jsx`
+- `frontend/src/components/modals/CloseoutModal.jsx`
+- `frontend/src/__tests__/PeriodDetailPage.test.jsx`
+- `frontend/src/__tests__/CloseoutModal.test.jsx`
+
+### Decisions preserved
+
+- The `Dismiss` action on the locked banner is a page-session-only hide (no `localStorage`), because the lock state is transient and the user may want to re-see the reminder on revisit.
+- The `Dismiss` action in the Close-Out modal persists to `localStorage` because it is a preference choice, not a transient state.
+- Goals field was removed from the frontend close-out flow because it was not adding meaningful value to the current workflow, but the backend field is preserved for future close-out enrichment.
+- `CurrentPeriodCheckPanel` metric-card visibility is controlled by a new prop rather than a hard change, so existing usages (Budgets page modal, Close-Out modal) remain unaffected.
+
+---
+
+## Previous Session: Budget Health Modal Rework — Evidence, Formula, and Close-Out Integration (0.6.6-alpha) (2026-04-20)
 
 ### What changed
 

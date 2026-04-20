@@ -49,6 +49,7 @@ import {
   InvestmentSection,
   BalanceSection,
 } from '../components/period-sections'
+import { CurrentPeriodCheckPanel } from './BudgetsPage'
 
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
@@ -75,6 +76,7 @@ export default function PeriodDetailPage() {
 
   const [investmentModal, setInvestmentModal] = useState(null)
   const [showReturnTop, setShowReturnTop] = useState(false)
+  const [dismissLockedBanner, setDismissLockedBanner] = useState(false)
 
   const [localExpenses, setLocalExpenses] = useState(null)
   const [dragOver, setDragOver] = useState(null)
@@ -321,17 +323,26 @@ export default function PeriodDetailPage() {
         <div className="rounded-xl border border-slate-200/70 bg-slate-50/60 px-4 py-2.5 text-sm font-bold text-slate-700 dark:border-slate-700/40 dark:bg-slate-900/15 dark:text-slate-300">
           <span className="inline-flex items-center gap-2">
             <LockClosedIcon className="h-4 w-4 shrink-0" />
-            This budget cycle is closed. Values are frozen for historical reporting, and later corrections should happen through reconciliation.
+            This budget cycle is closed. All data for this budget cycle is now read-only.
           </span>
         </div>
       )}
 
-      {locked && !closed && (
+      {locked && !closed && !dismissLockedBanner && (
         <div className="rounded-xl border border-amber-200/70 bg-amber-50/60 px-4 py-2.5 text-sm font-bold text-amber-800 dark:border-amber-800/30 dark:bg-amber-950/10 dark:text-amber-300">
-          <span className="inline-flex items-center gap-2">
-            <LockClosedIcon className="h-4 w-4 shrink-0" />
-            Budget cycle is locked. You can still record actuals and transactions, but budget amounts and cycle line structure are protected until you unlock it.
-          </span>
+          <div className="flex items-center justify-between gap-2">
+            <span className="inline-flex items-center gap-2">
+              <LockClosedIcon className="h-4 w-4 shrink-0" />
+              Budget cycle is locked. You can still record actuals and transactions, but budget amounts and cycle line structure are protected unless you unlock it.
+            </span>
+            <a
+              href="#"
+              className="shrink-0 text-xs font-semibold uppercase tracking-wide text-amber-700 hover:text-amber-900 dark:text-amber-400 dark:hover:text-amber-200"
+              onClick={(e) => { e.preventDefault(); setDismissLockedBanner(true) }}
+            >
+              Dismiss
+            </a>
+          </div>
         </div>
       )}
 
@@ -349,23 +360,6 @@ export default function PeriodDetailPage() {
           }`}>
             {autoExpenseFeedback.text}
           </p>
-        </div>
-      )}
-
-      {closed && data.closeout_snapshot && (
-        <div className="card p-4 space-y-3">
-          <div>
-            <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Close-out Snapshot</p>
-            <p className="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">Carry Forward: {fmt(data.closeout_snapshot.carry_forward_amount)}</p>
-          </div>
-          {closeoutHealth && (
-            <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/50">
-              <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{closeoutHealth.summary}</p>
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Health snapshot: {closeoutHealth.score} • {closeoutHealth.status}</p>
-            </div>
-          )}
-          {data.closeout_snapshot.comments && <p className="text-sm text-gray-600 dark:text-gray-300">{data.closeout_snapshot.comments}</p>}
-          {data.closeout_snapshot.goals && <p className="text-sm text-dosh-700 dark:text-dosh-300">Next cycle goals: {data.closeout_snapshot.goals}</p>}
         </div>
       )}
 
@@ -388,6 +382,24 @@ export default function PeriodDetailPage() {
           <ChevronRightIcon className="w-5 h-5" />
         </Link>
       </div>
+
+      {closed && data.closeout_snapshot && (
+        <div className="card p-4 space-y-3">
+          <div>
+            <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Close-out Snapshot</p>
+            <p className="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">Carry Forward: {fmt(data.closeout_snapshot.carry_forward_amount)}</p>
+          </div>
+          {closeoutHealth && (
+            <CurrentPeriodCheckPanel assessment={closeoutHealth} showMetricCards defaultMetricCardsOpen={false} />
+          )}
+          {data.closeout_snapshot.comments && (
+            <div>
+              <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Budget Cycle Notes & Observations</p>
+              <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">{data.closeout_snapshot.comments}</p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">

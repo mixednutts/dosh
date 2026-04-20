@@ -22,7 +22,6 @@ function useDismissedWarning() {
 export function CloseoutModal({ periodId, budgetId, onClose }) {
   const qc = useQueryClient()
   const [comments, setComments] = useState('')
-  const [goals, setGoals] = useState('')
   const [createNextCycle, setCreateNextCycle] = useState(false)
   const [carryForward, setCarryForward] = useState(false)
   const { dismissed: warningDismissed, dismiss: dismissWarning } = useDismissedWarning()
@@ -33,7 +32,7 @@ export function CloseoutModal({ periodId, budgetId, onClose }) {
   })
 
   const closeout = useMutation({
-    mutationFn: () => closeOutPeriod(budgetId, periodId, { comments, goals, create_next_cycle: createNextCycle, carry_forward: carryForward }),
+    mutationFn: () => closeOutPeriod(budgetId, periodId, { comments, goals: '', create_next_cycle: createNextCycle, carry_forward: carryForward }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['period', periodId] })
       qc.invalidateQueries({ queryKey: ['period-balances', periodId] })
@@ -77,22 +76,20 @@ export function CloseoutModal({ periodId, budgetId, onClose }) {
         <label htmlFor="closeout-comments" className="label">Comments / Observations</label>
         <textarea id="closeout-comments" className="input w-full resize-none" rows={4} value={comments} onChange={e => setComments(e.target.value)} />
       </div>
-      <div>
-        <label htmlFor="closeout-goals" className="label">Goals Going Forward</label>
-        <textarea id="closeout-goals" className="input w-full resize-none" rows={4} value={goals} onChange={e => setGoals(e.target.value)} />
-      </div>
       {!warningDismissed && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-950/20">
-          <p className="text-sm text-amber-800 dark:text-amber-300">
-            Closing a budget cycle makes it read-only and prevents further changes from being made.
-          </p>
-          <label className="mt-2 flex cursor-pointer items-center gap-2 text-xs text-amber-700 dark:text-amber-400">
-            <input
-              type="checkbox"
-              onChange={e => { if (e.target.checked) dismissWarning() }}
-            />
-            <span>Don't show this message again</span>
-          </label>
+          <div className="flex items-start justify-between gap-3">
+            <p className="text-sm text-amber-800 dark:text-amber-300">
+              Closing a budget cycle makes it read-only and prevents further changes from being made.
+            </p>
+            <button
+              type="button"
+              className="shrink-0 text-xs font-semibold uppercase tracking-wide text-amber-700 hover:text-amber-900 dark:text-amber-400 dark:hover:text-amber-200"
+              onClick={dismissWarning}
+            >
+              Dismiss
+            </button>
+          </div>
         </div>
       )}
       {closeout.isError && <p className="text-sm text-red-600">{closeout.error?.response?.data?.detail || 'Unable to close out this cycle right now.'}</p>}

@@ -85,9 +85,6 @@ describe('CloseoutModal', () => {
     fireEvent.change(screen.getByLabelText(/Comments \/ Observations/i), {
       target: { value: 'Good month.' },
     })
-    fireEvent.change(screen.getByLabelText(/Goals Going Forward/i), {
-      target: { value: 'Save more.' },
-    })
     fireEvent.click(screen.getByLabelText(/Carry this amount forward/i))
 
     fireEvent.click(closeButton)
@@ -95,11 +92,30 @@ describe('CloseoutModal', () => {
     await waitFor(() => {
       expect(client.closeOutPeriod).toHaveBeenCalledWith(1, 11, {
         comments: 'Good month.',
-        goals: 'Save more.',
+        goals: '',
         create_next_cycle: false,
         carry_forward: true,
       })
     })
+  })
+
+  it('dismisses the warning via a button', async () => {
+    client.getPeriodCloseoutPreview.mockResolvedValue({
+      period: { finperiodid: 13, cycle_status: 'ACTIVE' },
+      next_period: { finperiodid: 14 },
+      carry_forward_amount: '0.00',
+      totals: {},
+      health: { summary: 'Okay.', score: 70, status: 'Watch' },
+      next_cycle_exists: true,
+      can_close_early: true,
+    })
+
+    renderWithProviders(<CloseoutModal periodId={13} budgetId={1} onClose={jest.fn()} />)
+
+    await screen.findByText(/Closing a budget cycle makes it read-only/i)
+    const dismissBtn = screen.getByText('Dismiss')
+    fireEvent.click(dismissBtn)
+    expect(screen.queryByText(/Closing a budget cycle makes it read-only/i)).toBeNull()
   })
 
   it('shows error message when close-out fails', async () => {

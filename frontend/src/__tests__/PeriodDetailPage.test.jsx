@@ -101,12 +101,12 @@ describe('PeriodDetailPage', () => {
       projected_investment: '150.00',
       closeout_snapshot: {
         comments: 'Closed out smoothly.',
-        goals: 'Stay consistent next cycle.',
         carry_forward_amount: '150.00',
         health_snapshot_json: JSON.stringify({
           summary: 'This period looks to be tracking along nicely with the current plan.',
           score: 88,
           status: 'Strong',
+          metrics: [],
         }),
         totals_snapshot_json: '{}',
         created_at: '2026-04-30T12:00:00',
@@ -118,14 +118,15 @@ describe('PeriodDetailPage', () => {
       path: '/budgets/:budgetId/periods/:periodId',
     })
 
-    expect(await screen.findByText(/This budget cycle is closed\./)).toBeTruthy()
+    expect(await screen.findByText(/This budget cycle is closed\. All data for this budget cycle is now read-only\./)).toBeTruthy()
     expect(screen.getByText(/Carry Forward:/)).toBeTruthy()
     expect(screen.getByText('Remaining Expenses')).toBeTruthy()
     expect(screen.getAllByText('$0.00').length).toBeGreaterThan(0)
     expect(screen.getByText('Projected Investment')).toBeTruthy()
     expect(screen.getByText('$150.00')).toBeTruthy()
+    expect(screen.getByText(/This period looks to be tracking along nicely with the current plan\./)).toBeTruthy()
+    expect(screen.getByText(/Budget Cycle Notes & Observations/)).toBeTruthy()
     expect(screen.getByText(/Closed out smoothly\./)).toBeTruthy()
-    expect(screen.getByText(/Next cycle goals: Stay consistent next cycle\./)).toBeTruthy()
     expect(screen.queryByText('Close Out')).toBeNull()
     expect(screen.queryByText('Unlocked')).toBeNull()
   })
@@ -737,7 +738,7 @@ describe('PeriodDetailPage', () => {
     })
 
     expect(await screen.findByText(/Budget cycle is locked\./)).toBeTruthy()
-    expect(screen.getByText(/You can still record actuals and transactions, but budget amounts and cycle line structure are protected until you unlock it\./)).toBeTruthy()
+    expect(screen.getByText(/You can still record actuals and transactions, but budget amounts and cycle line structure are protected unless you unlock it\./)).toBeTruthy()
     expect(screen.getByText('Locked')).toBeTruthy()
     expect(screen.queryByText('Add New Income Line Item')).toBeNull()
     expect(screen.queryByText('Add New Expense Line Item')).toBeNull()

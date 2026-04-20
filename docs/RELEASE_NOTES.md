@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+### Changed
+
+- The locked-cycle banner on the Budget Cycle Details page is now dismissible. Tap `DISMISS` to hide it for the current page session.
+- The Close-Out modal warning now uses a `Dismiss` button instead of a checkbox, and the `"Goals Going Forward"` field has been removed from the close-out flow.
+- The closed-cycle banner text is now shorter and clearer: `"This budget cycle is closed. All data for this budget cycle is now read-only."`
+- Cycle navigation chevrons on the Budget Cycle Details page now sit above the close-out snapshot, so they stay in a consistent position.
+
+### Added
+
+- Closed budget cycles now show their close-out health snapshot with the same detailed component used by the Current Period Check, including a score circle, summary, collapsible score breakdown, and per-metric cards. Metric cards start collapsed; tap `Show details` to expand them.
+- Close-out comments now appear under a `"Budget Cycle Notes & Observations"` heading.
+
 ## 0.6.6-alpha | released | 2026-04-20
 
 ### Fixed
