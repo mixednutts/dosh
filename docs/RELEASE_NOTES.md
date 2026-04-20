@@ -2,17 +2,22 @@
 
 ## Unreleased
 
-### Changed
-
-- The locked-cycle banner on the Budget Cycle Details page is now dismissible. Tap `DISMISS` to hide it for the current page session.
-- The Close-Out modal warning now uses a `Dismiss` button instead of a checkbox, and the `"Goals Going Forward"` field has been removed from the close-out flow.
-- The closed-cycle banner text is now shorter and clearer: `"This budget cycle is closed. All data for this budget cycle is now read-only."`
-- Cycle navigation chevrons on the Budget Cycle Details page now sit above the close-out snapshot, so they stay in a consistent position.
+## 0.6.7-alpha | released | 2026-04-20
 
 ### Added
 
-- Closed budget cycles now show their close-out health snapshot with the same detailed component used by the Current Period Check, including a score circle, summary, collapsible score breakdown, and per-metric cards. Metric cards start collapsed; tap `Show details` to expand them.
-- Close-out comments now appear under a `"Budget Cycle Notes & Observations"` heading.
+- Added Docker image publishing workflow (`Publish Docker Image to GHCR`) for manual builds from release tags, with a path to future automation.
+- Added `entrypoint.sh` to the Docker image so Alembic migrations run automatically before the app starts. This fixes first-run failures on fresh servers where the database schema was uninitialized.
+
+### Changed
+
+- `docker-compose.yml` cleaned up: removed hard-coded `APP_VERSION` and `DEV_MODE` from build args and environment; service renamed from `backend` to `dosh`. Runtime configuration now reads from `.env` file.
+- `.gitignore` updated to exclude `.env` and `.donotupdate`.
+- Scripts updated: `release_with_migrations.sh` and `db-migrate.sh` now reference the `dosh` service name.
+
+### Fixed
+
+- Fixed first-run database error (`no such table: paytypes`) on new deployments by running `alembic upgrade head` in the container entrypoint before app startup.
 
 ## 0.6.6-alpha | released | 2026-04-20
 

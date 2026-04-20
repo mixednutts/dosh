@@ -13,7 +13,7 @@ RUN npm run build
 # Stage 2: Python runtime
 FROM python:3.12-slim
 WORKDIR /app
-ENV APP_VERSION=0.6.6-alpha
+ENV APP_VERSION=0.6.7-alpha
 
 # Copy backend source
 COPY backend/. /app
@@ -24,6 +24,10 @@ COPY --from=frontend-build /app/dist /app/frontend_dist
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Copy and make executable the entrypoint script that runs migrations before startup
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
 EXPOSE 80
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "80"]
+CMD ["/app/entrypoint.sh"]

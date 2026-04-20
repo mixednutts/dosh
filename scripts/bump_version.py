@@ -226,7 +226,6 @@ def main():
     print(f"Bumping version to {args.version}...\n")
 
     bump_backend_version(args.version)
-    bump_docker_compose(args.version)
     bump_backend_dockerfile(args.version)
     bump_package_json(args.version)
     if not args.skip_npm:
