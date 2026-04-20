@@ -7,3 +7,5 @@ backend/db_backups/
 backend/coverage.xml
 frontend/coverage/
 docker-compose.override.yml
+.env
+.donotupdate

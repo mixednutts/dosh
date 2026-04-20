@@ -4,17 +4,15 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        APP_VERSION: "0.6.6-alpha"
-        DEV_MODE: "true"
+        APP_VERSION: "${APP_VERSION:-0.6.6-alpha}"
+        DEV_MODE: "${DEV_MODE:-false}"
     container_name: dosh
     restart: unless-stopped
     volumes:
       - dosh-data:/app/data
     environment:
-      - APP_VERSION=0.6.6-alpha
-      - DEV_MODE=true
-      - DATABASE_URL=sqlite:////app/data/dosh.db
-      - TZ=Australia/Sydney
+      - DATABASE_URL=${DATABASE_URL:-sqlite:////app/data/dosh.db}
+      - TZ=${TZ:-Australia/Sydney}
     ports:
       - "3080:80"
 

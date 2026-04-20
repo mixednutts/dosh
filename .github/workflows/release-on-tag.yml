@@ -91,5 +91,20 @@ jobs:
               core.info(`Created GitHub Release for ${tag}.`);
             }
 
-      - name: Future image publication hook
-        run: echo "Tag-triggered Docker image publication can be added here later without changing tag semantics."
+      # Disabled until Docker publishing is ready to be fully automated.
+      # Remove `if: false` to enable automatic Docker builds on every tag release.
+      - name: Trigger Docker publish workflow
+        if: false
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'publish-docker-image.yml',
+              ref: context.ref,
+              inputs: {
+                tag_name: context.ref.replace('refs/tags/', ''),
+                push_latest: 'true'
+              }
+            });

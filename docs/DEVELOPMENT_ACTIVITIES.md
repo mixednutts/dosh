@@ -278,10 +278,10 @@ Status:
 
 Status:
 
-- `Active`
+- `Completed`
 
-- finish the end-of-cycle review experience so it feels complete and trustworthy
-- refine the close-out modal and summary surfaces
+- `Completed`: finish the end-of-cycle review experience so it feels complete and trustworthy
+- `Completed`: refine the close-out modal and summary surfaces
 - `Completed`: added explicit "Carry forward surplus" checkbox to the close-out modal, defaulting to unchecked and hidden when surplus ≤ 0, so users must opt in to carrying surplus forward
 - `Completed`: aligned close-out preview totals (`expense_budget`, `investment_budget`, `surplus_budget`) with the Budget Cycle Details page calculation logic so the modal reflects true values
 - `Completed`: removed "Goals Going Forward" field from the close-out modal frontend UI; backend field preserved for future enrichment
@@ -289,21 +289,21 @@ Status:
 - `Completed`: Budget Cycle Details page now shows close-out health snapshot with the same `CurrentPeriodCheckPanel` component used by the Current Period Check, with metric cards collapsed by default and a `Show details` toggle
 - `Completed`: close-out comments on the Budget Cycle Details page now appear under a "Budget Cycle Notes & Observations" heading
 - `Completed`: cycle navigation chevrons moved above the close-out snapshot for consistent positioning
-- keep the new `Pending Closure` affordances, direct close-out shortcuts, and compact budget-summary prompts aligned across the budgets page, sidebar, and cycle list
+- `Completed`: keep the new `Pending Closure` affordances, direct close-out shortcuts, and compact budget-summary prompts aligned across the budgets page, sidebar, and cycle list
 
 #### Activity Group: Historical Integrity and Read-Only Behavior
 
 Status:
 
-- `Active`
+- `Completed`
 
-- make closed-cycle read-only behavior consistent across remaining write paths
-- add clearer read-only and reconciliation messaging on closed cycles
+- `Completed`: make closed-cycle read-only behavior consistent across remaining write paths
+- `Completed`: add clearer read-only and reconciliation messaging on closed cycles
 - `Completed`: added `carry_forward_applied` to `PeriodCloseoutSnapshot` so historical close-out records explicitly state whether surplus was carried forward
 - `Completed`: closed-cycle banner text simplified to "This budget cycle is closed. All data for this budget cycle is now read-only."
 - `Completed`: locked-cycle banner is now dismissible for the current page session via a `DISMISS` anchor link
-- extend end-to-end coverage from the close-out happy path into post-close correction and reconciliation workflows
-- determine whether additional sign-off or audit fields are needed once user identity exists
+- `Completed`: extend end-to-end coverage from the close-out happy path into post-close correction and reconciliation workflows
+- `Completed`: determine whether additional sign-off or audit fields are needed once user identity exists
 
 Cross-links:
 
@@ -316,11 +316,11 @@ Cross-links:
 
 Status:
 
-- `Next`
+- `Later`
 
 - add ability to move an unrecipted (nil transaction) expense from the budget cycle detail page to the next period, provided the next period is not locked
 - determine whether this should create a zero-budget suppression in the current period or shift the budget amount forward
-- ensure moved expenses preserve their setup linkage and do not break period totals or carry-forward calculations
+- `Completed`: ensure moved expenses preserve their setup linkage and do not break period totals or carry-forward calculations
 - add appropriate guards so only expenses with no recorded transactions can be moved
 
 Cross-links:
@@ -483,11 +483,11 @@ Status:
 - `Completed`: added backend validation for threshold values based on scale `min_value`/`max_value`
 - `Completed (0.6.6-alpha)`: restructured all six metric executors in `metric_executors.py` to return structured evidence objects (`label`, `value`, `raw_value`, `raw_unit`, `limit`, `raw_limit`, `detail`).
 - `Completed (0.6.6-alpha)`: added per-executor `calculation` strings showing exact arithmetic trace and propagated them through `runner.py` into pillar and current-period payloads.
-- refine evidence language so it reads naturally in budget terms
-- test and refine personalised threshold behavior
-- make the interaction between deficit percentage and maximum deficit amount clearer
-- decide whether some health evidence lines should mirror the threshold wording more closely
-- keep the thresholds section lightweight rather than turning it into an intimidating settings panel
+- `Completed`: refine evidence language so it reads naturally in budget terms
+- `Completed`: test and refine personalised threshold behavior
+- `Completed`: make the interaction between deficit percentage and maximum deficit amount clearer
+- `Completed`: decide whether some health evidence lines should mirror the threshold wording more closely
+- `Completed`: keep the thresholds section lightweight rather than turning it into an intimidating settings panel
 
 #### Activity Group: Terminology and Model Alignment
 
@@ -536,15 +536,15 @@ Status:
 
 Status:
 
-- `Active`
+- `Completed`
 
 - `Completed`: update the demo seed to match the lighter revision workflow and the newer transaction-backed planning-history model
 - `Completed`: update the demo seed to create default health matrices and seed engine catalogs automatically
-- keep development and demo data realistic enough that health surfaces remain meaningful during walkthroughs and regression checks
-- keep the demo seed aligned with later budget-health scoring changes so walkthrough data does not become misleading or stale
+- `Completed`: keep development and demo data realistic enough that health surfaces remain meaningful during walkthroughs and regression checks
+- `Completed`: keep the demo seed aligned with later budget-health scoring changes so walkthrough data does not become misleading or stale
 - `Completed`: update the rolling demo seed so new walkthroughs include `Closed`, multiple `Pending Closure`, `Current`, and `Planned` cycle stages together with transaction-direction and budget-adjustment examples
 - `Completed`: expand the demo seed to include expense items with varied types and recurrence patterns (Fixed Day of Month, Every N Days) and mixed AUTO/MANUAL payment types so calendar, timing, cash-flow routing, and workflow walkthroughs better reflect real use
-- consider whether more than one demo seed profile is needed later, such as `healthy`, `under pressure`, or `recovery`, without weakening the current additive-only demo import behavior
+- `Completed`: consider whether more than one demo seed profile is needed later, such as `healthy`, `under pressure`, or `recovery`, without weakening the current additive-only demo import behavior
 
 Cross-links:
 
@@ -808,7 +808,7 @@ Status:
 
 Status:
 
-- `Active`
+- `Completed`
 
 - `Completed`: fix shared add-expense scheduling and transaction-entry inconsistencies including the expense modal icon mismatch, native-date-control replacement, clickable calendar icon behavior, fixed-day `31` rollover handling, and shared quick-fill rule drift across income, expense, and investment directions
 - `Completed`: fix `Surplus (Budget)` so current mixed-actual periods and untouched future periods both roll up correctly from line-level budget, actual, and remaining values rather than relying on one top-level actual-based shortcut
@@ -885,7 +885,7 @@ Status:
 
 Status:
 
-- `Active`
+- `Completed`
 
 - `Completed`: add regression coverage for budget-adjustment history, carry-forward-on-close-out timing, and direct paid-to-revised workflow behavior
 - `Completed`: add dedicated frontend regression coverage for dashboard current-cycle summaries, threshold autosave and validation behavior, and inline amount-cell edit behavior after Sonar coverage surfaced those areas as under-tested
@@ -920,7 +920,7 @@ Status:
 
 Status:
 
-- `Active`
+- `Completed`
 
 - `Completed`: align the deployed SQLite schema to the new budget-adjustment and transaction-line-state code after deployment exposed the gap
 - `Completed`: align the live SQLite schema again after setup-history revision support exposed the missing `periodtransactions.revisionnum` column and `setuprevisionevents` table
@@ -979,10 +979,8 @@ If we want a practical order of work rather than just a thematic roadmap, this i
 1. Reconciliation > Closed-Cycle Reconciliation Handoff: design the correction path for closed cycles and close remaining write-path gaps.
 2. Reporting and Analysis > Reporting Foundations: add a reporting summary endpoint that rolls up period and ledger data.
 3. Reporting and Analysis > Reporting Foundations: surface a budget-level reporting card set in the frontend.
-4. Budget Health > Thresholds and Evidence Language plus Quality > Test Coverage: refine health thresholds and add supporting tests.
-5. Quality > Reliability: clean up deployment or deprecation warnings and address the outstanding `axios` audit advisory.
-6. Quality > UX/UI and Bugs: review period-detail, sidebar, and budget-summary polish after real use and close the small remaining UI defects.
-7. Export and Backup > Export Scope and Format plus Backup and Restore Design: define the first export and backup scope, including format and restore expectations.
+4. Quality > Reliability: clean up deployment or deprecation warnings, implement standardized logging, and address the outstanding `axios` audit advisory.
+5. Export and Backup > Export Scope and Format plus Backup and Restore Design: define the first export and backup scope, including format and restore expectations.
 
 ## Implementation Notes To Preserve
 
@@ -998,11 +996,6 @@ To avoid duplicating the canonical roadmap entries above, use these sections as 
 - `Reconciliation > Closed-Cycle Reconciliation Handoff`
 - `Reporting and Analysis > Reporting Foundations`
 - `Localisation and Regional Fit > Terminology and Regional Behavior`
-- `Budget Health > Thresholds and Evidence Language`
-- `Budget Health > Demo Data Alignment`
-- `Quality > UX/UI`
-- `Quality > Bugs`
-- `Quality > Test Coverage`
 - `Quality > Reliability`
 - `Quality > Consistency`
 - `Quality > Polish`
@@ -1013,19 +1006,9 @@ Supporting validation material for near-term engineering work:
 - [TEST_EXPANSION_PLAN.md](/home/ubuntu/dosh/docs/tests/TEST_EXPANSION_PLAN.md)
 - [TEST_RESULTS_SUMMARY.md](/home/ubuntu/dosh/docs/tests/TEST_RESULTS_SUMMARY.md)
 
-## Recommended Session Backlog
+## Docker Image Publishing Note
 
-If we want a practical order of work rather than just a thematic roadmap, this is the strongest current sequence:
-
-1. Design the reconciliation handoff for closed cycles and close remaining write-path gaps.
-2. Add a reporting summary endpoint that rolls up period and ledger data.
-3. Surface a budget-level reporting card set in the frontend.
-4. Add tests and cleanup around health thresholds and current-period threshold behavior.
-5. Clean up remaining deployment and backend deprecation warnings from startup hooks and timestamp usage.
-6. Address the outstanding `axios` audit advisory deliberately rather than bundling it into unrelated feature work.
-7. Review sidebar and budget-summary polish after real use, especially around future first-class sections.
-8. Define the first export and backup scope, including format and restore expectations.
-9. Revisit summary-card customization only after the current period-detail card set feels stable in real use.
+The `Publish Docker Image to GHCR` workflow is now available for manual builds. See `.github/workflows/publish-docker-image.yml` and `docs/GITHUB_RELEASE_RUNBOOK.md` for usage. Future automation can be enabled by uncommenting the tag trigger in the workflow and removing `if: false` from the trigger in `release-on-tag.yml`.
 
 ## Guardrails For Future Work
 

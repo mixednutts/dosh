@@ -269,13 +269,13 @@ For document changes, follow [DOCUMENTATION_FRAMEWORK.md](./docs/DOCUMENTATION_F
 - **Demo Data Update:** Seeded demo budget now covers cash-flow account routing, scheduled expenses, and AUTO/MANUAL payment types for realistic walkthroughs
 
 **Active Focus Areas:**
-- Budget Health refinement (structured evidence display, formula clarity, close-out integration — completed this session)
 - Testing infrastructure hardening (all backend tests passing, 223 frontend tests passing)
 - Documentation framework compliance
-- Release process reliability
+- Release process reliability (Docker image publishing workflow now available for manual GHCR builds)
 - SonarQube maintainability follow-through
 - Balance chain integrity (dynamic balance computation for non-closed periods, stored values for closed cycles)
-- Close-out workflow trust (preview accuracy, carry-forward optionality, snapshot integrity, dismissible warnings)
+- Maintainability: standardized logging output utilizing syslog naming conventions
+- Phase 2 preparation: Reconciliation Module and Reporting Module foundations
 
 **Recent Work (this session):**
 - **Budget Health Modal Rework — Evidence, Formula, and Close-Out Integration (COMPLETED):**

@@ -159,6 +159,52 @@ Use this for:
 
 **Note:** The `Publish Release From Tag` workflow is for republishing GitHub Releases for existing tags only. For new tags or retagging, use `Manual Tag and Release`.
 
+## Docker Image Publishing
+
+Dosh publishes container images to the GitHub Container Registry (GHCR).
+
+### Manual Publishing (Current)
+
+After a GitHub Release tag exists, manually trigger the Docker publish workflow:
+
+1. Go to **Actions → Publish Docker Image to GHCR**
+2. Click **Run workflow**
+3. Parameters:
+   - **tag_name**: The release tag to build (e.g., `v0.6.6-alpha`)
+   - **push_latest**: Check to also tag the image as `latest` (default: unchecked)
+4. Click **Run workflow**
+
+The workflow will:
+- Check out the repository at the specified tag
+- Validate version touchpoints via `scripts/release_management.py`
+- Build the multi-stage Dockerfile with `DEV_MODE=false`
+- Push to `ghcr.io/mixednutts/dosh:<version>`
+- Optionally push to `ghcr.io/mixednutts/dosh:latest`
+- Generate a build attestation
+
+### Authentication
+
+No additional secrets are required. The workflow uses the built-in `GITHUB_TOKEN` with `packages: write` permission.
+
+Ensure repository settings allow Actions to write packages:
+- **Settings → Actions → General → Workflow permissions**: Select "Read and write permissions"
+
+### Tag Strategy
+
+| Tag | Example | Purpose |
+|-----|---------|---------|
+| Version | `0.6.6-alpha` | Immutable release image |
+| Latest | `latest` | Rolling pointer to most recent build |
+
+### Future Automation
+
+The `Publish Release From Tag` workflow includes a disabled trigger that can invoke the Docker publish workflow automatically. To enable:
+
+1. Remove `if: false` from the "Trigger Docker publish workflow" step in `.github/workflows/release-on-tag.yml`
+2. Uncomment the `push: tags:` trigger in `.github/workflows/publish-docker-image.yml`
+
+This will cause every new release tag to automatically build and publish its Docker image.
+
 ## Future Extension
 
 This workflow is intentionally positioned so a future tag-triggered job can also build and publish versioned Docker images for the same release tag without changing release authority or in-app release semantics.

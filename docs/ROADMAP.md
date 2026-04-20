@@ -43,6 +43,11 @@ Goal:
 
 - deliver a complete, trustworthy, and user-clear end-of-cycle workflow
 
+Status:
+
+- substantially complete for beta: close-out experience, health snapshot display, historical snapshot integrity with `carry_forward_applied`, dismissible warnings, read-only behavior, and end-to-end coverage
+- inter-period expense movement (e.g., moving unreceipted expenses forward) remains a Phase 2 enhancement
+
 Includes:
 
 - close-out experience refinement
@@ -101,6 +106,11 @@ Goal:
 
 - evolve budget health into a robust, user-driven, explainable, and versioned engine
 
+Status:
+
+- substantially complete for beta: six global metrics with structured evidence, calculation traces, tone-aware summaries, point-in-time snapshots on close-out, test coverage, and demo data alignment
+- scoring credibility and momentum logic remain visible for future refinement
+
 Includes:
 
 - stronger scoring credibility
@@ -115,6 +125,10 @@ Includes:
 Goal:
 
 - ensure Dosh is operationally stable and safe to evolve
+
+Status:
+
+- in progress: Docker image publishing to GHCR now available as a manual workflow with a path to automation; standardized logging remains the active remaining item
 
 Includes:
 
