@@ -24,7 +24,7 @@ VERSION_TOUCHPOINTS = {
     "backend canonical version": ("backend/app/version.py", re.compile(r'APP_VERSION\s*=\s*os\.getenv\("APP_VERSION",\s*"([^"]+)"\)')),
     "compose environment APP_VERSION": ("docker-compose.yml", re.compile(r"-\s*APP_VERSION=([^\s]+)")),
     "compose frontend build arg APP_VERSION": ("docker-compose.yml", re.compile(r'APP_VERSION:\s*"([^"]+)"')),
-    "backend docker default APP_VERSION": ("backend/Dockerfile", re.compile(r"ENV APP_VERSION=([^\s]+)")),
+    "backend docker default APP_VERSION": ("Dockerfile", re.compile(r"ENV APP_VERSION=([^\s]+)")),
     "frontend package version": ("frontend/package.json", re.compile(r'"version"\s*:\s*"([^"]+)"')),
     "frontend package-lock version": ("frontend/package-lock.json", re.compile(r'"version"\s*:\s*"([^"]+)"')),
     "frontend fallback display version": ("frontend/src/components/Layout.jsx", re.compile(r"return `v\$\{version \|\| '([^']+)'\}`")),
