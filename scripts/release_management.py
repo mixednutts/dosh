@@ -22,7 +22,6 @@ ZERO_SHA = "0" * 40
 DOCS_RELEASE_NOTES_PATH = "docs/RELEASE_NOTES.md"
 VERSION_TOUCHPOINTS = {
     "backend canonical version": ("backend/app/version.py", re.compile(r'APP_VERSION\s*=\s*os\.getenv\("APP_VERSION",\s*"([^"]+)"\)')),
-    "compose build arg APP_VERSION": ("docker-compose.yml", re.compile(r'APP_VERSION:\s*"\$\{APP_VERSION:-([^}]+)\}"')),
     "backend docker default APP_VERSION": ("Dockerfile", re.compile(r"ENV APP_VERSION=([^\s]+)")),
     "frontend package version": ("frontend/package.json", re.compile(r'"version"\s*:\s*"([^"]+)"')),
     "frontend package-lock version": ("frontend/package-lock.json", re.compile(r'"version"\s*:\s*"([^"]+)"')),

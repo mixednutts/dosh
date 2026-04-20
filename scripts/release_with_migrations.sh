@@ -49,8 +49,8 @@ else
   alembic upgrade head
 fi'
 
-docker compose "${compose_args[@]}" build backend
-docker compose "${compose_args[@]}" run --rm backend sh -lc "$backup_cmd && $bootstrap_or_upgrade_cmd"
+docker compose "${compose_args[@]}" build dosh
+docker compose "${compose_args[@]}" run --rm dosh sh -lc "$backup_cmd && $bootstrap_or_upgrade_cmd"
 docker compose "${compose_args[@]}" up -d
 
 echo "Release updated with migrations. Run curl -sS http://127.0.0.1:3080/api/health to verify."

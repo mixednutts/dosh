@@ -4,14 +4,14 @@
 set -e
 
 echo "Generating migration inside container..."
-docker compose exec backend alembic revision -m "$1" --autogenerate
+docker compose exec dosh alembic revision -m "$1" --autogenerate
 
 echo "Copying migration to host..."
-LATEST_MIGRATION=$(docker compose exec backend sh -c "ls -t /app/alembic/versions/*.py | head -1")
+LATEST_MIGRATION=$(docker compose exec dosh sh -c "ls -t /app/alembic/versions/*.py | head -1")
 FILENAME=$(basename "$LATEST_MIGRATION")
-docker compose cp "backend:$LATEST_MIGRATION" "./backend/alembic/versions/$FILENAME"
+docker compose cp "dosh:$LATEST_MIGRATION" "./backend/alembic/versions/$FILENAME"
 
 echo "Running migration..."
-docker compose exec backend alembic upgrade head
+docker compose exec dosh alembic upgrade head
 
 echo "✅ Migration complete: $FILENAME"

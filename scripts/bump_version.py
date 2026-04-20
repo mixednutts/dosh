@@ -61,13 +61,6 @@ def bump_backend_version(version: str) -> None:
     update_file(path, pattern, rf'\g<1>{version}\g<2>', "backend/app/version.py")
 
 
-def bump_docker_compose(version: str) -> None:
-    path = ROOT_DIR / "docker-compose.yml"
-    # Match APP_VERSION: "${APP_VERSION:-xxx}"
-    pattern = re.compile(r'(APP_VERSION:\s*"\$\{APP_VERSION:-)([^}]+)(\}")')
-    update_file(path, pattern, rf'\g<1>{version}\g<3>', "docker-compose.yml")
-
-
 def bump_backend_dockerfile(version: str) -> None:
     path = ROOT_DIR / "Dockerfile"
     pattern = re.compile(r'(ENV APP_VERSION=)([^\s]+)')
