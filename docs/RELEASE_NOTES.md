@@ -2,10 +2,27 @@
 
 ## Unreleased
 
+## 0.6.6-alpha | released | 2026-04-20
+
 ### Fixed
 
 - Fixed `Projected Investment` calculation so it correctly reflects the linked savings account balance plus planned contributions. Previous values were overstated because they did not properly use linked-account balances and did not accumulate correctly across upcoming periods.
 - Upcoming budget cycles now carry forward the prior period's projected investment balance so the cumulative value grows as expected.
+
+### Changed
+
+- Budget Health Details modal and Current Period Check modal now show per-metric cards with structured evidence, making it easier to see how each metric score connects to the underlying source data.
+- Metric cards are collapsed by default. Tap "Show Details" to expand evidence rows, and "Show Formula" to see the exact calculation, scoring curve, weight, and contribution to the total score.
+- The Current Period Check summary now uses the budget's selected health tone (supportive, friendly, or direct) so the messaging feels consistent with the rest of the app.
+- The Close-Out modal now reuses the same health component as the Current Period Check, collapsed to a summary view, and uses past-tense messaging appropriate for historical cycles.
+- The budget summary page no longer shows traffic-light indicators. Instead, a score circle sits at the top-right of each budget card with a "Health Details" button underneath.
+- The Pending Closure section now includes an "Open" button alongside "Close Out" so you can jump directly to a cycle's detail page.
+- The calendar modal now uses a single clickable "Today" label instead of a separate label and button.
+
+### Added
+
+- Added a dismissible warning in the Close-Out modal: "Closing a budget cycle makes it read-only and prevents further changes from being made." You can dismiss it and it will not appear again on this device.
+- Added backend calculation traces for every metric so the frontend can display the exact arithmetic behind each score.
 
 ## 0.6.5-alpha | released | 2026-04-19
 

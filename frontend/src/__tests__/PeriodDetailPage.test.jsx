@@ -444,7 +444,7 @@ describe('PeriodDetailPage', () => {
     fireEvent.click(await screen.findByText('Close Out'))
 
     expect(await screen.findByText('Close Out Budget Cycle')).toBeTruthy()
-    expect(await screen.findByText(/Closing this cycle makes it read-only\./i)).toBeTruthy()
+    expect(await screen.findByText(/Closing a budget cycle makes it read-only/i)).toBeTruthy()
     expect(screen.getByText(/Create the next budget cycle automatically during close-out/i)).toBeTruthy()
     expect(screen.getByLabelText(/Carry this amount forward/i)).toBeTruthy()
 

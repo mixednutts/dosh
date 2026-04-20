@@ -380,23 +380,27 @@ def build_closeout_preview(period: FinancialPeriod, budget: Budget, db: Session)
 
     # Compute health using the Budget Health Engine directly
     from .models import BudgetHealthMatrix
+    from .health_engine.runner import _closed_period_summary
+    tone = budget.health_tone or "supportive"
     matrix = db.query(BudgetHealthMatrix).filter_by(budgetid=budget.budgetid, is_active=True).first()
     if matrix:
-        period_results = evaluate_period_health(db, budget, period, matrix)
+        period_results = evaluate_period_health(db, budget, period, matrix, tone=tone)
         current_metrics = [r for r in period_results if r["scope"] == "CURRENT_PERIOD"]
         if current_metrics:
             total_weight = sum(r["weight"] for r in current_metrics)
             score = int(sum(r["score"] * r["weight"] for r in current_metrics) / total_weight) if total_weight > 0 else 50
             status = _health_status(score)
-            summary = current_metrics[0]["summary"] if current_metrics else "Current period evaluation complete."
+            summary = _closed_period_summary(score, tone)
         else:
             score = 50
             status = "Watch"
-            summary = "Current period evaluation complete."
+            summary = _closed_period_summary(score, tone)
+            current_metrics = []
     else:
         score = 50
         status = "Watch"
-        summary = "Current period evaluation complete."
+        summary = _closed_period_summary(score, tone)
+        current_metrics = []
 
     health = {
         "key": "current_period_check",
@@ -404,6 +408,7 @@ def build_closeout_preview(period: FinancialPeriod, budget: Budget, db: Session)
         "score": score,
         "status": status,
         "summary": summary,
+        "metrics": current_metrics,
     }
 
     return {

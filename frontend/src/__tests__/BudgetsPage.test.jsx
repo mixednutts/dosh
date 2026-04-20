@@ -291,7 +291,7 @@ describe('BudgetsPage', () => {
     expect(screen.queryByText('Current cycle calendar')).toBeNull()
     expect(screen.queryByText(/Income is anchored to/)).toBeNull()
     expect(screen.queryByText(/Nothing is scheduled for today/)).toBeNull()
-    expect(screen.getByRole('button', { name: 'Today' }).disabled).toBe(true)
+    expect(screen.getByRole('button', { name: /Today 10 Apr/i }).disabled).toBe(true)
     expect(dialogHeading).not.toBeNull()
   })
 
@@ -403,11 +403,11 @@ describe('BudgetsPage', () => {
     const dialog = dialogHeading.closest('[class*="max-w"]') ?? document.body
     fireEvent.click(within(dialog).getByRole('button', { name: 'Next month' }))
     expect(await screen.findByText('May 2026')).not.toBeNull()
-    expect(within(dialog).getByRole('button', { name: 'Today' }).disabled).toBe(false)
+    expect(within(dialog).getByRole('button', { name: /Today 10 Apr/i }).disabled).toBe(false)
     expect(screen.getByText('Insurance')).not.toBeNull()
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Today' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: /Today 10 Apr/i }))
     expect(within(dialog).getByText('April 2026')).not.toBeNull()
-    expect(within(dialog).getByRole('button', { name: 'Today' }).disabled).toBe(true)
+    expect(within(dialog).getByRole('button', { name: /Today 10 Apr/i }).disabled).toBe(true)
     expect(client.getPeriodDetail).toHaveBeenCalledTimes(2)
   })
 
@@ -538,5 +538,167 @@ describe('BudgetsPage', () => {
     expect(await screen.findByRole('heading', { name: 'Wednesday 1 April 2026' })).not.toBeNull()
     expect(screen.getByText('Budget cycle starts')).not.toBeNull()
     expect(screen.getByText('Cycle start')).not.toBeNull()
+  })
+
+  it('opens the Budget Health modal with per-metric cards and expandable calculation', async () => {
+    client.getBudgets.mockResolvedValue([
+      {
+        budgetid: 7,
+        budgetowner: 'Alex',
+        description: 'Household',
+        budget_frequency: 'Monthly',
+      },
+    ])
+    client.getPeriodsForBudget.mockResolvedValue([
+      {
+        finperiodid: 101,
+        budgetid: 7,
+        startdate: '2026-04-01T00:00:00',
+        enddate: '2026-04-30T00:00:00',
+        budgetowner: 'Alex',
+        islocked: false,
+        cycle_status: 'ACTIVE',
+        closed_at: null,
+      },
+    ])
+    client.getBudgetHealth.mockResolvedValue({
+      overall_score: 72,
+      overall_status: 'Watch',
+      overall_summary: 'Tracking okay.',
+      momentum_status: 'Stable',
+      momentum_delta: 0,
+      momentum_summary: 'No change since last period.',
+      evaluated_at: '2026-04-20T01:00:00+00:00',
+      pillars: [
+        {
+          name: 'Setup Health',
+          key: 'setup_health',
+          score: 100,
+          status: 'Strong',
+          summary: 'Setup looks good.',
+          weight: 0.4,
+          weighted_contribution: 40,
+          evidence: [
+            { label: 'Income sources', value: '1', raw_value: 1, raw_unit: 'count', limit: '1', raw_limit: 1, detail: '1 income source configured (minimum 1)' },
+          ],
+        },
+      ],
+      current_period_check: {
+        score: 56,
+        status: 'Watch',
+        summary: 'Expense overrun exceeds configured limits.',
+        metrics: [
+          {
+            name: 'Budget vs Actual (Amount)',
+            key: 'budget_vs_actual_amount',
+            score: 70,
+            status: 'Watch',
+            summary: 'Overrun detected.',
+            weight: 0.3,
+            weighted_contribution: 21,
+            evidence: [
+              { label: 'Overrun amount', value: '$120.00', raw_value: 120, raw_unit: 'currency', limit: '$50.00', raw_limit: 50, detail: 'Aggregate amount by which actual expenses exceed budgeted amounts.' },
+            ],
+          },
+        ],
+      },
+    })
+
+    renderWithProviders(<BudgetsPage />, {
+      route: '/budgets',
+      path: '/budgets',
+    })
+
+    const detailsButtons = await screen.findAllByText(/Health Details/i)
+    fireEvent.click(detailsButtons[1])
+
+    expect(await screen.findByRole('heading', { name: /Budget Health — Household/i })).not.toBeNull()
+    expect(screen.getByText('Setup Health')).not.toBeNull()
+    expect(screen.getByText('Tracking okay.')).not.toBeNull()
+
+    // Expandable calculation section
+    fireEvent.click(screen.getByRole('button', { name: /Show Details/i }))
+    expect(screen.getByText('Income sources')).not.toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /Show Formula/i }))
+    expect(screen.getByText(/Weight:/)).not.toBeNull()
+    expect(screen.getByText(/Contribution:/)).not.toBeNull()
+  })
+
+  it('opens the Current Period Check modal with per-metric cards', async () => {
+    client.getBudgets.mockResolvedValue([
+      {
+        budgetid: 7,
+        budgetowner: 'Alex',
+        description: 'Household',
+        budget_frequency: 'Monthly',
+      },
+    ])
+    client.getPeriodsForBudget.mockResolvedValue([
+      {
+        finperiodid: 101,
+        budgetid: 7,
+        startdate: '2026-04-01T00:00:00',
+        enddate: '2026-04-30T00:00:00',
+        budgetowner: 'Alex',
+        islocked: false,
+        cycle_status: 'ACTIVE',
+        closed_at: null,
+      },
+    ])
+    client.getBudgetHealth.mockResolvedValue({
+      overall_score: 72,
+      overall_status: 'Watch',
+      overall_summary: 'Tracking okay.',
+      momentum_status: 'Stable',
+      momentum_delta: 0,
+      momentum_summary: 'No change since last period.',
+      evaluated_at: '2026-04-20T01:00:00+00:00',
+      pillars: [
+        {
+          name: 'Setup Health',
+          key: 'setup_health',
+          score: 100,
+          status: 'Strong',
+          summary: 'Setup looks good.',
+          weight: 0.4,
+          weighted_contribution: 40,
+          evidence: [],
+        },
+      ],
+      current_period_check: {
+        score: 56,
+        status: 'Watch',
+        summary: 'Expense overrun exceeds configured limits.',
+        metrics: [
+          {
+            name: 'Budget vs Actual (Amount)',
+            key: 'budget_vs_actual_amount',
+            score: 70,
+            status: 'Watch',
+            summary: 'Overrun detected.',
+            weight: 0.3,
+            weighted_contribution: 21,
+            evidence: [
+              { label: 'Overrun amount', value: '$120.00', raw_value: 120, raw_unit: 'currency', limit: '$50.00', raw_limit: 50, detail: 'Aggregate amount by which actual expenses exceed budgeted amounts.' },
+            ],
+          },
+        ],
+      },
+    })
+
+    renderWithProviders(<BudgetsPage />, {
+      route: '/budgets',
+      path: '/budgets',
+    })
+
+    const detailsButtons = await screen.findAllByText(/Health Details/i)
+    // The first Health Details button is for the Current Period Check card
+    fireEvent.click(detailsButtons[0])
+
+    expect(await screen.findByRole('heading', { name: /Current Budget Cycle Check — Household/i })).not.toBeNull()
+    expect(screen.getByText('Budget vs Actual (Amount)')).not.toBeNull()
+    expect(screen.getByText('Overrun detected.')).not.toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /Show Details/i }))
+    expect(screen.getByText('Overrun amount')).not.toBeNull()
   })
 })

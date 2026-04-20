@@ -597,7 +597,7 @@ curl -sS http://127.0.0.1:3080/api/health | jq .
 curl -sS http://127.0.0.1:3080/api/budgets/1/health | jq .
 
 # 3. Database queries work
-docker exec dosh-backend python -c "from app.database import SessionLocal; db = SessionLocal(); print('DB OK')"
+docker exec dosh python -c "from app.database import SessionLocal; db = SessionLocal(); print('DB OK')"
 
 # 4. Frontend loads without errors
 # (Navigate to http://localhost:3080 and check browser console)

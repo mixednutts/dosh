@@ -9,6 +9,7 @@
 - Default matrix composition and weights
 - Parameter keys and default values
 - Tone-aware evidence strings
+- Structured evidence shape and calculation traces
 
 ## Architecture
 
@@ -52,8 +53,11 @@ The per-budget items store tunable `weight`, `scoring_sensitivity`, `is_enabled`
 - `min_investment_lines` (int, default `1`)
 
 **Evidence Examples:**
-- "3 income sources configured (minimum 1)"
-- "0 active expenses configured — need at least 1"
+- `{ label: "Income sources", value: "3", raw_value: 3, raw_unit: "count", limit: "1", raw_limit: 1, detail: "Number of income types configured for this budget." }`
+- `{ label: "Active expenses", value: "0", raw_value: 0, raw_unit: "count", limit: "1", raw_limit: 1, detail: "Number of active expense items configured for this budget." }`
+
+**Calculation Trace Example:**
+- "Checks passed = 3/3. Score = 100."
 
 ---
 
@@ -76,8 +80,12 @@ The per-budget items store tunable `weight`, `scoring_sensitivity`, `is_enabled`
 - `upper_tolerance_pct` (int, default `5`)
 
 **Evidence Examples:**
-- "Overrun amount: $0.00 (limit: $50.00)"
-- "Overrun percentage limit: 5.0% of budgeted expenses"
+- `{ label: "Overrun amount", value: "$0.00", raw_value: 0.00, raw_unit: "currency", limit: "$50.00", raw_limit: 50.00, detail: "Aggregate amount by which actual expenses exceed budgeted amounts." }`
+- `{ label: "Overrun limit", value: "5.0%", raw_value: 5.0, raw_unit: "percentage", limit: "$50.00", raw_limit: 50.00, detail: "Tolerance is the lower of the dollar limit and the percentage of total budgeted expenses." }`
+
+**Calculation Trace Example:**
+- "Overrun = $0.00. Tolerance = $50.00. Ratio = 0.0000. Score = 100."
+- "Overrun = $120.00. Tolerance = $50.00. Ratio = 2.4000. Score = 100 - (2.4000 × 30) = 70."
 
 ---
 
@@ -98,8 +106,11 @@ The per-budget items store tunable `weight`, `scoring_sensitivity`, `is_enabled`
 - `upper_tolerance_pct` (int, default `10`)
 
 **Evidence Examples:**
-- "Over-budget lines: 1 (limit: 2)"
-- "Total expense lines: 12"
+- `{ label: "Over-budget lines", value: "1", raw_value: 1, raw_unit: "count", limit: "2", raw_limit: 2, detail: "Number of expense lines where actual amount exceeds budgeted amount." }`
+- `{ label: "Total expense lines", value: "12", raw_value: 12, raw_unit: "count", detail: "Total number of expense lines in the current period." }`
+
+**Calculation Trace Example:**
+- "Over-budget lines = 1. Tolerance = 2. Ratio = 0.5000. Score = 100 - (0.5000 × 30) = 85."
 
 ---
 
@@ -120,8 +131,12 @@ The per-budget items store tunable `weight`, `scoring_sensitivity`, `is_enabled`
 - `upper_tolerance_instances` (int, default `1`)
 
 **Evidence Examples:**
-- "Budget adjustments: 0 (limit: 1)"
-- "Budget adjustments: 3 (limit: 1)"
+- `{ label: "Budget adjustments", value: "0", raw_value: 0, raw_unit: "count", limit: "1", raw_limit: 1, detail: "Number of budget adjustments recorded after the period started." }`
+- `{ label: "Budget adjustments", value: "3", raw_value: 3, raw_unit: "count", limit: "1", raw_limit: 1, detail: "Number of budget adjustments recorded after the period started." }`
+
+**Calculation Trace Example:**
+- "Adjustments = 0. Tolerance = 1. Score = 100."
+- "Adjustments = 3. Tolerance = 1. Score = 70 - (2 × 20 × 0.50) = 50."
 
 ---
 
@@ -141,8 +156,12 @@ The per-budget items store tunable `weight`, `scoring_sensitivity`, `is_enabled`
 - `upper_tolerance_instances` (int, default `2`)
 
 **Evidence Examples:**
-- "Paid expense revisions: 0 (limit: 2)"
-- "Paid expense revisions: 4 (limit: 2)"
+- `{ label: "Paid expense revisions", value: "0", raw_value: 0, raw_unit: "count", limit: "2", raw_limit: 2, detail: "Number of status-change revisions recorded on paid expense lines." }`
+- `{ label: "Paid expense revisions", value: "4", raw_value: 4, raw_unit: "count", limit: "2", raw_limit: 2, detail: "Number of status-change revisions recorded on paid expense lines." }`
+
+**Calculation Trace Example:**
+- "Revisions = 0. Tolerance = 2. Score = 100."
+- "Revisions = 4. Tolerance = 2. Score = 70 - (2 × 25 × 0.50) = 45."
 
 ---
 
@@ -163,8 +182,12 @@ The per-budget items store tunable `weight`, `scoring_sensitivity`, `is_enabled`
 - `upper_tolerance_instances` (int, default `0`)
 
 **Evidence Examples:**
-- "Pending close-out cycles: 0 (limit: 0)"
-- "Pending close-out cycles: 2 (limit: 0)"
+- `{ label: "Pending close-out cycles", value: "0", raw_value: 0, raw_unit: "count", limit: "0", raw_limit: 0, detail: "Number of budget cycles past their end date that are not yet closed." }`
+- `{ label: "Pending close-out cycles", value: "2", raw_value: 2, raw_unit: "count", limit: "0", raw_limit: 0, detail: "Number of budget cycles past their end date that are not yet closed." }`
+
+**Calculation Trace Example:**
+- "Pending cycles = 0. Tolerance = 0. Score = 100."
+- "Pending cycles = 2. Tolerance = 0. Score = 70 - (2 × 25 × 0.50) = 45."
 
 ---
 
@@ -179,5 +202,7 @@ The per-budget items store tunable `weight`, `scoring_sensitivity`, `is_enabled`
 | SQLAlchemy models | `backend/app/models.py` |
 | API endpoints | `backend/app/routers/health_matrices.py` |
 | Frontend health tab | `frontend/src/pages/tabs/BudgetHealthTab.jsx` |
+| Budget summary & health modals | `frontend/src/pages/BudgetsPage.jsx` |
+| Close-out modal | `frontend/src/components/modals/CloseoutModal.jsx` |
 
-**Last Updated:** 2026-04-16
+**Last Updated:** 2026-04-20

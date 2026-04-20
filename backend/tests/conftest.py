@@ -37,7 +37,7 @@ def _seed_reference_rows(session_local) -> None:
 
 @pytest.fixture(autouse=True)
 def isolated_database(tmp_path, monkeypatch):
-    db_path = tmp_path / "dosh-backend-pytest.sqlite3"
+    db_path = tmp_path / "dosh-pytest.sqlite3"
     test_engine = create_engine(
         f"sqlite:///{db_path}",
         connect_args={"check_same_thread": False},

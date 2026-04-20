@@ -257,7 +257,7 @@ Given that this environment uses `scripts/release_with_migrations.sh` for local 
 
 ### 6.1 Pre-Deployment Safety Steps
 1. **Verify Git Working Tree is Clean** before starting implementation: `git status` should show no uncommitted changes.
-2. **Note the Current Alembic Head** before creating any new migration: run `docker exec dosh-backend alembic current` and record the revision hash.
+2. **Note the Current Alembic Head** before creating any new migration: run `docker exec dosh alembic current` and record the revision hash.
 3. **No Production Data Modification Without Approval:** If a data backfill or migration is required, the user must explicitly approve it per Hard Control #7.
 
 ### 6.2 Code-Only Rollback (Before Docker Deployment)
@@ -274,22 +274,22 @@ If the new code has been deployed to the local Docker container and the user wan
 ```bash
 # User executes manually
 cd /home/ubuntu/dosh
-docker compose stop dosh-backend dosh-frontend
+docker compose stop dosh
 ```
 
 #### Step B: Alembic Downgrade (If a New Migration Was Applied)
 If the deployment included a new Alembic migration (e.g., adding `max_forward_balance_cycles` to the `Budget` table), it must be downgraded **inside the container** before reverting the image:
 ```bash
 # User executes manually
-docker exec dosh-backend alembic downgrade -1
+docker exec dosh alembic downgrade -1
 ```
-- Verify the downgrade succeeded: `docker exec dosh-backend alembic current` should show the pre-change revision.
+- Verify the downgrade succeeded: `docker exec dosh alembic current` should show the pre-change revision.
 - **CRITICAL:** Do NOT downgrade if doing so would lose data the user cares about. If the migration added a column, downgrading is generally safe. If it performed a data backfill, the user must explicitly approve the downgrade per Hard Control #7.
 
 #### Step C: Revert Docker Images
 `scripts/release_with_migrations.sh` builds new images tagged with the current version. To roll back:
-1. Identify the previous working image tag: `docker images | grep dosh-backend` and `docker images | grep dosh-frontend`.
-2. Update `docker-compose.yml` (or an override) to point `dosh-backend` and `dosh-frontend` services to the previous image tag.
+1. Identify the previous working image tag: `docker images | grep dosh`.
+2. Update `docker-compose.yml` (or an override) to point the `dosh` service to the previous image tag.
 3. Alternatively, if the previous images were untagged but still present, the user can rebuild from the pre-change Git commit:
    ```bash
    git stash
@@ -300,11 +300,11 @@ docker exec dosh-backend alembic downgrade -1
 
 #### Step D: Restart with Previous Code
 ```bash
-docker compose up -d dosh-backend dosh-frontend
+docker compose up -d dosh
 ```
 
 #### Step E: Verify Rollback
-- Check application health: `docker logs dosh-backend` should show no errors.
+- Check application health: `docker logs dosh` should show no errors.
 - Run smoke tests: `pytest backend/tests/test_app_smoke.py -v`.
 - Verify the UI loads correctly and account balances display as they did before the change.
 - Confirm the database schema matches the running code's expectations.
@@ -312,7 +312,7 @@ docker compose up -d dosh-backend dosh-frontend
 ### 6.4 Emergency Recovery (If Rollback Fails)
 If the container fails to start after rollback:
 1. **Do NOT copy local files into Docker volumes.**
-2. Inspect logs: `docker logs dosh-backend`.
+2. Inspect logs: `docker logs dosh`.
 3. If the issue is an Alembic version mismatch, manually align the database by running the appropriate `alembic upgrade` or `alembic downgrade` command inside the container.
 4. If the database is in an inconsistent state, report it to the user with evidence and **ask for explicit approval** before running any repair commands.
 

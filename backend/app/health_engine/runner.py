@@ -76,6 +76,7 @@ def evaluate_period_health(
             "status": metric_result["status"],
             "summary": metric_result["summary"],
             "evidence": metric_result["evidence"],
+            "calculation": metric_result.get("calculation"),
         })
 
     return results
@@ -116,7 +117,8 @@ def evaluate_budget_health(
     ).first()
 
     # Evaluate metrics for current period
-    period_results = evaluate_period_health(db, budget, current_period, matrix)
+    tone = budget.health_tone or "supportive"
+    period_results = evaluate_period_health(db, budget, current_period, matrix, tone=tone)
 
     # Split current-period vs overall metrics
     current_metrics = [r for r in period_results if r["scope"] == "CURRENT_PERIOD"]
@@ -135,28 +137,41 @@ def evaluate_budget_health(
     # Compute momentum from historical closed periods
     momentum_status, momentum_delta = _compute_momentum(db, budgetid, matrix)
 
-    # Build pillars list for legacy compatibility
+    # Build pillars list
     pillars = []
     for r in overall_metrics:
+        weight = r["weight"]
+        contribution = round(r["score"] * weight, 2)
         pillars.append({
             "name": r["name"],
+            "key": r["metric_key"],
             "score": r["score"],
             "status": r["status"],
             "summary": r["summary"],
-            "evidence": [{"label": e} for e in r["evidence"]],
+            "weight": weight,
+            "weighted_contribution": contribution,
+            "evidence": r["evidence"],
         })
 
-    # Current period check (for legacy compatibility)
+    # Current period check
     current_period_check = None
     if current_metrics:
+        total_weight = sum(r["weight"] for r in current_metrics)
+        weighted_score = int(sum(r["score"] * r["weight"] for r in current_metrics) / total_weight) if total_weight > 0 else 50
         current_period_check = {
-            "score": int(sum(r["score"] * r["weight"] for r in current_metrics) / sum(r["weight"] for r in current_metrics)) if current_metrics else 50,
-            "status": _health_status(int(sum(r["score"] * r["weight"] for r in current_metrics) / sum(r["weight"] for r in current_metrics))) if current_metrics else "Watch",
-            "summary": current_metrics[0]["summary"] if current_metrics else "Current period evaluation complete.",
-            "evidence": [
+            "score": weighted_score,
+            "status": _health_status(weighted_score),
+            "summary": _current_period_summary(weighted_score, tone),
+            "metrics": [
                 {
-                    "label": m["name"],
-                    "value": str(m["score"]),
+                    "name": m["name"],
+                    "key": m["metric_key"],
+                    "score": m["score"],
+                    "status": m["status"],
+                    "summary": m["summary"],
+                    "weight": m["weight"],
+                    "weighted_contribution": round(m["score"] * m["weight"], 2),
+                    "evidence": m["evidence"],
                 }
                 for m in current_metrics
             ],
@@ -172,6 +187,62 @@ def evaluate_budget_health(
         "current_period_check": current_period_check,
         "evaluated_at": now.isoformat(),
     }
+
+
+def _closed_period_summary(score: int, tone: str) -> str:
+    summaries = {
+        "supportive": {
+            (75, 100): "This cycle tracked well — a solid result to build on.",
+            (50, 74): "This cycle had some variance, but it remained within a manageable range.",
+            (25, 49): "This cycle had a few bumps; useful learnings to carry forward.",
+            (0, 24): "This cycle needed more care — good insights for next time.",
+        },
+        "friendly": {
+            (75, 100): "This cycle went great — nice work!",
+            (50, 74): "A few things went off track this cycle, but nothing too serious.",
+            (25, 49): "This cycle had some rough patches worth looking back on.",
+            (0, 24): "This cycle was pretty rough — let's take the lessons into the next one.",
+        },
+        "direct": {
+            (75, 100): "Cycle performed within acceptable limits.",
+            (50, 74): "Cycle variance detected — performance review recommended.",
+            (25, 49): "Cycle had significant issues requiring follow-up.",
+            (0, 24): "Cycle was in a critical state — corrective action required going forward.",
+        },
+    }
+    band = summaries.get(tone, summaries["supportive"])
+    for (low, high), message in band.items():
+        if low <= score <= high:
+            return message
+    return band[(75, 100)]
+
+
+def _current_period_summary(score: int, tone: str) -> str:
+    summaries = {
+        "supportive": {
+            (75, 100): "Current period is tracking well — keep up the good work.",
+            (50, 74): "Current period shows some variance, but you're still in a manageable range.",
+            (25, 49): "Current period has a few bumps; a quick review could help get things back on track.",
+            (0, 24): "Current period needs some care — tackling the key issues early will make a big difference.",
+        },
+        "friendly": {
+            (75, 100): "Everything's looking great this period — nice job!",
+            (50, 74): "A few things are off track, but nothing a little attention can't fix.",
+            (25, 49): "Heads up — there are some issues worth looking into this period.",
+            (0, 24): "Oof, this period is rough — let's sort out the big items first.",
+        },
+        "direct": {
+            (75, 100): "Period is within acceptable limits.",
+            (50, 74): "Period variance detected — review recommended.",
+            (25, 49): "Period has significant issues requiring action.",
+            (0, 24): "Period is in a critical state — immediate intervention required.",
+        },
+    }
+    band = summaries.get(tone, summaries["supportive"])
+    for (low, high), message in band.items():
+        if low <= score <= high:
+            return message
+    return band[(75, 100)]
 
 
 def _health_status(score: int) -> str:

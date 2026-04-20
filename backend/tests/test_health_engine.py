@@ -130,6 +130,25 @@ def test_evaluate_budget_health_returns_structure(client, db_session) -> None:
     assert "current_period_check" in payload
     assert payload["version"] == "engine-v1"
 
+    for pillar in payload["pillars"]:
+        assert "key" in pillar
+        assert "weight" in pillar
+        assert "weighted_contribution" in pillar
+        for ev in pillar["evidence"]:
+            assert "label" in ev
+            assert "value" in ev
+
+    cpc = payload["current_period_check"]
+    assert cpc is not None
+    assert "metrics" in cpc
+    for m in cpc["metrics"]:
+        assert "key" in m
+        assert "weight" in m
+        assert "weighted_contribution" in m
+        for ev in m["evidence"]:
+            assert "label" in ev
+            assert "value" in ev
+
 
 def test_evaluate_period_health_returns_metrics(client, db_session) -> None:
     from tests.factories import create_budget
@@ -148,6 +167,9 @@ def test_evaluate_period_health_returns_metrics(client, db_session) -> None:
         assert "status" in r
         assert "summary" in r
         assert "evidence" in r
+        for ev in r["evidence"]:
+            assert "label" in ev
+            assert "value" in ev
 
 
 def test_compute_momentum_stable_with_no_history(client, db_session) -> None:

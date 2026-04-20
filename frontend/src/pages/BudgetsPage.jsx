@@ -324,16 +324,24 @@ function PendingClosureList({ periods, budgetId }) {
       </div>
       <div className="mt-2 space-y-2">
         {visiblePeriods.map(period => (
-          <div key={period.finperiodid} className="flex items-center justify-between gap-2 rounded-lg border border-amber-200/80 bg-white px-2.5 py-2 dark:border-amber-900/60 dark:bg-slate-900/70">
+          <div key={period.finperiodid} className="flex items-start justify-between gap-2 rounded-lg border border-amber-200/80 bg-white px-2.5 py-2 dark:border-amber-900/60 dark:bg-slate-900/70">
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[12px] font-medium text-gray-900 dark:text-gray-100">{formatPeriodRange(period, formatDateRange)}</p>
+              <p className="text-[11px] font-medium leading-tight text-gray-900 dark:text-gray-100">{formatPeriodRange(period, formatDateRange)}</p>
             </div>
-            <Link
-              to={`/budgets/${budgetId}/periods/${period.finperiodid}?closeout=1`}
-              className="inline-flex h-8 shrink-0 items-center rounded-md border border-slate-300 px-2.5 text-[12px] font-medium text-slate-700 transition-colors hover:border-dosh-400 hover:text-dosh-800 dark:border-slate-600 dark:text-slate-200 dark:hover:border-dosh-500 dark:hover:text-white"
-            >
-              Close Out
-            </Link>
+            <div className="flex shrink-0 items-center gap-1.5">
+              <Link
+                to={`/budgets/${budgetId}/periods/${period.finperiodid}`}
+                className="inline-flex h-7 shrink-0 items-center rounded-md border border-slate-300 px-2 text-[11px] font-medium text-slate-700 transition-colors hover:border-dosh-400 hover:text-dosh-800 dark:border-slate-600 dark:text-slate-200 dark:hover:border-dosh-500 dark:hover:text-white"
+              >
+                Open
+              </Link>
+              <Link
+                to={`/budgets/${budgetId}/periods/${period.finperiodid}?closeout=1`}
+                className="inline-flex h-7 shrink-0 items-center rounded-md border border-slate-300 px-2 text-[11px] font-medium text-slate-700 transition-colors hover:border-dosh-400 hover:text-dosh-800 dark:border-slate-600 dark:text-slate-200 dark:hover:border-dosh-500 dark:hover:text-white"
+              >
+                Close Out
+              </Link>
+            </div>
           </div>
         ))}
         {hiddenCount > 0 ? (
@@ -529,18 +537,15 @@ function FullCalendarModal({ budgetName, periods, events, today, onClose }) {
       <Modal title={`Calendar for ${budgetName || 'Untitled Budget'}`} onClose={onClose} size="xl">
         <div className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="rounded-full border border-dosh-200 bg-dosh-50 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-dosh-800 dark:border-dosh-800 dark:bg-dosh-950/30 dark:text-dosh-200">
-              Today {formatDate(today, 'compact')}
-            </div>
             <button
               type="button"
-              className={`btn-secondary ${viewingTodayMonth ? 'cursor-default opacity-50' : ''}`}
+              className={`rounded-full border border-dosh-200 bg-dosh-50 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-dosh-800 transition-colors hover:bg-dosh-100 dark:border-dosh-800 dark:bg-dosh-950/30 dark:text-dosh-200 dark:hover:bg-dosh-950/50 ${viewingTodayMonth ? 'cursor-default opacity-50' : 'cursor-pointer'}`}
               onClick={() => {
                 if (!viewingTodayMonth) setVisibleMonth(todayMonth)
               }}
               disabled={viewingTodayMonth}
             >
-              Today
+              Today {formatDate(today, 'compact')}
             </button>
           </div>
           <CalendarMonthGrid
@@ -564,34 +569,6 @@ function FullCalendarModal({ budgetName, periods, events, today, onClose }) {
   )
 }
 
-function TrafficLight({ status }) {
-  const lights = [
-    { key: 'Strong', label: 'Green' },
-    { key: 'Watch', label: 'Amber' },
-    { key: 'Needs Attention', label: 'Red' },
-  ]
-
-  return (
-    <div className="inline-flex items-center gap-3 rounded-full border border-gray-200 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-900">
-      <div className="flex items-center gap-2">
-        {lights.map(light => (
-          <span
-            key={light.key}
-            title={light.label}
-            className={`h-3.5 w-3.5 rounded-full border ${
-              status === light.key
-                ? `${healthDotClass(light.key)} border-transparent shadow-sm`
-                : 'border-gray-300 bg-gray-200 dark:border-gray-600 dark:bg-gray-700'
-            }`}
-          />
-        ))}
-      </div>
-      <span className={`text-xs font-semibold uppercase tracking-wide ${healthToneClass(status)}`}>
-        {healthStatusLabel(status)}
-      </span>
-    </div>
-  )
-}
 
 function BalanceSummaryCard({ currentPeriod, currentPeriodDetail, isLoading }) {
   const { formatCurrency } = useLocalisation()
@@ -766,18 +743,20 @@ function BudgetStats({ budgetId, budgetName, periods = [], currentPeriodDetail, 
             ) : null}
           </div>
           {health?.current_period_check ? (
-            <button type="button" className="btn-secondary" onClick={onOpenCurrentPeriodCheck}>
-              Details
-            </button>
+            <div className="flex flex-col items-center gap-2">
+              <div className={`flex h-12 w-12 items-center justify-center rounded-full text-sm font-semibold shadow-sm ${healthCircleClass(health.current_period_check.status)}`}>
+                {health.current_period_check.score}
+              </div>
+              <button type="button" className="rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-[11px] font-medium text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700" onClick={onOpenCurrentPeriodCheck}>
+                Health Details
+              </button>
+            </div>
           ) : null}
         </div>
         {health?.current_period_check && (
-          <div className="mt-3 space-y-2">
-            <TrafficLight status={health.current_period_check.status} />
-            <p className={`text-sm font-medium ${healthToneClass(health.current_period_check.status)}`}>
-              {health.current_period_check.summary}
-            </p>
-          </div>
+          <p className={`mt-3 text-sm font-medium ${healthToneClass(health.current_period_check.status)}`}>
+            {health.current_period_check.summary}
+          </p>
         )}
         <PendingClosureList periods={grouped.pendingClosure} budgetId={budgetId} />
       </div>
@@ -812,8 +791,8 @@ function BudgetStats({ budgetId, budgetName, periods = [], currentPeriodDetail, 
                 </div>
               </div>
             </div>
-            <button type="button" className="btn-secondary" onClick={onOpenHealth}>
-              Details
+            <button type="button" className="rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-[11px] font-medium text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700" onClick={onOpenHealth}>
+              Overall Health Details
             </button>
           </div>
           <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">{health.momentum_summary}</p>
@@ -823,48 +802,201 @@ function BudgetStats({ budgetId, budgetName, periods = [], currentPeriodDetail, 
   )
 }
 
-function CurrentPeriodCheckModal({ budget, assessment, evaluatedAt, onClose }) {
-  const { formatDateTime, timezone } = useLocalisation()
-  const evidence = assessment.evidence || []
+const SCORING_CURVE_DESCRIPTIONS = {
+  setup_health: 'Pass/fail per category. All categories met = 100. Missing categories are penalised based on sensitivity.',
+  budget_vs_actual_amount: 'Within tolerance = 100. Linear decay to 70 as overrun approaches tolerance. Beyond tolerance, penalty per dollar over.',
+  budget_vs_actual_lines: 'Within tolerance = 100. Linear decay to 70 as over-budget lines approach tolerance. Beyond tolerance, penalty per line over.',
+  in_cycle_budget_adjustments: 'Zero adjustments = 100. Each adjustment within tolerance reduces score by 15. Beyond tolerance, penalty per adjustment over.',
+  revisions_on_paid_expenses: 'Zero revisions = 100. Each revision within tolerance reduces score by 15. Beyond tolerance, penalty per revision over.',
+  budget_cycles_pending_closeout: 'Zero pending = 100. Each pending cycle within tolerance reduces score by 20. Beyond tolerance, penalty per cycle over.',
+}
+
+function EvidenceRow({ item }) {
+  if (typeof item === 'string') {
+    return <p className="text-xs text-gray-500 dark:text-gray-400">{item}</p>
+  }
+  const overLimit = item.raw_limit !== undefined && item.raw_value !== undefined && item.raw_value > item.raw_limit
   return (
-    <Modal title={`Current Budget Cycle Check — ${budget.description || 'Untitled Budget'}`} onClose={onClose} size="lg">
-      <div className="space-y-5">
-        <div className="rounded-lg border border-gray-200 bg-gradient-to-r from-gray-50 to-white px-4 py-4 dark:border-gray-700 dark:bg-gray-900 dark:bg-none">
-          <div className="flex items-start justify-between gap-4">
-            <div className="space-y-2">
-              <TrafficLight status={assessment.status} />
-              <p className={`text-sm font-semibold ${healthToneClass(assessment.status)}`}>{assessment.summary}</p>
+    <div className="rounded-md border border-gray-100 bg-gray-50 px-3 py-2 dark:border-gray-800 dark:bg-gray-800/80">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{item.label}</p>
+        <div className="flex items-center gap-2">
+          <p className={`text-sm font-semibold ${overLimit ? 'text-amber-700 dark:text-amber-400' : 'text-gray-900 dark:text-gray-100'}`}>{item.value}</p>
+          {item.limit && <span className="text-xs text-gray-400 dark:text-gray-500">/ {item.limit}</span>}
+        </div>
+      </div>
+      {item.detail && <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{item.detail}</p>}
+    </div>
+  )
+}
+
+EvidenceRow.propTypes = {
+  item: PropTypes.oneOfType([PropTypes.string, PropTypes.shape({
+    label: PropTypes.string,
+    value: PropTypes.string,
+    raw_value: PropTypes.number,
+    raw_unit: PropTypes.string,
+    limit: PropTypes.string,
+    raw_limit: PropTypes.number,
+    detail: PropTypes.string,
+  })]).isRequired,
+}
+
+function MetricCard({ metric }) {
+  const [expanded, setExpanded] = useState(false)
+  const [showFormula, setShowFormula] = useState(false)
+  const metricKey = metric.metric_key || metric.key
+  return (
+    <section className="rounded-lg border border-gray-200 bg-white px-4 py-4 dark:border-gray-700 dark:bg-gray-900">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{metric.name}</h3>
+            <span className={`h-3.5 w-3.5 rounded-full ${healthDotClass(metric.status)}`} />
+            <span className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Score {metric.score}</span>
+          </div>
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">{metric.summary}</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setExpanded(v => !v)}
+          className="shrink-0 rounded-md border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+        >
+          {expanded ? 'Hide Details' : 'Show Details'}
+        </button>
+      </div>
+      {expanded && (
+        <div className="mt-3 space-y-3">
+          <div className="space-y-2">
+            {metric.evidence.map((item, idx) => (
+              <EvidenceRow key={`${metricKey || metric.name}-${item.label || idx}`} item={item} />
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowFormula(v => !v)}
+            className="w-full rounded-md border border-dosh-200 bg-dosh-50 px-3 py-2 text-xs font-medium text-dosh-800 hover:bg-dosh-100 dark:border-dosh-800 dark:bg-dosh-950 dark:text-dosh-200 dark:hover:bg-dosh-900"
+          >
+            {showFormula ? 'Hide Formula' : 'Show Formula'}
+          </button>
+          {showFormula && (
+            <div className="space-y-2 rounded-md border border-dosh-100 bg-dosh-50/40 px-3 py-2 dark:border-dosh-900 dark:bg-dosh-950/20">
+              {metricKey && SCORING_CURVE_DESCRIPTIONS[metricKey] && (
+                <p className="text-xs text-gray-600 dark:text-gray-300">
+                  <span className="font-semibold">Scoring curve:</span> {SCORING_CURVE_DESCRIPTIONS[metricKey]}
+                </p>
+              )}
+              {metric.calculation && (
+                <p className="text-xs text-gray-600 dark:text-gray-300">
+                  <span className="font-semibold">Calculation:</span> {metric.calculation}
+                </p>
+              )}
+              <p className="text-xs text-gray-600 dark:text-gray-300">
+                <span className="font-semibold">Weight:</span> {Math.round((metric.weight || 0) * 100)}%
+              </p>
+              <p className="text-xs text-gray-600 dark:text-gray-300">
+                <span className="font-semibold">Contribution:</span> {metric.score} × {Math.round((metric.weight || 0) * 100)}% = {metric.weighted_contribution ?? (metric.score * (metric.weight || 0)).toFixed(1)} pts
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+    </section>
+  )
+}
+
+MetricCard.propTypes = {
+  metric: PropTypes.shape({
+    name: PropTypes.string.isRequired,
+    key: PropTypes.string,
+    metric_key: PropTypes.string,
+    score: PropTypes.number.isRequired,
+    status: PropTypes.string.isRequired,
+    summary: PropTypes.string,
+    weight: PropTypes.number,
+    weighted_contribution: PropTypes.number,
+    evidence: PropTypes.array.isRequired,
+    calculation: PropTypes.string,
+  }).isRequired,
+}
+
+function ScoreBreakdown({ score, metrics, label }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        className="text-xs font-medium text-dosh-700 hover:text-dosh-800 dark:text-dosh-300 dark:hover:text-dosh-200"
+      >
+        {open ? '[-] Hide score breakdown' : '[+] Score breakdown'}
+      </button>
+      {open && (
+        <div className="mt-2 space-y-1 rounded-md border border-dosh-100 bg-dosh-50/40 px-3 py-2 dark:border-dosh-900 dark:bg-dosh-950/20">
+          <p className="text-xs font-semibold text-gray-700 dark:text-gray-200">{label} — {score}</p>
+          <div className="space-y-1">
+            {metrics.map(m => (
+              <p key={m.key || m.name} className="text-xs text-gray-600 dark:text-gray-300">
+                {m.name}: {m.score} × {Math.round((m.weight || 0) * 100)}% = {m.weighted_contribution ?? (m.score * (m.weight || 0)).toFixed(1)} pts
+              </p>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+ScoreBreakdown.propTypes = {
+  score: PropTypes.number.isRequired,
+  metrics: PropTypes.arrayOf(PropTypes.object).isRequired,
+  label: PropTypes.string.isRequired,
+}
+
+export function CurrentPeriodCheckPanel({ assessment, evaluatedAt, showMetricCards = true }) {
+  const { formatDateTime, timezone } = useLocalisation()
+  const metrics = assessment.metrics || []
+  return (
+    <div className="space-y-5">
+      <div className="rounded-lg border border-gray-200 bg-gradient-to-r from-gray-50 to-white px-4 py-4 dark:border-gray-700 dark:bg-gray-900 dark:bg-none">
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-2">
+            <p className={`text-sm font-semibold ${healthToneClass(assessment.status)}`}>{assessment.summary}</p>
+            {evaluatedAt && (
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 Evaluated {formatDateTime(evaluatedAt, 'medium')} {timezone}
               </p>
-            </div>
-            <div className={`flex h-16 w-16 items-center justify-center rounded-full text-xl font-light shadow-sm ${healthCircleClass(assessment.status)}`}>
-              {assessment.score}
-            </div>
+            )}
+            <ScoreBreakdown score={assessment.score} metrics={metrics} label="Current Period Check" />
+          </div>
+          <div className={`flex h-16 w-16 items-center justify-center rounded-full text-xl font-light shadow-sm ${healthCircleClass(assessment.status)}`}>
+            {assessment.score}
           </div>
         </div>
-
-        <section className="space-y-3 rounded-lg border border-gray-200 bg-white px-4 py-4 dark:border-gray-700 dark:bg-gray-900">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{assessment.title || 'Current Period Check'}</h3>
-            <span className={`h-3.5 w-3.5 rounded-full ${healthDotClass(assessment.status)}`} />
-            <span className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Score {assessment.score}</span>
-          </div>
-          <div className="space-y-2">
-            {evidence.map((item, idx) => (
-              <div key={`${assessment.key || 'cpc'}-${item.label || idx}`} className="rounded-md border border-gray-100 bg-gray-50 px-3 py-2 dark:border-gray-800 dark:bg-gray-800/80">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{item.label}</p>
-                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{item.value}</p>
-                </div>
-                {item.detail ? (
-                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{item.detail}</p>
-                ) : null}
-              </div>
-            ))}
-          </div>
-        </section>
       </div>
+
+      {showMetricCards && metrics.map(metric => (
+        <MetricCard key={metric.key || metric.name} metric={metric} />
+      ))}
+    </div>
+  )
+}
+
+CurrentPeriodCheckPanel.propTypes = {
+  assessment: PropTypes.shape({
+    status: PropTypes.string.isRequired,
+    summary: PropTypes.string.isRequired,
+    score: PropTypes.number.isRequired,
+    metrics: PropTypes.arrayOf(PropTypes.object),
+  }).isRequired,
+  evaluatedAt: PropTypes.string,
+  showMetricCards: PropTypes.bool,
+}
+
+function CurrentPeriodCheckModal({ budget, assessment, evaluatedAt, onClose }) {
+  return (
+    <Modal title={`Current Budget Cycle Check — ${budget.description || 'Untitled Budget'}`} onClose={onClose} size="lg">
+      <CurrentPeriodCheckPanel assessment={assessment} evaluatedAt={evaluatedAt} />
     </Modal>
   )
 }
@@ -900,32 +1032,15 @@ function BudgetHealthModal({ budget, health, onClose }) {
               <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
                 Evaluated {formatDateTime(health.evaluated_at, 'medium')} {timezone}
               </p>
+              <div className="mt-2">
+                <ScoreBreakdown score={health.overall_score} metrics={health.pillars} label="Overall Budget Health" />
+              </div>
             </div>
           </div>
         </div>
 
         {health.pillars.map(pillar => (
-          <section key={pillar.key || pillar.name} className="space-y-3 rounded-lg border border-gray-200 bg-white px-4 py-4 dark:border-gray-700 dark:bg-gray-900">
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{pillar.title || pillar.name}</h3>
-              <span className={`h-3.5 w-3.5 rounded-full ${healthDotClass(pillar.status)}`} />
-              <span className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Score {pillar.score}</span>
-            </div>
-            <p className="text-sm text-gray-600 dark:text-gray-300">{pillar.summary}</p>
-            <div className="space-y-2">
-              {pillar.evidence.map(item => (
-                <div key={`${pillar.key || pillar.name}-${item.label}`} className="rounded-md border border-gray-100 bg-gray-50 px-3 py-2 dark:border-gray-800 dark:bg-gray-800/80">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{item.label}</p>
-                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{item.value}</p>
-                  </div>
-                  {item.detail && (
-                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{item.detail}</p>
-                  )}
-                </div>
-              ))}
-            </div>
-          </section>
+          <MetricCard key={pillar.key || pillar.name} metric={pillar} />
         ))}
       </div>
     </Modal>
@@ -1332,10 +1447,6 @@ FullCalendarModal.propTypes = {
   events: PropTypes.arrayOf(PropTypes.object).isRequired,
   today: PropTypes.instanceOf(Date).isRequired,
   onClose: PropTypes.func.isRequired,
-}
-
-TrafficLight.propTypes = {
-  status: PropTypes.string,
 }
 
 BalanceSummaryCard.propTypes = {

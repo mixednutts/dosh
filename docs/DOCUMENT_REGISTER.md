@@ -1066,6 +1066,37 @@ Maintenance notes:
 - should be updated whenever a system metric is added, removed, or materially changed
 - should remain the canonical human-readable reference for metric behavior
 
+### BUDGET_HEALTH_MODAL_REWORK_PLAN.md
+
+Document:
+
+- [BUDGET_HEALTH_MODAL_REWORK_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_HEALTH_MODAL_REWORK_PLAN.md)
+
+Document type:
+
+- domain or workflow plan
+
+Primary purpose:
+
+- architecture and implementation plan for the Budget Health modal rework: structured evidence, metric card layout, formula display, and close-out integration
+
+Primary source-of-truth scope:
+
+- proposed payload shapes for structured evidence and metric cards
+- frontend component design (MetricCard, EvidenceRow, CurrentPeriodCheckPanel)
+- backend executor changes (calculation traces, tone-aware summaries)
+
+Key relationships:
+
+- informed by and updates `backend/app/health_engine/metric_executors.py` and `backend/app/health_engine/runner.py`
+- consumed by `frontend/src/pages/BudgetsPage.jsx` and `frontend/src/components/modals/CloseoutModal.jsx`
+- referenced by `DEVELOPMENT_ACTIVITIES.md` under Budget Health activities
+
+Maintenance notes:
+
+- should be updated if the modal payload shape or component contract changes
+- intended as a working plan; once fully implemented, architectural decisions migrate to `CHANGES.md` and `DEVELOPMENT_ACTIVITIES.md`
+
 ### BUDGET_HEALTH_TEMPLATE_LIBRARY.md
 
 Document:

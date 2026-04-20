@@ -83,6 +83,12 @@ def _setup_health_executor(
 
     status = _health_status(score)
 
+    calculation = f"Base score = {passed}/{total} × 100 = {base_score}."
+    if base_score < 100:
+        calculation += f" Sensitivity factor = {sensitivity_factor:.2f}. Penalty = (100 - {base_score}) × ({sensitivity_factor:.2f} - 1.0) × 0.5 = {penalty:.1f}. Final score = {base_score} - {penalty:.1f} = {score}."
+    else:
+        calculation += " All categories met → score = 100."
+
     summaries = {
         "supportive": (
             "Your budget setup looks solid with the current income, expenses, and period coverage."
@@ -103,16 +109,22 @@ def _setup_health_executor(
 
     evidence = []
     for ok, count, minimum, label in checks.values():
-        if ok:
-            evidence.append(f"{count} {label}{'s' if count != 1 else ''} configured (minimum {minimum})")
-        else:
-            evidence.append(f"{count} {label}{'s' if count != 1 else ''} configured — need at least {minimum}")
+        evidence.append({
+            "label": label.replace("active ", "").capitalize(),
+            "value": f"{count}",
+            "raw_value": count,
+            "raw_unit": "count",
+            "limit": f"{minimum}",
+            "raw_limit": minimum,
+            "detail": f"{count} {label}{'s' if count != 1 else ''} configured (minimum {minimum})" if ok else f"{count} {label}{'s' if count != 1 else ''} configured — need at least {minimum}",
+        })
 
     return {
         "score": score,
         "status": status,
         "summary": summaries.get(tone, summaries["factual"]),
         "evidence": evidence,
+        "calculation": calculation,
     }
 
 
@@ -137,7 +149,8 @@ def _budget_vs_actual_amount_executor(
             "score": 100,
             "status": HEALTH_STRONG,
             "summary": "No current period to evaluate.",
-            "evidence": ["No current period available"],
+            "evidence": [{"label": "Period", "value": "None", "detail": "No current period available to evaluate."}],
+            "calculation": "No current period → score = 100.",
         }
 
     expenses = db.query(PeriodExpense).filter_by(finperiodid=period.finperiodid).all()
@@ -156,12 +169,15 @@ def _budget_vs_actual_amount_executor(
 
     if overrun <= 0:
         score = 100
+        calculation = f"Overrun = ${overrun:.2f}. Within tolerance → score = 100."
     elif overrun <= tolerance:
         ratio = float(overrun) / float(tolerance) if tolerance > 0 else 0
         score = int(100 - (ratio * 30))
+        calculation = f"Overrun = ${overrun:.2f}. Tolerance = ${tolerance:.2f}. Ratio = {ratio:.4f}. Score = 100 - ({ratio:.4f} × 30) = {score}."
     else:
         excess = overrun - tolerance
         score = int(70 - (float(excess) * float(sensitivity_factor) * 2))
+        calculation = f"Overrun = ${overrun:.2f}. Tolerance = ${tolerance:.2f}. Excess = ${excess:.2f}. Sensitivity = {sensitivity_factor:.2f}. Score = 70 - (${excess:.2f} × {sensitivity_factor:.2f} × 2) = {score}."
 
     score = int(_clamp(score, 0, 100))
     status = _health_status(score)
@@ -185,17 +201,38 @@ def _budget_vs_actual_amount_executor(
     }
 
     evidence = [
-        f"Overrun amount: ${overrun:.2f} (limit: ${upper_tolerance_amount:.2f})",
-        f"Overrun percentage limit: {upper_tolerance_pct:.1f}% of budgeted expenses",
+        {
+            "label": "Overrun amount",
+            "value": f"${overrun:.2f}",
+            "raw_value": float(overrun),
+            "raw_unit": "currency",
+            "limit": f"${upper_tolerance_amount:.2f}",
+            "raw_limit": float(upper_tolerance_amount),
+            "detail": "Aggregate amount by which actual expenses exceed budgeted amounts.",
+        },
+        {
+            "label": "Overrun percentage limit",
+            "value": f"{upper_tolerance_pct:.1f}%",
+            "raw_value": float(upper_tolerance_pct),
+            "raw_unit": "percentage",
+            "detail": "Percentage of total budgeted expenses allowed as overrun.",
+        },
     ]
     if total_budgeted > 0:
-        evidence.append(f"Budgeted expenses: ${total_budgeted:.2f}")
+        evidence.append({
+            "label": "Budgeted expenses",
+            "value": f"${total_budgeted:.2f}",
+            "raw_value": float(total_budgeted),
+            "raw_unit": "currency",
+            "detail": "Total budgeted expense amount for the current period.",
+        })
 
     return {
         "score": score,
         "status": status,
         "summary": summaries.get(tone, summaries["factual"]),
         "evidence": evidence,
+        "calculation": calculation,
     }
 
 
@@ -220,7 +257,8 @@ def _budget_vs_actual_lines_executor(
             "score": 100,
             "status": HEALTH_STRONG,
             "summary": "No current period to evaluate.",
-            "evidence": ["No current period available"],
+            "evidence": [{"label": "Period", "value": "None", "detail": "No current period available to evaluate."}],
+            "calculation": "No current period → score = 100.",
         }
 
     expenses = db.query(PeriodExpense).filter_by(finperiodid=period.finperiodid).all()
@@ -236,12 +274,15 @@ def _budget_vs_actual_lines_executor(
 
     if overrun_lines <= 0:
         score = 100
+        calculation = f"Over-budget lines = {overrun_lines}. Within tolerance → score = 100."
     elif tolerance > 0 and overrun_lines <= tolerance:
         ratio = overrun_lines / tolerance
         score = int(100 - (ratio * 30))
+        calculation = f"Over-budget lines = {overrun_lines}. Tolerance = {tolerance:.1f}. Ratio = {ratio:.4f}. Score = 100 - ({ratio:.4f} × 30) = {score}."
     else:
         excess = overrun_lines - tolerance
         score = int(70 - (excess * 15 * float(sensitivity_factor)))
+        calculation = f"Over-budget lines = {overrun_lines}. Tolerance = {tolerance:.1f}. Excess = {excess:.1f}. Sensitivity = {sensitivity_factor:.2f}. Score = 70 - ({excess:.1f} × 15 × {sensitivity_factor:.2f}) = {score}."
 
     score = int(_clamp(score, 0, 100))
     status = _health_status(score)
@@ -265,16 +306,31 @@ def _budget_vs_actual_lines_executor(
     }
 
     evidence = [
-        f"Over-budget lines: {overrun_lines} (limit: {upper_tolerance_instances})",
+        {
+            "label": "Over-budget lines",
+            "value": f"{overrun_lines}",
+            "raw_value": overrun_lines,
+            "raw_unit": "count",
+            "limit": f"{upper_tolerance_instances}",
+            "raw_limit": upper_tolerance_instances,
+            "detail": "Number of expense lines where actual amount exceeds budget amount.",
+        },
     ]
     if total_lines > 0:
-        evidence.append(f"Total expense lines: {total_lines}")
+        evidence.append({
+            "label": "Total expense lines",
+            "value": f"{total_lines}",
+            "raw_value": total_lines,
+            "raw_unit": "count",
+            "detail": "Total number of expense lines in the current period.",
+        })
 
     return {
         "score": score,
         "status": status,
         "summary": summaries.get(tone, summaries["factual"]),
         "evidence": evidence,
+        "calculation": calculation,
     }
 
 
@@ -298,7 +354,8 @@ def _in_cycle_budget_adjustments_executor(
             "score": 100,
             "status": HEALTH_STRONG,
             "summary": "No current period to evaluate.",
-            "evidence": ["No current period available"],
+            "evidence": [{"label": "Period", "value": "None", "detail": "No current period available to evaluate."}],
+            "calculation": "No current period → score = 100.",
         }
 
     adjustment_count = (
@@ -315,11 +372,16 @@ def _in_cycle_budget_adjustments_executor(
 
     if adjustment_count <= 0:
         score = 100
+        calculation = f"Adjustments = {adjustment_count}. Within tolerance → score = 100."
     elif adjustment_count <= upper_tolerance_instances:
-        score = int(100 - (adjustment_count * 15))
+        deduction = adjustment_count * 15
+        score = int(100 - deduction)
+        calculation = f"Adjustments = {adjustment_count}. Within tolerance. Deduction = {adjustment_count} × 15 = {deduction}. Score = 100 - {deduction} = {score}."
     else:
         excess = adjustment_count - upper_tolerance_instances
-        score = int(70 - (excess * 20 * float(sensitivity_factor)))
+        penalty = excess * 20 * float(sensitivity_factor)
+        score = int(70 - penalty)
+        calculation = f"Adjustments = {adjustment_count}. Tolerance = {upper_tolerance_instances}. Excess = {excess}. Penalty = {excess} × 20 × {sensitivity_factor:.2f} = {penalty:.1f}. Score = 70 - {penalty:.1f} = {score}."
 
     score = int(_clamp(score, 0, 100))
     status = _health_status(score)
@@ -343,7 +405,15 @@ def _in_cycle_budget_adjustments_executor(
     }
 
     evidence = [
-        f"Budget adjustments: {adjustment_count} (limit: {upper_tolerance_instances})",
+        {
+            "label": "Budget adjustments",
+            "value": f"{adjustment_count}",
+            "raw_value": adjustment_count,
+            "raw_unit": "count",
+            "limit": f"{upper_tolerance_instances}",
+            "raw_limit": upper_tolerance_instances,
+            "detail": "Number of budget adjustment transactions recorded since the period started.",
+        },
     ]
 
     return {
@@ -351,6 +421,7 @@ def _in_cycle_budget_adjustments_executor(
         "status": status,
         "summary": summaries.get(tone, summaries["factual"]),
         "evidence": evidence,
+        "calculation": calculation,
     }
 
 
@@ -374,7 +445,8 @@ def _revisions_on_paid_expenses_executor(
             "score": 100,
             "status": HEALTH_STRONG,
             "summary": "No current period to evaluate.",
-            "evidence": ["No current period available"],
+            "evidence": [{"label": "Period", "value": "None", "detail": "No current period available to evaluate."}],
+            "calculation": "No current period → score = 100.",
         }
 
     revision_count = (
@@ -390,11 +462,16 @@ def _revisions_on_paid_expenses_executor(
 
     if revision_count <= 0:
         score = 100
+        calculation = f"Revisions = {revision_count}. Within tolerance → score = 100."
     elif revision_count <= upper_tolerance_instances:
-        score = int(100 - (revision_count * 15))
+        deduction = revision_count * 15
+        score = int(100 - deduction)
+        calculation = f"Revisions = {revision_count}. Within tolerance. Deduction = {revision_count} × 15 = {deduction}. Score = 100 - {deduction} = {score}."
     else:
         excess = revision_count - upper_tolerance_instances
-        score = int(70 - (excess * 20 * float(sensitivity_factor)))
+        penalty = excess * 20 * float(sensitivity_factor)
+        score = int(70 - penalty)
+        calculation = f"Revisions = {revision_count}. Tolerance = {upper_tolerance_instances}. Excess = {excess}. Penalty = {excess} × 20 × {sensitivity_factor:.2f} = {penalty:.1f}. Score = 70 - {penalty:.1f} = {score}."
 
     score = int(_clamp(score, 0, 100))
     status = _health_status(score)
@@ -418,7 +495,15 @@ def _revisions_on_paid_expenses_executor(
     }
 
     evidence = [
-        f"Paid expense revisions: {revision_count} (limit: {upper_tolerance_instances})",
+        {
+            "label": "Paid expense revisions",
+            "value": f"{revision_count}",
+            "raw_value": revision_count,
+            "raw_unit": "count",
+            "limit": f"{upper_tolerance_instances}",
+            "raw_limit": upper_tolerance_instances,
+            "detail": "Number of status change transactions (Paid → Revised) recorded in the current period.",
+        },
     ]
 
     return {
@@ -426,6 +511,7 @@ def _revisions_on_paid_expenses_executor(
         "status": status,
         "summary": summaries.get(tone, summaries["factual"]),
         "evidence": evidence,
+        "calculation": calculation,
     }
 
 
@@ -461,11 +547,16 @@ def _budget_cycles_pending_closeout_executor(
 
     if pending_count <= 0:
         score = 100
+        calculation = f"Pending cycles = {pending_count}. Within tolerance → score = 100."
     elif pending_count <= upper_tolerance_instances:
-        score = int(100 - (pending_count * 20))
+        deduction = pending_count * 20
+        score = int(100 - deduction)
+        calculation = f"Pending cycles = {pending_count}. Within tolerance. Deduction = {pending_count} × 20 = {deduction}. Score = 100 - {deduction} = {score}."
     else:
         excess = pending_count - upper_tolerance_instances
-        score = int(70 - (excess * 25 * float(sensitivity_factor)))
+        penalty = excess * 25 * float(sensitivity_factor)
+        score = int(70 - penalty)
+        calculation = f"Pending cycles = {pending_count}. Tolerance = {upper_tolerance_instances}. Excess = {excess}. Penalty = {excess} × 25 × {sensitivity_factor:.2f} = {penalty:.1f}. Score = 70 - {penalty:.1f} = {score}."
 
     score = int(_clamp(score, 0, 100))
     status = _health_status(score)
@@ -489,7 +580,15 @@ def _budget_cycles_pending_closeout_executor(
     }
 
     evidence = [
-        f"Pending close-out cycles: {pending_count} (limit: {upper_tolerance_instances})",
+        {
+            "label": "Pending close-out cycles",
+            "value": f"{pending_count}",
+            "raw_value": pending_count,
+            "raw_unit": "count",
+            "limit": f"{upper_tolerance_instances}",
+            "raw_limit": upper_tolerance_instances,
+            "detail": "Number of budget cycles that have ended but are not yet closed out.",
+        },
     ]
 
     return {
@@ -497,6 +596,7 @@ def _budget_cycles_pending_closeout_executor(
         "status": status,
         "summary": summaries.get(tone, summaries["factual"]),
         "evidence": evidence,
+        "calculation": calculation,
     }
 
 
@@ -520,6 +620,7 @@ def get_executor(metric_key: str):
                 "status": HEALTH_WATCH,
                 "summary": "Metric evaluation not yet implemented.",
                 "evidence": [],
+                "calculation": "Metric evaluation not yet implemented.",
             }
         return fallback_executor
     return executor

@@ -391,7 +391,7 @@ If the cash management changes prove to have serious negative effects and requir
   - Use `scripts/release_with_migrations.sh` exactly as in normal deployments. This script performs the canonical sequence: build images → back up the database → run migrations → restart containers.
   - Ensure `docker-compose.override.yml` is present and loaded, because the local environment's network, Traefik labels, and `DEV_MODE` gating depend on it.
   - After code reversion, running `scripts/release_with_migrations.sh` will build rolled-back images and redeploy the containers with the override applied.
-- **Migration downgrades inside the container:** If the feature migration was applied inside the Docker volume, the downgrade must also run **inside the container** (`docker exec dosh-backend alembic downgrade -1`) or via the migration step inside `release_with_migrations.sh`. Do not downgrade against a local filesystem SQLite file.
+- **Migration downgrades inside the container:** If the feature migration was applied inside the Docker volume, the downgrade must also run **inside the container** (`docker exec dosh alembic downgrade -1`) or via the migration step inside `release_with_migrations.sh`. Do not downgrade against a local filesystem SQLite file.
 - **Volume integrity:** The production SQLite database lives in the Docker volume, not the local `dosh.db` file. Any rollback validation must target the containerised app, not the local file.
 
 ### 4. Validation After Rollback

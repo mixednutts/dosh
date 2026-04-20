@@ -4,6 +4,70 @@ This document captures the key product and implementation changes made during re
 
 It is intended to complement [README.md](/home/ubuntu/dosh/README.md), not replace it.
 
+## Latest Session: Budget Health Modal Rework — Evidence, Formula, and Close-Out Integration (0.6.6-alpha) (2026-04-20)
+
+### What changed
+
+- **Structured evidence and calculation traces:**
+  - All six metric executors in `backend/app/health_engine/metric_executors.py` now return structured evidence objects with `label`, `value`, `raw_value`, `raw_unit`, `limit`, `raw_limit`, and `detail`.
+  - Each executor also returns a `calculation` string showing exact arithmetic (e.g., "Overrun = $120.00. Tolerance = $50.00. Ratio = 2.4000. Score = 100 - (2.4000 × 30) = 70.").
+  - `runner.py` propagates `calculation` through pillars and current-period metrics, and computes `weighted_contribution` (score × weight) for each metric.
+
+- **Tone-aware generic summaries:**
+  - Added `_current_period_summary(score, tone)` and `_closed_period_summary(score, tone)` to `runner.py`.
+  - Summaries map four score bands (75-100, 50-74, 25-49, 0-24) to three tones (`supportive`, `friendly`, `direct`) with language appropriate for active cycles (current) and historical cycles (closed).
+  - `evaluate_budget_health` now passes `tone` through to `evaluate_period_health` so the returned summary respects the budget's `health_tone` preference.
+  - `build_closeout_preview` in `cycle_management.py` passes `tone=tone` to the engine and returns `metrics` array in the `health` dict for the close-out preview.
+
+- **Collapsed metric cards with two-level expansion:**
+  - `BudgetsPage.jsx` now renders per-metric cards collapsed to a minimal header (name, score, status, summary) by default.
+  - RHS "Show Details" button expands the card to reveal structured evidence rows (`EvidenceRow` component) with amber highlighting when a limit is exceeded.
+  - "Show Formula" button beneath evidence reveals scoring curve description, exact `calculation` from the backend, metric weight, and weighted contribution to the total score.
+  - `SCORING_CURVE_DESCRIPTIONS` map provides human-readable formula explanations for each metric key.
+
+- **Shared `CurrentPeriodCheckPanel` component:**
+  - Extracted from `BudgetsPage.jsx` and exported for reuse.
+  - Props: `assessment`, `evaluatedAt`, `showMetricCards` (default `true`).
+  - When `showMetricCards={false}`, renders only the top-level score circle, summary, and optional evaluated-at timestamp — used by the Close-Out modal.
+
+- **Close-Out modal integration:**
+  - `CloseoutModal.jsx` imports `CurrentPeriodCheckPanel` and renders it with `showMetricCards={false}` inside the close-out preview.
+  - Uses past-tense `_closed_period_summary` messaging so health language reflects that the cycle is historical.
+  - Added dismissible warning banner: "Closing a budget cycle makes it read-only and prevents further changes from being made."
+  - Dismissal persisted via `localStorage` key `dosh_dismiss_closeout_warning`; `useDismissedWarning` hook manages state.
+
+- **Budget summary page polish:**
+  - Removed `TrafficLight` component and all traffic-light indicators from budget summary and health modals.
+  - Enlarged score circle (`h-12 w-12`) moved to top-right of each budget card, centered above a "Health Details" button.
+  - Budget Health card relabeled "Overall Health Details" with reduced font size.
+  - Pending Closure list: added "Open" button alongside "Close Out", reduced font sizes, improved date wrapping.
+
+- **Calendar modal simplification:**
+  - Merged "Today {date}" label and separate "Today" button into a single clickable "Today {date}" button in `FullCalendarModal`.
+
+### Files touched
+
+- `backend/app/health_engine/metric_executors.py`
+- `backend/app/health_engine/runner.py`
+- `backend/app/cycle_management.py`
+- `backend/tests/test_health_engine.py`
+- `frontend/src/pages/BudgetsPage.jsx`
+- `frontend/src/components/modals/CloseoutModal.jsx`
+- `frontend/src/__tests__/BudgetsPage.test.jsx`
+- `frontend/src/__tests__/PeriodDetailPage.test.jsx`
+- `frontend/src/__tests__/CloseoutModal.test.jsx`
+
+### Decisions preserved
+
+- Evidence should be structured (not parsed strings) so the frontend can render richly without fragile regex.
+- Calculation traces should live on the backend where the arithmetic happens, and be surfaced verbatim to the frontend.
+- The same health component should serve both active-period and close-out contexts, with layout controlled by a single boolean prop.
+- Close-out health messaging should use past-tense summaries that acknowledge the cycle is already finished.
+- Dismissible warnings should use `localStorage` (not backend state) because the choice is a per-device preference.
+- The `TrafficLight` abstraction was removed because score circles and status labels already communicate health clearly; extra colored bars added noise.
+
+---
+
 ## Latest Session: Projected Investment Cumulative Fix (2026-04-19)
 
 ### What changed

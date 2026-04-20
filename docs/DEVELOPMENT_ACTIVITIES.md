@@ -433,6 +433,12 @@ Status:
 - `Completed (0.5.0-alpha)`: removed drill-down UI and links from `BudgetsPage.jsx` health modals.
 - `Completed (0.6.0-alpha)`: updated `BudgetHealthTab.jsx` to use `metric_key`, render parameter inputs for all six metrics, and remove remaining drill-down defensive fallbacks.
 - `Completed (0.6.0-alpha)`: updated `client.js` `updateMatrixItem` signature to accept `metricKey` instead of `metricId`.
+- `Completed (0.6.6-alpha)`: reworked `BudgetsPage.jsx` health modals to use per-metric cards with structured evidence, collapsed by default, expandable via "Show Details" and "Show Formula" buttons.
+- `Completed (0.6.6-alpha)`: extracted shared `CurrentPeriodCheckPanel` component from `BudgetsPage.jsx` for reuse across Current Period Check modal and Close-Out modal.
+- `Completed (0.6.6-alpha)`: removed `TrafficLight` component and indicators from budget summary; replaced with enlarged score circle and "Health Details" / "Overall Health Details" buttons.
+- `Completed (0.6.6-alpha)`: updated `CloseoutModal.jsx` to use `CurrentPeriodCheckPanel` with `showMetricCards={false}` and display dismissible close-out warning using `localStorage` key `dosh_dismiss_closeout_warning`.
+- `Completed (0.6.6-alpha)`: merged calendar modal "Today" label and button into a single clickable element.
+- `Completed (0.6.6-alpha)`: added "Open" button to Pending Closure list linking directly to budget cycle detail page, with reduced font sizes and improved wrapping.
 
 #### Activity Group: Scoring and Momentum
 
@@ -457,6 +463,8 @@ Status:
 - `Completed`: refactored `current_period_check` executor to use `formula_result` (live period surplus) rather than re-querying period lines
 - `Completed`: migrated closeout preview health scoring to use the engine directly
 - `Fixed (0.4.2-alpha)`: aligned the `current_period_check` payload shape (`details` → `evidence`) with the frontend modal contract to prevent the Current Budget Cycle Check modal from crashing
+- `Completed (0.6.6-alpha)`: added `_current_period_summary(score, tone)` and `_closed_period_summary(score, tone)` to `runner.py` for tone-aware, score-band-based summaries in active and historical contexts.
+- `Completed (0.6.6-alpha)`: updated `build_closeout_preview` in `cycle_management.py` to pass `tone` to `evaluate_period_health` and return `metrics` array for close-out preview.
 
 #### Activity Group: Thresholds and Evidence Language
 
@@ -467,6 +475,8 @@ Status:
 - `Completed`: removed legacy threshold sliders and made metric cards the single source of truth for thresholds
 - `Completed`: fixed seed data scale for `revision_sensitivity`, `savings_priority`, and `period_criticality_bias` from `percentage_0_100` to `ten_scale_1_10`
 - `Completed`: added backend validation for threshold values based on scale `min_value`/`max_value`
+- `Completed (0.6.6-alpha)`: restructured all six metric executors in `metric_executors.py` to return structured evidence objects (`label`, `value`, `raw_value`, `raw_unit`, `limit`, `raw_limit`, `detail`).
+- `Completed (0.6.6-alpha)`: added per-executor `calculation` strings showing exact arithmetic trace and propagated them through `runner.py` into pillar and current-period payloads.
 - refine evidence language so it reads naturally in budget terms
 - test and refine personalised threshold behavior
 - make the interaction between deficit percentage and maximum deficit amount clearer
@@ -511,6 +521,10 @@ Status:
 - `Completed (0.5.0-alpha)`: rewrote `test_health_engine.py`, `test_health_matrices.py`, and `BudgetHealthTab.test.jsx` for the simplified two-metric framework.
 - `Completed (0.5.0-alpha)`: updated integration tests (`test_closeout_flow.py`, `test_lifecycle_and_health.py`) to expect valid health responses from the simplified engine.
 - `Completed (0.6.0-alpha)`: updated `test_health_engine.py`, `test_health_matrices.py`, `migration_helpers.py`, `BudgetHealthTab.test.jsx`, and `client.test.js` for the global-metric, six-metric framework.
+- `Completed (0.6.6-alpha)`: updated `test_health_engine.py` to assert structured evidence shape and `calculation` field presence.
+- `Completed (0.6.6-alpha)`: updated `BudgetsPage.test.jsx` to cover collapsed metric cards, "Show Details" / "Show Formula" expansion, and calendar "Today" button behavior.
+- `Completed (0.6.6-alpha)`: updated `PeriodDetailPage.test.jsx` for new close-out warning text and `CloseoutModal.test.jsx` for dismissible warning and health preview assertions.
+- `Completed (0.6.6-alpha)`: all backend and frontend tests passing (223/223 frontend; backend suite green).
 
 #### Activity Group: Demo Data Alignment
 

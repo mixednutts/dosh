@@ -229,7 +229,7 @@ For document changes, follow [DOCUMENTATION_FRAMEWORK.md](./docs/DOCUMENTATION_F
 
 ## Current Project State (Snapshot)
 
-**Version:** 0.6.5-alpha
+**Version:** 0.6.6-alpha
 **Schema Revisions:** d3091a75b8ff, e4f5a6b7c8d9, f1a2b3c4d5e6, b10a29f14a8f, 559cbaa1dce7, 4bf1bf54b0bb, 7a8b9c0d1e2f, 009297f69b52, a1b2c3d4e5f6, 9c0f8d72a04c, e1096e3868f0, fb246c4482b7, 8e182dad69ad
 
 **Recent Work:**
@@ -269,31 +269,31 @@ For document changes, follow [DOCUMENTATION_FRAMEWORK.md](./docs/DOCUMENTATION_F
 - **Demo Data Update:** Seeded demo budget now covers cash-flow account routing, scheduled expenses, and AUTO/MANUAL payment types for realistic walkthroughs
 
 **Active Focus Areas:**
-- Budget Health refinement (threshold behavior, evidence language, test coverage)
-- Testing infrastructure hardening (all 169 backend tests passing, 221 frontend tests passing)
+- Budget Health refinement (structured evidence display, formula clarity, close-out integration — completed this session)
+- Testing infrastructure hardening (all backend tests passing, 223 frontend tests passing)
 - Documentation framework compliance
 - Release process reliability
 - SonarQube maintainability follow-through
 - Balance chain integrity (dynamic balance computation for non-closed periods, stored values for closed cycles)
-- Close-out workflow trust (preview accuracy, carry-forward optionality, snapshot integrity)
+- Close-out workflow trust (preview accuracy, carry-forward optionality, snapshot integrity, dismissible warnings)
 
 **Recent Work (this session):**
-- **Projected Investment Cumulative Fix (COMPLETED):**
-  - Fixed `_projected_investment_for_period` to use linked-account balances plus committed investment amounts.
-  - Closed periods use linked account closing balance.
-  - Current / Pending Closure periods use linked account opening balance plus committed amount.
-  - Upcoming periods carry forward the most recent non-closed projected value plus their own committed amount.
-  - Committed funds logic: `max(budgeted, actual)` with `PAID` using `actual`.
-  - Added `backend/tests/test_projected_investment.py` covering cumulative behaviour and committed funds scenarios.
-  - All 171 backend tests pass; deployed to local Docker with override and verified.
+- **Budget Health Modal Rework — Evidence, Formula, and Close-Out Integration (COMPLETED):**
+  - Structured evidence: all six metric executors in `metric_executors.py` now return evidence objects with `label`, `value`, `raw_value`, `raw_unit`, `limit`, `raw_limit`, and `detail`.
+  - Added per-executor `calculation` strings showing exact arithmetic (e.g., "Overrun = $120.00. Tolerance = $50.00. Ratio = 2.4000. Score = 100 - (2.4000 × 30) = 70.") and propagated them through `runner.py`.
+  - Frontend `BudgetsPage.jsx` now renders collapsed metric cards by default with RHS "Show Details" button, expandable evidence rows, and a "Show Formula" button beneath evidence that reveals scoring curve description, calculation trace, weight, and weighted contribution.
+  - Extracted shared `CurrentPeriodCheckPanel` component from `BudgetsPage.jsx`, exported for reuse by both the Current Period Check modal and the Close-Out modal.
+  - Close-Out modal (`CloseoutModal.jsx`) now uses `CurrentPeriodCheckPanel` with `showMetricCards={false}` (collapsed to summary only) and displays past-tense tone-aware summaries via new `_closed_period_summary(score, tone)` in `runner.py`.
+  - Replaced generic `current_period_check.summary` with tone-aware `_current_period_summary(score, tone)` mapping score bands to supportive / friendly / direct messaging.
+  - Removed `TrafficLight` component and indicators from budget summary; replaced with enlarged score circle (h-12 w-12) centered above "Health Details" button on the RHS of each budget card.
+  - Budget Health card relabeled to "Overall Health Details"; button fonts reduced for better fit.
+  - Pending Closure section: added "Open" button linking to period detail, reduced font sizes, improved date wrapping.
+  - Calendar modal: merged "Today {date}" label and "Today" button into a single clickable "Today" label.
+  - Close-Out warning updated to "Closing a budget cycle makes it read-only and prevents further changes from being made." with localStorage-dismiss support (`dosh_dismiss_closeout_warning`).
+  - Tests updated and passing: `test_health_engine.py` (evidence shape + calculation assertions), `BudgetsPage.test.jsx`, `PeriodDetailPage.test.jsx`, `CloseoutModal.test.jsx`. Total backend tests passing; total frontend tests passing (223/223).
+  - Deployed to local Docker container with override and verified.
 
-- **UI Polish — Return to Top, Label Relabeling, Banner Styling, and Paid Status Enhancements (COMPLETED):**
-  - Added floating "Return to Top" buttons to `BudgetPeriodsPage` and `PeriodDetailPage`, matching the existing Budget Setup implementation.
-  - Renamed all user-facing "Planned" budget cycle labels to "Upcoming" across frontend, backend, utilities, and tests.
-  - Standardized banner-style alert boxes (locked, closed, error, warning) system-wide with softer border/background opacity, `rounded-xl`, bold text, and `LockClosedIcon` on cycle state banners.
-  - Enhanced Paid status pills for income, expense, and investment lines to show surplus/deficit amount suffixed (e.g., `Paid -$60.00`, `Paid +$20.00`) with locale formatting and color-coded context.
-  - Changed sidebar default so the Budget List starts expanded on page refresh, matching the Do$h banner logo behaviour.
-  - All changes deployed to local Docker with override and validated.
+- **Version bump to `0.6.6-alpha`** using `scripts/bump_version.py` (with manual fallback for `backend/Dockerfile` path change) and updated all touchpoints.
 
 **Guardrails in Effect:**
 - Test-by-change discipline (tests with behavior changes)
@@ -686,7 +686,7 @@ These rules apply to ANY future session involving an approved implementation pla
 **CRITICAL: When working with Docker deployments:**
 - Production data lives in Docker volumes, NOT in the local filesystem
 - The local `dosh.db` file is NOT the production database
-- Migrations must run INSIDE the container: `docker exec dosh-backend alembic ...`
+- Migrations must run INSIDE the container: `docker exec dosh alembic ...`
 - Never copy local files to Docker volumes: `sudo cp ... /var/lib/docker/volumes/...`
 - **ALWAYS use `INCLUDE_OVERRIDE=true` when running `release_with_migrations.sh`** - the production environment requires `docker-compose.override.yml` for Traefik networking and HTTPS configuration:
   ```bash

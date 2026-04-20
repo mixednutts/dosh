@@ -4,6 +4,20 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getPeriodCloseoutPreview, closeOutPeriod } from '../../api/client'
 import Spinner from '../../components/Spinner'
 import { useFormatters } from '../../components/useFormatters'
+import { CurrentPeriodCheckPanel } from '../../pages/BudgetsPage'
+
+const DISMISS_KEY = 'dosh_dismiss_closeout_warning'
+
+function useDismissedWarning() {
+  const [dismissed, setDismissed] = useState(() => {
+    try { return localStorage.getItem(DISMISS_KEY) === 'true' } catch { return false }
+  })
+  const dismiss = () => {
+    try { localStorage.setItem(DISMISS_KEY, 'true') } catch { /* ignore */ }
+    setDismissed(true)
+  }
+  return { dismissed, dismiss }
+}
 
 export function CloseoutModal({ periodId, budgetId, onClose }) {
   const qc = useQueryClient()
@@ -11,6 +25,7 @@ export function CloseoutModal({ periodId, budgetId, onClose }) {
   const [goals, setGoals] = useState('')
   const [createNextCycle, setCreateNextCycle] = useState(false)
   const [carryForward, setCarryForward] = useState(false)
+  const { dismissed: warningDismissed, dismiss: dismissWarning } = useDismissedWarning()
   const formatters = useFormatters()
   const { data: preview, isLoading } = useQuery({
     queryKey: ['period-closeout-preview', periodId],
@@ -51,10 +66,7 @@ export function CloseoutModal({ periodId, budgetId, onClose }) {
           <span>A surplus amount of {formatters.fmt(preview.carry_forward_amount)} exists for this period. Carry this amount forward to the next budget cycle?</span>
         </label>
       )}
-      <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/50">
-        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{preview.health.summary}</p>
-        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Score {preview.health.score} • {preview.health.status}</p>
-      </div>
+      <CurrentPeriodCheckPanel assessment={preview.health} showMetricCards={false} />
       {!preview.next_cycle_exists && (
         <label htmlFor="create-next-cycle" className="flex items-center gap-2 text-sm cursor-pointer">
           <input id="create-next-cycle" type="checkbox" checked={createNextCycle} onChange={e => setCreateNextCycle(e.target.checked)} />
@@ -69,9 +81,20 @@ export function CloseoutModal({ periodId, budgetId, onClose }) {
         <label htmlFor="closeout-goals" className="label">Goals Going Forward</label>
         <textarea id="closeout-goals" className="input w-full resize-none" rows={4} value={goals} onChange={e => setGoals(e.target.value)} />
       </div>
-      <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-300">
-        Closing this cycle makes it read-only. Any later corrections should be handled through reconciliation.
-      </div>
+      {!warningDismissed && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-950/20">
+          <p className="text-sm text-amber-800 dark:text-amber-300">
+            Closing a budget cycle makes it read-only and prevents further changes from being made.
+          </p>
+          <label className="mt-2 flex cursor-pointer items-center gap-2 text-xs text-amber-700 dark:text-amber-400">
+            <input
+              type="checkbox"
+              onChange={e => { if (e.target.checked) dismissWarning() }}
+            />
+            <span>Don't show this message again</span>
+          </label>
+        </div>
+      )}
       {closeout.isError && <p className="text-sm text-red-600">{closeout.error?.response?.data?.detail || 'Unable to close out this cycle right now.'}</p>}
       <div className="flex justify-end gap-2">
         <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
