@@ -37,6 +37,10 @@ Dosh helps you manage your finances through a structured budget cycle approach:
 - **Budget Health Insights** — Get supportive, explainable assessments of your budget's setup and execution health
 - **Regional Formatting** — Automatic locale-aware date, currency, and number formatting
 
+## Preview
+
+![Dosh Preview](images/dosh_preview1.gif)
+
 ## Quick Start
 
 ### Prerequisites

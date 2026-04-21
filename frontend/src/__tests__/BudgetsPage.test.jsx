@@ -88,8 +88,7 @@ describe('BudgetsPage', () => {
     expect(screen.getByText(/A Dosh budget is made of various Account, Expense & Investment information/)).toBeTruthy()
     expect(screen.getByText(/A budget cycle is a repeating period in days that represents the time frame of your financial planning\./)).toBeTruthy()
     expect(screen.getByText(/We will create our basic budget information here, then guide you through setup before we create your first budget cycle\./)).toBeTruthy()
-    expect(screen.getByText(/Choose the budget cycle you want Dosh to plan around\./)).toBeTruthy()
-    expect(screen.getByText(/After saving the basic budget information, we will add accounts, income sources, and expense items before generating our first budget cycle\./)).toBeTruthy()
+    expect(screen.getByText(/After creating the basic budget information, we will add accounts, income sources, and expense items before generating our first budget cycle\./)).toBeTruthy()
 
     fireEvent.change(screen.getByPlaceholderText('e.g. Household Budget 2025'), {
       target: { value: 'Ten Day Budget' },
@@ -97,12 +96,11 @@ describe('BudgetsPage', () => {
     fireEvent.change(screen.getByPlaceholderText('Your name'), {
       target: { value: 'Alex' },
     })
-    fireEvent.change(screen.getByRole('combobox'), {
+    fireEvent.change(screen.getByLabelText('Budget Cycle *'), {
       target: { value: '__custom_day_cycle__' },
     })
 
     expect(screen.getByRole('spinbutton', { name: 'Cycle length in days' }).value).toBe('')
-    expect(screen.getByText('Every ___ Days')).toBeTruthy()
 
     fireEvent.change(screen.getByRole('spinbutton', { name: 'Cycle length in days' }), {
       target: { value: '1' },
@@ -110,19 +108,21 @@ describe('BudgetsPage', () => {
     expect(screen.getByRole('spinbutton', { name: 'Cycle length in days' }).value).toBe('1')
     fireEvent.blur(screen.getByRole('spinbutton', { name: 'Cycle length in days' }))
     expect(screen.getByRole('spinbutton', { name: 'Cycle length in days' }).value).toBe('2')
-    expect(screen.getByText('Every 2 Days')).toBeTruthy()
 
     fireEvent.change(screen.getByRole('spinbutton', { name: 'Cycle length in days' }), {
       target: { value: '10' },
     })
-    expect(screen.getByText('Every 10 Days')).toBeTruthy()
-    fireEvent.click(screen.getByText('Save'))
+    fireEvent.click(screen.getByText('Create'))
 
     await waitFor(() => {
       expect(client.createBudget.mock.calls[0][0]).toEqual({
         description: 'Ten Day Budget',
         budgetowner: 'Alex',
         budget_frequency: 'Every 10 Days',
+        locale: 'en-AU',
+        currency: 'AUD',
+        timezone: 'Australia/Sydney',
+        date_format: 'medium',
       })
     })
     expect(mockNavigate).toHaveBeenCalledWith('/budgets/21/setup')
@@ -142,13 +142,12 @@ describe('BudgetsPage', () => {
     fireEvent.change(screen.getByPlaceholderText('Your name'), {
       target: { value: 'Alex' },
     })
-    fireEvent.change(screen.getByRole('combobox'), {
+    fireEvent.change(screen.getByLabelText('Budget Cycle *'), {
       target: { value: '__custom_day_cycle__' },
     })
 
-    const saveButton = screen.getByRole('button', { name: 'Save' })
+    const saveButton = screen.getByRole('button', { name: 'Create' })
     expect(saveButton.disabled).toBe(true)
-    expect(screen.getByText('Every ___ Days')).toBeTruthy()
 
     const customCycleInput = screen.getByRole('spinbutton', { name: 'Cycle length in days' })
     fireEvent.change(customCycleInput, {
@@ -156,16 +155,15 @@ describe('BudgetsPage', () => {
     })
     fireEvent.blur(customCycleInput)
     expect(customCycleInput.value).toBe('365')
-    expect(screen.getByText('Every 365 Days')).toBeTruthy()
     expect(saveButton.disabled).toBe(false)
 
     fireEvent.change(customCycleInput, {
       target: { value: '' },
     })
-    expect(screen.getByText(/Enter a whole number of days between 2 and 365\./)).toBeTruthy()
+    expect(screen.getByText(/Enter a whole number between 2 and 365\./)).toBeTruthy()
     expect(saveButton.disabled).toBe(true)
 
-    fireEvent.change(screen.getByRole('combobox'), {
+    fireEvent.change(screen.getByLabelText('Budget Cycle *'), {
       target: { value: 'Monthly' },
     })
     expect(screen.queryByRole('spinbutton', { name: 'Cycle length in days' })).toBeNull()
@@ -178,6 +176,10 @@ describe('BudgetsPage', () => {
         description: 'Monthly Budget',
         budgetowner: 'Alex',
         budget_frequency: 'Monthly',
+        locale: 'en-AU',
+        currency: 'AUD',
+        timezone: 'Australia/Sydney',
+        date_format: 'medium',
       })
     })
   })

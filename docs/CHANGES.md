@@ -4,7 +4,53 @@ This document captures the key product and implementation changes made during re
 
 It is intended to complement [README.md](/home/ubuntu/dosh/README.md), not replace it.
 
-## Latest Session: Demo Budget Polish and README Dictionary Definition (0.6.8-alpha) (2026-04-21)
+## Latest Session: New Budget Modal Enhancements and README Preview (0.6.8-alpha) (2026-04-21)
+
+### What changed
+
+- **New Budget modal now includes locale, timezone, currency, and date format:**
+  - `BudgetForm` in `BudgetsPage.jsx` now exposes `locale`, `currency`, `timezone`, and `date_format` selects at budget creation time.
+  - Defaults are `en-AU`, `AUD`, `Australia/Sydney`, `medium`.
+  - Modal width increased to `lg` to accommodate the wider form.
+  - Rationale: previously these preferences could only be changed after creation via Settings, forcing users through an extra edit cycle.
+
+- **New Budget modal layout reformatted to avoid scrolling:**
+  - Form fields now use a responsive `grid grid-cols-1 sm:grid-cols-2` layout.
+  - Description and Owner span full width; all other fields pair side-by-side.
+  - Removed helper text clutter ("Choose the budget cycle…", "Every ___ Days" preview) to reduce vertical height.
+  - Spacing tightened (`space-y-5` → `space-y-3`, `pt-2` → `pt-1`).
+  - Rationale: on typical laptop screens the modal was scrollable; the 2-column grid keeps everything visible without scrolling.
+
+- **Submit button relabeled from "Save" to "Create":**
+  - Button text and loading state changed to match the create-budget action.
+  - Helper text updated from "After saving…" to "After creating…".
+  - Rationale: "Save" is ambiguous in a modal that also has a "Create Demo Budget" action; "Create" is explicit.
+
+- **`.env.example` updated with supported timezones:**
+  - Replaced the exhaustive system-timezone list with the 8 supported Dosh values (`Australia/Sydney`, `Australia/Perth`, `Pacific/Auckland`, `America/New_York`, `America/Los_Angeles`, `Europe/London`, `Europe/Berlin`, `UTC`).
+  - Rationale: the backend schema only accepts these 8 values, so the example file should match.
+
+- **README.md preview GIF added:**
+  - Added `images/dosh_preview1.gif` under a new `## Preview` heading between the feature list and `## Quick Start`.
+  - Rationale: gives GitHub visitors an immediate visual sense of the app before reading deployment instructions.
+
+### Files touched
+
+- `frontend/src/pages/BudgetsPage.jsx`
+- `frontend/src/__tests__/BudgetsPage.test.jsx`
+- `.env.example`
+- `README.md`
+- `images/dosh_preview1.gif` (new)
+
+### Decisions preserved
+
+- The new locale/currency/timezone/date-format fields use the same option constants as `SettingsTab.jsx` (`LOCALE_OPTIONS`, `CURRENCY_OPTIONS`, `TIMEZONE_OPTIONS`, `DATE_FORMAT_OPTIONS`), ensuring consistency between creation-time and edit-time preferences.
+- No backend schema changes were required; the existing budget creation endpoint already accepts these fields.
+- The layout change is modal-local; other forms in the app were not touched.
+
+---
+
+## Previous Session: Demo Budget Polish and README Dictionary Definition (0.6.8-alpha) (2026-04-21)
 
 ### What changed
 

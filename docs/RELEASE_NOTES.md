@@ -2,8 +2,16 @@
 
 ## Unreleased
 
+### Added
+
+- The New Budget modal now lets you choose locale, currency, timezone, and date format when creating a budget, so your regional preferences are set from the start instead of needing to be adjusted later in Settings.
+- Added a preview GIF to the README so new visitors can see the app in action before installing.
+
 ### Changed
 
+- The New Budget modal has been restructured with a two-column layout so all fields fit on screen without scrolling.
+- The submit button in the New Budget modal is now labelled "Create" instead of "Save" for clearer intent.
+- `.env.example` now lists only the timezones Dosh supports, making it easier to pick a valid value.
 - Sidebar budget list now wraps long budget names and descriptions to multiple lines instead of truncating them.
 - Demo budget health thresholds are now more relaxed so first-time users see green "Strong" health scores instead of warnings.
 - Demo budget grocery expenses are now spread across the period (every 4 days instead of weekly) for a more realistic calendar view.

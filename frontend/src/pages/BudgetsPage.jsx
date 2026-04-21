@@ -11,11 +11,20 @@ import Spinner from '../components/Spinner'
 import { LocalisationProvider, useLocalisation } from '../components/LocalisationContext'
 import { listFixedDayOccurrencesInRange } from '../utils/fixedDayScheduling'
 import { getCycleStage } from '../utils/periodStage'
+import { LOCALE_OPTIONS, CURRENCY_OPTIONS, TIMEZONE_OPTIONS, DATE_FORMAT_OPTIONS } from '../utils/localisation'
 
 const FREQUENCIES = ['Weekly', 'Fortnightly', 'Monthly']
 const CUSTOM_DAY_CYCLE_VALUE = '__custom_day_cycle__'
 
-const emptyForm = { description: '', budgetowner: '', budget_frequency: 'Fortnightly' }
+const emptyForm = {
+  description: '',
+  budgetowner: '',
+  budget_frequency: 'Fortnightly',
+  locale: 'en-AU',
+  currency: 'AUD',
+  timezone: 'Australia/Sydney',
+  date_format: 'medium',
+}
 
 function parseCustomDayCycle(frequency) {
   const match = /^Every (\d+) Days$/.exec(frequency || '')
@@ -1061,7 +1070,7 @@ function BudgetForm({ initial = emptyForm, onSubmit, onCreateDemo, onClose, load
   )
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <div className="space-y-1.5">
         <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/60">
           <p className="text-xs text-gray-600 dark:text-gray-300">
@@ -1103,94 +1112,115 @@ function BudgetForm({ initial = emptyForm, onSubmit, onCreateDemo, onClose, load
         e.preventDefault()
         if (isCustomCycleInvalid) return
         onSubmit({ ...form, budget_frequency: resolvedFrequency })
-      }} className="space-y-4">
-        <div>
-          <label htmlFor="budget-description" className="label">Description</label>
-          <input id="budget-description" className="input" value={form.description} onChange={e => set('description', e.target.value)} placeholder="e.g. Household Budget 2025" />
-        </div>
-        <div>
-          <label htmlFor="budget-owner" className="label">Owner <span className="text-red-500">*</span></label>
-          <input id="budget-owner" required className="input" value={form.budgetowner} onChange={e => set('budgetowner', e.target.value)} placeholder="Your name" />
-        </div>
-        <div>
-          <label htmlFor="budget-cycle" className="label">Budget Cycle <span className="text-red-500">*</span></label>
-          <select
-            id="budget-cycle"
-            required
-            className="input"
-            value={frequencySelection}
-            onChange={e => {
-              setFrequencySelection(e.target.value)
-              if (e.target.value !== CUSTOM_DAY_CYCLE_VALUE) {
-                set('budget_frequency', e.target.value)
-              }
-            }}
-          >
-            {FREQUENCIES.map(f => <option key={f}>{f}</option>)}
-            <option value={CUSTOM_DAY_CYCLE_VALUE}>Custom</option>
-          </select>
-          <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-            Choose the budget cycle you want Dosh to plan around.
-          </p>
-        </div>
-        {frequencySelection === CUSTOM_DAY_CYCLE_VALUE ? (
-          <div>
-            <label htmlFor="budget-cycle-length-days" className="label">Cycle length in days <span className="text-red-500">*</span></label>
-            <input
-              id="budget-cycle-length-days"
-              required
-              min="2"
-              max="365"
-              type="number"
-              className="input"
-              value={customCycleDays}
-              onChange={e => {
-                const nextValue = e.target.value
-                if (!nextValue) {
-                  setCustomCycleDays('')
-                  return
-                }
-
-                const parsedValue = Number(nextValue)
-                if (Number.isNaN(parsedValue)) {
-                  return
-                }
-                setCustomCycleDays(nextValue)
-              }}
-              onBlur={() => {
-                if (!customCycleDays) return
-                const parsedValue = Number(customCycleDays)
-                if (Number.isNaN(parsedValue)) {
-                  setCustomCycleDays('')
-                  return
-                }
-                if (parsedValue < 2) {
-                  setCustomCycleDays('2')
-                  return
-                }
-                if (parsedValue > 365) {
-                  setCustomCycleDays('365')
-                }
-              }}
-              aria-label="Cycle length in days"
-            />
-            <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-              Dosh will treat this budget as <span className="font-semibold text-gray-700 dark:text-gray-200">{customCyclePreview}</span>.
-            </p>
-            {isCustomCycleInvalid ? (
-              <p className="mt-2 text-xs text-red-600 dark:text-red-400">
-                Enter a whole number of days between 2 and 365.
-              </p>
-            ) : null}
+      }} className="space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="sm:col-span-2">
+            <label htmlFor="budget-description" className="label">Description</label>
+            <input id="budget-description" className="input" value={form.description} onChange={e => set('description', e.target.value)} placeholder="e.g. Household Budget 2025" />
           </div>
-        ) : null}
-        <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-xs text-gray-600 dark:border-gray-700 dark:bg-gray-800/60 dark:text-gray-300">
-          After saving the basic budget information, we will add accounts, income sources, and expense items before generating our first budget cycle.
+          <div className="sm:col-span-2">
+            <label htmlFor="budget-owner" className="label">Owner <span className="text-red-500">*</span></label>
+            <input id="budget-owner" required className="input" value={form.budgetowner} onChange={e => set('budgetowner', e.target.value)} placeholder="Your name" />
+          </div>
+          <div>
+            <label htmlFor="budget-cycle" className="label">Budget Cycle <span className="text-red-500">*</span></label>
+            <select
+              id="budget-cycle"
+              required
+              className="input"
+              value={frequencySelection}
+              onChange={e => {
+                setFrequencySelection(e.target.value)
+                if (e.target.value !== CUSTOM_DAY_CYCLE_VALUE) {
+                  set('budget_frequency', e.target.value)
+                }
+              }}
+            >
+              {FREQUENCIES.map(f => <option key={f}>{f}</option>)}
+              <option value={CUSTOM_DAY_CYCLE_VALUE}>Custom</option>
+            </select>
+          </div>
+          {frequencySelection === CUSTOM_DAY_CYCLE_VALUE ? (
+            <div>
+              <label htmlFor="budget-cycle-length-days" className="label">Cycle length (days) <span className="text-red-500">*</span></label>
+              <input
+                id="budget-cycle-length-days"
+                required
+                min="2"
+                max="365"
+                type="number"
+                className="input"
+                value={customCycleDays}
+                onChange={e => {
+                  const nextValue = e.target.value
+                  if (!nextValue) {
+                    setCustomCycleDays('')
+                    return
+                  }
+                  const parsedValue = Number(nextValue)
+                  if (Number.isNaN(parsedValue)) {
+                    return
+                  }
+                  setCustomCycleDays(nextValue)
+                }}
+                onBlur={() => {
+                  if (!customCycleDays) return
+                  const parsedValue = Number(customCycleDays)
+                  if (Number.isNaN(parsedValue)) {
+                    setCustomCycleDays('')
+                    return
+                  }
+                  if (parsedValue < 2) {
+                    setCustomCycleDays('2')
+                    return
+                  }
+                  if (parsedValue > 365) {
+                    setCustomCycleDays('365')
+                  }
+                }}
+                aria-label="Cycle length in days"
+              />
+              {isCustomCycleInvalid ? (
+                <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                  Enter a whole number between 2 and 365.
+                </p>
+              ) : null}
+            </div>
+          ) : (
+            <div />
+          )}
+          <div>
+            <label htmlFor="budget-locale" className="label">Locale</label>
+            <select id="budget-locale" className="input" value={form.locale} onChange={e => set('locale', e.target.value)}>
+              {LOCALE_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="budget-currency" className="label">Currency</label>
+            <select id="budget-currency" className="input" value={form.currency} onChange={e => set('currency', e.target.value)}>
+              {CURRENCY_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="budget-timezone" className="label">Timezone</label>
+            <select id="budget-timezone" className="input" value={form.timezone} onChange={e => set('timezone', e.target.value)}>
+              {TIMEZONE_OPTIONS.map(tz => <option key={tz} value={tz}>{tz}</option>)}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="budget-date-format" className="label">Date Format</label>
+            <select id="budget-date-format" className="input" value={form.date_format} onChange={e => set('date_format', e.target.value)}>
+              {DATE_FORMAT_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label} — {opt.sample}</option>)}
+            </select>
+          </div>
         </div>
-        <div className="flex justify-end gap-2 pt-2">
+        <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-xs text-gray-600 dark:border-gray-700 dark:bg-gray-800/60 dark:text-gray-300">
+          After creating the basic budget information, we will add accounts, income sources, and expense items before generating our first budget cycle.
+        </div>
+        <div className="flex justify-end gap-2 pt-1">
           <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
           <button type="submit" className="btn-primary" disabled={loading || demoLoading || isCustomCycleInvalid}>
-            {loading ? 'Saving…' : 'Save'}
+            {loading ? 'Creating…' : 'Create'}
           </button>
         </div>
       </form>
@@ -1210,6 +1240,16 @@ function BudgetForm({ initial = emptyForm, onSubmit, onCreateDemo, onClose, load
       ) : null}
     </div>
   )
+}
+
+BudgetForm.propTypes = {
+  initial: PropTypes.object,
+  onSubmit: PropTypes.func.isRequired,
+  onCreateDemo: PropTypes.func,
+  onClose: PropTypes.func.isRequired,
+  loading: PropTypes.bool,
+  demoLoading: PropTypes.bool,
+  showDemoOption: PropTypes.bool,
 }
 
 export default function BudgetsPage() {
@@ -1395,7 +1435,7 @@ export default function BudgetsPage() {
       )}
 
       {modal && (
-        <Modal title="New Budget" onClose={() => setModal(null)}>
+        <Modal title="New Budget" onClose={() => setModal(null)} size="lg">
           <BudgetForm
             initial={emptyForm}
             onSubmit={handleSubmit}

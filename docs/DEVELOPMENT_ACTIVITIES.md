@@ -813,6 +813,9 @@ Status:
 - `Completed`: restore current setup-line visibility inside the budget setup history modal while keeping revision and adjustment history visible alongside it
 - `Completed`: stabilize income-table action-column alignment on the budget-cycle detail page so delete-availability does not shift the numeric columns
 - `Completed`: add create-budget modal header copy that explains what a budget is and what the setup flow will help the user define
+- `Completed`: add locale, currency, timezone, and date format selects to the New Budget modal so regional preferences are set at creation time rather than requiring a post-creation Settings edit
+- `Completed`: restructure New Budget modal into a responsive two-column grid so all fields fit without scrolling on typical viewports
+- `Completed`: relabel New Budget modal submit button from "Save" to "Create" for clearer action intent
 - hide `Current Only` budget adjustment entries from the budget setup history modal so setup history stays focused on setup-level meaning
 - add revision and active-status columns to budget setup sections where that state is currently missing
 - add summary information to the budget cycles list page section headers, with the exact summary content still to be defined
