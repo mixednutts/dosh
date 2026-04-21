@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+### Changed
+
+- Restructured project documentation with a new user-facing README.md containing product overview and Docker deployment instructions. Development documentation moved to AGENTS.md and docs/.
+- Docker Compose configuration updated: `docker-compose.yml` now uses the pre-built GHCR image (`ghcr.io/mixednutts/dosh:latest`), while `docker-compose.override.yml` provides local build context for development.
+- Changed default port from 80 to 3080 for both host and container to avoid conflicts with common web services.
+- Removed `DEV_MODE` environment variable and associated gating. The "Create Demo Budget" option is now unconditionally available.
+- Removed `scripts/release_with_migrations.sh` as migrations now run automatically via `entrypoint.sh`.
+
+### Infrastructure
+
+- Added `.env` file support for `GITHUB_RELEASES_TOKEN` configuration, keeping secrets out of version control.
+- Added `/backups` to `.gitignore` for local database backup storage.
+
 ## 0.6.8-alpha | released | 2026-04-21
 
 ### Added

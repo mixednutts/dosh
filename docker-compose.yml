@@ -1,8 +1,6 @@
 services:
   dosh:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ghcr.io/mixednutts/dosh:latest
     container_name: dosh
     restart: unless-stopped
     volumes:
@@ -11,7 +9,7 @@ services:
       - DATABASE_URL=${DATABASE_URL:-sqlite:////app/data/dosh.db}
       - TZ=${TZ:-Australia/Sydney}
     ports:
-      - "3080:80"
+      - "3080:3080"
 
 volumes:
   dosh-data:

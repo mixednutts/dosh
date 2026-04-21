@@ -33,8 +33,9 @@ Document type:
 
 Primary purpose:
 
-- provide the main high-level introduction to Dosh
-- summarize the current product and technical shape
+- provide the main user-facing high-level introduction to Dosh
+- summarize product features and capabilities for GitHub visitors
+- provide quick-start deployment instructions
 
 Primary source-of-truth scope:
 

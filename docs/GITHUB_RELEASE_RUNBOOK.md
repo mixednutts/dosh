@@ -113,13 +113,37 @@ Guidance:
 
 Deployment is still manual.
 
-After the release tag and GitHub Release exist, continue using [release_with_migrations.sh](/home/ubuntu/dosh/scripts/release_with_migrations.sh) for the current deployment path:
+After the release tag and GitHub Release exist:
 
-1. build backend and frontend images
-2. back up the SQLite database
-3. run Alembic upgrade or baseline stamping
-4. restart the stack
-5. verify `/api/health` and `/api/release-notes`
+### Production Server Deployment
+
+On the production server, pull and run the GHCR image:
+
+```bash
+# docker-compose.yml should reference ghcr.io/mixednutts/dosh:latest
+docker compose pull
+docker compose up -d
+```
+
+The entrypoint script automatically runs Alembic migrations before starting the app.
+
+### Development Server Deployment
+
+On the development server, build from local source:
+
+```bash
+docker compose up --build -d
+```
+
+The `docker-compose.override.yml` provides the local build context and Traefik labels.
+
+### Verification
+
+After deployment, verify:
+```bash
+curl -sS http://localhost:3080/api/health
+curl -sS http://localhost:3080/api/release-notes
+```
 
 ## GitHub Settings Requirement
 
@@ -177,7 +201,7 @@ After a GitHub Release tag exists, manually trigger the Docker publish workflow:
 The workflow will:
 - Check out the repository at the specified tag
 - Validate version touchpoints via `scripts/release_management.py`
-- Build the multi-stage Dockerfile with `DEV_MODE=false`
+- Build the multi-stage Dockerfile
 - Push to `ghcr.io/mixednutts/dosh:<version>`
 - Optionally push to `ghcr.io/mixednutts/dosh:latest`
 - Generate a build attestation

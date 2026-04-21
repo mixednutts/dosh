@@ -72,7 +72,6 @@ Recent progress worth carrying forward:
 - backend migration verification now includes a reusable Alembic harness for both clean upgrade and upgrade from a pre-feature SQLite snapshot
 - the frontend now uses Vite plus standalone Jest rather than Create React App
 - the frontend Docker image now uses Node 20 and the frontend dependency tree is currently clean on `npm audit`
-- a dev-only `Create Demo Budget` flow now exists from the budget-create modal and is controlled through shared Docker Compose `DEV_MODE` gating across frontend and backend
 - the seeded demo budget now includes historical close-outs, a live current cycle, upcoming cycles, linked savings and investment setup, and budget-health-relevant activity rather than neutral placeholder transactions
 - account transfers are now generalised: any active account can be a transfer source or destination, with committed-amount balance validation and self-referential transfer blocking
 - expense items now support a `default_account_desc` for routing, with transaction-level account override and fallback to the primary account
@@ -866,7 +865,7 @@ Status:
 - `Completed`: fix `create_next_cycle` initializing new period balances from `BalanceType.opening_balance` instead of the previous period's closing balance, which could cause balance chain corruption when cycles were created during close-out
 - `Completed`: fix SQLite datetime text-comparison bug in `propagate_balance_changes_from_period` and related queries where SQLAlchemy's space-separated datetime parameters did not match SQLite's `T`-separator storage format, causing the source period to be incorrectly included in "later periods" results
 - `Completed`: fix trailing-slash mismatch in backend tests (`/balance-types` vs `/balance-types/`) that caused 405 Method Not Allowed after FastAPI strict routing changes
-- `Completed`: fix demo-budget test failing in containers with `DEV_MODE=true` by explicitly monkeypatching the environment variable in the test
+- `Completed`: fix demo-budget test after DEV_MODE was removed from the application
 
 Cross-links:
 
@@ -933,6 +932,17 @@ Status:
 
 - `Completed`
 
+- `Completed`: **Beta Preparation — Development Framework Update (0.6.8-alpha):**
+  - Restructured README.md into user-facing product overview with Docker deployment instructions
+  - Archived original dev-focused README.md to docs/archive/README-0.6.8-alpha.md
+  - Updated docker-compose.yml to use GHCR image (`ghcr.io/mixednutts/dosh:latest`) with port 3080:3080
+  - Updated docker-compose.override.yml to provide local build context alongside Traefik labels
+  - Removed DEV_MODE environment variable (demo budget now unconditionally available)
+  - Removed scripts/release_with_migrations.sh (redundant with entrypoint.sh migrations)
+  - Updated entrypoint.sh and Dockerfile for port 3080
+  - Updated all documentation (AGENTS.md, GITHUB_RELEASE_RUNBOOK.md, DEVELOPMENT_ACTIVITIES.md, DOCUMENT_REGISTER.md)
+  - Added document pathing section to AGENTS.md for new session discovery
+  - Created .env file for GITHUB_RELEASES_TOKEN configuration
 - `Completed`: align the deployed SQLite schema to the new budget-adjustment and transaction-line-state code after deployment exposed the gap
 - `Completed`: align the live SQLite schema again after setup-history revision support exposed the missing `periodtransactions.revisionnum` column and `setuprevisionevents` table
 - `Completed`: pin frontend install behavior more reliably by keeping the Vite toolchain on a patched release and restoring a clean `npm audit` baseline
@@ -996,9 +1006,7 @@ If we want a practical order of work rather than just a thematic roadmap, this i
 ## Implementation Notes To Preserve
 
 - Demo-budget creation is intentionally additive only. It should keep creating a new budget rather than overwriting or deleting existing budgets.
-- Because the frontend is built with Vite and served as static assets, changes to frontend dev-mode visibility require a rebuild, not only a container restart.
-- Backend enforcement should continue to exist even when the frontend hides the control, so dev-only workflows are not protected by UI state alone.
-- The `DEV_MODE` environment variable and its associated frontend/backend gating have been removed. The "Create Demo Budget" option is now unconditionally available. Duplicate prevention is enforced server-side via `HTTPException(409)` in `create_standard_demo_budget`.
+- The "Create Demo Budget" option is unconditionally available in the create-budget modal. Duplicate prevention is enforced server-side via `HTTPException(409)` in `create_standard_demo_budget`.
 
 ## Canonical Near-Term References
 

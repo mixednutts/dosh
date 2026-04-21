@@ -1,116 +1,110 @@
 # Dosh
 
-Dosh is a workflow-driven personal finance application with a FastAPI backend and a Vite-powered React frontend.
+[![Version](https://img.shields.io/github/v/release/mixednutts/dosh?include_prereleases&label=version)](https://github.com/mixednutts/dosh/releases)
+[![Docker](https://img.shields.io/badge/docker-ghcr.io-blue?logo=docker)](https://github.com/mixednutts/dosh/pkgs/container/dosh)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-The current product supports guided budget setup, budget-cycle planning, income and expense tracking, optional scheduled Auto Expense automation, transaction-backed balance movement, savings and investment planning, close-out workflows, app-wide regional formatting with localized amount entry and operator-triggered calculator input, a budget-overview calendar with bounded upcoming-cycle visibility, and a meaningful automated regression baseline.
+**Dosh** is a workflow-driven personal finance application designed for people who want intentional control over their money without the complexity of traditional accounting software.
 
-## Start Here
+## What is Dosh?
 
-This README is the top-level orientation document for the project.
+Dosh helps you manage your finances through a structured budget cycle approach:
 
-Use it to understand:
+- **Guided Budget Setup** — Define income sources, expense categories, savings goals, and investment plans
+- **Budget Cycle Planning** — Create and manage budget cycles with clear start/end dates
+- **Transaction-Backed Tracking** — Record actual income, expenses, and transfers with full ledger transparency
+- **Close-Out Workflows** — Complete budget cycles with carry-forward surplus handling and historical snapshots
+- **Budget Health Insights** — Get supportive, explainable assessments of your budget's setup and execution health
+- **Regional Formatting** — Automatic locale-aware date, currency, and number formatting
 
-- what Dosh is
-- the current technical shape of the repository
-- where to go next in the documentation set
+## Quick Start
 
-For new AI or agent sessions:
+### Prerequisites
 
-1. read this file first
-2. then read [AGENTS.md](/home/ubuntu/dosh/AGENTS.md) for operational constraints and current state
-3. then read [ROADMAP.md](/home/ubuntu/dosh/docs/ROADMAP.md) to identify the release-stage scope
-4. then follow the links from there into the relevant activity, plan, history, or testing documents
+- [Docker](https://docs.docker.com/get-docker/)
+- [Docker Compose](https://docs.docker.com/compose/install/)
 
-## Project Snapshot
+### Deployment
 
-- Backend: FastAPI, SQLAlchemy, SQLite
-- Frontend: React 18, Vite, React Query, React Router
-- Testing: `pytest`, Jest with React Testing Library, Playwright
-- Deployment path: Docker Compose (single backend service; the backend image builds and serves the React frontend directly)
-- Docker Compose note: when working on Docker-related deployment or runtime setup, always check for [docker-compose.override.yml](/home/ubuntu/dosh/docker-compose.override.yml) and apply it when present in the development environment
-- Core product shape: guided budgeting, explicit budget-cycle lifecycle, ledger-backed transaction movement, close-out flow, setup assessment, budget health, app-wide localisation for regional display, date handling, amount input, and calendar-based timing visibility on the budget overview
+1. Create a `docker-compose.yml` file:
 
-## Repository Layout
+```yaml
+services:
+  dosh:
+    image: ghcr.io/mixednutts/dosh:latest
+    container_name: dosh
+    restart: unless-stopped
+    volumes:
+      - dosh-data:/app/data
+    environment:
+      - DATABASE_URL=sqlite:////app/data/dosh.db
+      - TZ=Australia/Sydney
+    ports:
+      - "3080:3080"
 
-```text
-dosh/
-├── README.md
-├── backend/
-├── frontend/
-├── docker-compose.yml
-└── docs/
-    ├── DOCUMENTATION_FRAMEWORK.md
-    ├── DOCUMENT_REGISTER.md
-    ├── DEVELOPMENT_ACTIVITIES.md
-    ├── CHANGES.md
-    ├── AGENTS.md (project context and agent constraints)
-    ├── plans/
-    └── tests/
+volumes:
+  dosh-data:
 ```
 
-## Documentation Map
+2. Start the application:
 
-### Start and Orientation
+```bash
+docker compose up -d
+```
 
-- [AGENTS.md](/home/ubuntu/dosh/AGENTS.md): the working handoff document for future AI sessions, containing operational constraints, current state, and project context
-- [MIGRATION_AND_RELEASE_MANAGEMENT.md](/home/ubuntu/dosh/docs/MIGRATION_AND_RELEASE_MANAGEMENT.md): the source of truth for semantic versioning, Alembic migrations, and release sequencing
-- [GITHUB_RELEASE_RUNBOOK.md](/home/ubuntu/dosh/docs/GITHUB_RELEASE_RUNBOOK.md): the high-level operator guide for GitHub-managed releases, private-repo token setup, and the current manual deployment handoff
-- [RELEASE_NOTES.md](/home/ubuntu/dosh/docs/RELEASE_NOTES.md): app-facing release notes shown in Dosh and maintained in the repo
-- [DOCUMENT_REGISTER.md](/home/ubuntu/dosh/docs/DOCUMENT_REGISTER.md): the map of project documents, ownership boundaries, and source-of-truth scope
-- [DOCUMENTATION_FRAMEWORK.md](/home/ubuntu/dosh/docs/DOCUMENTATION_FRAMEWORK.md): the generic documentation structure and governance framework
+3. Access Dosh at `http://localhost:3080`
 
-### Roadmap and Active Work
+4. Create your first budget and start tracking!
 
-- [ROADMAP.md](/home/ubuntu/dosh/docs/ROADMAP.md): the release-shaped roadmap across beta, Phase 2, and longer-view opportunities
-- [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md): roadmap areas, activity groups, active work, and near-term backlog
+## Configuration
 
-### History and Decisions
+### Environment Variables
 
-- [CHANGES.md](/home/ubuntu/dosh/docs/CHANGES.md): implementation history, major decisions, and changes that should not be accidentally undone
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `DATABASE_URL` | SQLite database path | `sqlite:////app/data/dosh.db` |
+| `TZ` | Timezone for budget cycle boundaries | `Australia/Sydney` |
+| `GITHUB_RELEASES_TOKEN` | GitHub token for release notes (optional) | — |
 
-### Plans
+### Persistent Storage
 
-- [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_CYCLE_LIFECYCLE_PLAN.md): lifecycle, close-out, carry-forward, and continuity rules
-- [SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md](/home/ubuntu/dosh/docs/plans/SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md): setup validity, readiness, and downstream protection rules
-- [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/docs/plans/BUDGET_HEALTH_ADDENDUM.md): budget health direction and staged health design
-- [INCOME_TRANSACTIONS_UNIFICATION_AND_LEGACY_LEDGER_CLEANUP_PLAN.md](/home/ubuntu/dosh/docs/plans/INCOME_TRANSACTIONS_UNIFICATION_AND_LEGACY_LEDGER_CLEANUP_PLAN.md): transaction unification and ledger cleanup planning
-- [INLINE_EXPRESSION_AMOUNT_INPUT_PLAN.md](/home/ubuntu/dosh/docs/plans/INLINE_EXPRESSION_AMOUNT_INPUT_PLAN.md): implemented inline arithmetic amount-entry scope, parsing boundaries, and modal UX decisions
-- [LOCALISATION_SUPPORT_PLAN.md](/home/ubuntu/dosh/docs/plans/LOCALISATION_SUPPORT_PLAN.md): implemented regional formatting, numeric masked amount input, operator-triggered calculator behavior, and budget preference resolution boundaries
-- [AI_INSIGHT_ON_CLOSEOUT_PLAN.md](/home/ubuntu/dosh/docs/plans/AI_INSIGHT_ON_CLOSEOUT_PLAN.md): supporting close-out planning insight
-- [GITHUB_RELEASE_MANAGEMENT_WORKFLOW_PLAN.md](/home/ubuntu/dosh/docs/plans/GITHUB_RELEASE_MANAGEMENT_WORKFLOW_PLAN.md): GitHub-managed release-tagging, release publishing, and in-app release-info workflow
-- [AUTO_EXPENSE_PLAN.md](/home/ubuntu/dosh/docs/plans/AUTO_EXPENSE_PLAN.md): budget-level Auto Expense rules, AUTO/MANUAL eligibility, scheduler behavior, and migration expectations
+Dosh stores all data in a SQLite database within the Docker volume `dosh-data`. To backup your data:
 
-### Testing
+```bash
+docker exec dosh sh -c "cat /app/data/dosh.db" > dosh-backup-$(date +%Y%m%d).db
+```
 
-- [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md): testing posture, priorities, and coverage intent
-- [TEST_EXPANSION_PLAN.md](/home/ubuntu/dosh/docs/tests/TEST_EXPANSION_PLAN.md): planned test expansion and next coverage slices
-- [TEST_RESULTS_SUMMARY.md](/home/ubuntu/dosh/docs/tests/TEST_RESULTS_SUMMARY.md): recent verification outcomes and recorded results
+To restore from backup:
 
-## Development Notes
+```bash
+docker cp dosh-backup-YYYYMMDD.db dosh:/app/data/dosh.db
+docker restart dosh
+```
 
-- `Budget Cycle` is the preferred user-facing wording where it improves clarity, while backend naming may still use `period` for stability.
-- The product direction is practical, supportive, and workflow-driven rather than accounting-heavy.
-- The current release baseline is `0.3.2-alpha`, displayed in the UI as `v0.3.2-alpha`.
-- Versioning, migration naming, and release-step expectations are defined in [MIGRATION_AND_RELEASE_MANAGEMENT.md](/home/ubuntu/dosh/docs/MIGRATION_AND_RELEASE_MANAGEMENT.md).
-- Published GitHub Releases are now the app-facing source for in-app release information, while [RELEASE_NOTES.md](/home/ubuntu/dosh/docs/RELEASE_NOTES.md) remains the repo-managed source used to generate those release bodies.
-- Detailed roadmap, plan, and testing content should live in the next-layer documents above rather than growing this README.
+## Documentation
 
-## SonarQube
+For detailed documentation, development guides, and architecture decisions:
 
-The repository includes a GitHub Actions workflow at [.github/workflows/sonarqube.yml](/home/ubuntu/dosh/.github/workflows/sonarqube.yml) and scanner settings in [sonar-project.properties](/home/ubuntu/dosh/sonar-project.properties).
+- **[User Guide & Features](docs/)** — Complete documentation for using Dosh
+- **[Development Setup](docs/DEVELOPMENT_ACTIVITIES.md)** — Contributing and development workflows
+- **[Release Notes](docs/RELEASE_NOTES.md)** — Version history and changelog
+- **[Architecture & Plans](docs/plans/)** — Design documents and feature specifications
 
-To enable analysis in your GitHub repository:
+## Tech Stack
 
-1. create the project in SonarQube
-2. add a repository variable named `SONAR_HOST_URL`
-3. add a repository variable named `SONAR_PROJECT_KEY`
-4. add a repository secret named `SONAR_TOKEN`
+- **Backend:** Python 3.12, FastAPI, SQLAlchemy, SQLite
+- **Frontend:** React 18, Vite, React Query, React Router
+- **Testing:** pytest, Jest, React Testing Library, Playwright
+- **Deployment:** Docker, Docker Compose, GitHub Container Registry
 
-The workflow generates:
+## License
 
-- Python coverage at `backend/coverage.xml`
-- JavaScript coverage at `frontend/coverage/lcov.info`
+[MIT License](LICENSE)
 
-Those reports are then consumed by SonarQube during the scan step.
+## Support
 
-To inspect the latest workflow artifact locally (sanitized reports, issue summaries, and component metrics), use [`scripts/fetch_latest_sonar_artifact.sh`](/home/ubuntu/dosh/scripts/fetch_latest_sonar_artifact.sh).
+For issues, feature requests, or contributions, please visit the [GitHub repository](https://github.com/mixednutts/dosh).
+
+---
+
+**Note:** Dosh is currently in beta. While fully functional for personal finance management, APIs and features may evolve as the project matures.

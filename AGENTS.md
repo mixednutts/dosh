@@ -219,11 +219,31 @@ python3 -m pytest tests/
 
 When starting a new session:
 
-1. **Read README.md** - Project overview
+1. **Read README.md** - User-facing project overview
 2. **Read this AGENTS.md** - Operational constraints (hard controls)
 3. **Review Current Project State below** - Active focus and guardrails
 
 For document changes, follow [DOCUMENTATION_FRAMEWORK.md](./docs/DOCUMENTATION_FRAMEWORK.md).
+
+---
+
+## Document Pathing
+
+Use this table to quickly locate the canonical document for any topic:
+
+| Topic | Document | Path |
+|-------|----------|------|
+| Project overview | README.md | `/README.md` |
+| Agent initialization & hard controls | AGENTS.md | `/AGENTS.md` |
+| Release-stage scope & priorities | ROADMAP.md | `/docs/ROADMAP.md` |
+| Active work areas & backlog | DEVELOPMENT_ACTIVITIES.md | `/docs/DEVELOPMENT_ACTIVITIES.md` |
+| Implementation history & decisions | CHANGES.md | `/docs/CHANGES.md` |
+| Release workflow & deployment guide | GITHUB_RELEASE_RUNBOOK.md | `/docs/GITHUB_RELEASE_RUNBOOK.md` |
+| Versioning & migration policy | MIGRATION_AND_RELEASE_MANAGEMENT.md | `/docs/MIGRATION_AND_RELEASE_MANAGEMENT.md` |
+| App-facing release notes | RELEASE_NOTES.md | `/docs/RELEASE_NOTES.md` |
+| Testing posture & priorities | TEST_STRATEGY.md | `/docs/tests/TEST_STRATEGY.md` |
+| Documentation governance | DOCUMENTATION_FRAMEWORK.md | `/docs/DOCUMENTATION_FRAMEWORK.md` |
+| Document inventory & ownership | DOCUMENT_REGISTER.md | `/docs/DOCUMENT_REGISTER.md` |
 
 ---
 
@@ -247,7 +267,7 @@ For document changes, follow [DOCUMENTATION_FRAMEWORK.md](./docs/DOCUMENTATION_F
   - `backend/Dockerfile` now uses a multi-stage build: Node stage compiles the React frontend, then the Python stage copies `dist/` into `/app/frontend_dist`.
   - `backend/app/main.py` serves the static SPA via a custom `SPAStaticFiles` mount with `index.html` fallback for React Router.
   - `docker-compose.yml` simplified to one service; `docker-compose.override.yml` Traefik labels moved to `backend`.
-  - Updated `scripts/release_with_migrations.sh` and `scripts/bump_version.py` to reflect the single-image build.
+  - Updated `scripts/bump_version.py` to reflect the single-image build.
   - Deployed to local Docker with override and verified `/api/health` and root `/` serving the app correctly.
 - **Budget Health Engine — Global Metrics and Expanded Scoring (COMPLETED):** Assessed, planned, and implemented a refined Budget Health Engine built around a global code-based metric registry instead of per-budget DB metric rows.
   - Removed the `HealthMetric` DB table; metrics are now defined globally in `backend/app/health_engine/system_metrics.py`.
@@ -309,26 +329,34 @@ The phrase "do not assign a concrete next version number until you are ready to 
 ([GITHUB_RELEASE_RUNBOOK.md](/home/ubuntu/dosh/docs/GITHUB_RELEASE_RUNBOOK.md)) refers to code 
 **already deployed to production**, not future planned releases.
 
-**Local-First Release Workflow (this environment is the primary build and deploy authority):**
+**Local Development Workflow (this server):**
 
-This environment is the canonical development, build, and initial deployment platform. 
-The GitHub repository and workflows exist downstream for public release management, 
-quality-gate validation, and future Docker image publishing.
+This server is the canonical development and build platform.
+The GitHub repository and workflows exist downstream for public release management,
+quality-gate validation, and Docker image publishing to GHCR.
 
 Canonical sequence:
-1. Develop and build locally in this environment
-2. Deploy to the local Docker container (`scripts/release_with_migrations.sh`) — this container carries the user's real production data and also serves as the validation/test platform
-3. Validate directly in the running container (the preferred "test in production" approach)
+1. Develop and build locally on this server
+2. Build and run via Docker Compose with override:
+   ```bash
+   docker compose up --build -d
+   ```
+   The `docker-compose.override.yml` automatically provides:
+   - `build: .` to compile from local source instead of pulling GHCR
+   - Traefik labels for external HTTPS access at `dosh.mixednutts.ddns.net`
+   - `GITHUB_RELEASES_TOKEN` for in-app release notes
+3. Validate directly in the running container
 4. Bump version to match what's now running (`python3 scripts/bump_version.py X.Y.Z-alpha`)
 5. Move RELEASE_NOTES.md content from `## Unreleased` to `## X.Y.Z-alpha | released | YYYY-MM-DD`
-6. Push to GitHub `main` → SonarQube workflow runs → auto-creates release tag → GitHub Release is published
-7. *(Future)* GitHub Actions will build and publish the Docker image from the validated tag
+6. Push to GitHub `main` → SonarQube workflow runs → auto-creates release tag → GitHub Release is published → GHCR image is built and published
+7. Production server pulls the new GHCR image
 
 Important implications:
 - GitHub is **downstream**, not upstream. The SonarQube gate validates code that is already running locally.
 - If the GitHub workflow fails after local version bump, the fix is applied locally, redeployed, and then pushed.
 - PRs are not currently used; changes push directly from local `main` to GitHub `main`. PRs may be introduced later as the project matures or goes public.
 - The version bump must happen **after** local deployment so the canonical version matches the deployed state.
+- Production is managed on a separate server and is not part of this development environment.
 
 If production is running untagged code, bump the version immediately so the 
 `/api/release-notes` endpoint can correctly identify `current_release`.
@@ -689,9 +717,14 @@ These rules apply to ANY future session involving an approved implementation pla
 - The local `dosh.db` file is NOT the production database
 - Migrations must run INSIDE the container: `docker exec dosh alembic ...`
 - Never copy local files to Docker volumes: `sudo cp ... /var/lib/docker/volumes/...`
-- **ALWAYS use `INCLUDE_OVERRIDE=true` when running `release_with_migrations.sh`** - the production environment requires `docker-compose.override.yml` for Traefik networking and HTTPS configuration:
+- **Build and run locally using Docker Compose:** The `docker-compose.override.yml` is automatically merged and provides the local build context plus Traefik networking:
   ```bash
-  INCLUDE_OVERRIDE=true ./scripts/release_with_migrations.sh
+  docker compose up --build -d
+  ```
+- **For a fresh start (rebuild from scratch):**
+  ```bash
+  docker compose down
+  docker compose up --build -d
   ```
 
 **The only rule during work:** NEVER commit (hard control #1)
@@ -749,7 +782,7 @@ git push origin main --force-with-lease  # if needed
 
 ---
 
-**Last Updated:** 2026-04-11 (consolidated duplicate controls #6/#8; added deployment awareness, external plan document check; documented data loss incident)
+**Last Updated:** 2026-04-21 (updated dev framework: production moved to separate server, local dev uses `docker compose up --build`, port 3080, GHCR deployment, removed `release_with_migrations.sh`, added document pathing)
 **Framework Version:** 1.0 (per DOCUMENTATION_FRAMEWORK.md)
 
 ---
