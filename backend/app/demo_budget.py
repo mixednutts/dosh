@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import datetime, timedelta
 from decimal import Decimal
 
@@ -9,7 +10,7 @@ from sqlalchemy.orm import Session
 from .cycle_constants import ACTIVE, CLOSED, PLANNED
 from .cycle_management import assign_period_lifecycle_states, close_cycle, ordered_budget_periods
 from .health_engine_seed import create_default_matrix_for_budget
-from .models import BalanceType, Budget, ExpenseItem, IncomeType, InvestmentItem, PeriodIncome
+from .models import BalanceType, Budget, BudgetHealthMatrixItem, ExpenseItem, IncomeType, InvestmentItem, PeriodIncome
 from .routers.periods import generate_period
 from .schemas import PeriodGenerateRequest
 from .time_utils import app_now_naive
@@ -25,6 +26,24 @@ from .transaction_ledger import (
 
 def _month_start(value):
     return value.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+
+def _configure_demo_health_matrix(budget: Budget, db: Session) -> None:
+    """Set relaxed health metric parameters so the demo budget shows green."""
+    matrix = db.query(BudgetHealthMatrixItem).filter(
+        BudgetHealthMatrixItem.matrix_id == budget.health_matrices[0].matrix_id
+    )
+    param_updates = {
+        "budget_vs_actual_amount": {"upper_tolerance_amount": 200, "upper_tolerance_pct": 10},
+        "budget_vs_actual_lines": {"upper_tolerance_instances": 3, "upper_tolerance_pct": 20},
+        "in_cycle_budget_adjustments": {"upper_tolerance_instances": 5},
+        "budget_cycles_pending_closeout": {"upper_tolerance_instances": 5},
+    }
+    for item in matrix:
+        if item.metric_key in param_updates:
+            current = json.loads(item.health_metric_parameters or "{}")
+            current.update(param_updates[item.metric_key])
+            item.health_metric_parameters = json.dumps(current)
 
 
 def _create_demo_setup(db: Session) -> Budget:
@@ -111,10 +130,10 @@ def _create_demo_setup(db: Session) -> Budget:
             expensedesc="Groceries",
             active=True,
             freqtype="Every N Days",
-            frequency_value=7,
+            frequency_value=4,
             paytype="MANUAL",
             revisionnum=0,
-            expenseamount=Decimal("140.00"),
+            expenseamount=Decimal("80.00"),
             sort_order=1,
             default_account_desc="Everyday Account",
             effectivedate=datetime(2020, 1, 1),
@@ -544,6 +563,27 @@ def create_standard_demo_budget(db: Session) -> Budget:
         True,
         db,
     )
+    # Close out pending cycles so overall health shows green
+    close_cycle(
+        periods[1],
+        budget,
+        pending_patterns[0]["comments"],
+        pending_patterns[0]["goals"],
+        False,
+        True,
+        db,
+    )
+    close_cycle(
+        periods[2],
+        budget,
+        pending_patterns[1]["comments"],
+        pending_patterns[1]["goals"],
+        False,
+        True,
+        db,
+    )
+    db.flush()
+    _configure_demo_health_matrix(budget, db)
     assign_period_lifecycle_states(budget.budgetid, db)
     db.flush()
 

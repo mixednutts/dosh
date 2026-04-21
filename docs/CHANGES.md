@@ -4,7 +4,46 @@ This document captures the key product and implementation changes made during re
 
 It is intended to complement [README.md](/home/ubuntu/dosh/README.md), not replace it.
 
-## Latest Session: UX Polish, Dev Mode Removal, and Demo Budget Hardening (0.6.7-alpha) (2026-04-20)
+## Latest Session: Demo Budget Polish and README Dictionary Definition (0.6.8-alpha) (2026-04-21)
+
+### What changed
+
+- **Sidebar budget description text wrapping:**
+  - `Layout.jsx` budget list cards now use `break-words` instead of `truncate`.
+  - Long budget names and descriptions wrap to multiple lines rather than being cut off with ellipsis.
+  - Rationale: the narrow sidebar width made truncation unusable for typical budget names.
+
+- **Demo budget health seed data tuned for green status:**
+  - Added `_configure_demo_health_matrix()` in `demo_budget.py` to set relaxed health metric parameters at seed time.
+  - Parameters adjusted: `budget_vs_actual_amount` tolerance $200 + 10%, `budget_vs_actual_lines` tolerance 3 lines + 20%, `in_cycle_budget_adjustments` tolerance 5, `budget_cycles_pending_closeout` tolerance 5.
+  - All demo budget cycles (periods 1, 2, 3) are now closed out during seeding so the overall health score shows "Strong".
+  - Rationale: the demo budget is a first-run walkthrough experience; showing red health scores on initial load is misleading.
+
+- **Demo budget grocery scheduling spread across period:**
+  - Changed Groceries `frequency_value` from 7 to 4 days.
+  - Adjusted `expenseamount` from $140.00 to $80.00 to maintain similar total budget impact.
+  - Rationale: every-7-days caused all grocery occurrences to land on the same day of the week, producing unrealistic calendar clustering.
+
+- **README.md dictionary definition box:**
+  - Added a bordered dictionary-style definition block under the `# Dosh` heading.
+  - Includes pronunciation, part-of-speech tags, definition, and example quote in smaller `<sub>` font.
+  - Rationale: explains the product name origin (Australian/British slang for money) for new visitors.
+
+### Files touched
+
+- `frontend/src/components/Layout.jsx`
+- `backend/app/demo_budget.py`
+- `README.md`
+
+### Decisions preserved
+
+- Health metric parameter changes are seed-data only; they do not affect the global `system_metrics.py` defaults. New budgets still get the original stricter defaults.
+- Demo budget cycle close-outs happen automatically during `create_standard_demo_budget()` so the seeded state is deterministic and health-scoring friendly.
+- The `break-words` change is sidebar-local; other `truncate` usages in the app (e.g. calendar events, budget detail page) were not touched.
+
+---
+
+## Previous Session: UX Polish, Dev Mode Removal, and Demo Budget Hardening (0.6.7-alpha) (2026-04-20)
 
 ### What changed
 

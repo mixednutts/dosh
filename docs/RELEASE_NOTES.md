@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Changed
+
+- Sidebar budget list now wraps long budget names and descriptions to multiple lines instead of truncating them.
+- Demo budget health thresholds are now more relaxed so first-time users see green "Strong" health scores instead of warnings.
+- Demo budget grocery expenses are now spread across the period (every 4 days instead of weekly) for a more realistic calendar view.
+
 ### Fixed
 
 - Fixed budget deletion failing with "FOREIGN KEY constraint failed" error. The issue was caused by legacy transaction tables (`periodexpense_transactions` and `periodinvestment_transactions`) that were not fully removed during the unified ledger migration. An Alembic migration now drops these tables if they still exist.

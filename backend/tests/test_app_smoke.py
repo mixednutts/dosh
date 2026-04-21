@@ -189,8 +189,8 @@ def test_demo_budget_endpoint_creates_seeded_budget_with_closed_pending_current_
         .all()
     )
     assert len(periods) == 7
-    assert len([period for period in periods if period.cycle_status == "CLOSED"]) == 1
-    assert len([period for period in periods if period.cycle_status == "ACTIVE"]) == 3
+    assert len([period for period in periods if period.cycle_status == "CLOSED"]) == 3
+    assert len([period for period in periods if period.cycle_status == "ACTIVE"]) == 1
     assert len([period for period in periods if period.cycle_status == "PLANNED"]) == 3
 
     snapshots = (
@@ -199,7 +199,7 @@ def test_demo_budget_endpoint_creates_seeded_budget_with_closed_pending_current_
         .filter(FinancialPeriod.budgetid == budgetid)
         .all()
     )
-    assert len(snapshots) == 1
+    assert len(snapshots) == 3
     assert all(snapshot.comments for snapshot in snapshots)
     assert all(snapshot.goals for snapshot in snapshots)
 

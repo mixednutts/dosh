@@ -540,6 +540,10 @@ Status:
 
 - `Completed`
 
+- `Completed`: sidebar budget list cards now wrap text with `break-words` instead of `truncate`
+- `Completed`: demo budget health metric parameters tuned to relaxed thresholds so first-run health scores show green
+- `Completed`: demo budget grocery expense frequency changed from every 7 days to every 4 days to spread occurrences across the period
+- `Completed`: demo budget now closes out all historical cycles during seeding so overall health shows "Strong"
 - `Completed`: update the demo seed to match the lighter revision workflow and the newer transaction-backed planning-history model
 - `Completed`: update the demo seed to create default health matrices and seed engine catalogs automatically
 - `Completed`: keep development and demo data realistic enough that health surfaces remain meaningful during walkthroughs and regression checks

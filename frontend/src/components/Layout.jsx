@@ -99,8 +99,8 @@ function BudgetList({ budgets, currentBudgetId, onNav }) {
                 : 'border-gray-200 bg-white text-gray-700 hover:border-dosh-400 hover:bg-dosh-50 hover:text-dosh-900 dark:border-slate-800 dark:bg-slate-950/85 dark:text-slate-200 dark:hover:border-dosh-700 dark:hover:bg-slate-900 dark:hover:text-white'
             )}
           >
-            <span className="block truncate font-medium">{budget.description || 'Untitled'}</span>
-            <span className={clsx('mt-0.5 block truncate text-xs', budget.budgetid === currentBudgetId ? 'text-dosh-100' : 'text-dosh-600 dark:text-dosh-400')}>
+            <span className="block font-medium break-words">{budget.description || 'Untitled'}</span>
+            <span className={clsx('mt-0.5 block text-xs', budget.budgetid === currentBudgetId ? 'text-dosh-100' : 'text-dosh-600 dark:text-dosh-400')}>
               {budget.budgetowner} · {budget.budget_frequency}
             </span>
           </Link>

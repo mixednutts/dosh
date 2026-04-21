@@ -315,6 +315,11 @@ Use this table to quickly locate the canonical document for any topic:
   - Tests: 12 backend tests (`test_backup_restore.py`) and 3 frontend tests (`BudgetsPage.test.jsx`) added.
   - Deployed to local Docker with override and verified; `/api/health` returns `{"status":"ok","app":"Dosh"}`.
 - **Version bump:** `0.6.7-alpha` → `0.6.8-alpha` via `scripts/bump_version.py`. Release notes cutover completed. Validation via `scripts/release_management.py validate --ref WORKTREE --require-release-entry` passed.
+- **Demo Budget Polish and README Definition (this session):**
+  - Sidebar budget list text now wraps with `break-words` instead of `truncate` (`Layout.jsx`).
+  - Demo seed data tuned: relaxed health metric parameters, all historical cycles auto-closed, Groceries spread from every-7-days to every-4-days (`demo_budget.py`).
+  - README.md updated with bordered dictionary-style definition of "dosh" under the product heading.
+  - No version bump — these are polish and documentation changes on top of `0.6.8-alpha`.
 
 **Guardrails in Effect:**
 - Test-by-change discipline (tests with behavior changes)

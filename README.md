@@ -1,4 +1,13 @@
 # Dosh
+<div style="border:1px solid #555; border-radius:6px; padding:8px 12px; display:inline-block; line-height:1.15;">
+<sub><sup><b>dosh</b> | \ˈdɒʃ\</sup></sub><br>
+<sub>noun <i>informal</i> <code>chiefly British & Australian</code></sub><br>
+<sub>A slang term for money, typically referring to physical cash or the "readies" one has available
+for immediate spending. Often used in Australia to denote the necessary funds for a purchase
+or a "fair whack" of currency.</sub><br>
+<sub><i>"It's a cracking ute, mate, but it'll cost you a serious bit of <b>dosh</b>."</i></sub>
+</div>
+
 
 [![Version](https://img.shields.io/github/v/release/mixednutts/dosh?include_prereleases&label=version)](https://github.com/mixednutts/dosh/releases)
 [![Docker](https://img.shields.io/badge/docker-ghcr.io-blue?logo=docker)](https://github.com/mixednutts/dosh/pkgs/container/dosh)
