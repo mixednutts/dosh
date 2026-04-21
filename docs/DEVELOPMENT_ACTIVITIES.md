@@ -831,6 +831,8 @@ Status:
 - `Completed`: align the investment spent pill wording and behavior with the expense spent pill so both outflow workflows feel consistent
 - `Completed`: ensure `Surplus (Budget)` reflects deficit on expense lines even when the affected expense line is already in `Paid` state
 - `Completed`: fix the sidebar budget chevron behavior so collapsing a budget in the navigation panel also collapses its budget cycles reliably
+- `Completed`: fix budget deletion failing with "FOREIGN KEY constraint failed" error caused by legacy transaction tables (`periodexpense_transactions`, `periodinvestment_transactions`) not being fully removed during unified ledger migration; added Alembic migration `z1_drop_legacy_transaction_tables` to drop these tables if they exist
+- `Completed`: fix stale calendar data after budget deletion by invalidating `['periods', budgetId]` and `['budget-health', budgetId]` query keys in the `remove` mutation onSuccess handler
 - `Completed`: fix the `Go to budget cycles` action from Setup Assessment on the project setup page, which currently results in a blank screen
 - `Completed`: fix the `Add New Income Item` modal so it supports creating a brand-new income line inline, matching the supported `Add New Expense Item` modal workflow
 - `Completed`: resolve the dominant SonarQube frontend issue cluster by adding explicit React props validation across shared components, setup tabs, and high-traffic budget pages
@@ -917,6 +919,7 @@ Status:
 - `Completed`: add localisation regression coverage for budget preference validation, `Intl`-based formatting across representative locales, masked amount input, calculator behavior, and touched high-traffic surfaces
 - `Completed`: add backend regression coverage for generalised account-transfer validation, including committed-amount logic for paid and non-paid lines (`test_account_transfer_validation.py`)
 - `Completed`: add backend regression coverage for expense entry account routing, including default-account fallback and transaction-level override (`test_expense_entry_account_routing.py`)
+- `Completed`: add backend regression coverage for budget deletion with legacy transaction tables (`test_budget_delete_with_legacy_tables.py`), verifying FK constraint failures and confirming the fix
 - `Completed`: add backend regression coverage for dynamic account balance calculation, including frozen-anchor behavior, forward-limit handling, balance propagation, and limit-exceeded responses (`test_dynamic_account_balances.py`)
 - `Completed`: add frontend regression coverage for the balance-calculation-limit banner in `BalanceSection.test.jsx`
 - `Completed`: updated backend tests around dynamic balances, transactions, close-out, and budget setup to account for investment two-sided movement and balance-limit flag behavior

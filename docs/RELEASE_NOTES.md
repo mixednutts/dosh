@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Fixed
+
+- Fixed budget deletion failing with "FOREIGN KEY constraint failed" error. The issue was caused by legacy transaction tables (`periodexpense_transactions` and `periodinvestment_transactions`) that were not fully removed during the unified ledger migration. An Alembic migration now drops these tables if they still exist.
+- Fixed stale data appearing in the calendar after deleting a budget. The frontend now properly invalidates cached period and health data when a budget is deleted.
+
 ### Changed
 
 - Restructured project documentation with a new user-facing README.md containing product overview and Docker deployment instructions. Development documentation moved to AGENTS.md and docs/.

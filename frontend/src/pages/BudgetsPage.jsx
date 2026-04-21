@@ -1295,7 +1295,11 @@ export default function BudgetsPage() {
 
   const remove = useMutation({
     mutationFn: deleteBudget,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['budgets'] }),
+    onSuccess: (_, budgetId) => {
+      qc.invalidateQueries({ queryKey: ['budgets'] })
+      qc.invalidateQueries({ queryKey: ['periods', budgetId] })
+      qc.invalidateQueries({ queryKey: ['budget-health', budgetId] })
+    },
   })
 
   const handleSubmit = form => {
