@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from collections import defaultdict
 import csv
 from datetime import datetime, timedelta
@@ -70,6 +71,8 @@ from ..transaction_ledger import (
     validate_transfer_against_source_account,
 )
 from .expense_items import update_expense_item as update_expense_item_setup
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/budgets/{budgetid}/periods", tags=["periods"])
 
@@ -857,6 +860,7 @@ def generate_period(budgetid: int, payload: PeriodGenerateRequest, db: DbSession
     recalculate_budget_chain(budgetid, db)
     db.commit()
     db.refresh(last_period)
+    logger.info("generate_period completed")
     return last_period
 
 
@@ -1080,6 +1084,7 @@ def set_period_lock(budgetid: int, finperiodid: int, payload: PeriodLockRequest,
     period.islocked = payload.islocked
     db.commit()
     db.refresh(period)
+    logger.info("set_period_lock completed")
     return period
 
 
@@ -1112,6 +1117,7 @@ def update_income_actual(budgetid: int,
     sync_period_state(finperiodid, db)
     db.commit()
     db.refresh(pi)
+    logger.info("update_income_actual completed")
     return pi
 
 
@@ -1142,6 +1148,7 @@ def add_income_actual(budgetid: int,
     sync_period_state(finperiodid, db)
     db.commit()
     db.refresh(pi)
+    logger.info("add_income_actual completed")
     return pi
 
 
@@ -1186,6 +1193,7 @@ def update_expense_actual(budgetid: int,
     sync_period_state(finperiodid, db)
     db.commit()
     db.refresh(pe)
+    logger.info("update_expense_actual completed")
     return _enrich_expenses([pe], db)[0]
 
 
@@ -1228,6 +1236,7 @@ def add_expense_actual(budgetid: int,
     sync_period_state(finperiodid, db)
     db.commit()
     db.refresh(pe)
+    logger.info("add_expense_actual completed")
     return _enrich_expenses([pe], db)[0]
 
 
@@ -1341,6 +1350,7 @@ def add_expense_to_period(budgetid: int,
 
     db.commit()
     db.refresh(pe)
+    logger.info("add_expense_to_period completed")
     return _enrich_expenses([pe], db)[0]
 
 
@@ -1432,6 +1442,7 @@ def add_income_to_period(budgetid: int,
 
     db.commit()
     db.refresh(pi)
+    logger.info("add_income_to_period completed")
     return pi
 
 
@@ -1489,6 +1500,7 @@ def account_transfer(
 
     db.commit()
     db.refresh(pi)
+    logger.info("account_transfer completed")
     return pi
 
 
@@ -1610,6 +1622,7 @@ def set_expense_status(budgetid: int,
 
     db.commit()
     db.refresh(pe)
+    logger.info("set_expense_status completed")
     return _enrich_expenses([pe], db)[0]
 
 
@@ -1634,6 +1647,7 @@ def update_period_expense_paytype(budgetid: int,
         db=db,
     )
     db.refresh(pe)
+    logger.info("update_period_expense_paytype completed")
     return _enrich_expenses([pe], db)[0]
 
 
@@ -1646,6 +1660,7 @@ def run_auto_expenses_for_period(budgetid: int, finperiodid: int, db: DbSession)
     db.commit()
     assign_period_lifecycle_states(period.budgetid, db)
     db.commit()
+    logger.info("run_auto_expenses_for_period completed")
     return AutoExpenseRunResultOut(
         created_count=result.created_count,
         skipped_count=result.skipped_count,
@@ -1725,6 +1740,7 @@ def update_income_budget(budgetid: int,
 
     db.commit()
     db.refresh(pi)
+    logger.info("update_income_budget completed")
     return pi
 
 
@@ -1775,6 +1791,7 @@ def set_income_status(budgetid: int,
 
     db.commit()
     db.refresh(pi)
+    logger.info("set_income_status completed")
     return pi
 
 
@@ -1859,6 +1876,7 @@ def update_expense_budget(budgetid: int,
         .filter(PeriodExpense.finperiodid == finperiodid, PeriodExpense.expensedesc == expensedesc)
         .first()
     )
+    logger.info("update_expense_budget completed")
     return _enrich_expenses([refreshed], db)[0]
 
 
@@ -2005,6 +2023,7 @@ def update_investment_budget(budgetid: int,
 
     db.commit()
     refreshed = db.get(PeriodInvestment, (finperiodid, investmentdesc))
+    logger.info("update_investment_budget completed")
     return _enrich_investments([refreshed], db)[0]
 
 
@@ -2056,6 +2075,7 @@ def set_investment_status(budgetid: int,
 
     db.commit()
     db.refresh(pi)
+    logger.info("set_investment_status completed")
     return _enrich_investments([pi], db)[0]
 
 
@@ -2085,6 +2105,7 @@ def close_out_period(budgetid: int,
         raise HTTPException(409, str(exc)) from exc
     db.commit()
     db.refresh(period)
+    logger.info("close_out_period completed")
     return get_period_detail(budgetid, finperiodid, db)
 
 

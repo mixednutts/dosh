@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+import logging
 from fastapi import APIRouter, HTTPException, Response
 from sqlalchemy.orm import Session
 from ..api_docs import DbSession, error_responses
@@ -12,6 +13,8 @@ from ..schemas import (
 )
 from ..setup_assessment import account_assessment
 from ..transaction_ledger import compute_dynamic_period_balances
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/budgets/{budgetid}/balance-types", tags=["balance-types"])
 period_router = APIRouter(prefix="/budgets/{budgetid}/periods", tags=["period-balances"])
@@ -176,6 +179,7 @@ def create_balance_type(budgetid: int, payload: BalanceTypeCreate, db: DbSession
             recalculate_budget_chain(budgetid, db)
             db.commit()
 
+    logger.info("create_balance_type completed")
     return bt
 
 
@@ -205,6 +209,7 @@ def update_balance_type(
         setattr(bt, k, v)
     db.commit()
     db.refresh(bt)
+    logger.info("update_balance_type completed")
     return bt
 
 
@@ -217,6 +222,7 @@ def delete_balance_type(budgetid: int, balancedesc: str, db: DbSession):
     _assert_balance_delete_allowed(budgetid, balancedesc, db)
     db.delete(bt)
     db.commit()
+    logger.info("delete_balance_type completed", extra={"budget_id": budgetid, "balance_desc": balancedesc})
 
 
 # ── Period Balance endpoints ──────────────────────────────────────────────────
@@ -257,4 +263,5 @@ def update_period_balance(
     period = db.get(FinancialPeriod, finperiodid)
     if not period or period.budgetid != budgetid:
         raise HTTPException(404, "Period not found")
+    logger.info("update_period_balance blocked", extra={"budget_id": budgetid, "finperiodid": finperiodid})
     raise HTTPException(405, "Period balance movement is calculated from transactions and cannot be edited directly")

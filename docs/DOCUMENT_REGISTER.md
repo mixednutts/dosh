@@ -679,6 +679,40 @@ Maintenance notes:
 - update when adding new major sections or completing additional phases
 - track component extraction progress and line count reductions
 
+### STANDARD_LOGGING_PLAN.md
+
+Document:
+
+- [STANDARD_LOGGING_PLAN.md](/home/ubuntu/dosh/docs/plans/STANDARD_LOGGING_PLAN.md)
+
+Document type:
+
+- technical improvement plan
+
+Primary purpose:
+
+- define the implementation approach for standardized structured JSON logging across the FastAPI backend
+
+Primary source-of-truth scope:
+
+- logging configuration module design (`backend/app/logging_config.py`)
+- syslog-style severity naming and JSON formatter behavior
+- third-party logger tuning (`uvicorn.access`, `sqlalchemy.engine`, `alembic`)
+- `print()`-to-logging migration scope across routers, scripts, and migrations
+- testing strategy for logging configuration
+
+Key relationships:
+
+- implemented in `backend/app/logging_config.py` and wired into `backend/app/main.py`
+- applies to all `backend/app/routers/*.py` modules and `backend/app/auto_expense.py`
+- replaces ad-hoc `print()` usage in `backend/scripts/*.py` and selected Alembic migrations
+- test coverage in `backend/tests/test_logging_config.py`
+
+Maintenance notes:
+
+- update if new third-party loggers need tuning or if formatter fields change
+- revise if log level defaults or environment variable names change
+
 ### GITHUB_RELEASE_RUNBOOK.md
 
 Document:

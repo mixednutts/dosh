@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.6.9-alpha | released | 2026-04-22
+
 ### Added
 
 - The New Budget modal now lets you choose locale, currency, timezone, and date format when creating a budget, so your regional preferences are set from the start instead of needing to be adjusted later in Settings.
@@ -31,6 +33,7 @@
 
 ### Infrastructure
 
+- Backend logging is now structured JSON with syslog-style severity levels. Logs are emitted to stdout for Docker compatibility, and the log level is controlled via the `LOG_LEVEL` environment variable (default `INFO`).
 - Added `.env` file support for `GITHUB_RELEASES_TOKEN` configuration, keeping secrets out of version control.
 - Added `/backups` to `.gitignore` for local database backup storage.
 

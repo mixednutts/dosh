@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, HTTPException
 from sqlalchemy.orm import Session
 from ..api_docs import DbSession, error_responses
@@ -12,6 +13,8 @@ from ..setup_history import (
     rebase_item_revisionnum,
     record_setup_revision_event,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/budgets/{budgetid}/investment-items", tags=["investment-items"])
 
@@ -86,6 +89,7 @@ def create_investment_item(budgetid: int, payload: InvestmentItemCreate, db: DbS
     db.add(item)
     db.commit()
     db.refresh(item)
+    logger.info("create_investment_item completed")
     return item
 
 
@@ -137,6 +141,7 @@ def update_investment_item(
         _clear_other_primary_investments(budgetid, item.investmentdesc, db)
     db.commit()
     db.refresh(item)
+    logger.info("update_investment_item completed")
     return item
 
 

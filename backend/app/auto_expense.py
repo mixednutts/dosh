@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from decimal import Decimal
+import logging
 from threading import Event, Lock, Thread
 from time import sleep
 
@@ -16,6 +17,8 @@ from datetime import timezone
 from .time_utils import app_now
 from .transaction_ledger import build_expense_tx, get_primary_account_desc, sync_period_state
 from .cycle_management import cycle_stage, refresh_all_lifecycle_states
+
+logger = logging.getLogger(__name__)
 
 _scheduler_lock = Lock()
 _scheduler_started = False
@@ -190,6 +193,19 @@ def process_auto_expenses_for_period(finperiodid: int, db: Session, *, run_date:
 
     if touched_period:
         sync_period_state(finperiodid, db)
+    if result.created_count:
+        logger.info(
+            "Auto-expenses created for period %d: %d created, %d skipped",
+            finperiodid,
+            result.created_count,
+            result.skipped_count,
+        )
+    elif result.skipped_count:
+        logger.debug(
+            "Auto-expenses skipped for period %d: %d skipped",
+            finperiodid,
+            result.skipped_count,
+        )
     return result
 
 
@@ -207,6 +223,7 @@ def process_daily_auto_expenses(*, run_date: datetime | None = None) -> None:
                 .all()
             )
         ]
+        logger.debug("Processing auto-expenses for %d active period(s)", len(active_period_ids))
         for finperiodid in active_period_ids:
             period = db.get(FinancialPeriod, finperiodid)
             if period and cycle_stage(period) == CURRENT_STAGE:
@@ -225,11 +242,11 @@ def _auto_expense_scheduler_loop() -> None:
                     refresh_all_lifecycle_states(db)
                     db.commit()
             except Exception:
-                pass
+                logger.exception("Auto-expense scheduler: lifecycle refresh failed")
             try:
                 process_daily_auto_expenses(run_date=now)
             except Exception:
-                pass
+                logger.exception("Auto-expense scheduler: daily processing failed")
             last_run_date = today
         sleep(60)
 
@@ -242,3 +259,4 @@ def start_auto_expense_scheduler() -> None:
         thread = Thread(target=_auto_expense_scheduler_loop, name="dosh-auto-expense-scheduler", daemon=True)
         thread.start()
         _scheduler_started = True
+        logger.info("Auto-expense scheduler started")

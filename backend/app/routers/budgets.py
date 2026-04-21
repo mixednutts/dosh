@@ -1,6 +1,7 @@
 import json
 from typing import Any
 
+import logging
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from starlette.responses import Response
 
@@ -23,6 +24,8 @@ from ..schemas import (
 )
 from ..setup_assessment import budget_setup_assessment
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/budgets", tags=["budgets"])
 
 
@@ -40,11 +43,13 @@ def create_budget(payload: BudgetCreate, db: DbSession):
     create_default_matrix_for_budget(db, budget)
     db.commit()
     db.refresh(budget)
+    logger.info("create_budget completed")
     return budget
 
 
 @router.post("/demo", response_model=BudgetOut, status_code=201, responses=error_responses(404))
 def create_demo_budget(db: DbSession):
+    logger.info("create_demo_budget completed")
     return create_standard_demo_budget(db)
 
 
@@ -95,6 +100,7 @@ def update_budget(budgetid: int, payload: BudgetUpdate, db: DbSession):
         setattr(budget, field, value)
     db.commit()
     db.refresh(budget)
+    logger.info("update_budget completed")
     return budget
 
 
@@ -105,6 +111,7 @@ def delete_budget(budgetid: int, db: DbSession):
         raise HTTPException(404, "Budget not found")
     db.delete(budget)
     db.commit()
+    logger.info("delete_budget completed", extra={"budget_id": budgetid})
 
 
 # ── Backup / Restore ─────────────────────────────────────────────────────────
@@ -127,6 +134,7 @@ def backup_budgets(
 
     payload = build_backup_payload(budgets, db)
     content = json.dumps(payload, indent=2)
+    logger.info("backup_budgets completed")
     return Response(
         content=content,
         media_type="application/json",
@@ -190,4 +198,5 @@ def restore_apply(
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
 
+    logger.info("restore_apply completed")
     return result

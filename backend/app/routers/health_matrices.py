@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import json
 
 from fastapi import APIRouter, HTTPException
@@ -7,6 +8,8 @@ from fastapi import APIRouter, HTTPException
 from ..api_docs import DbSession, error_responses
 from ..models import Budget, BudgetHealthMatrix, BudgetHealthMatrixItem
 from ..health_engine.system_metrics import get_system_metric, SYSTEM_METRICS
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/budgets/{budgetid}/health-matrix", tags=["health-matrices"])
 
@@ -101,4 +104,5 @@ def update_matrix_item(
 
     db.commit()
     db.refresh(item)
+    logger.info("update_matrix_item completed")
     return get_budget_health_matrix(budgetid, db)

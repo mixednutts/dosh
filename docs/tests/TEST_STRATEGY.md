@@ -783,6 +783,7 @@ Current initial backend coverage now includes:
 - `Multi Transaction` primary-account use for expense movement
 - `Mixed Accounts` movement routing across transaction, savings, and linked investment accounts
 - clear downstream failure when period investment reference data is missing
+- structured JSON logging configuration: formatter validity, ISO timestamp format, default INFO level, DEBUG override via env, invalid-level fallback to INFO, and third-party logger tuning (uvicorn.access, sqlalchemy.engine)
 
 ### Budget health
 

@@ -1,3 +1,4 @@
+import logging
 """
 Investment transactions — drive actualamount on periodinvestments and
 optionally update the linked account balance.
@@ -12,6 +13,8 @@ from ..models import (
 )
 from ..schemas import InvestmentTxCreate, InvestmentTxOut
 from ..transaction_ledger import build_investment_tx, sync_period_state
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/budgets/{budgetid}/periods/{finperiodid}/investments/{investmentdesc}/transactions",
@@ -109,6 +112,7 @@ def add_transaction(
     sync_period_state(finperiodid, db)
     db.commit()
     db.refresh(tx)
+    logger.info("add_transaction completed")
     return _to_investment_tx_out(tx)
 
 

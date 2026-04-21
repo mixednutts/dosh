@@ -1,11 +1,14 @@
 from typing import Annotated, Optional
 
+import logging
 from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from ..api_docs import DbSession, error_responses
 from ..models import FinancialPeriod, PeriodTransaction
 from ..schemas import PeriodTransactionOut
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/budgets/{budgetid}/periods", tags=["period-transactions"])
 

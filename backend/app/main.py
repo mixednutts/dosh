@@ -1,3 +1,4 @@
+import logging
 import os
 
 from fastapi import FastAPI
@@ -10,6 +11,7 @@ from .auto_expense import start_auto_expense_scheduler
 from .cycle_management import assign_period_lifecycle_states
 from .database import engine
 from . import models as _models  # noqa: F401 - ensure all models are registered
+from .logging_config import configure_logging
 from .models import PayType
 from .release_notes import release_notes_payload
 from .schemas import ReleaseNotesResponseOut
@@ -27,6 +29,9 @@ from .routers import (
     period_transactions,
     health_matrices,
 )
+
+configure_logging()
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Dosh API", version=APP_VERSION)
 
@@ -73,6 +78,10 @@ def seed_reference_data():
         db.close()
 
     start_auto_expense_scheduler()
+    logger.info(
+        "Dosh API started",
+        extra={"version": APP_VERSION, "schema_revision": get_schema_revision()},
+    )
 
 
 @app.get("/api/health")

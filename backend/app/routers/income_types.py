@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, HTTPException
 from sqlalchemy.orm import Session
 from ..api_docs import DbSession, error_responses
@@ -11,6 +12,8 @@ from ..setup_history import (
     rebase_item_revisionnum,
     record_setup_revision_event,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/budgets/{budgetid}/income-types", tags=["income-types"])
 
@@ -62,6 +65,7 @@ def create_income_type(budgetid: int, payload: IncomeTypeCreate, db: DbSession):
     db.add(it)
     db.commit()
     db.refresh(it)
+    logger.info("create_income_type completed")
     return it
 
 
@@ -99,6 +103,7 @@ def update_income_type(
         )
     db.commit()
     db.refresh(it)
+    logger.info("update_income_type completed")
     return it
 
 

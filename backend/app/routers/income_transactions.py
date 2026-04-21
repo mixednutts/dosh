@@ -5,10 +5,13 @@ from fastapi import APIRouter, HTTPException
 from sqlalchemy.orm import Session
 from ..api_docs import DbSession, error_responses
 
+import logging
 from ..cycle_constants import CLOSED, PAID, WORKING
 from ..models import FinancialPeriod, PeriodIncome, PeriodTransaction
 from ..schemas import IncomeTxCreate, IncomeTxOut
 from ..transaction_ledger import TRANSFER_PREFIX, build_income_tx, sync_period_state
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/budgets/{budgetid}/periods/{finperiodid}/income/{incomedesc}/transactions",
@@ -94,6 +97,7 @@ def add_transaction(
     sync_period_state(finperiodid, db)
     db.commit()
     db.refresh(tx)
+    logger.info("add_transaction completed")
     return _to_income_tx_out(tx)
 
 

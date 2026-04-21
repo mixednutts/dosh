@@ -1,3 +1,4 @@
+import logging
 from decimal import Decimal
 from typing import Optional
 from fastapi import APIRouter, HTTPException
@@ -15,6 +16,8 @@ from ..setup_history import (
     rebase_item_revisionnum,
     record_setup_revision_event,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/budgets/{budgetid}/expense-items", tags=["expense-items"])
 
@@ -156,6 +159,7 @@ def create_expense_item(budgetid: int, payload: ExpenseItemCreate, db: DbSession
     db.add(ei)
     db.commit()
     db.refresh(ei)
+    logger.info("create_expense_item completed")
     return ei
 
 
@@ -252,6 +256,7 @@ def update_expense_item(
 
     db.commit()
     db.refresh(ei)
+    logger.info("update_expense_item completed")
     return ei
 
 

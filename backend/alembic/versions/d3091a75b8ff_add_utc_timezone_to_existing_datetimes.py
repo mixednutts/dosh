@@ -5,11 +5,13 @@ Revises: c2090c6518ff
 Create Date: 2026-04-11 08:15:00.000000
 
 """
+import logging
 from typing import Sequence, Union
 
 from alembic import op
 from sqlalchemy import text
 
+logger = logging.getLogger(__name__)
 
 # revision identifiers, used by Alembic.
 revision: str = 'd3091a75b8ff'
@@ -47,7 +49,7 @@ def upgrade() -> None:
                   AND {column} NOT LIKE '%-__:__'
                   AND {column} NOT LIKE '%+__:__'
             """))
-        print("Updated financialperiods datetime columns")
+        logger.info("Updated financialperiods datetime columns")
     
     # Update periodtransactions entrydate
     if _table_exists(conn, 'periodtransactions'):
@@ -60,7 +62,7 @@ def upgrade() -> None:
               AND entrydate NOT LIKE '%-__:__'
               AND entrydate NOT LIKE '%+__:__'
         """))
-        print("Updated periodtransactions entrydate column")
+        logger.info("Updated periodtransactions entrydate column")
     
     # Note: periodcloseouts already has +00:00 from earlier migration attempt
     # setuprevisionevents table doesn't exist in older backups

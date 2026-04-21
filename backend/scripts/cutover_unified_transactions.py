@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import logging
 import shutil
 import sqlite3
 import sys
 from datetime import datetime
 from pathlib import Path
 
+logger = logging.getLogger(__name__)
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 DB_PATH = BACKEND_DIR / "dosh.db"
@@ -95,8 +97,8 @@ def main() -> int:
     backup_path = _backup_database()
     _apply_schema_cutover()
     _normalize_lifecycle_states()
-    print(f"Backup created at {backup_path}")
-    print("Unified transaction cutover completed.")
+    logger.info("Backup created at %s", backup_path)
+    logger.info("Unified transaction cutover completed.")
     return 0
 
 

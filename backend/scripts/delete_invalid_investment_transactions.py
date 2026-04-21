@@ -13,11 +13,14 @@ run inside the Docker container after an explicit backup.
 """
 from __future__ import annotations
 
+import logging
 import shutil
 import sqlite3
 import sys
 from datetime import datetime
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 DB_PATH = Path("/app/data/dosh.db")
 BACKUP_DIR = Path("/app/data/backups")
@@ -94,20 +97,26 @@ def _sync_affected_periods(period_ids: set[int]) -> None:
 def main() -> int:
     _require_database()
     backup_path = _backup_database()
-    print(f"Backup created at: {backup_path}")
+    logger.info("Backup created at: %s", backup_path)
 
     with sqlite3.connect(DB_PATH) as conn:
         invalid = _find_invalid_transactions(conn)
         if not invalid:
-            print("No invalid investment transactions found.")
+            logger.info("No invalid investment transactions found.")
             return 0
 
-        print(f"Found {len(invalid)} invalid investment transaction(s):")
+        logger.info("Found %d invalid investment transaction(s):", len(invalid))
         for tx in invalid:
-            print(
-                f"  id={tx['id']} period={tx['finperiodid']} "
-                f"investment={tx['investmentdesc']} amount={tx['amount']} "
-                f"note={tx['note']!r} entrydate={tx['entrydate']}"
+            logger.info(
+                "  id=%(id)d period=%(finperiod)d investment=%(investment)s amount=%(amount)s note=%(note)r entrydate=%(entrydate)s",
+                {
+                    "id": tx["id"],
+                    "finperiod": tx["finperiodid"],
+                    "investment": tx["investmentdesc"],
+                    "amount": tx["amount"],
+                    "note": tx["note"],
+                    "entrydate": tx["entrydate"],
+                },
             )
 
         tx_ids = [tx["id"] for tx in invalid]
@@ -115,16 +124,16 @@ def main() -> int:
 
         confirm = input("\nType 'DELETE' to permanently remove these transactions: ")
         if confirm.strip() != "DELETE":
-            print("Aborted. No changes were made.")
+            logger.info("Aborted. No changes were made.")
             return 1
 
         deleted_count = _delete_transactions(conn, tx_ids)
         conn.commit()
-        print(f"Deleted {deleted_count} transaction(s).")
+        logger.info("Deleted %d transaction(s).", deleted_count)
 
     _sync_affected_periods(affected_period_ids)
-    print(f"Recalculated balances for period(s): {sorted(affected_period_ids)}")
-    print("Cleanup complete.")
+    logger.info("Recalculated balances for period(s): %s", sorted(affected_period_ids))
+    logger.info("Cleanup complete.")
     return 0
 
 

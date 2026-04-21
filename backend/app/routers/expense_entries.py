@@ -9,6 +9,9 @@ from ..models import FinancialPeriod, PeriodExpense, PeriodTransaction, ExpenseI
 from ..schemas import ExpenseEntryCreate, ExpenseEntryOut
 from ..transaction_ledger import build_expense_tx, get_primary_account_desc, sync_period_state
 
+import logging
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/budgets/{budgetid}/periods/{finperiodid}/expenses/{expensedesc}/entries", tags=["expense-entries"])
 
 
@@ -112,6 +115,7 @@ def add_entry(
     sync_period_state(finperiodid, db)
     db.commit()
     db.refresh(entry)
+    logger.info("add_entry completed")
     return _to_expense_entry_out(entry)
 
 
@@ -139,3 +143,4 @@ def delete_entry(
     db.flush()
     sync_period_state(finperiodid, db)
     db.commit()
+    logger.info("delete_entry completed", extra={"entry_id": entry_id})

@@ -4,6 +4,66 @@ This document captures the key product and implementation changes made during re
 
 It is intended to complement [README.md](/home/ubuntu/dosh/README.md), not replace it.
 
+## Latest Session: Standard Logging Framework (0.6.8-alpha) (2026-04-21)
+
+### What changed
+
+- **Structured JSON logging across the FastAPI backend:**
+  - Added `python-json-logger` dependency and created `backend/app/logging_config.py`.
+  - Log format: single-line JSON with `timestamp` (ISO 8601 UTC), `level` (syslog uppercase), `logger` (module path), and `message`.
+  - Configured at module level in `main.py` before `FastAPI` instantiation so all loggers inherit the formatter.
+  - `LOG_LEVEL` environment variable drives root logger severity (default `INFO`); invalid values fall back to `INFO` with a warning.
+
+- **Third-party logger noise suppression:**
+  - `uvicorn.access` → `WARNING` (no per-request access lines at INFO).
+  - `sqlalchemy.engine` → `WARNING` (no SQL echo).
+  - `uvicorn.error` → `INFO` (startup errors still visible).
+  - `alembic` → `INFO` (migration progress retained).
+
+- **Removed all ad-hoc `print()` statements:**
+  - `backend/scripts/cutover_unified_transactions.py` and `delete_invalid_investment_transactions.py` now use `logger.info()`.
+  - Alembic migration `d3091a75b8ff` replaced `print()` with stdlib `logger.info()` (no import of `logging_config` to avoid double-handling).
+  - Zero `print()` statements remain in `backend/app/` or `backend/scripts/`.
+
+- **Module-level loggers added to all router modules:**
+  - All 11 `backend/app/routers/*.py` files now declare `logger = logging.getLogger(__name__)`.
+  - Mutation endpoints (POST, PUT, DELETE, PATCH) emit `logger.info("<func_name> completed")` before returning.
+  - Query endpoints (GET) emit `logger.debug(...)` where useful.
+
+- **Auto-expense scheduler logging:**
+  - Scheduler startup logged at `INFO`.
+  - Daily auto-expense creation counts logged at `INFO` (when created) or `DEBUG` (when skipped).
+  - Bare `except: pass` blocks replaced with `logger.exception(...)` so scheduler failures are observable.
+
+- **Testing:**
+  - Added `backend/tests/test_logging_config.py` with 5 unit tests covering JSON formatter validity, timestamp format, default `INFO` level, `DEBUG` override via env, invalid-level fallback, and third-party logger tuning.
+  - Full backend regression suite passes: 192 tests, 0 failures.
+
+- **Deployment verification:**
+  - Docker Compose build completed successfully.
+  - `docker logs dosh` confirms JSON output with no raw `print` lines from application code.
+
+### Files touched
+
+- `backend/requirements.txt` (added `python-json-logger`)
+- `backend/app/logging_config.py` (new)
+- `backend/app/main.py`
+- `backend/app/auto_expense.py`
+- `backend/app/routers/*.py` (all 11 router modules)
+- `backend/scripts/cutover_unified_transactions.py`
+- `backend/scripts/delete_invalid_investment_transactions.py`
+- `backend/alembic/versions/d3091a75b8ff_add_utc_timezone_to_existing_datetimes.py`
+- `.env.example`
+- `backend/tests/test_logging_config.py` (new)
+
+### Decisions preserved
+
+- Chose `python-json-logger` over `structlog` to minimize dependency surface while still achieving structured output. One lightweight dependency, zero transitive deps.
+- Left Alembic’s `fileConfig` in `alembic.ini` untouched; migration files use stdlib `logging` directly rather than importing `logging_config.py`, avoiding double-handling during CLI migration runs.
+- Did not bump version — this is an infrastructure/maintainability change layered on top of `0.6.8-alpha`.
+
+---
+
 ## Latest Session: New Budget Modal Enhancements and README Preview (0.6.8-alpha) (2026-04-21)
 
 ### What changed
