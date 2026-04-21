@@ -158,6 +158,34 @@ The initial rollback model is intentionally simple:
 
 Rollback should be treated as a coordinated app-and-database restore, not just a container restart.
 
+## Budget Backup and Restore Version Compatibility
+
+Dosh supports per-budget and full-database JSON backup/restore through the **Budgets** page. Each backup is tagged with the `app_version` and `schema_revision` that created it. Restore enforces version-compatibility rules:
+
+| Compatibility | Rule | User experience |
+|---|---|---|
+| `exact` | Backup version == current app version | Proceed with optional overwrite warning |
+| `older_backup` | Backup version < current app version | Allow with warning that newer fields may be missing; user should review settings after restore |
+| `newer_backup` | Backup version > current app version | **Blocked** — user must upgrade the app before restoring |
+
+### Handling schema drift on restore
+
+Backups capture the full state of a budget (setup, periods, transactions, health matrices, etc.) as plain JSON. When restoring into a later app version:
+
+1. **Missing columns** — fields added after the backup was created rely on database defaults. This is safe for optional fields but may leave new required settings at their defaults.
+2. **Renamed columns** — if a migration renames a column, the restore service needs a lightweight shim to map the old JSON key to the new column. Add these shims to `backend/app/restore_service.py` as they are discovered.
+3. **New tables** — tables introduced after the backup simply will not exist in the restored data. The budget remains functional, but features depending on the new table may need reconfiguration.
+
+### Release-management checklist for schema changes
+
+When a release includes a schema migration that affects budget data:
+
+1. Write the Alembic migration as usual.
+2. Evaluate whether the change breaks restore of backups created before this release.
+3. If it does, add a mapping or default-handling shim to `restore_service.py` before deploying.
+4. Test restore of an older backup against the new schema in CI or locally.
+5. Document the breaking change in `RELEASE_NOTES.md` under the relevant version.
+
 ## Alpha To Beta Criteria
 
 Dosh should remain `alpha` until all of the following are true:

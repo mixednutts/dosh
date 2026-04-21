@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 0.6.8-alpha | released | 2026-04-21
+
+### Added
+
+- Budget Backup & Restore is now available from the Budgets page. You can download a JSON backup of a single budget or all budgets, and restore from a backup file later. The restore process checks app version compatibility, warns if the backup is from an older version, and blocks restores from newer versions until the app is upgraded.
+- Backup files include full budget data: setup, cycles, transactions, health matrices, and historical snapshots.
+
 ### Changed
 
 - Expense actual values now show green when under budget and red when over budget, matching the semantic color pattern used for projected investment amounts.

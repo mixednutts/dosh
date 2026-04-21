@@ -229,7 +229,7 @@ For document changes, follow [DOCUMENTATION_FRAMEWORK.md](./docs/DOCUMENTATION_F
 
 ## Current Project State (Snapshot)
 
-**Version:** 0.6.7-alpha
+**Version:** 0.6.8-alpha
 **Schema Revisions:** d3091a75b8ff, e4f5a6b7c8d9, f1a2b3c4d5e6, b10a29f14a8f, 559cbaa1dce7, 4bf1bf54b0bb, 7a8b9c0d1e2f, 009297f69b52, a1b2c3d4e5f6, 9c0f8d72a04c, e1096e3868f0, fb246c4482b7, 8e182dad69ad
 
 **Recent Work:**
@@ -277,7 +277,7 @@ For document changes, follow [DOCUMENTATION_FRAMEWORK.md](./docs/DOCUMENTATION_F
 - **Demo Data Update:** Seeded demo budget now covers cash-flow account routing, scheduled expenses, and AUTO/MANUAL payment types for realistic walkthroughs
 
 **Active Focus Areas:**
-- Testing infrastructure hardening (all backend tests passing, 223 frontend tests passing)
+- Testing infrastructure hardening (all backend tests passing, 226 frontend tests passing)
 - Documentation framework compliance
 - Release process reliability (Docker image publishing workflow now available for manual GHCR builds)
 - SonarQube maintainability follow-through
@@ -286,15 +286,15 @@ For document changes, follow [DOCUMENTATION_FRAMEWORK.md](./docs/DOCUMENTATION_F
 - Phase 2 preparation: Reconciliation Module and Reporting Module foundations
 
 **Recent Work (this session):**
-- **Expense Actual Color Logic (COMPLETED):** Fixed expense actual values to display green when under budget and red when over budget across `BudgetPeriodsPage`, `PeriodDetailPage`, `ExpenseSection`, and `Dashboard`.
-- **Locked Banner Dismiss Persistence (COMPLETED):** Added `sessionStorage` persistence (`dosh_dismiss_lock_banner:${periodId}`) so the dismissed locked banner stays hidden across browser refreshes for the same period. Banner reappears when the period is unlocked or a different period is viewed.
-- **Repository Hygiene (COMPLETED):** Removed `dosh.db.backup-pre-test-removal-*` from git tracking and added `*.db.backup*` and `AGENTS.md` to `.gitignore`. `AGENTS.md` remains on local filesystem.
-- **Budget Health Card Inner Circle Removal (COMPLETED):** Removed the inner momentum circle from the overall budget health score display on `BudgetsPage.jsx` until the health score trending framework is implemented.
-- **Close-Out Snapshot Card Restructuring (COMPLETED):** Restructured the close-out snapshot section on `PeriodDetailPage.jsx` into a parent "Close Out Details" card containing three child cards: "Budget Health" (with `CurrentPeriodCheckPanel`), "Budget Cycle Notes & Observations", and "Carried Forward" (conditional on non-zero carry-forward amount).
-- **CurrentPeriodCheckPanel Spacing Tightening (COMPLETED):** Reduced `space-y-5` to `space-y-2` in `CurrentPeriodCheckPanel` to tighten the gap between the Show details toggle and the card bottom.
-- **DEV_MODE Removal and Demo Budget Unconditional (COMPLETED):** Removed `dev_mode` evaluation from frontend (`BudgetsPage.jsx`), backend (`budgets.py`, `main.py`), and tests. The "Create Demo Budget" option is now unconditionally available. Added duplicate prevention (`HTTPException 409`) in `create_standard_demo_budget` with frontend `onError` alert.
-- **Demo Budget Label Update (COMPLETED):** Changed the create-budget modal label from "Developer shortcut" to "Demonstration and Evaluation".
-- **All changes deployed to local Docker with override and verified** (`INCLUDE_OVERRIDE=true ./scripts/release_with_migrations.sh`); `/api/health` returns `{"status":"ok","app":"Dosh"}`.
+- **Budget Backup & Restore (COMPLETED):** Implemented full-stack backup/restore accessible from the Budgets page.
+  - Backend: `backup_service.py` serializes budgets + all relations into version-tagged JSON; `restore_service.py` applies restores with full ID remapping and version compatibility checks.
+  - API: `POST /api/budgets/backup`, `POST /api/budgets/restore/inspect`, `POST /api/budgets/restore/apply`.
+  - Frontend: `BackupRestoreModal` with Backup tab (all budgets or select one) and Restore tab (file upload → inspect → select budgets → overwrite warning → apply). Unencrypted-file warning displayed in both tabs.
+  - Version compatibility: backups tagged with `app_version` and `schema_revision`; restore blocked from newer app versions; older backups allowed with warning.
+  - Overwrite support: existing budgets matched by `description` can be replaced with explicit user confirmation.
+  - Tests: 12 backend tests (`test_backup_restore.py`) and 3 frontend tests (`BudgetsPage.test.jsx`) added.
+  - Deployed to local Docker with override and verified; `/api/health` returns `{"status":"ok","app":"Dosh"}`.
+- **Version bump:** `0.6.7-alpha` → `0.6.8-alpha` via `scripts/bump_version.py`. Release notes cutover completed. Validation via `scripts/release_management.py validate --ref WORKTREE --require-release-entry` passed.
 
 **Guardrails in Effect:**
 - Test-by-change discipline (tests with behavior changes)

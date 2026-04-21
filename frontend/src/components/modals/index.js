@@ -1,3 +1,4 @@
+export { BackupRestoreModal } from './BackupRestoreModal'
 export { BalanceTransactionsModal } from './BalanceTransactionsModal'
 export { BudgetAdjustmentModal } from './BudgetAdjustmentModal'
 export { CloseoutModal } from './CloseoutModal'

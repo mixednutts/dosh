@@ -1,5 +1,6 @@
 alembic
 fastapi
 python-dateutil
+python-multipart
 sqlalchemy
 uvicorn

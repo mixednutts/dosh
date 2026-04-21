@@ -1,9 +1,16 @@
-from fastapi import APIRouter, HTTPException
+import json
+from typing import Any
+
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from starlette.responses import Response
+
 from ..api_docs import DbSession, error_responses
+from ..backup_service import build_backup_payload
 from ..demo_budget import create_standard_demo_budget
 from ..health_engine import evaluate_budget_health
 from ..health_engine_seed import create_default_matrix_for_budget
 from ..models import Budget
+from ..restore_service import inspect_backup, restore_budgets
 from ..schemas import (
     BudgetCreate,
     BudgetOut,
@@ -98,3 +105,89 @@ def delete_budget(budgetid: int, db: DbSession):
         raise HTTPException(404, "Budget not found")
     db.delete(budget)
     db.commit()
+
+
+# ── Backup / Restore ─────────────────────────────────────────────────────────
+
+@router.post("/backup", responses=error_responses(422))
+def backup_budgets(
+    db: DbSession,
+    budgetid: int | None = Form(default=None),
+):
+    """Download a JSON backup of one or all budgets."""
+    if budgetid is not None:
+        budget = db.get(Budget, budgetid)
+        if not budget:
+            raise HTTPException(404, "Budget not found")
+        budgets = [budget]
+        filename = f"dosh-backup-budget-{budgetid}.json"
+    else:
+        budgets = db.query(Budget).all()
+        filename = "dosh-backup-all.json"
+
+    payload = build_backup_payload(budgets, db)
+    content = json.dumps(payload, indent=2)
+    return Response(
+        content=content,
+        media_type="application/json",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.post("/restore/inspect", responses=error_responses(400, 422))
+async def restore_inspect(file: UploadFile = File(...)):
+    """Inspect a backup file without applying it."""
+    if not file.filename or not file.filename.lower().endswith(".json"):
+        raise HTTPException(422, "Backup file must be a JSON file.")
+    try:
+        raw = await file.read()
+        payload = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise HTTPException(400, f"Invalid JSON: {exc}") from exc
+
+    try:
+        result = inspect_backup(payload)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+    return result
+
+
+@router.post("/restore/apply", responses=error_responses(400, 409, 422))
+def restore_apply(
+    db: DbSession,
+    file: UploadFile = File(...),
+    selected_indices: str = Form(default=""),
+    allow_overwrite: bool = Form(default=False),
+):
+    """Apply a backup file to restore budgets."""
+    if not file.filename or not file.filename.lower().endswith(".json"):
+        raise HTTPException(422, "Backup file must be a JSON file.")
+    try:
+        raw = file.file.read()
+        payload = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise HTTPException(400, f"Invalid JSON: {exc}") from exc
+
+    indices: list[int] | None = None
+    if selected_indices.strip():
+        try:
+            indices = [int(x.strip()) for x in selected_indices.split(",") if x.strip() != ""]
+        except ValueError as exc:
+            raise HTTPException(422, "selected_indices must be a comma-separated list of integers.") from exc
+
+    # Block newer backups
+    from ..restore_service import compute_compatibility
+    compatibility = compute_compatibility(payload.get("app_version", "unknown"))
+    if compatibility == "newer_backup":
+        raise HTTPException(
+            409,
+            "This backup was created with a newer app version. Please upgrade the app before restoring.",
+        )
+
+    try:
+        result = restore_budgets(db, payload, selected_indices=indices, allow_overwrite=allow_overwrite)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+    return result

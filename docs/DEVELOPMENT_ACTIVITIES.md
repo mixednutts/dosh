@@ -735,6 +735,7 @@ Status:
 - `Active`
 
 - `Completed`: add budget-cycle detail export from the period-detail header with user-selected flat `CSV` or grouped `JSON` download
+- `Completed`: add full budget backup and restore from the Budgets page with JSON download, version compatibility checks, selective restore, and overwrite support
 - keep the current flat CSV spreadsheet-friendly for Excel and Google Sheets while preserving line-to-transaction reconciliation
 - decide whether the next export slice should expand to budget-level, multi-cycle, account-level, or reconciliation-oriented reporting
 - make future export additions useful for both human review and machine-readable portability without weakening ledger explainability
@@ -743,15 +744,15 @@ Status:
 
 Status:
 
-- `Later`
+- `Completed`
 
-- decide how backup should work without weakening data integrity or leaking implementation details
-- support practical recovery paths for self-hosted or manually managed deployments
-- document what a complete backup must include beyond the primary database file
-- design import or restore expectations separately from simple export download
-- decide whether backups are database-level, app-level, or both
-- identify which metadata, settings, and reference tables must be included for useful restore
-- document restore expectations and what level of compatibility Dosh intends to maintain across versions
+- `Completed`: implemented app-level JSON backup/restore through the Budgets page
+- `Completed`: backup includes full budget state (setup, periods, transactions, health matrices, setup history, close-out snapshots)
+- `Completed`: restore performs full ID remapping (budget, period, matrix IDs) so restored budgets are independent new records
+- `Completed`: version compatibility layer blocks restore from newer app versions; warns on older backups
+- `Completed`: overwrite support with explicit user confirmation when a budget with the same description already exists
+- `Completed`: unencrypted-file warning displayed in both backup and restore tabs
+- `Completed`: backend tests (`test_backup_restore.py`) and frontend tests (`BudgetsPage.test.jsx`) added
 
 #### Activity Group: Trust, Privacy, and Validation
 

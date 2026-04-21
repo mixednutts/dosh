@@ -2,10 +2,11 @@ import { useEffect, useMemo, useState } from 'react'
 import PropTypes from 'prop-types'
 import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
-import { ArrowLeftIcon, ArrowRightIcon, ArrowTrendingDownIcon, ArrowTrendingUpIcon, CalendarDaysIcon, MinusIcon, PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline'
+import { ArrowLeftIcon, ArrowPathIcon, ArrowRightIcon, ArrowTrendingDownIcon, ArrowTrendingUpIcon, CalendarDaysIcon, MinusIcon, PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline'
 import { addMonths, differenceInCalendarDays, endOfMonth, endOfWeek, isSameDay, isSameMonth, parseISO, startOfMonth, startOfWeek, subMonths } from 'date-fns'
 import { getBudgets, createBudget, createDemoBudget, deleteBudget, getPeriodsForBudget, getBudgetHealth, getPeriodDetail } from '../api/client'
 import Modal from '../components/Modal'
+import { BackupRestoreModal } from '../components/modals'
 import Spinner from '../components/Spinner'
 import { LocalisationProvider, useLocalisation } from '../components/LocalisationContext'
 import { listFixedDayOccurrencesInRange } from '../utils/fixedDayScheduling'
@@ -1218,6 +1219,7 @@ export default function BudgetsPage() {
   const [modal, setModal] = useState(null)
   const [healthModal, setHealthModal] = useState(null)
   const [currentCheckModal, setCurrentCheckModal] = useState(null)
+  const [backupModalOpen, setBackupModalOpen] = useState(false)
   const today = startOfDay(getToday())
 
   const { data: budgets = [], isLoading } = useQuery({ queryKey: ['budgets'], queryFn: getBudgets })
@@ -1310,9 +1312,14 @@ export default function BudgetsPage() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Budgets</h1>
-        <button className="btn-primary" onClick={() => setModal({ mode: 'create' })}>
-          <PlusIcon className="w-4 h-4" /> New Budget
-        </button>
+        <div className="flex gap-2">
+          <button className="btn-secondary" onClick={() => setBackupModalOpen(true)}>
+            <ArrowPathIcon className="w-4 h-4" /> Backup & Restore
+          </button>
+          <button className="btn-primary" onClick={() => setModal({ mode: 'create' })}>
+            <PlusIcon className="w-4 h-4" /> New Budget
+          </button>
+        </div>
       </div>
 
       {budgets.length === 0 ? (
@@ -1416,6 +1423,12 @@ export default function BudgetsPage() {
             onClose={() => setCurrentCheckModal(null)}
           />
         </LocalisationProvider>
+      )}
+
+      {backupModalOpen && (
+        <Modal title="Backup & Restore" onClose={() => setBackupModalOpen(false)} size="lg">
+          <BackupRestoreModal budgets={budgets} onClose={() => { setBackupModalOpen(false); qc.invalidateQueries({ queryKey: ['budgets'] }) }} />
+        </Modal>
       )}
     </div>
   )

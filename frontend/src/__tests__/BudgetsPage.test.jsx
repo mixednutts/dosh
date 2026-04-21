@@ -22,6 +22,9 @@ jest.mock('../api/client', () => ({
   getPeriodsForBudget: jest.fn(),
   getBudgetHealth: jest.fn(),
   getPeriodDetail: jest.fn(),
+  backupBudget: jest.fn(),
+  inspectRestoreFile: jest.fn(),
+  applyRestore: jest.fn(),
 }))
 
 const client = require('../api/client')
@@ -686,5 +689,78 @@ describe('BudgetsPage', () => {
     expect(screen.getByText('Overrun detected.')).not.toBeNull()
     fireEvent.click(screen.getByRole('button', { name: /Show Details/i }))
     expect(screen.getByText('Overrun amount')).not.toBeNull()
+  })
+
+  it('shows the Backup & Restore button and opens the modal', async () => {
+    client.getBudgets.mockResolvedValue([])
+    renderWithProviders(<BudgetsPage />, {
+      route: '/budgets',
+      path: '/budgets',
+    })
+
+    const button = await screen.findByRole('button', { name: /Backup & Restore/i })
+    expect(button).not.toBeNull()
+    fireEvent.click(button)
+
+    expect(await screen.findByRole('heading', { name: /Backup & Restore/i })).not.toBeNull()
+    // Tab buttons inside modal (exact match to avoid Backup & Restore button)
+    expect(screen.getByRole('button', { name: /^Backup$/i })).not.toBeNull()
+    expect(screen.getByRole('button', { name: /^Restore$/i })).not.toBeNull()
+  })
+
+  it('allows downloading a backup from the modal', async () => {
+    client.getBudgets.mockResolvedValue([
+      { budgetid: 1, description: 'Test Budget', budgetowner: 'Alice', budget_frequency: 'Monthly' },
+    ])
+    client.backupBudget.mockResolvedValue('dosh-backup-all.json')
+
+    renderWithProviders(<BudgetsPage />, {
+      route: '/budgets',
+      path: '/budgets',
+    })
+
+    fireEvent.click(await screen.findByRole('button', { name: /Backup & Restore/i }))
+    await screen.findByRole('heading', { name: /Backup & Restore/i })
+
+    const downloadButton = screen.getByRole('button', { name: /Download Backup/i })
+    fireEvent.click(downloadButton)
+
+    await waitFor(() => {
+      expect(client.backupBudget).toHaveBeenCalledWith(null)
+    })
+  })
+
+  it('shows restore inspect results after file selection', async () => {
+    client.getBudgets.mockResolvedValue([])
+    client.inspectRestoreFile.mockResolvedValue({
+      backup_version: '0.6.7-alpha',
+      current_version: '0.6.7-alpha',
+      compatibility: 'exact',
+      budget_count: 1,
+      budgets: [
+        { index: 0, description: 'Restored Budget', budgetowner: 'Alice', budget_frequency: 'Monthly', period_count: 2 },
+      ],
+    })
+
+    renderWithProviders(<BudgetsPage />, {
+      route: '/budgets',
+      path: '/budgets',
+    })
+
+    fireEvent.click(await screen.findByRole('button', { name: /Backup & Restore/i }))
+    await screen.findByRole('heading', { name: /Backup & Restore/i })
+
+    fireEvent.click(screen.getByRole('button', { name: /^Restore$/i }))
+
+    const fileInput = screen.getByLabelText(/Backup file/i)
+    const file = new File(['{"dosh_backup":true}'], 'backup.json', { type: 'application/json' })
+    fireEvent.change(fileInput, { target: { files: [file] } })
+
+    await waitFor(() => {
+      expect(client.inspectRestoreFile).toHaveBeenCalledTimes(1)
+    })
+
+    expect(await screen.findByText(/Restored Budget/i)).not.toBeNull()
+    expect(screen.getByText(/same app version/i)).not.toBeNull()
   })
 })

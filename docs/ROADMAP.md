@@ -211,6 +211,10 @@ Goal:
 
 - provide trustworthy recovery and portability paths for self-hosted use
 
+Status:
+
+- completed: app-level JSON backup/restore from the Budgets page with full budget data, version compatibility checks, selective restore, and overwrite support
+
 Includes:
 
 - backup scope definition

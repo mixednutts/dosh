@@ -191,3 +191,40 @@ export const addInvestmentTransaction = (budgetId, periodId, desc, data) =>
   api.post(`/budgets/${budgetId}/periods/${periodId}/investments/${encodeURIComponent(desc)}/transactions/`, data).then(r => r.data)
 export const deleteInvestmentTransaction = (budgetId, periodId, desc, txId) =>
   api.delete(`/budgets/${budgetId}/periods/${periodId}/investments/${encodeURIComponent(desc)}/transactions/${txId}`)
+
+// ── Backup / Restore ─────────────────────────────────────────────────────────
+export const backupBudget = async (budgetId = null) => {
+  const formData = new FormData()
+  if (budgetId !== null) {
+    formData.append('budgetid', budgetId)
+  }
+  const response = await api.post('/budgets/backup', formData, {
+    responseType: 'blob',
+  })
+  const filename = getAttachmentFilename(
+    response.headers?.['content-disposition'],
+    budgetId !== null ? `dosh-backup-budget-${budgetId}.json` : 'dosh-backup-all.json'
+  )
+  triggerBrowserDownload(response.data, filename)
+  return filename
+}
+
+export const inspectRestoreFile = (file) => {
+  const formData = new FormData()
+  formData.append('file', file)
+  return api.post('/budgets/restore/inspect', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }).then(r => r.data)
+}
+
+export const applyRestore = (file, selectedIndices = [], allowOverwrite = false) => {
+  const formData = new FormData()
+  formData.append('file', file)
+  if (selectedIndices.length > 0) {
+    formData.append('selected_indices', selectedIndices.join(','))
+  }
+  formData.append('allow_overwrite', allowOverwrite ? 'true' : 'false')
+  return api.post('/budgets/restore/apply', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }).then(r => r.data)
+}
