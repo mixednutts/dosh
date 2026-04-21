@@ -1,22 +1,32 @@
 # Dosh
-<div style="border:1px solid #555; border-radius:6px; padding:8px 12px; display:inline-block; line-height:1.15;">
-<sub><sup><b>dosh</b> | \ˈdɒʃ\ (rhymes with posh or wash)</sup></sub><br>
-<sub>noun <i>informal</i> <code>chiefly British & Australian</code></sub><br>
-<sub>A slang term for money, typically referring to physical cash one has available
-for immediate spending. Often used in Australia to denote the necessary funds for a purchase
-or a "fair whack" of currency.</sub><br>
-<sub><i>"It's a cracking ute, mate, but it'll cost you a serious bit of <b>dosh</b>."</i></sub>
+
+<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; color: #8b949e; line-height: 1.5; margin-bottom: 25px; padding-left: 2px;">
+  <div style="margin-bottom: 2px;">
+    <span style="color: #c9d1d9; font-weight: 600; font-size: 0.95em;">dosh</span> 
+    <span style="font-size: 0.85em; margin-left: 4px;">/ˈdɒʃ/</span>
+    <i style="color: #77828d;">noun</i> 
+    <span style="margin: 0 4px; color: #484f58;">•</span> 
+    <span>rhymes with posh</span>
+    <span style="margin: 0 4px; color: #484f58;">•</span> 
+    <span>informal, British & Australian</span>
+  </div>
+
+  <div style="font-size: 0.9em; max-width: 700px;">
+    Slang for money, typically physical cash. 
+    <span style="color: #6e7681; font-style: italic; margin-left: 4px;">
+      "It's a cracking ute, mate, but it'll cost you a serious bit of <b>dosh</b>."
+    </span>
+  </div>
 </div>
 
-
+<br>
 
 [![Version](https://img.shields.io/github/v/release/mixednutts/dosh?include_prereleases&label=version)](https://github.com/mixednutts/dosh/releases)
 [![Docker](https://img.shields.io/badge/docker-ghcr.io-blue?logo=docker)](https://github.com/mixednutts/dosh/pkgs/container/dosh)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-**Dosh** is a workflow-driven personal finance application designed for people who want intentional control over their money without the complexity of traditional accounting software.
-
 ## What is Dosh?
+**Dosh** is a workflow-driven personal finance application designed for people who want intentional control over their money without the complexity of traditional accounting software.
 
 Dosh helps you manage your finances through a structured budget cycle approach:
 
@@ -64,41 +74,7 @@ docker compose up -d
 
 3. Access Dosh at `http://localhost:3080`
 
-4. Create your first budget and start tracking!
-
-## Configuration
-
-### Environment Variables
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `DATABASE_URL` | SQLite database path | `sqlite:////app/data/dosh.db` |
-| `TZ` | Timezone for budget cycle boundaries | `Australia/Sydney` |
-| `GITHUB_RELEASES_TOKEN` | GitHub token for release notes (optional) | — |
-
-### Persistent Storage
-
-Dosh stores all data in a SQLite database within the Docker volume `dosh-data`. To backup your data:
-
-```bash
-docker exec dosh sh -c "cat /app/data/dosh.db" > dosh-backup-$(date +%Y%m%d).db
-```
-
-To restore from backup:
-
-```bash
-docker cp dosh-backup-YYYYMMDD.db dosh:/app/data/dosh.db
-docker restart dosh
-```
-
-## Documentation
-
-For detailed documentation, development guides, and architecture decisions:
-
-- **[User Guide & Features](docs/)** — Complete documentation for using Dosh
-- **[Development Setup](docs/DEVELOPMENT_ACTIVITIES.md)** — Contributing and development workflows
-- **[Release Notes](docs/RELEASE_NOTES.md)** — Version history and changelog
-- **[Architecture & Plans](docs/plans/)** — Design documents and feature specifications
+4. Create your first budget or load a demonstration budget to evaluate the features
 
 ## Tech Stack
 
@@ -117,4 +93,4 @@ For issues, feature requests, or contributions, please visit the [GitHub reposit
 
 ---
 
-**Note:** Dosh is currently in beta. While fully functional for personal finance management, APIs and features may evolve as the project matures.
+**Note:** Dosh is currently in beta and may contain bugs.  Use at your own risk.
