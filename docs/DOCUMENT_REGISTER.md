@@ -52,6 +52,39 @@ Maintenance notes:
 - should remain concise and current
 - should summarize rather than duplicate detailed design or backlog content
 
+### CONTRIBUTING.md
+
+Document:
+
+- [CONTRIBUTING.md](/home/ubuntu/dosh/CONTRIBUTING.md)
+
+Document type:
+
+- overview document
+
+Primary purpose:
+
+- welcome and guide external contributors
+- explain how to report bugs, suggest features, and contribute code
+- reference project conventions (testing, documentation, style)
+
+Primary source-of-truth scope:
+
+- contribution workflow (issues, pull requests, code of conduct)
+- testing and development setup for contributors
+- license and conduct expectations
+
+Key relationships:
+
+- linked from [README.md](/home/ubuntu/dosh/README.md)
+- references [README.md](/home/ubuntu/dosh/README.md), [DOCUMENTATION_FRAMEWORK.md](/home/ubuntu/dosh/docs/DOCUMENTATION_FRAMEWORK.md), [ROADMAP.md](/home/ubuntu/dosh/docs/ROADMAP.md), and [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md)
+
+Maintenance notes:
+
+- update when contribution workflows, testing commands, or deployment steps change
+- keep tone welcoming and inclusive
+- do not duplicate deep policy from other documents; link instead
+
 ### AGENTS.md
 
 Document:
