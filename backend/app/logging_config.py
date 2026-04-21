@@ -3,24 +3,10 @@ from __future__ import annotations
 import logging
 import os
 import sys
-from typing import Any
-
-from pythonjsonlogger import jsonlogger
 
 
-class SyslogJsonFormatter(jsonlogger.JsonFormatter):
-    """JSON formatter that uses syslog-style severity names and ISO timestamps."""
-
-    def add_fields(
-        self,
-        log_record: dict[str, Any],
-        record: logging.LogRecord,
-        message_dict: dict[str, Any],
-    ) -> None:
-        super().add_fields(log_record, record, message_dict)
-        log_record["timestamp"] = self.formatTime(record)
-        log_record["level"] = record.levelname
-        log_record["logger"] = record.name
+class IsoUtcFormatter(logging.Formatter):
+    """Plain-text formatter that uses ISO-8601 UTC timestamps and syslog-style severity names."""
 
     def formatTime(self, record: logging.LogRecord, datefmt: str | None = None) -> str:
         from datetime import datetime, timezone
@@ -28,9 +14,46 @@ class SyslogJsonFormatter(jsonlogger.JsonFormatter):
         dt = datetime.fromtimestamp(record.created, tz=timezone.utc)
         return dt.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
 
+    def format(self, record: logging.LogRecord) -> str:
+        timestamp = self.formatTime(record)
+        level = record.levelname
+        logger_name = record.name
+        message = record.getMessage()
+        extra_parts = []
+        for key, value in record.__dict__.items():
+            if key not in {
+                "args",
+                "asctime",
+                "created",
+                "exc_info",
+                "exc_text",
+                "filename",
+                "funcName",
+                "levelname",
+                "levelno",
+                "lineno",
+                "message",
+                "module",
+                "msecs",
+                "msg",
+                "name",
+                "pathname",
+                "process",
+                "processName",
+                "relativeCreated",
+                "stack_info",
+                "taskName",
+                "thread",
+                "threadName",
+            }:
+                extra_parts.append(f"{key}={value}")
+        if extra_parts:
+            message = f"{message}  ({', '.join(extra_parts)})"
+        return f"{timestamp} [{level}] {logger_name}: {message}"
+
 
 def configure_logging() -> None:
-    """Configure structured JSON logging for the application."""
+    """Configure plain-text logging for the application."""
     log_level_name = os.getenv("LOG_LEVEL", "INFO").upper()
     valid_levels = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
     if log_level_name not in valid_levels:
@@ -48,10 +71,7 @@ def configure_logging() -> None:
         log_level = getattr(logging, log_level_name)
 
     handler = logging.StreamHandler(sys.stdout)
-    formatter = SyslogJsonFormatter(
-        fmt="%(timestamp)s %(level)s %(logger)s %(message)s",
-        rename_fields={"timestamp": "timestamp", "level": "level", "logger": "logger"},
-    )
+    formatter = IsoUtcFormatter()
     handler.setFormatter(formatter)
 
     root_logger = logging.getLogger()

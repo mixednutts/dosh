@@ -1,5 +1,7 @@
 # Standard Logging Framework Implementation Plan
 
+> **Note:** This plan was implemented in `0.6.9-alpha` and then superseded in `0.6.10-alpha`. The backend now uses plain-text ISO-8601 logging instead of JSON. See [CHANGES.md](/home/ubuntu/dosh/docs/CHANGES.md) for the latest logging implementation details.
+
 ## Scope
 
 Backend only (FastAPI + Alembic + scripts). Frontend console logging is out of scope.

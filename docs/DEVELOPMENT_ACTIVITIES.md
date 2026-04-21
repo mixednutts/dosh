@@ -972,7 +972,8 @@ Status:
 - `Completed`: harden backend release-notes parsing by replacing the regex-based header parser with bounded string parsing and dedicated regression coverage after the regex DoS exposure was flagged
 - `Completed`: align Dosh to a GitHub-managed release-tagging and release-publishing workflow that creates official Git tags from validated version bumps on `main`, publishes GitHub Releases from validated repo release content, and feeds the in-app release-notes view through the backend GitHub Releases client; the repository workflows, protected `main` SonarQube gate, first remote `v0.1.3-alpha` tag, and first published GitHub Release are now in place, and the app now resolves `current_release` successfully from the published GitHub Release; use [GITHUB_RELEASE_MANAGEMENT_WORKFLOW_PLAN.md](/home/ubuntu/dosh/docs/plans/GITHUB_RELEASE_MANAGEMENT_WORKFLOW_PLAN.md) and [GITHUB_RELEASE_RUNBOOK.md](/home/ubuntu/dosh/docs/GITHUB_RELEASE_RUNBOOK.md) as the current references
 - `Completed`: deploy the schema-changing localisation release through the migration-aware Compose script, verify live schema revisions `9b7f3c2d1a4e` and `c4d8e6f1a2b3`, then fix and redeploy the post-deploy budgets-page refresh crash caused by a missing `formatDateRange` dependency in the pending-closure list; follow-up date-format migration `c4d8e6f1a2b3` is part of the same `0.3.0-alpha` release scope
-- `Completed`: implemented structured JSON logging output utilizing syslog naming conventions for backend services, ensuring consistent severity levels, structured context, and operational observability across containerized deployments
+- `Completed`: implemented structured JSON logging output utilizing syslog naming conventions for backend services in `0.6.9-alpha`, ensuring consistent severity levels, structured context, and operational observability across containerized deployments
+- `Completed`: switched backend logging from JSON to plain-text ISO-8601 format and eliminated duplicate Alembic log lines on container startup in `0.6.10-alpha`
 
 #### Activity Group: Consistency
 
@@ -1010,7 +1011,7 @@ If we want a practical order of work rather than just a thematic roadmap, this i
 1. Reconciliation > Closed-Cycle Reconciliation Handoff: design the correction path for closed cycles and close remaining write-path gaps.
 2. Reporting and Analysis > Reporting Foundations: add a reporting summary endpoint that rolls up period and ledger data.
 3. Reporting and Analysis > Reporting Foundations: surface a budget-level reporting card set in the frontend.
-4. Quality > Reliability: clean up deployment or deprecation warnings, implement standardized logging, and address the outstanding `axios` audit advisory.
+4. Quality > Reliability: clean up deployment or deprecation warnings and address the outstanding `axios` audit advisory.
 5. Export and Backup > Export Scope and Format plus Backup and Restore Design: define the first export and backup scope, including format and restore expectations.
 
 ## Implementation Notes To Preserve

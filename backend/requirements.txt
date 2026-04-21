@@ -1,7 +1,6 @@
 alembic
 fastapi
 python-dateutil
-python-json-logger
 python-multipart
 sqlalchemy
 uvicorn

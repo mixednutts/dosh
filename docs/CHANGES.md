@@ -4,6 +4,46 @@ This document captures the key product and implementation changes made during re
 
 It is intended to complement [README.md](/home/ubuntu/dosh/README.md), not replace it.
 
+## Latest Session: Logging Format Fix and Duplicate Log Elimination (0.6.10-alpha) (2026-04-22)
+
+### What changed
+
+- **Replaced structured JSON logging with plain-text ISO-8601 logging:**
+  - Removed `python-json-logger` dependency and `SyslogJsonFormatter` from `backend/app/logging_config.py`.
+  - Added `IsoUtcFormatter` that writes single-line human-readable logs: `2026-04-21T23:29:16.972Z [INFO] app.main: Dosh API started  (version=0.6.9-alpha, schema_revision=...)`
+  - Extra fields from `logger.info(..., extra={...})` are appended as `key=value` pairs.
+  - Configured at module level in `main.py` before `FastAPI` instantiation so all loggers inherit the formatter.
+  - `LOG_LEVEL` environment variable continues to drive root logger severity (default `INFO`); invalid values fall back to `INFO` with a warning.
+
+- **Fixed duplicate Alembic log lines on container startup:**
+  - Root cause: `alembic.ini` configured the `alembic` logger with `handlers = console` but left `propagate = 1` (default). Every alembic log was emitted twice — once by the alembic logger's own `console` handler and once by the root logger's `console` handler.
+  - Fix: added `propagate = 0` to `[logger_alembic]` in `backend/alembic.ini`.
+  - Docker logs now show single Alembic lines instead of duplicates.
+
+- **Testing:**
+  - Updated `backend/tests/test_logging_config.py` with 9 unit tests covering plain-text formatter output, timestamp format, extra field formatting, default `INFO` level, `DEBUG` override via env, invalid-level fallback, and third-party logger tuning.
+  - Full backend regression suite passes: 193 tests, 0 failures.
+
+- **Deployment verification:**
+  - Docker Compose build completed successfully.
+  - `docker logs dosh` confirms plain-text output with no JSON lines from application code and no duplicate Alembic messages.
+
+### Files touched
+
+- `backend/app/logging_config.py` (rewritten — `IsoUtcFormatter` replaces `SyslogJsonFormatter`)
+- `backend/alembic.ini` (`propagate = 0` on alembic logger)
+- `backend/tests/test_logging_config.py` (updated for plain-text formatter)
+- `backend/requirements.txt` (removed `python-json-logger`)
+- `.env.example` (comment updated from "structured JSON logging" to "plain-text logging")
+
+### Decisions preserved
+
+- Removed `python-json-logger` entirely; the stdlib `logging` module is sufficient for plain-text output.
+- Left Alembic's `fileConfig` in `alembic.ini` in place; the fix only required adding `propagate = 0` to the alembic logger section.
+- Bumped version to `0.6.10-alpha` to mark the deployed logging fix.
+
+---
+
 ## Latest Session: Standard Logging Framework (0.6.8-alpha) (2026-04-21)
 
 ### What changed

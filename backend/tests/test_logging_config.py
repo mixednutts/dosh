@@ -1,45 +1,36 @@
 from __future__ import annotations
 
-import json
 import logging
 import os
 from io import StringIO
 
 import pytest
 
-from app.logging_config import configure_logging, SyslogJsonFormatter
+from app.logging_config import configure_logging, IsoUtcFormatter
 
 
-class TestSyslogJsonFormatter:
-    def test_outputs_valid_json(self) -> None:
+class TestIsoUtcFormatter:
+    def test_outputs_plain_text(self) -> None:
         stream = StringIO()
         handler = logging.StreamHandler(stream)
-        handler.setFormatter(
-            SyslogJsonFormatter(
-                fmt="%(timestamp)s %(level)s %(logger)s %(message)s"
-            )
-        )
-        logger = logging.getLogger("test.json")
+        handler.setFormatter(IsoUtcFormatter())
+        logger = logging.getLogger("test.plain")
         logger.handlers.clear()
         logger.addHandler(handler)
         logger.setLevel(logging.DEBUG)
 
-        logger.info("Hello JSON")
+        logger.info("Hello plain text")
         raw = stream.getvalue().strip()
-        record = json.loads(raw)
 
-        assert record["level"] == "INFO"
-        assert record["logger"] == "test.json"
-        assert record["message"] == "Hello JSON"
-        assert "timestamp" in record
-        assert record["timestamp"].endswith("Z")
+        assert raw.startswith("20")
+        assert "[INFO]" in raw
+        assert "test.plain:" in raw
+        assert "Hello plain text" in raw
 
     def test_timestamp_format(self) -> None:
         import datetime
 
-        formatter = SyslogJsonFormatter(
-            fmt="%(timestamp)s %(level)s %(logger)s %(message)s"
-        )
+        formatter = IsoUtcFormatter()
         record = logging.LogRecord(
             name="test",
             level=logging.INFO,
@@ -50,9 +41,23 @@ class TestSyslogJsonFormatter:
             exc_info=None,
         )
         record.created = datetime.datetime(2026, 4, 21, 12, 0, 0, tzinfo=datetime.timezone.utc).timestamp()
-        log_dict = {}
-        formatter.add_fields(log_dict, record, {})
-        assert log_dict["timestamp"] == "2026-04-21T12:00:00.000Z"
+        ts = formatter.formatTime(record)
+        assert ts == "2026-04-21T12:00:00.000Z"
+
+    def test_extra_fields(self) -> None:
+        stream = StringIO()
+        handler = logging.StreamHandler(stream)
+        handler.setFormatter(IsoUtcFormatter())
+        logger = logging.getLogger("test.extra")
+        logger.handlers.clear()
+        logger.addHandler(handler)
+        logger.setLevel(logging.DEBUG)
+
+        logger.info("Started", extra={"version": "1.0.0", "schema_revision": "abc123"})
+        raw = stream.getvalue().strip()
+
+        assert "version=1.0.0" in raw
+        assert "schema_revision=abc123" in raw
 
 
 class TestConfigureLogging:

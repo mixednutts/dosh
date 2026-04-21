@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 0.6.10-alpha | released | 2026-04-22
+
+### Fixed
+
+- Fixed duplicate log lines during container startup. Alembic migration messages no longer appear twice in `docker logs`.
+- Switched backend logging from JSON format to plain text with ISO-8601 UTC timestamps, making container logs easier to read without sacrificing structure or severity levels.
+
 ## 0.6.9-alpha | released | 2026-04-22
 
 ### Added
