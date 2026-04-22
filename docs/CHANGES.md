@@ -34,7 +34,7 @@ It is intended to complement [README.md](/home/ubuntu/dosh/README.md), not repla
 
 ### Testing
 
-- Full backend regression suite: **188 passed** (excluding one pre-existing `test_multiple_overdue_open_cycles_can_all_present_as_pending_closure` failure reproduced on clean checkout), 0 regressions introduced.
+- Full backend regression suite: **193 passed**, 0 regressions introduced.
 - Full frontend regression suite: **226 passed**, 0 regressions introduced.
 
 ### Deployment verification

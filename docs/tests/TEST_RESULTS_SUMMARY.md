@@ -15,8 +15,7 @@ cd /home/ubuntu/dosh/backend
 
 Result:
 
-- Full backend suite: **188 passed**
-- One pre-existing failure in `test_multiple_overdue_open_cycles_can_all_present_as_pending_closure` (reproduces on clean checkout; unrelated to this session)
+- Full backend suite: **193 passed**
 - No regressions introduced
 
 ```bash

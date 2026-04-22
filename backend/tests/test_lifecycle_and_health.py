@@ -178,7 +178,7 @@ def test_expired_open_cycle_is_reported_as_pending_closure_and_can_still_be_clos
 def test_multiple_overdue_open_cycles_can_all_present_as_pending_closure(client, db_session):
     setup = create_minimum_budget_setup(db_session)
     budget = setup["budget"]
-    far_past_start = utc_now().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=80)
+    far_past_start = utc_now().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=120)
 
     periods = generate_periods(
         client,
