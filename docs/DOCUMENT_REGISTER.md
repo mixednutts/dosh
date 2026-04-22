@@ -618,6 +618,40 @@ Maintenance notes:
 
 - should remain the main design-boundary document for Auto Expense behavior rather than becoming a second change log
 
+### SCHEDULED_INCOME_AND_AUTO_CARRY_FORWARD_PLAN.md
+
+Document:
+
+- [SCHEDULED_INCOME_AND_AUTO_CARRY_FORWARD_PLAN.md](/home/ubuntu/dosh/docs/plans/SCHEDULED_INCOME_AND_AUTO_CARRY_FORWARD_PLAN.md)
+
+Document type:
+
+- domain or workflow plan
+
+Primary purpose:
+
+- define scheduled income behavior, auto-income automation, and auto-carry-forward surplus propagation independent of manual close-out
+
+Primary source-of-truth scope:
+
+- income scheduling rules and frequency pattern reuse from expenses
+- auto-income scheduler behavior and eligibility
+- auto-carry-forward rules for PENDING_CLOSURE periods
+- close-out income freeze behavior
+- schema migration and backfill expectations for scheduled income fields
+
+Key relationships:
+
+- mirrors design patterns from [AUTO_EXPENSE_PLAN.md](/home/ubuntu/dosh/docs/plans/AUTO_EXPENSE_PLAN.md)
+- must remain aligned with lifecycle rules in [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_CYCLE_LIFECYCLE_PLAN.md)
+- references cash-management validation in [CASH_MANAGEMENT_WORKFLOW_PLAN.md](/home/ubuntu/dosh/docs/plans/CASH_MANAGEMENT_WORKFLOW_PLAN.md)
+- informs setup-assessment expectations in [SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md](/home/ubuntu/dosh/docs/plans/SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md)
+
+Maintenance notes:
+
+- should be updated when income scheduling behavior, auto-income rules, or carry-forward logic changes materially
+- should remain the canonical design reference for income-cycle independence from budget-cycle frequency
+
 ### STATUS_CHANGE_HISTORY_PLAN.md
 
 Document:
