@@ -158,7 +158,7 @@ function getCustomDateParts(date, locale, timezone) {
 
 function formatCustomDate(date, pattern, locale, timezone) {
   const parts = getCustomDateParts(date, locale, timezone)
-  return pattern.replace(/yyyy|yy|MMMM|MMM|MM|M|dd|d/g, token => parts[token] || token)
+  return pattern.replaceAll(/yyyy|yy|MMMM|MMM|MM|M|dd|d/g, token => parts[token] || token)
 }
 
 export function makeLocalisation(preferences = {}) {
@@ -297,7 +297,7 @@ export function makeLocalisation(preferences = {}) {
 }
 
 function escapeRegExp(value) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return value.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
 function getNumberParts(locale, currency) {
@@ -387,15 +387,15 @@ export function normalizeLocalizedAmountInput(rawValue, preferences = {}) {
 
   for (const [localized, digit] of getDigitMap(locale)) {
     if (localized !== digit) {
-      normalized = normalized.replace(new RegExp(escapeRegExp(localized), 'g'), digit)
+      normalized = normalized.replaceAll(new RegExp(escapeRegExp(localized), 'g'), digit)
     }
   }
 
   for (const symbol of currencySymbols) {
-    normalized = normalized.replace(new RegExp(escapeRegExp(symbol), 'g'), '')
+    normalized = normalized.replaceAll(new RegExp(escapeRegExp(symbol), 'g'), '')
   }
-  normalized = normalized.replace(new RegExp(escapeRegExp(currency), 'gi'), '')
-  normalized = normalized.replace(/[\s\u00a0\u202f]/g, '')
+  normalized = normalized.replaceAll(new RegExp(escapeRegExp(currency), 'gi'), '')
+  normalized = normalized.replaceAll(/[\s\u00a0\u202f]/g, '')
 
   const decimalIndex = decimal ? normalized.lastIndexOf(decimal) : -1
   const integerPart = decimalIndex >= 0 ? normalized.slice(0, decimalIndex) : normalized
@@ -408,8 +408,8 @@ export function normalizeLocalizedAmountInput(rawValue, preferences = {}) {
     return null
   }
 
-  if (group) normalized = normalized.replace(new RegExp(escapeRegExp(group), 'g'), '')
-  if (decimal && decimal !== '.') normalized = normalized.replace(new RegExp(escapeRegExp(decimal), 'g'), '.')
+  if (group) normalized = normalized.replaceAll(new RegExp(escapeRegExp(group), 'g'), '')
+  if (decimal && decimal !== '.') normalized = normalized.replaceAll(new RegExp(escapeRegExp(decimal), 'g'), '.')
 
   return normalizeDecimalString(normalized)
 }

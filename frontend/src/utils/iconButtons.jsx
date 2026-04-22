@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types'
 import { TrashIcon, PencilSquareIcon } from '@heroicons/react/24/outline'
 
 export const SECONDARY_BUTTON_CLASSES = 'flex items-center justify-center w-7 h-7 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors'
@@ -35,6 +36,14 @@ export function ActionIconButton({ disabled = false, title, onClick, tone = 'neu
   )
 }
 
+ActionIconButton.propTypes = {
+  disabled: PropTypes.bool,
+  title: PropTypes.string.isRequired,
+  onClick: PropTypes.func.isRequired,
+  tone: PropTypes.string,
+  icon: PropTypes.elementType.isRequired,
+}
+
 export function EmptyActionSlot() {
   return <span className="block w-7 h-7" />
 }
@@ -50,6 +59,11 @@ export function DeleteActionButton({ onClick, title }) {
       <TrashIcon className="w-4 h-4" />
     </button>
   )
+}
+
+DeleteActionButton.propTypes = {
+  onClick: PropTypes.func.isRequired,
+  title: PropTypes.string.isRequired,
 }
 
 export function BudgetAmountCell({ amount, canEdit, onEdit, label, formatters }) {
@@ -69,4 +83,14 @@ export function BudgetAmountCell({ amount, canEdit, onEdit, label, formatters })
       <span>{formatters.fmt(amount)}</span>
     </div>
   )
+}
+
+BudgetAmountCell.propTypes = {
+  amount: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+  canEdit: PropTypes.bool.isRequired,
+  onEdit: PropTypes.func.isRequired,
+  label: PropTypes.string.isRequired,
+  formatters: PropTypes.shape({
+    fmt: PropTypes.func.isRequired,
+  }).isRequired,
 }

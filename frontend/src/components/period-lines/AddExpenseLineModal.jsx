@@ -35,12 +35,6 @@ export function AddExpenseLineModal({ periodId, budgetId, existingDescs, onClose
     enabled: mode === 'new',
   })
 
-  const { data: budget } = useQuery({
-    queryKey: ['budget', budgetId],
-    queryFn: () => getBudget(budgetId),
-    enabled: mode === 'new',
-  })
-
   const available = expenseItems.filter(e => !existingDescs.includes(e.expensedesc))
 
   const createItem = useMutation({ mutationFn: data => createExpenseItem(budgetId, data) })
@@ -68,15 +62,19 @@ export function AddExpenseLineModal({ periodId, budgetId, existingDescs, onClose
       if (resolvedValue == null) { setError('Enter a valid budget amount'); return }
       if (mode === 'new') {
         if (!newDesc.trim()) { setError('Enter a description'); return }
+        const freqValue = newFreqtype === 'Always' ? null : (newFreqVal ? Number.parseInt(newFreqVal, 10) : null)
+        const payType = newFreqtype === 'Always' ? 'MANUAL' : (newPaytype || 'MANUAL')
+        const effDate = newFreqtype === 'Always' ? null : (newEffDate || null)
+        const accountDesc = defaultAccountDesc === primaryAccountDesc ? null : (defaultAccountDesc || null)
         await createItem.mutateAsync({
           expensedesc: newDesc.trim(),
           active: true,
           freqtype: newFreqtype || null,
-          frequency_value: newFreqtype === 'Always' ? null : (newFreqVal ? Number.parseInt(newFreqVal, 10) : null),
-          paytype: newFreqtype === 'Always' ? 'MANUAL' : (newPaytype || 'MANUAL'),
-          effectivedate: newFreqtype === 'Always' ? null : (newEffDate || null),
+          frequency_value: freqValue,
+          paytype: payType,
+          effectivedate: effDate,
           expenseamount: resolvedValue,
-          default_account_desc: defaultAccountDesc === primaryAccountDesc ? null : (defaultAccountDesc || null),
+          default_account_desc: accountDesc,
         })
         addToperiod.mutate({ budgetid: budgetId, expensedesc: newDesc.trim(), budgetamount: resolvedValue, scope, note: note || null })
       } else {

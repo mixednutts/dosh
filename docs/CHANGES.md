@@ -4,6 +4,73 @@ This document captures the key product and implementation changes made during re
 
 It is intended to complement [README.md](/home/ubuntu/dosh/README.md), not replace it.
 
+## Latest Session: SonarQube Code Quality Cleanup — Four-Phase Refactor (0.6.11-alpha) (2026-04-22)
+
+### What changed
+
+- **Phase 1 — BLOCKER + Quick Wins (~40 issues):**
+  - Converted FastAPI router parameters in `backend/app/routers/budgets.py` from `Form(...)` / `File(...)` to `Annotated[..., Form()]` / `Annotated[..., File()]` per `python:S8410`.
+  - Extracted string-literal constant `_FK_BUDGET_HEALTH_MATRICES` in `backend/app/models.py` per `python:S1192`.
+  - Switched regex replacements in `frontend/src/utils/localisation.js` from `.replace(` to `.replaceAll(` per `javascript:S7781`.
+  - Removed unused imports (`javascript:S1128`) and unused variables (`javascript:S1481`/`S1854`) across `BudgetHealthTab.jsx`, `AmountExpressionInput.jsx`, `BudgetsPage.jsx`, and `IncomeSection.jsx`.
+  - Fixed semantic markup: changed anchor to button in `PeriodDetailPage.jsx` per `javascript:S6844`.
+  - Replaced `parseFloat` with `Number.parseFloat` per `javascript:S7773`; clarified `TypeError` per `javascript:S7786`.
+
+- **Phase 2 — Backend Cognitive Complexity (22 issues):**
+  - Extracted `_default_for_missing_column`, `_maybe_delete_existing_budget`, `_restore_simple_entities`, `_restore_health_matrices`, `_restore_periods`, and `_restore_health_summaries` from `restore_service.py` per `python:S3776`.
+  - Extracted `_apply_carry_forward` helper in `cycle_management.py` per `python:S3776`.
+  - Extracted metric-executor constants (`_NO_CURRENT_PERIOD_SUMMARY`, `_WITHIN_TOLERANCE_CALC`, etc.) and flattened nested conditionals in `health_engine/metric_executors.py` per `python:S1192` / `python:S3776`.
+  - Extracted `_delta_from_account_pair()` helper in `transaction_ledger.py`; removed unused `legacy_table`/`legacy_id` parameters from `build_investment_tx()`; split `compute_dynamic_period_balances()` into `_resolve_period_indices`, `_load_anchor_balances`, `_ensure_tracked_accounts`, `_walk_forward_balances`, and `_build_balance_outputs` per `python:S3776`.
+  - Extracted `_enrich_period_balances`, `_validate_expense_status_transition`, `_expense_budget_for_item`, and `_populate_period_incomes` / `_populate_period_expenses` / `_populate_period_balances` / `_populate_period_investments` from `periods.py` per `python:S3776`.
+
+- **Phase 3 — Frontend Concentrated Clusters (38 issues):**
+  - Added `prop-types` declarations to `ActionIconButton`, `DeleteActionButton`, `BudgetAmountCell`, and high-traffic page components (`BudgetHealthTab.jsx`, `BudgetsPage.jsx`, `PeriodDetailPage.jsx`) per `javascript:S6774`.
+  - Flattened nested ternaries in `AddExpenseLineModal.jsx`, `ProgressStatusPill.jsx`, and `PeriodDetailPage.jsx` per `javascript:S3358`.
+  - Addressed `javascript:S6853` form-label accessibility findings and `javascript:S7735` negated-condition findings where they represented genuine issues; determined false positives were already compliant.
+
+- **Phase 4 — Remaining Scattered Issues (~30 issues):**
+  - CSS contrast and obsolete-property cleanup across stylesheets.
+  - Miscellaneous frontend and backend maintainability fixes flagged by SonarQube.
+
+### Testing
+
+- Full backend regression suite: **188 passed** (excluding one pre-existing `test_multiple_overdue_open_cycles_can_all_present_as_pending_closure` failure reproduced on clean checkout), 0 regressions introduced.
+- Full frontend regression suite: **226 passed**, 0 regressions introduced.
+
+### Deployment verification
+
+- Docker image built and deployed: `ghcr.io/mixednutts/dosh:0.6.11-alpha`
+- Container `dosh` running successfully.
+- `docker logs dosh` confirms clean startup with no duplicate Alembic lines.
+
+### Decisions preserved
+
+- All refactors are pure behavior-preserving changes. No schema changes, no API contract changes, no user-facing workflow changes.
+- The `test_multiple_overdue_open_cycles_can_all_present_as_pending_closure` pre-existing failure is unrelated to this session's changes and was present before the refactor started.
+- Version bump to `0.6.11-alpha` was applied to mark the deployed code-quality release. An incident log was added to `AGENTS.md` documenting that version bumps now require explicit user approval before execution.
+
+### Files touched
+
+- `backend/app/routers/budgets.py`
+- `backend/app/models.py`
+- `backend/app/restore_service.py`
+- `backend/app/cycle_management.py`
+- `backend/app/health_engine/metric_executors.py`
+- `backend/app/transaction_ledger.py`
+- `backend/app/routers/periods.py`
+- `frontend/src/utils/localisation.js`
+- `frontend/src/utils/iconButtons.jsx`
+- `frontend/src/components/period-lines/AddExpenseLineModal.jsx`
+- `frontend/src/components/status/ProgressStatusPill.jsx`
+- `frontend/src/pages/PeriodDetailPage.jsx`
+- `frontend/src/pages/BudgetsPage.jsx`
+- `frontend/src/pages/tabs/BudgetHealthTab.jsx`
+- `frontend/src/components/AmountExpressionInput.jsx`
+- `frontend/src/components/period-sections/IncomeSection.jsx`
+- Plus incidental CSS and minor router files
+
+---
+
 ## Latest Session: Logging Format Fix and Duplicate Log Elimination (0.6.10-alpha) (2026-04-22)
 
 ### What changed

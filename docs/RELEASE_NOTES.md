@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.6.11-alpha | released | 2026-04-22
+
+### Fixed
+
+- Internal code quality improvements across the backend and frontend to keep the app maintainable and reliable as it grows. No user-facing workflow changes.
+
 ## 0.6.10-alpha | released | 2026-04-22
 
 ### Fixed

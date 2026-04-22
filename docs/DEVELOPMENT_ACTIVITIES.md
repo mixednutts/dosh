@@ -987,7 +987,12 @@ Status:
 - `Completed`: complete three-phase modularization of `PeriodDetailPage.jsx` (2,911 lines → 642 lines, 78% reduction); extracted 15 components to organized directories and 3 utility modules
 - `Completed`: cleared the modularization-induced unused-import spike (`javascript:S1128`) and related unused-variable warnings (`S1481`/`S1854`) from `PeriodDetailPage.jsx`, `BudgetPeriodsPage.jsx`, `transactionHelpers.js`, and `periods.py`; SonarQube issue count reduced from 159 back toward the pre-modularization baseline
 - `Completed`: remove stale `.period-detail-table :nth-child()` width overrides from `index.css` that were conflicting with the unified `<colgroup>` layout and causing column width misalignment
-- continue reducing SonarQube noise by addressing the next concentrated frontend rule clusters after props validation and the completed FastAPI router cleanup, especially nested ternaries, form-label associations, and residual maintainability findings in `PeriodDetailPage.jsx` and related high-traffic frontend files now that the duplication hotspot is resolved
+- `Completed (0.6.11-alpha)`: completed a four-phase SonarQube code quality cleanup — BLOCKER+quick wins (~40 issues), backend cognitive complexity (22 issues), frontend concentrated clusters (38 issues: prop-types, nested ternaries, form labels, negated conditions), and remaining scattered issues (~30 issues). No functional changes; all refactors verified by existing test suites.
+- `Completed`: FastAPI `Annotated[..., Depends()]` / `Annotated[..., Form()]` type hints adopted across routers (`budgets.py`) per `python:S8410`
+- `Completed`: string-literal constant extraction applied to repeated FK strings and metric executor literals per `python:S1192`
+- `Completed`: nested ternary flattening in `AddExpenseLineModal.jsx`, `ProgressStatusPill.jsx`, and `PeriodDetailPage.jsx` per `javascript:S3358`
+- `Completed`: `prop-types` declarations added across shared components (`iconButtons.jsx`, `BudgetHealthTab.jsx`, `BudgetsPage.jsx`, and period-detail sections) per `javascript:S6774`
+- `Completed`: cognitive-complexity reduction via helper extraction in `restore_service.py`, `cycle_management.py`, `metric_executors.py`, `transaction_ledger.py`, and `periods.py` per `python:S3776`
 - standardize terminology around savings and investments
 - standardize where the UI says `Budget Cycle` while backend and API continue using `period`
 - standardize health terminology around surplus, deficit, tolerance, threshold, and escalation

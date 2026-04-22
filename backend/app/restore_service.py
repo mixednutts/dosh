@@ -105,14 +105,35 @@ def _is_datetime_column(col: Any) -> bool:
     return type_cls is _DateTime or type_cls.__name__ == "UTCDateTime"
 
 
+def _default_for_missing_column(col: Any) -> Any | None:
+    """Return a sensible default for a missing non-nullable column, or None if it should be skipped."""
+    if col.default is not None:
+        return None  # Let SQLAlchemy handle defaults
+    if not col.nullable and col.primary_key and col.autoincrement:
+        return None  # Skip auto-increment PKs
+    if not col.nullable:
+        try:
+            if col.type.python_type is str:
+                return ""
+            elif col.type.python_type is int:
+                return 0
+            elif col.type.python_type is bool:
+                return False
+        except NotImplementedError:
+            if _is_datetime_column(col) and col.default is None:
+                return datetime.now(timezone.utc)
+    return None
+
+
 def _coerce_row(model_cls: Any, data: dict[str, Any], fk_overrides: dict[str, Any] | None = None) -> Any:
     """Create a model instance from a dict, coercing types and applying FK overrides."""
     fk_overrides = fk_overrides or {}
-    kwargs = {}
+    kwargs: dict[str, Any] = {}
     for col in model_cls.__table__.columns:
         if col.name in fk_overrides:
             kwargs[col.name] = fk_overrides[col.name]
-        elif col.name in data:
+            continue
+        if col.name in data:
             target_type = type(data[col.name])
             try:
                 target_type = col.type.python_type
@@ -120,24 +141,10 @@ def _coerce_row(model_cls: Any, data: dict[str, Any], fk_overrides: dict[str, An
                 if _is_datetime_column(col):
                     target_type = datetime
             kwargs[col.name] = _deserialize_value(data[col.name], target_type)
-        elif col.default is not None:
-            # Let SQLAlchemy handle defaults
-            pass
-        elif not col.nullable and col.primary_key and col.autoincrement:
-            # Skip auto-increment PKs
-            pass
-        elif not col.nullable:
-            # Provide a sensible default for missing non-nullable fields
-            try:
-                if col.type.python_type is str:
-                    kwargs[col.name] = ""
-                elif col.type.python_type is int:
-                    kwargs[col.name] = 0
-                elif col.type.python_type is bool:
-                    kwargs[col.name] = False
-            except NotImplementedError:
-                if _is_datetime_column(col) and col.default is None:
-                    kwargs[col.name] = datetime.now(timezone.utc)
+            continue
+        default = _default_for_missing_column(col)
+        if default is not None:
+            kwargs[col.name] = default
     return model_cls(**kwargs)
 
 
@@ -145,6 +152,93 @@ def _find_budget_by_description(db: Session, description: str | None) -> Budget 
     """Find an existing budget matching the given description."""
     desc = description or ""
     return db.query(Budget).filter(Budget.description == desc).first()
+
+
+def _maybe_delete_existing_budget(db: Session, description: str, allow_overwrite: bool) -> bool:
+    """Delete an existing budget with matching description if overwrite is allowed.
+
+    Returns True if the caller should skip this budget, False otherwise.
+    """
+    existing = _find_budget_by_description(db, description)
+    if not existing:
+        return False
+    if not allow_overwrite:
+        return True
+    db.delete(existing)
+    db.flush()
+    return False
+
+
+def _restore_simple_entities(db: Session, new_budgetid: int, b: dict[str, Any]) -> None:
+    """Restore income types, expense items, investment items, balance types, and setup revision events."""
+    for it_data in b.get("income_types", []):
+        db.add(_coerce_row(IncomeType, it_data, {"budgetid": new_budgetid}))
+    for ei_data in b.get("expense_items", []):
+        db.add(_coerce_row(ExpenseItem, ei_data, {"budgetid": new_budgetid}))
+    for ii_data in b.get("investment_items", []):
+        db.add(_coerce_row(InvestmentItem, ii_data, {"budgetid": new_budgetid}))
+    for bt_data in b.get("balance_types", []):
+        db.add(_coerce_row(BalanceType, bt_data, {"budgetid": new_budgetid}))
+    for sre_data in b.get("setup_revision_events", []):
+        db.add(_coerce_row(SetupRevisionEvent, sre_data, {"budgetid": new_budgetid}))
+
+
+def _restore_health_matrices(db: Session, new_budgetid: int, b: dict[str, Any]) -> dict[int, int]:
+    """Restore health matrices and return an old_matrix_id → new_matrix_id mapping."""
+    matrix_id_map: dict[int, int] = {}
+    for hm in b.get("health_matrices", []):
+        old_matrix_id = hm.get("old_matrix_id")
+        matrix_data = hm.get("matrix", {})
+        new_matrix = _coerce_row(BudgetHealthMatrix, matrix_data, {"budgetid": new_budgetid})
+        db.add(new_matrix)
+        db.flush()
+        if old_matrix_id is not None:
+            matrix_id_map[old_matrix_id] = new_matrix.matrix_id
+        for item_data in hm.get("items", []):
+            db.add(_coerce_row(BudgetHealthMatrixItem, item_data, {"matrix_id": new_matrix.matrix_id}))
+    return matrix_id_map
+
+
+def _restore_periods(db: Session, new_budgetid: int, b: dict[str, Any], matrix_id_map: dict[int, int]) -> None:
+    """Restore periods and all period-level entities."""
+    for period_wrapper in b.get("periods", []):
+        old_finperiodid = period_wrapper.get("old_finperiodid")
+        period_data = period_wrapper.get("period", {})
+        new_period = _coerce_row(FinancialPeriod, period_data, {"budgetid": new_budgetid})
+        db.add(new_period)
+        db.flush()
+        new_finperiodid = new_period.finperiodid
+
+        for pi_data in period_wrapper.get("period_incomes", []):
+            db.add(_coerce_row(PeriodIncome, pi_data, {"finperiodid": new_finperiodid, "budgetid": new_budgetid}))
+        for pe_data in period_wrapper.get("period_expenses", []):
+            db.add(_coerce_row(PeriodExpense, pe_data, {"finperiodid": new_finperiodid, "budgetid": new_budgetid}))
+        for pb_data in period_wrapper.get("period_balances", []):
+            db.add(_coerce_row(PeriodBalance, pb_data, {"finperiodid": new_finperiodid, "budgetid": new_budgetid}))
+        for pinv_data in period_wrapper.get("period_investments", []):
+            db.add(_coerce_row(PeriodInvestment, pinv_data, {"finperiodid": new_finperiodid, "budgetid": new_budgetid}))
+        for pt_data in period_wrapper.get("period_transactions", []):
+            db.add(_coerce_row(PeriodTransaction, pt_data, {"finperiodid": new_finperiodid, "budgetid": new_budgetid}))
+
+        if period_wrapper.get("closeout_snapshot"):
+            db.add(_coerce_row(PeriodCloseoutSnapshot, period_wrapper["closeout_snapshot"], {"finperiodid": new_finperiodid}))
+
+        for phr_data in period_wrapper.get("health_results", []):
+            old_matrix_id = phr_data.get("matrix_id")
+            overrides: dict[str, Any] = {"finperiodid": new_finperiodid}
+            if old_matrix_id is not None and old_matrix_id in matrix_id_map:
+                overrides["matrix_id"] = matrix_id_map[old_matrix_id]
+            db.add(_coerce_row(PeriodHealthResult, phr_data, overrides))
+
+
+def _restore_health_summaries(db: Session, new_budgetid: int, b: dict[str, Any], matrix_id_map: dict[int, int]) -> None:
+    """Restore health summaries with matrix_id remapping."""
+    for hs_data in b.get("health_summaries", []):
+        old_matrix_id = hs_data.get("matrix_id")
+        overrides: dict[str, Any] = {"budgetid": new_budgetid}
+        if old_matrix_id is not None and old_matrix_id in matrix_id_map:
+            overrides["matrix_id"] = matrix_id_map[old_matrix_id]
+        db.add(_coerce_row(BudgetHealthSummary, hs_data, overrides))
 
 
 def restore_budgets(
@@ -178,111 +272,22 @@ def restore_budgets(
         budget_info = b.get("budget", {})
         description = budget_info.get("description") or "Untitled"
 
-        # Check for existing budget
-        existing = _find_budget_by_description(db, budget_info.get("description"))
-        if existing:
-            if not allow_overwrite:
-                warnings.append(f"Skipped '{description}': a budget with this description already exists.")
-                continue
-            db.delete(existing)
-            db.flush()
+        if _maybe_delete_existing_budget(db, description, allow_overwrite):
+            warnings.append(f"Skipped '{description}': a budget with this description already exists.")
+            continue
 
-        # Create new budget
         new_budget = _coerce_row(Budget, budget_info)
         db.add(new_budget)
         db.flush()
         new_budgetid = new_budget.budgetid
 
-        old_budgetid = b.get("old_budgetid")
-
-        # Income types
-        for it_data in b.get("income_types", []):
-            db.add(_coerce_row(IncomeType, it_data, {"budgetid": new_budgetid}))
-
-        # Expense items
-        for ei_data in b.get("expense_items", []):
-            db.add(_coerce_row(ExpenseItem, ei_data, {"budgetid": new_budgetid}))
-
-        # Investment items
-        for ii_data in b.get("investment_items", []):
-            db.add(_coerce_row(InvestmentItem, ii_data, {"budgetid": new_budgetid}))
-
-        # Balance types
-        for bt_data in b.get("balance_types", []):
-            db.add(_coerce_row(BalanceType, bt_data, {"budgetid": new_budgetid}))
-
-        # Setup revision events
-        for sre_data in b.get("setup_revision_events", []):
-            db.add(_coerce_row(SetupRevisionEvent, sre_data, {"budgetid": new_budgetid}))
-
-        # Health matrices (need ID remapping)
-        matrix_id_map: dict[int, int] = {}
-        for hm in b.get("health_matrices", []):
-            old_matrix_id = hm.get("old_matrix_id")
-            matrix_data = hm.get("matrix", {})
-            new_matrix = _coerce_row(BudgetHealthMatrix, matrix_data, {"budgetid": new_budgetid})
-            db.add(new_matrix)
-            db.flush()
-            if old_matrix_id is not None:
-                matrix_id_map[old_matrix_id] = new_matrix.matrix_id
-
-            for item_data in hm.get("items", []):
-                db.add(_coerce_row(BudgetHealthMatrixItem, item_data, {"matrix_id": new_matrix.matrix_id}))
-
-        # Periods (need ID remapping)
-        period_id_map: dict[int, int] = {}
-        for period_wrapper in b.get("periods", []):
-            old_finperiodid = period_wrapper.get("old_finperiodid")
-            period_data = period_wrapper.get("period", {})
-            new_period = _coerce_row(FinancialPeriod, period_data, {"budgetid": new_budgetid})
-            db.add(new_period)
-            db.flush()
-            new_finperiodid = new_period.finperiodid
-            if old_finperiodid is not None:
-                period_id_map[old_finperiodid] = new_finperiodid
-
-            # Period incomes
-            for pi_data in period_wrapper.get("period_incomes", []):
-                db.add(_coerce_row(PeriodIncome, pi_data, {"finperiodid": new_finperiodid, "budgetid": new_budgetid}))
-
-            # Period expenses
-            for pe_data in period_wrapper.get("period_expenses", []):
-                db.add(_coerce_row(PeriodExpense, pe_data, {"finperiodid": new_finperiodid, "budgetid": new_budgetid}))
-
-            # Period balances
-            for pb_data in period_wrapper.get("period_balances", []):
-                db.add(_coerce_row(PeriodBalance, pb_data, {"finperiodid": new_finperiodid, "budgetid": new_budgetid}))
-
-            # Period investments
-            for pinv_data in period_wrapper.get("period_investments", []):
-                db.add(_coerce_row(PeriodInvestment, pinv_data, {"finperiodid": new_finperiodid, "budgetid": new_budgetid}))
-
-            # Period transactions
-            for pt_data in period_wrapper.get("period_transactions", []):
-                db.add(_coerce_row(PeriodTransaction, pt_data, {"finperiodid": new_finperiodid, "budgetid": new_budgetid}))
-
-            # Closeout snapshot
-            if period_wrapper.get("closeout_snapshot"):
-                db.add(_coerce_row(PeriodCloseoutSnapshot, period_wrapper["closeout_snapshot"], {"finperiodid": new_finperiodid}))
-
-            # Health results (need matrix_id remapping)
-            for phr_data in period_wrapper.get("health_results", []):
-                old_matrix_id = phr_data.get("matrix_id")
-                overrides: dict[str, Any] = {"finperiodid": new_finperiodid}
-                if old_matrix_id is not None and old_matrix_id in matrix_id_map:
-                    overrides["matrix_id"] = matrix_id_map[old_matrix_id]
-                db.add(_coerce_row(PeriodHealthResult, phr_data, overrides))
-
-        # Health summaries (need matrix_id and budgetid remapping)
-        for hs_data in b.get("health_summaries", []):
-            old_matrix_id = hs_data.get("matrix_id")
-            overrides: dict[str, Any] = {"budgetid": new_budgetid}
-            if old_matrix_id is not None and old_matrix_id in matrix_id_map:
-                overrides["matrix_id"] = matrix_id_map[old_matrix_id]
-            db.add(_coerce_row(BudgetHealthSummary, hs_data, overrides))
+        _restore_simple_entities(db, new_budgetid, b)
+        matrix_id_map = _restore_health_matrices(db, new_budgetid, b)
+        _restore_periods(db, new_budgetid, b, matrix_id_map)
+        _restore_health_summaries(db, new_budgetid, b, matrix_id_map)
 
         restored.append({
-            "old_budgetid": old_budgetid,
+            "old_budgetid": b.get("old_budgetid"),
             "new_budgetid": new_budgetid,
             "description": description,
         })

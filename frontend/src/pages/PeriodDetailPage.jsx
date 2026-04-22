@@ -139,7 +139,7 @@ export default function PeriodDetailPage() {
       setAutoExpenseFeedback({
         tone: 'success',
         text: result.created_count > 0
-          ? `Created ${result.created_count} AUTO expense transaction${result.created_count === 1 ? '' : 's'}.`
+          ? (() => { const w = result.created_count === 1 ? 'transaction' : 'transactions'; return `Created ${result.created_count} AUTO expense ${w}.`; })()
           : (result.skipped_reasons?.[0] || 'No AUTO expense transactions were due for this budget cycle.'),
       })
     },
@@ -350,17 +350,16 @@ export default function PeriodDetailPage() {
               <LockClosedIcon className="h-4 w-4 shrink-0" />
               Budget cycle is locked. You can still record actuals and transactions, but budget amounts and cycle line structure are protected unless you unlock it.
             </span>
-            <a
-              href="#"
+            <button
+              type="button"
               className="shrink-0 text-xs font-semibold uppercase tracking-wide text-amber-700 hover:text-amber-900 dark:text-amber-400 dark:hover:text-amber-200"
-              onClick={(e) => {
-                e.preventDefault()
+              onClick={() => {
                 try { sessionStorage.setItem(LOCK_BANNER_KEY, 'true') } catch { /* ignore */ }
                 setDismissLockedBanner(true)
               }}
             >
               Dismiss
-            </a>
+            </button>
           </div>
         </div>
       )}

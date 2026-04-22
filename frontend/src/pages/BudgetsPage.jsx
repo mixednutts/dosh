@@ -1064,7 +1064,6 @@ function BudgetForm({ initial = emptyForm, onSubmit, onCreateDemo, onClose, load
   const resolvedFrequency = frequencySelection === CUSTOM_DAY_CYCLE_VALUE
     ? `Every ${customCycleDays} Days`
     : frequencySelection
-  const customCyclePreview = customCycleDays ? `Every ${customCycleDays} Days` : 'Every ___ Days'
   const isCustomCycleInvalid = frequencySelection === CUSTOM_DAY_CYCLE_VALUE && (
     !customCycleDays || Number(customCycleDays) < 2 || Number(customCycleDays) > 365
   )

@@ -1,5 +1,5 @@
 import PropTypes from 'prop-types'
-import { PlusIcon, MinusIcon, ListBulletIcon, Bars2Icon } from '@heroicons/react/24/outline'
+import { PlusIcon, MinusIcon, ListBulletIcon } from '@heroicons/react/24/outline'
 import { IncomeStatusPill } from '../status'
 import { BudgetAmountCell, ActionIconButton, EmptyActionSlot, DeleteActionButton } from '../../utils'
 

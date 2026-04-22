@@ -1,5 +1,5 @@
 import json
-from typing import Any
+from typing import Annotated, Any
 
 import logging
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
@@ -119,7 +119,7 @@ def delete_budget(budgetid: int, db: DbSession):
 @router.post("/backup", responses=error_responses(422))
 def backup_budgets(
     db: DbSession,
-    budgetid: int | None = Form(default=None),
+    budgetid: Annotated[int | None, Form()] = None,
 ):
     """Download a JSON backup of one or all budgets."""
     if budgetid is not None:
@@ -143,7 +143,7 @@ def backup_budgets(
 
 
 @router.post("/restore/inspect", responses=error_responses(400, 422))
-async def restore_inspect(file: UploadFile = File(...)):
+async def restore_inspect(file: Annotated[UploadFile, File()]):
     """Inspect a backup file without applying it."""
     if not file.filename or not file.filename.lower().endswith(".json"):
         raise HTTPException(422, "Backup file must be a JSON file.")
@@ -164,9 +164,9 @@ async def restore_inspect(file: UploadFile = File(...)):
 @router.post("/restore/apply", responses=error_responses(400, 409, 422))
 def restore_apply(
     db: DbSession,
-    file: UploadFile = File(...),
-    selected_indices: str = Form(default=""),
-    allow_overwrite: bool = Form(default=False),
+    file: Annotated[UploadFile, File()],
+    selected_indices: Annotated[str, Form()] = "",
+    allow_overwrite: Annotated[bool, Form()] = False,
 ):
     """Apply a backup file to restore budgets."""
     if not file.filename or not file.filename.lower().endswith(".json"):

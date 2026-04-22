@@ -101,7 +101,7 @@ function MatrixItemCard({ item, onUpdate }) {
   }, [item])
 
   const commitWeight = () => {
-    const w = Math.max(0, Math.min(1, parseFloat(localWeight) || 0))
+    const w = Math.max(0, Math.min(1, Number.parseFloat(localWeight) || 0))
     setLocalWeight(w)
     if (w !== item.weight) onUpdate({ weight: w })
   }

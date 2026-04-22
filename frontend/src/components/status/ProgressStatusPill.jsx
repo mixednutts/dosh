@@ -23,15 +23,15 @@ export function ProgressStatusPill({ item, budgetAmount, actualAmount, remaining
       ? actual - budget
       : budget - actual
 
-    const varianceText = displayValue !== 0
-      ? (displayValue > 0 ? `+${formatters.fmt(displayValue)}` : formatters.fmt(displayValue))
-      : null
+    let varianceText = null
+    if (displayValue !== 0) {
+      varianceText = displayValue > 0 ? `+${formatters.fmt(displayValue)}` : formatters.fmt(displayValue)
+    }
 
-    const varianceCls = category === 'income'
+    const isPositiveVariance = category === 'income' || displayValue >= 0
+    const varianceCls = isPositiveVariance
       ? 'text-success-600 dark:text-success-400'
-      : displayValue >= 0
-        ? 'text-success-600 dark:text-success-400'
-        : 'text-red-600 dark:text-red-400'
+      : 'text-red-600 dark:text-red-400'
 
     return (
       <button

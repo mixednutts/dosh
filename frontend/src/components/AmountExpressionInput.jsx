@@ -37,14 +37,14 @@ function evaluateArithmeticAst(node) {
   switch (node.type) {
     case 'Literal':
       if (typeof node.value !== 'number' || !Number.isFinite(node.value)) {
-        throw new Error('Invalid literal')
+        throw new TypeError('Invalid literal')
       }
       return node.value
     case 'UnaryExpression': {
       const argument = evaluateArithmeticAst(node.argument)
       if (node.operator === '+') return argument
       if (node.operator === '-') return -argument
-      throw new Error('Invalid unary operator')
+      throw new TypeError('Invalid unary operator')
     }
     case 'BinaryExpression': {
       const left = evaluateArithmeticAst(node.left)

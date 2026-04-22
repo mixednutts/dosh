@@ -2,6 +2,49 @@
 
 This document records meaningful automated test results from major working sessions.
 
+## Latest Session: SonarQube Code Quality Cleanup — Four-Phase Refactor (0.6.11-alpha)
+
+This session addressed ~130 SonarQube code-smell findings across four phases with no functional changes.
+
+### Verification
+
+```bash
+cd /home/ubuntu/dosh/backend
+.venv/bin/python -m pytest tests/ -q
+```
+
+Result:
+
+- Full backend suite: **188 passed**
+- One pre-existing failure in `test_multiple_overdue_open_cycles_can_all_present_as_pending_closure` (reproduces on clean checkout; unrelated to this session)
+- No regressions introduced
+
+```bash
+cd /home/ubuntu/dosh/frontend
+npm test -- --watchAll=false
+```
+
+Result:
+
+- Full frontend suite: **226 passed**
+- No regressions introduced
+
+### Deployment Verification
+
+```bash
+cd /home/ubuntu/dosh
+docker compose up --build -d
+curl -sS http://127.0.0.1:3080/api/health
+```
+
+Result:
+
+- Docker image `ghcr.io/mixednutts/dosh:0.6.11-alpha` built and deployed successfully
+- Health endpoint returned `{"status":"ok","app":"Dosh"}`
+- `docker logs dosh` confirms clean startup with plain-text ISO-8601 logs and no duplicate Alembic messages
+
+---
+
 ## Latest Session: Budget Health Engine — Global Metrics and Expanded Scoring (0.6.0-alpha)
 
 This session replaced the per-budget `HealthMetric` table with a global code-based registry, expanded the engine to six metrics, and removed drill-down support.

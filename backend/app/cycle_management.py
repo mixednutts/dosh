@@ -218,19 +218,27 @@ def rebalance_period_openings(period: FinancialPeriod, previous_period: Financia
                 investment.opening_value = Decimal(str(prev_investment.closing_value))
 
 
+def _apply_carry_forward(period: FinancialPeriod, previous_period: FinancialPeriod | None, db: Session) -> None:
+    """Synchronize the carried-forward line for a period based on its predecessor's close-out state."""
+    if previous_period is not None and previous_period.closed_at is not None:
+        snapshot = db.get(PeriodCloseoutSnapshot, previous_period.finperiodid)
+        if snapshot is not None and snapshot.carry_forward_applied:
+            upsert_carried_forward_line(
+                period.finperiodid,
+                period.budgetid,
+                carry_forward_amount_for_period(previous_period),
+                db,
+            )
+            return
+    remove_carried_forward_line(period.finperiodid, db)
+
+
 def recalculate_budget_chain(budgetid: int, db: Session) -> None:
     periods = ordered_budget_periods(budgetid, db)
     previous_period: FinancialPeriod | None = None
     for period in periods:
         rebalance_period_openings(period, previous_period, db)
-        if previous_period is not None and previous_period.closed_at is not None:
-            snapshot = db.get(PeriodCloseoutSnapshot, previous_period.finperiodid)
-            if snapshot is not None and snapshot.carry_forward_applied:
-                upsert_carried_forward_line(period.finperiodid, period.budgetid, carry_forward_amount_for_period(previous_period), db)
-            else:
-                remove_carried_forward_line(period.finperiodid, db)
-        else:
-            remove_carried_forward_line(period.finperiodid, db)
+        _apply_carry_forward(period, previous_period, db)
         sync_period_state(period.finperiodid, db)
         previous_period = period
 

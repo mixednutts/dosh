@@ -304,6 +304,18 @@ def _projected_investment_for_period(
     return total
 
 
+def _enrich_period_balances(finperiodid: int, db: Session) -> list[PeriodBalanceOut]:
+    """Fetch and enrich PeriodBalance rows for a period with their balance_type."""
+    balance_rows = db.query(PeriodBalance).filter(PeriodBalance.finperiodid == finperiodid).all()
+    enriched_balances = []
+    for pb in balance_rows:
+        bt = db.get(BalanceType, (pb.budgetid, pb.balancedesc))
+        balance = PeriodBalanceOut.model_validate(pb)
+        balance.balance_type = bt.balance_type if bt else None
+        enriched_balances.append(balance)
+    return enriched_balances
+
+
 def _compute_projected_investment_for_period(
     target_period: FinancialPeriod,
     db: Session,
@@ -328,34 +340,22 @@ def _compute_projected_investment_for_period(
         period_status = _period_status(period)
 
         if period_status == "Closed":
-            balance_rows = db.query(PeriodBalance).filter(PeriodBalance.finperiodid == period.finperiodid).all()
-            enriched_balances = []
-            for pb in balance_rows:
-                bt = db.get(BalanceType, (pb.budgetid, pb.balancedesc))
-                balance = PeriodBalanceOut.model_validate(pb)
-                balance.balance_type = bt.balance_type if bt else None
-                enriched_balances.append(balance)
-            projected = _projected_investment_for_period(period_status, enriched, enriched_balances)
+            projected = _projected_investment_for_period(
+                period_status, enriched, _enrich_period_balances(period.finperiodid, db)
+            )
             last_non_closed_projected = None
         elif period_status == "Upcoming" and last_non_closed_projected is not None:
             committed_total = sum((_committed_investment_amount(inv) for inv in enriched), Decimal("0.00"))
             projected = last_non_closed_projected + committed_total
             last_non_closed_projected = projected
         else:
-            # Current or Pending Closure – need linked-account opening balances
             budget = db.get(Budget, period.budgetid)
             max_cycles = budget.max_forward_balance_cycles if budget else 10
             dynamic_balances = compute_dynamic_period_balances(period.finperiodid, db, max_forward_cycles=max_cycles)
             if dynamic_balances is not None:
                 balance_out = dynamic_balances
             else:
-                balance_rows = db.query(PeriodBalance).filter(PeriodBalance.finperiodid == period.finperiodid).all()
-                balance_out = []
-                for pb in balance_rows:
-                    bt = db.get(BalanceType, (pb.budgetid, pb.balancedesc))
-                    balance = PeriodBalanceOut.model_validate(pb)
-                    balance.balance_type = bt.balance_type if bt else None
-                    balance_out.append(balance)
+                balance_out = _enrich_period_balances(period.finperiodid, db)
             projected = _projected_investment_for_period(period_status, enriched, balance_out)
             last_non_closed_projected = projected
 
@@ -475,7 +475,6 @@ def _load_period_detail_components(period: FinancialPeriod, db: Session) -> dict
     income_out = _enrich_incomes(incomes, db)
     expense_out = _enrich_expenses(expenses, db)
     investment_out = _enrich_investments(investments, db)
-    period_status = _period_status(period)
 
     return {
         "incomes": income_out,
@@ -685,6 +684,106 @@ def _normalize_period_datetime(value: datetime, budget_timezone: str) -> datetim
     return normalize_budget_date(value, budget_timezone)
 
 
+def _expense_budget_for_item(ei: ExpenseItem, period_start: datetime, period_end: datetime) -> Decimal | None:
+    if ei.freqtype == "Always":
+        return Decimal(str(ei.expenseamount))
+    if ei.freqtype and ei.frequency_value and ei.effectivedate:
+        return expense_occurs_in_period(
+            freqtype=ei.freqtype,
+            frequency_value=ei.frequency_value,
+            effectivedate=ei.effectivedate,
+            period_start=period_start,
+            period_end=period_end,
+            expense_amount=Decimal(str(ei.expenseamount)),
+        )
+    return None
+
+
+def _populate_period_incomes(period: FinancialPeriod, budgetid: int, income_types: list[IncomeType], db: Session) -> None:
+    for it in income_types:
+        db.add(PeriodIncome(
+            finperiodid=period.finperiodid,
+            budgetid=budgetid,
+            incomedesc=it.incomedesc,
+            budgetamount=Decimal(str(it.amount)),
+            actualamount=Decimal("0.00"),
+            varianceamount=Decimal("0.00"),
+            revision_snapshot=it.revisionnum,
+        ))
+
+
+def _populate_period_expenses(
+    period: FinancialPeriod, budgetid: int, expense_items: list[ExpenseItem],
+    period_start: datetime, period_end: datetime, db: Session,
+) -> Decimal:
+    projected = Decimal("0.00")
+    for ei in expense_items:
+        budgeted = _expense_budget_for_item(ei, period_start, period_end)
+        if budgeted is not None:
+            projected += budgeted
+            db.add(PeriodExpense(
+                finperiodid=period.finperiodid,
+                budgetid=budgetid,
+                expensedesc=ei.expensedesc,
+                budgetamount=budgeted,
+                actualamount=Decimal("0.00"),
+                varianceamount=Decimal("0.00"),
+                is_oneoff=False,
+                sort_order=ei.sort_order,
+                revision_snapshot=ei.revisionnum,
+                status=WORKING,
+            ))
+    return projected
+
+
+def _populate_period_balances(
+    period: FinancialPeriod, budgetid: int, balance_types: list[BalanceType],
+    prev_period: FinancialPeriod | None, db: Session,
+) -> None:
+    for bt in balance_types:
+        if prev_period:
+            prev_pb = db.get(PeriodBalance, (prev_period.finperiodid, bt.balancedesc))
+            opening = Decimal(str(prev_pb.closing_amount)) if prev_pb else Decimal(str(bt.opening_balance))
+        else:
+            opening = Decimal(str(bt.opening_balance))
+        db.add(PeriodBalance(
+            finperiodid=period.finperiodid,
+            budgetid=budgetid,
+            balancedesc=bt.balancedesc,
+            opening_amount=opening,
+            closing_amount=opening,
+        ))
+
+
+def _populate_period_investments(
+    period: FinancialPeriod, budgetid: int, investment_items: list[InvestmentItem],
+    prev_period: FinancialPeriod | None, auto_surplus_target: InvestmentItem | None,
+    auto_surplus_amount: Decimal, db: Session,
+) -> None:
+    for ii in investment_items:
+        if prev_period:
+            prev_pi = db.get(PeriodInvestment, (prev_period.finperiodid, ii.investmentdesc))
+            opening = Decimal(str(prev_pi.closing_value)) if prev_pi else Decimal(str(ii.initial_value))
+        else:
+            opening = Decimal(str(ii.initial_value))
+        budgeted_amount = Decimal("0.00")
+        if Decimal(str(ii.planned_amount or 0)) != Decimal("0.00"):
+            budgeted_amount = Decimal(str(ii.planned_amount))
+        elif auto_surplus_target and ii.investmentdesc == auto_surplus_target.investmentdesc:
+            budgeted_amount = auto_surplus_amount
+        db.add(PeriodInvestment(
+            finperiodid=period.finperiodid,
+            budgetid=budgetid,
+            investmentdesc=ii.investmentdesc,
+            opening_value=opening,
+            closing_value=opening,
+            budgeted_amount=budgeted_amount,
+            actualamount=Decimal("0.00"),
+            revision_snapshot=ii.revisionnum,
+            status=WORKING,
+        ))
+
+
 # ── Generate ──────────────────────────────────────────────────────────────────
 
 @router.post("/generate", response_model=PeriodOut, status_code=201, responses=error_responses(404, 409, 422))
@@ -754,52 +853,12 @@ def generate_period(budgetid: int, payload: PeriodGenerateRequest, db: DbSession
         db.add(period)
         db.flush()
 
-        # Populate income rows for auto-included income sources
-        for it in income_types:
-            budget_amount = Decimal(str(it.amount))
-            db.add(PeriodIncome(
-                finperiodid=period.finperiodid,
-                budgetid=budgetid,
-                incomedesc=it.incomedesc,
-                budgetamount=budget_amount,
-                actualamount=Decimal("0.00"),
-                varianceamount=Decimal("0.00"),
-                revision_snapshot=it.revisionnum,
-            ))
+        _populate_period_incomes(period, budgetid, income_types, db)
 
-        # Populate expense rows for active expense items
-        projected_expense_budget = Decimal("0.00")
-        for ei in expense_items:
-            if ei.freqtype == "Always":
-                budgeted = Decimal(str(ei.expenseamount))
-            elif ei.freqtype and ei.frequency_value and ei.effectivedate:
-                budgeted = expense_occurs_in_period(
-                    freqtype=ei.freqtype,
-                    frequency_value=ei.frequency_value,
-                    effectivedate=ei.effectivedate,
-                    period_start=current_start,
-                    period_end=current_end,
-                    expense_amount=Decimal(str(ei.expenseamount)),
-                )
-            else:
-                budgeted = None
+        projected_expense_budget = _populate_period_expenses(
+            period, budgetid, expense_items, current_start, current_end, db
+        )
 
-            if budgeted is not None:
-                projected_expense_budget += budgeted
-                db.add(PeriodExpense(
-                    finperiodid=period.finperiodid,
-                    budgetid=budgetid,
-                    expensedesc=ei.expensedesc,
-                    budgetamount=budgeted,
-                    actualamount=Decimal("0.00"),
-                    varianceamount=Decimal("0.00"),
-                    is_oneoff=False,
-                    sort_order=ei.sort_order,
-                    revision_snapshot=ei.revisionnum,
-                    status=WORKING,
-                ))
-
-        # Find the period immediately before current_start (includes ones flushed earlier)
         prev_period = (
             db.query(FinancialPeriod)
             .filter(
@@ -810,47 +869,15 @@ def generate_period(budgetid: int, payload: PeriodGenerateRequest, db: DbSession
             .first()
         )
 
-        # Populate balance rows
-        for bt in balance_types:
-            if prev_period:
-                prev_pb = db.get(PeriodBalance, (prev_period.finperiodid, bt.balancedesc))
-                opening = Decimal(str(prev_pb.closing_amount)) if prev_pb else Decimal(str(bt.opening_balance))
-            else:
-                opening = Decimal(str(bt.opening_balance))
-            db.add(PeriodBalance(
-                finperiodid=period.finperiodid,
-                budgetid=budgetid,
-                balancedesc=bt.balancedesc,
-                opening_amount=opening,
-                closing_amount=opening,
-            ))
+        _populate_period_balances(period, budgetid, balance_types, prev_period, db)
 
         projected_period_surplus = sum((Decimal(str(it.amount)) for it in income_types), Decimal("0.00")) - projected_expense_budget
         auto_surplus_amount = projected_period_surplus if projected_period_surplus > Decimal("0.00") else Decimal("0.00")
 
-        # Populate investment rows
-        for ii in investment_items:
-            if prev_period:
-                prev_pi = db.get(PeriodInvestment, (prev_period.finperiodid, ii.investmentdesc))
-                opening = Decimal(str(prev_pi.closing_value)) if prev_pi else Decimal(str(ii.initial_value))
-            else:
-                opening = Decimal(str(ii.initial_value))
-            budgeted_amount = Decimal("0.00")
-            if Decimal(str(ii.planned_amount or 0)) != Decimal("0.00"):
-                budgeted_amount = Decimal(str(ii.planned_amount))
-            elif auto_surplus_target and ii.investmentdesc == auto_surplus_target.investmentdesc:
-                budgeted_amount = auto_surplus_amount
-            db.add(PeriodInvestment(
-                finperiodid=period.finperiodid,
-                budgetid=budgetid,
-                investmentdesc=ii.investmentdesc,
-                opening_value=opening,
-                closing_value=opening,
-                budgeted_amount=budgeted_amount,
-                actualamount=Decimal("0.00"),
-                revision_snapshot=ii.revisionnum,
-                status=WORKING,
-            ))
+        _populate_period_investments(
+            period, budgetid, investment_items, prev_period,
+            auto_surplus_target, auto_surplus_amount, db
+        )
 
         last_period = period
         current_start = current_end + timedelta(days=1)
@@ -1573,8 +1600,21 @@ def delete_period(budgetid: int,
 
 # ── Update expense status (Current | Paid | Revised) ─────────────────────────
 
+_EXPENSE_STATUS_TRANSITIONS: dict[tuple[str, str], str] = {
+    (WORKING, REVISED): "Only paid expenses can be revised",
+    (PAID, WORKING): "Paid expenses must be revised before returning to Current",
+    (REVISED, WORKING): "Revised expenses must be marked Paid when edits are complete",
+}
+
+
+def _validate_expense_status_transition(current_status: str, new_status: str) -> None:
+    error = _EXPENSE_STATUS_TRANSITIONS.get((current_status, new_status))
+    if error:
+        raise HTTPException(409, error)
+
+
 @router.patch("/{finperiodid}/expense/{expensedesc}/status", response_model=PeriodExpenseOut, responses=error_responses(404, 409, 422, 423))
-def set_expense_status(budgetid: int, 
+def set_expense_status(budgetid: int,
     finperiodid: int,
     expensedesc: str,
     payload: PeriodExpenseStatusUpdate,
@@ -1593,19 +1633,13 @@ def set_expense_status(budgetid: int,
     if not pe:
         raise HTTPException(404, "Period expense not found")
     current_status = getattr(pe, 'status', WORKING) or WORKING
-    if current_status != PAID and payload.status == REVISED:
-        raise HTTPException(409, "Only paid expenses can be revised")
-    if current_status == PAID and payload.status == WORKING:
-        raise HTTPException(409, "Paid expenses must be revised before returning to Current")
-    if current_status == REVISED and payload.status == WORKING:
-        raise HTTPException(409, "Revised expenses must be marked Paid when edits are complete")
+    _validate_expense_status_transition(current_status, payload.status)
     pe.status = payload.status
     if payload.status == REVISED:
         pe.revision_comment = (payload.revision_comment or "").strip() or None
     else:
         pe.revision_comment = None
 
-    # Conditionally create status change history record
     budget = db.get(Budget, period.budgetid)
     if budget and budget.record_line_status_changes:
         build_status_change_tx(

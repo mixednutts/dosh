@@ -356,9 +356,12 @@ class BudgetHealthMatrix(Base):
     summaries = relationship("BudgetHealthSummary", back_populates="matrix")
 
 
+_FK_BUDGET_HEALTH_MATRICES = "budgethealthmatrices.matrix_id"
+
+
 class BudgetHealthMatrixItem(Base):
     __tablename__ = "budgethealthmatrixitems"
-    matrix_id = Column(Integer, ForeignKey("budgethealthmatrices.matrix_id"), primary_key=True)
+    matrix_id = Column(Integer, ForeignKey(_FK_BUDGET_HEALTH_MATRICES), primary_key=True)
     metric_key = Column(String, nullable=False, primary_key=True)
     weight = Column(Numeric(5, 4), nullable=False)
     scoring_sensitivity = Column(Integer, nullable=False, default=50)
@@ -373,7 +376,7 @@ class PeriodHealthResult(Base):
     __tablename__ = "periodhealthresults"
     id = Column(Integer, primary_key=True, autoincrement=True)
     finperiodid = Column(Integer, ForeignKey("financialperiods.finperiodid"), nullable=False)
-    matrix_id = Column(Integer, ForeignKey("budgethealthmatrices.matrix_id"), nullable=False)
+    matrix_id = Column(Integer, ForeignKey(_FK_BUDGET_HEALTH_MATRICES), nullable=False)
     metric_key = Column(String, nullable=False)
     evaluated_at = Column(UTCDateTime, default=lambda: dt.now(timezone.utc))
     score = Column(Integer, nullable=False)
@@ -389,7 +392,7 @@ class PeriodHealthResult(Base):
 class BudgetHealthSummary(Base):
     __tablename__ = "budgethealthsummaries"
     budgetid = Column(Integer, ForeignKey("budgets.budgetid"), primary_key=True)
-    matrix_id = Column(Integer, ForeignKey("budgethealthmatrices.matrix_id"), nullable=False)
+    matrix_id = Column(Integer, ForeignKey(_FK_BUDGET_HEALTH_MATRICES), nullable=False)
     evaluated_at = Column(UTCDateTime, default=lambda: dt.now(timezone.utc))
     overall_score = Column(Integer, nullable=False)
     overall_status = Column(String, nullable=False)

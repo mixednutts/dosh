@@ -66,69 +66,65 @@ def _is_frozen_period(period: FinancialPeriod) -> bool:
     return status == CLOSED
 
 
-def compute_dynamic_period_balances(
-    finperiodid: int, db: Session, max_forward_cycles: int = 10
-) -> list[PeriodBalanceOut] | None:
-    """Dynamically compute balances for a period from the most recent frozen anchor.
-
-    Returns None if the target period exceeds max_forward_cycles from the anchor.
-    """
-    target_period = db.get(FinancialPeriod, finperiodid)
-    if not target_period:
-        return []
-
-    periods = (
-        db.query(FinancialPeriod)
-        .filter(FinancialPeriod.budgetid == target_period.budgetid)
-        .order_by(FinancialPeriod.startdate, FinancialPeriod.finperiodid)
-        .all()
-    )
-
+def _resolve_period_indices(
+    periods: list[FinancialPeriod], finperiodid: int
+) -> tuple[int, int] | None:
     target_index = None
     for i, p in enumerate(periods):
         if p.finperiodid == finperiodid:
             target_index = i
             break
     if target_index is None:
-        return []
+        return None
 
-    # Find most recent frozen anchor before or at target
     anchor_index = -1
     for i in range(target_index, -1, -1):
         if _is_frozen_period(periods[i]):
             anchor_index = i
             break
 
-    # Count forward cycles from anchor (exclusive) to target (inclusive)
-    forward_count = target_index - anchor_index
-    if forward_count > max_forward_cycles:
-        return None
+    return target_index, anchor_index
 
-    # Build base balances
+
+
+
+def _load_anchor_balances(
+    anchor: FinancialPeriod | None,
+    balance_types: dict[str, BalanceType],
+    db: Session,
+) -> dict[str, Decimal]:
     base_balances: dict[str, Decimal] = {}
-    balance_types = {
-        bt.balancedesc: bt
-        for bt in db.query(BalanceType).filter(BalanceType.budgetid == target_period.budgetid).all()
-    }
-
-    if anchor_index >= 0:
-        anchor = periods[anchor_index]
+    if anchor is not None:
         anchor_balances = db.query(PeriodBalance).filter(PeriodBalance.finperiodid == anchor.finperiodid).all()
         for pb in anchor_balances:
             base_balances[pb.balancedesc] = _as_decimal(pb.closing_amount)
     else:
         for bt in balance_types.values():
             base_balances[bt.balancedesc] = _as_decimal(bt.opening_balance)
+    return base_balances
 
-    # Ensure all accounts that appear in any PeriodBalance up to target are tracked
-    for p in periods[:target_index + 1]:
-        pbs = db.query(PeriodBalance).filter(PeriodBalance.finperiodid == p.finperiodid).all()
-        for pb in pbs:
+
+def _ensure_tracked_accounts(
+    base_balances: dict[str, Decimal],
+    periods: list[FinancialPeriod],
+    balance_types: dict[str, BalanceType],
+    db: Session,
+) -> None:
+    for period in periods:
+        for pb in db.query(PeriodBalance).filter(PeriodBalance.finperiodid == period.finperiodid).all():
             if pb.balancedesc not in base_balances:
                 bt = balance_types.get(pb.balancedesc)
                 base_balances[pb.balancedesc] = _as_decimal(bt.opening_balance) if bt else Decimal("0.00")
 
-    # Walk forward from anchor+1 to target
+
+def _walk_forward_balances(
+    periods: list[FinancialPeriod],
+    anchor_index: int,
+    target_index: int,
+    base_balances: dict[str, Decimal],
+    balance_types: dict[str, BalanceType],
+    db: Session,
+) -> tuple[dict[str, Decimal], dict[str, Decimal], dict[str, Decimal]]:
     computed_openings: dict[str, Decimal] = {}
     computed_movements: dict[str, Decimal] = {}
     computed_closings: dict[str, Decimal] = {}
@@ -143,13 +139,7 @@ def compute_dynamic_period_balances(
             )
             .all()
         )
-
-        # Handle any new accounts appearing in this period
-        period_pbs = db.query(PeriodBalance).filter(PeriodBalance.finperiodid == period.finperiodid).all()
-        for pb in period_pbs:
-            if pb.balancedesc not in base_balances:
-                bt = balance_types.get(pb.balancedesc)
-                base_balances[pb.balancedesc] = _as_decimal(bt.opening_balance) if bt else Decimal("0.00")
+        _ensure_tracked_accounts(base_balances, [period], balance_types, db)
 
         movements: dict[str, Decimal] = {}
         for tx in txs:
@@ -168,14 +158,24 @@ def compute_dynamic_period_balances(
                 computed_movements[balancedesc] = movement
                 computed_closings[balancedesc] = closing
 
-    # Build output for target period
+    return computed_openings, computed_movements, computed_closings
+
+
+def _build_balance_outputs(
+    finperiodid: int,
+    budgetid: int,
+    base_balances: dict[str, Decimal],
+    computed_openings: dict[str, Decimal],
+    computed_movements: dict[str, Decimal],
+    balance_types: dict[str, BalanceType],
+) -> list[PeriodBalanceOut]:
     result: list[PeriodBalanceOut] = []
     for balancedesc, closing in base_balances.items():
         bt = balance_types.get(balancedesc)
         result.append(
             PeriodBalanceOut(
                 finperiodid=finperiodid,
-                budgetid=target_period.budgetid,
+                budgetid=budgetid,
                 balancedesc=balancedesc,
                 balance_type=bt.balance_type if bt else None,
                 opening_amount=computed_openings.get(balancedesc, closing),
@@ -183,8 +183,52 @@ def compute_dynamic_period_balances(
                 movement_amount=computed_movements.get(balancedesc, Decimal("0.00")),
             )
         )
-
     return result
+
+
+def compute_dynamic_period_balances(
+    finperiodid: int, db: Session, max_forward_cycles: int = 10
+) -> list[PeriodBalanceOut] | None:
+    """Dynamically compute balances for a period from the most recent frozen anchor.
+
+    Returns None if the target period exceeds max_forward_cycles from the anchor.
+    """
+    target_period = db.get(FinancialPeriod, finperiodid)
+    if not target_period:
+        return []
+
+    periods = (
+        db.query(FinancialPeriod)
+        .filter(FinancialPeriod.budgetid == target_period.budgetid)
+        .order_by(FinancialPeriod.startdate, FinancialPeriod.finperiodid)
+        .all()
+    )
+
+    resolved = _resolve_period_indices(periods, finperiodid)
+    if resolved is None:
+        return []
+    target_index, anchor_index = resolved
+
+    if target_index - anchor_index > max_forward_cycles:
+        return None
+
+    balance_types = {
+        bt.balancedesc: bt
+        for bt in db.query(BalanceType).filter(BalanceType.budgetid == target_period.budgetid).all()
+    }
+
+    anchor = periods[anchor_index] if anchor_index >= 0 else None
+    base_balances = _load_anchor_balances(anchor, balance_types, db)
+    _ensure_tracked_accounts(base_balances, periods[:target_index + 1], balance_types, db)
+
+    computed_openings, computed_movements, computed_closings = _walk_forward_balances(
+        periods, anchor_index, target_index, base_balances, balance_types, db
+    )
+
+    return _build_balance_outputs(
+        finperiodid, target_period.budgetid, base_balances,
+        computed_openings, computed_movements, balance_types
+    )
 
 
 def propagate_balance_changes_from_period(
@@ -524,8 +568,6 @@ def build_investment_tx(
     entrydate: dt | None = None,
     linked_incomedesc: str | None = None,
     account_desc: str | None = None,
-    legacy_table: str | None = None,
-    legacy_id: int | None = None,
     dedupe_key: str | None = None,
 ):
     amount = _rounded(_as_decimal(amount))
@@ -553,8 +595,6 @@ def build_investment_tx(
         entrydate=entrydate,
         is_system=is_system,
         system_reason=system_reason,
-        legacy_table=legacy_table,
-        legacy_id=legacy_id,
         dedupe_key=dedupe_key,
     )
 
@@ -722,6 +762,16 @@ def investment_amount_from_ledger(finperiodid: int, budgetid: int, investmentdes
     return _sum_amount(rows)
 
 
+def _delta_from_account_pair(tx: PeriodTransaction, balancedesc: str, amount: Decimal) -> Decimal:
+    """Calculate delta when a transaction has affected + related account descriptions."""
+    delta = Decimal("0.00")
+    if tx.affected_account_desc == balancedesc:
+        delta += amount
+    if tx.related_account_desc == balancedesc:
+        delta -= amount
+    return delta
+
+
 def account_delta_for_transaction(tx: PeriodTransaction, balancedesc: str) -> Decimal:
     if getattr(tx, "entry_kind", ENTRY_KIND_MOVEMENT) != ENTRY_KIND_MOVEMENT:
         return Decimal("0.00")
@@ -729,21 +779,11 @@ def account_delta_for_transaction(tx: PeriodTransaction, balancedesc: str) -> De
     if tx.source == "expense":
         return -amount if tx.affected_account_desc == balancedesc else Decimal("0.00")
     if tx.source == "investment":
-        delta = Decimal("0.00")
-        if tx.affected_account_desc == balancedesc:
-            delta += amount
-        if tx.related_account_desc == balancedesc:
-            delta -= amount
-        return delta
+        return _delta_from_account_pair(tx, balancedesc, amount)
     if tx.source in {"income", "balance"}:
         return amount if tx.affected_account_desc == balancedesc else Decimal("0.00")
     if tx.source == "transfer":
-        delta = Decimal("0.00")
-        if tx.affected_account_desc == balancedesc:
-            delta += amount
-        if tx.related_account_desc == balancedesc:
-            delta -= amount
-        return delta
+        return _delta_from_account_pair(tx, balancedesc, amount)
     return Decimal("0.00")
 
 
