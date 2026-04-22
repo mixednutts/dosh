@@ -12,3 +12,4 @@ docker-compose.override.yml
 .donotupdate
 AGENTS.md
 backups/
+settings.json
