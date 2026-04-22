@@ -1,5 +1,6 @@
-# Stage 1: Build frontend
-FROM node:20-alpine AS frontend-build
+# syntax=docker/dockerfile:1
+# Stage 1: Build frontend on the builder's native CPU (avoids QEMU+V8 crashes on arm64 targets).
+FROM --platform=$BUILDPLATFORM node:20-alpine AS frontend-build
 WORKDIR /app
 ARG DEV_MODE=false
 ARG APP_VERSION=0.6.6-alpha
