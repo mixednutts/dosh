@@ -201,10 +201,16 @@ After a GitHub Release tag exists, manually trigger the Docker publish workflow:
 The workflow will:
 - Check out the repository at the specified tag
 - Validate version touchpoints via `scripts/release_management.py`
-- Build the multi-stage Dockerfile
+- Build the multi-stage Dockerfile for **linux/amd64** and **linux/arm64** (QEMU + Buildx), producing a **multi-arch manifest list** per tag
 - Push to `ghcr.io/mixednutts/dosh:<version>`
 - Optionally push to `ghcr.io/mixednutts/dosh:latest`
 - Generate a build attestation
+
+After publishing, confirm both platforms are present (requires a logged-in `docker` or public visibility):
+
+```bash
+docker buildx imagetools inspect ghcr.io/mixednutts/dosh:<version>
+```
 
 ### Authentication
 
