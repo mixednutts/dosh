@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.6.11-beta | released | 2026-04-22
+
+### Changed
+
+- Promoted `0.6.11-alpha` to beta. No user-facing changes.
+
 ## 0.6.11-alpha | released | 2026-04-22
 
 ### Fixed
