@@ -31,7 +31,16 @@ function ReleaseCard({ release, tone = 'current' }) {
 
   const toneClasses = tone === 'update'
     ? 'border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/25'
-    : 'border-dosh-200 bg-dosh-50 dark:border-dosh-800 dark:bg-dosh-950/25'
+    : tone === 'previous'
+      ? 'border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800/40'
+      : 'border-dosh-200 bg-dosh-50 dark:border-dosh-800 dark:bg-dosh-950/25'
+
+  const badgeText = tone === 'update' ? 'Available Update' : tone === 'previous' ? 'Previous Release' : 'Current Version'
+  const badgeClasses = tone === 'update'
+    ? 'border-amber-300 bg-white text-amber-700 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-300'
+    : tone === 'previous'
+      ? 'border-gray-300 bg-white text-gray-600 dark:border-gray-600 dark:bg-gray-800/60 dark:text-gray-400'
+      : 'border-dosh-300 bg-white text-dosh-700 dark:border-dosh-700 dark:bg-dosh-950/40 dark:text-dosh-300'
 
   return (
     <section className={`space-y-4 rounded-2xl border p-4 ${toneClasses}`}>
@@ -40,12 +49,8 @@ function ReleaseCard({ release, tone = 'current' }) {
           <h3 className="text-base font-semibold text-gray-900 dark:text-white">v{release.version}</h3>
           <p className="mt-1 text-xs font-medium uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">{release.release_date}</p>
         </div>
-        <span className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${
-          tone === 'update'
-            ? 'border-amber-300 bg-white text-amber-700 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-300'
-            : 'border-dosh-300 bg-white text-dosh-700 dark:border-dosh-700 dark:bg-dosh-950/40 dark:text-dosh-300'
-        }`}>
-          {tone === 'update' ? 'Available Update' : 'Current Version'}
+        <span className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${badgeClasses}`}>
+          {badgeText}
         </span>
       </div>
       {release.summary ? <p className="text-sm text-gray-700 dark:text-gray-200">{release.summary}</p> : null}
@@ -68,7 +73,7 @@ ReleaseCard.propTypes = {
       items: PropTypes.arrayOf(PropTypes.string).isRequired,
     })).isRequired,
   }),
-  tone: PropTypes.oneOf(['current', 'update']),
+  tone: PropTypes.oneOf(['current', 'update', 'previous']),
 }
 
 function ReleaseExpandableCard({ release, tone = 'update', expanded, onToggle }) {
@@ -210,7 +215,7 @@ export default function ReleaseNotesModal({ releaseNotes, onClose }) {
             {showPreviousReleases ? (
               <div className="space-y-3">
                 {releaseNotes.previous_releases.map(release => (
-                  <ReleaseCard key={release.version} release={release} tone="current" />
+                  <ReleaseCard key={release.version} release={release} tone="previous" />
                 ))}
               </div>
             ) : null}

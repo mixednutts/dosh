@@ -73,6 +73,17 @@ Activities:
 - improved metadata presentation with icon-enhanced frequency display and vertical divider pattern
 - deliverable: updated `PeriodDetailPage.jsx` header section (lines 302-347)
 
+#### Activity Group: Release Notes Previous Version Badge Fix
+
+Status:
+- `Completed` (2026-04-23)
+
+Activities:
+- fixed the in-app Release Notes modal showing "Current Version" badge against older/previous releases
+- added a new `tone="previous"` variant to the `ReleaseCard` component with neutral gray styling and "Previous Release" label
+- previous releases now render with distinct visual treatment instead of incorrectly reusing the current-release styling
+- deliverable: updated `ReleaseNotesModal.jsx` (`ReleaseCard` tone logic and previous-releases map at line 218)
+
 #### Activity Group: Formula Expression Helpers
 
 Status:

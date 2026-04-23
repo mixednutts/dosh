@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Fixed
+
+- Fixed the in-app Release Notes modal incorrectly showing "Current Version" badges against older releases in the "Previous Releases" section. Previous releases now display a "Previous Release" badge with neutral gray styling instead.
+
 ### Changed
 
 - The Budget Cycle Details page header has been redesigned for clearer visual hierarchy and better status communication. The date range title is now larger and more prominent, the cycle stage appears as a colored badge (filled teal with pulse indicator for Current cycles, bordered badges for Closed and Upcoming), and the metadata line uses a cleaner icon-plus-divider layout.
