@@ -37,7 +37,7 @@ Status convention:
 
 ## Roadmap Areas (Beta)
 
-### 1) Budget Health Metrics + UX
+### 1) Budget Health Metrics
 
 #### Activity Group: Expand Metrics
 
@@ -54,19 +54,35 @@ Status:
 - `Active`
 
 Activities:
-- define “trend” semantics (what changes, over what window, and why users should care)
+- define "trend" semantics (what changes, over what window, and why users should care)
 - add an initial trending visualization on budget summary (minimal but trustworthy)
 
-#### Activity Group: Formula Expression Helpers (UX)
+### 2) UX / UI
+
+A generalised area for bugs, UI inconsistencies, and UX improvements. Specific items are tracked below; ad-hoc bugs and UI tweaks should reference this roadmap area from the development activities document.
+
+#### Activity Group: Formula Expression Helpers
 
 Status:
 - `Active`
 
 Activities:
 - improve discoverability and guidance for expression entry where it exists (without weakening numeric-only normal entry)
-- consolidate “what operators are supported” into a single user-facing help surface
+- consolidate "what operators are supported" into a single user-facing help surface
 
-### 2) Reporting Framework
+#### Activity Group: Mid-Cycle Expense Provisioning
+
+Status:
+- `Idea`
+
+Activities:
+- define behaviour when adding new expenses mid-budget cycle via a provision setting: `Provision Mid Cycle Expenses as zero budget value?`
+- when enabled, newly added mid-cycle expenses receive a zero budget value, preserving a realistic view of what was originally budgeted for the period
+- when disabled, new expenses receive their generated budget value as usual
+- ensure the setting is budget-level and defaults to disabled for backward compatibility
+- update period detail UI to reflect zero-budget mid-cycle lines without breaking budget-vs-actual calculations
+
+### 3) Reporting Framework
 
 #### Activity Group: Reporting Foundations
 
@@ -76,7 +92,7 @@ Status:
 Activities:
 - define the canonical report payload shapes (backend-owned calculations)
 - ship the first reporting card set on budget summary
-- add the first drilldown slice (budget → line → transactions) where it materially helps trust
+- add the first drilldown slice (budget -> line -> transactions) where it materially helps trust
 
 #### Activity Group: Starter Reports / Graphs
 
@@ -88,7 +104,7 @@ Activities:
 - investment trend graphs
 - income allocation breakdown (expenses vs investments vs transfers)
 
-### 3) Scheduled Income
+### 4) Scheduled Income
 
 Reference plan:
 - [SCHEDULED_INCOME_AND_AUTO_CARRY_FORWARD_PLAN.md](/home/ubuntu/dosh/docs/plans/SCHEDULED_INCOME_AND_AUTO_CARRY_FORWARD_PLAN.md)
@@ -112,7 +128,7 @@ Activities:
 - mirror auto-expense patterns for auto-income
 - add auto carry-forward for `PENDING_CLOSURE` only when it does not conflict with close-out snapshots
 
-### 4) User Guides + UX Helpers + Formula Library
+### 5) User Guides + Formula Library
 
 #### Activity Group: Beta User Guides
 
@@ -120,8 +136,8 @@ Status:
 - `Next`
 
 Activities:
-- “getting started” guide for beta users (workflow, what is safe, what is read-only)
-- short “common questions” guide for cycle states, health score meaning, and exports
+- "getting started" guide for beta users (workflow, what is safe, what is read-only)
+- short "common questions" guide for cycle states, health score meaning, and exports
 
 #### Activity Group: Formula Library
 
@@ -129,7 +145,7 @@ Status:
 - `Next`
 
 Activities:
-- create/maintain a single “formula definitions” document (what we compute, where it appears, and what it implies)
+- create/maintain a single "formula definitions" document (what we compute, where it appears, and what it implies)
 - link from UI helpers and reporting cards instead of duplicating prose
 
 ## Post-beta note

@@ -14,19 +14,26 @@ This document is the **high-level roadmap** for Dosh in beta.
 
 ## Beta (current focus)
 
-### 1) Budget Health Metrics + UX
+### 1) Budget Health Metrics
 
 Goals:
 
 - expand the available Budget Health metrics (beyond the current set)
 - add health trending / momentum so users can see how current-cycle behavior changes overall budget health over time
-- continue UX polish around health interpretation, metric evidence, and formula expression helpers
+- polish around health interpretation, metric evidence, and formula expression helpers
 
 Notes:
 
 - the canonical metric reference remains [BUDGET_HEALTH_METRIC_LIBRARY.md](/home/ubuntu/dosh/docs/BUDGET_HEALTH_METRIC_LIBRARY.md)
 
-### 2) Reporting Framework
+### 2) UX / UI
+
+Goals:
+
+- generalised area for bugs, UI inconsistencies, and UX improvements
+- specific items tracked in [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md)
+
+### 3) Reporting Framework
 
 Goals:
 
@@ -37,19 +44,19 @@ Goals:
   - investment trend graphs
   - income allocation views (e.g. expenses vs investments vs savings/transfers)
 
-### 3) Scheduled Income
+### 4) Scheduled Income
 
 Goal:
 
 - implement scheduled income (frequency + allocation modes) and optional automation, per:
   - [SCHEDULED_INCOME_AND_AUTO_CARRY_FORWARD_PLAN.md](/home/ubuntu/dosh/docs/plans/SCHEDULED_INCOME_AND_AUTO_CARRY_FORWARD_PLAN.md)
 
-### 4) User Guides + UX Helpers + Formula Library
+### 5) User Guides + Formula Library
 
 Goals:
 
 - beta user guides that explain the workflow in practical terms
-- UX helpers that reduce “what does this mean?” friction at the moment of decision
+- helpers that reduce "what does this mean?" friction at the moment of decision
 - a maintained library of formula definitions (what we calculate, why, and where it shows up)
 
 ## Post-beta (Phase 2)
