@@ -1,1090 +1,138 @@
-# Dosh Development Activities
+# Dosh Development Activities (Beta)
 
-This document is a working view of the current development activity areas for Dosh.
+This is the **beta execution backlog** for Dosh.
 
-## Purpose
+- **High-level roadmap**: [ROADMAP.md](/home/ubuntu/dosh/docs/ROADMAP.md)
+- **Pre-beta reference (archived)**: [docs/archive/DEVELOPMENT_ACTIVITIES-pre-beta-2026-04-23.md](/home/ubuntu/dosh/docs/archive/DEVELOPMENT_ACTIVITIES-pre-beta-2026-04-23.md)
 
-This document is the practical continuation guide for likely next work.
+## Now / Next / Later
 
-Its purpose is to help future sessions quickly identify:
+### Now
+- Reporting foundations (first useful reports + first drilldown slice)
+- Budget health trending / momentum (initial user-visible impact of current cycle)
 
-- what we are actively building toward
-- what engineering work is most likely next
-- what supporting foundation work is still missing
-- where future sessions should pick up
-- the current single-source-of-truth backlog for outstanding follow-up work
+### Next
+- Scheduled income (phase 1: schema + generation allocation with safe defaults)
+- User guides + formula library (tight scope, high leverage)
 
-It complements:
-
-- [ROADMAP.md](/home/ubuntu/dosh/docs/ROADMAP.md) for the release-shaped overall delivery path across beta, Phase 2, and longer-view opportunities
-- [README.md](/home/ubuntu/dosh/README.md) for current-state product and technical overview
-- [CHANGES.md](/home/ubuntu/dosh/docs/CHANGES.md) for recorded product decisions and recent implementation history
-- [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/docs/archive/BUDGET_HEALTH_ADDENDUM.md) for staged budget health direction
-- [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_CYCLE_LIFECYCLE_PLAN.md) for the detailed cycle lifecycle and close-out plan that is now partially implemented
-- [LOCALISATION_SUPPORT_PLAN.md](/home/ubuntu/dosh/docs/plans/LOCALISATION_SUPPORT_PLAN.md) for the implemented regional formatting, numeric masked amount input, operator-triggered calculator behavior, and preference-resolution boundaries
-- [BUDGET_ADJUSTMENT_REVISION_HISTORY_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_ADJUSTMENT_REVISION_HISTORY_PLAN.md) for the budget-adjustment, revision-history, and setup-history rules implemented this session
-- [SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md](/home/ubuntu/dosh/docs/plans/SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md) for the centralized setup-validity and downstream-protection model implemented this session
-- [AUTO_EXPENSE_PLAN.md](/home/ubuntu/dosh/docs/plans/AUTO_EXPENSE_PLAN.md) for the implemented Auto Expense rules, scheduler behavior, AUTO/MANUAL eligibility, and migration expectations
-- [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) for the current proposed testing approach, priorities, and case inventory
-- [TEST_EXPANSION_PLAN.md](/home/ubuntu/dosh/docs/tests/TEST_EXPANSION_PLAN.md) for the current testing follow-up plan and next coverage slices
-- [TEST_RESULTS_SUMMARY.md](/home/ubuntu/dosh/docs/tests/TEST_RESULTS_SUMMARY.md) for the latest recorded verification outcomes
-
-## Current Product Stage
-
-Dosh is beyond initial scaffolding. It already has a working FastAPI backend, React frontend, budget setup flow, period management, transaction-backed balance movement, investment planning, and a first explainable budget health release.
-
-The project is now in the stage where the biggest wins are less about adding isolated CRUD and more about making the financial workflow feel complete, trustworthy, and reviewable.
-
-Recent progress worth carrying forward:
-
-- the Budgets page now includes a dedicated current-period health check with its own detail modal and direct link into the active period
-- budget setup now has `Thresholds & Tolerances` above `Settings`
-- budget health can now be tuned per budget through persistent threshold values
-- deficit concern logic now supports both a percentage threshold and an optional dollar threshold
-- budget info and thresholds now autosave quietly instead of relying on save buttons
-- the overall budget score now explicitly includes the current-period health assessment
-- the Budgets page now shows a current balance summary card with per-account closing balances and total
-- the sidebar is now a focused current-budget workflow nav with compact and collapsible desktop behavior
-- the visual direction has shifted to muted teal branding with separate green success semantics
-- budget cycles now have explicit persisted lifecycle state with `PLANNED`, `ACTIVE`, and `CLOSED`
-- close-out workflow foundations now exist, including preview, historical snapshot storage, and carry-forward handling
-- investment lines now mirror expense lifecycle status with `Current`, `Paid`, and `Revised`
-- period deletion now has guided continuity-aware options, including `Delete this and all upcoming cycles`
-- budget settings now include a dedicated manual cycle-lock control separate from lifecycle state
-- the repository now has a credible automated regression harness across backend, frontend, and initial Playwright end-to-end lifecycle smoke flows
-- budget settings and period-detail now include the first Auto Expense automation slice for scheduled expenses, including budget-level enablement, offset timing, AUTO/MANUAL controls, and manual run support
-- budget setup now has a centralized setup assessment model rather than scattered readiness assumptions
-- setup records now become explicitly protected when downstream cycles or transactions depend on them
-- the budget setup page now shows section-level assessment state and protected downstream usage
-- account terminology now has an initial budget-level display preference, allowing `Transaction`, `Everyday`, or `Checking` while preserving one internal model
-- account primary handling now distinguishes per-type primary designation from the budget’s required primary `Transaction` account, and in-use accounts can still update primary flags when their structure is unchanged
-- the budget setup page now uses in-card section headers, default-collapsed optional sections, and session-persisted expand or collapse state
-- the budget cycles list and sidebar now use the aligned stage order `Current`, `Planned`, `Pending Closure`, and `Historic`, with session-persisted expand or collapse state
-- budget-cycle lifecycle hardening now distinguishes explicit persisted lifecycle state from derived user-facing stage, allowing multiple overdue `Pending Closure` cycles while preserving one `Current` cycle
-- the demo seed now includes rolling-window `Closed`, `Pending Closure`, `Current`, and `Planned` scenarios plus transaction-direction and budget-adjustment examples for walkthroughs
-- the period-detail page now surfaces `Projected Investment` and `Remaining Expenses` in a single 8-card summary grid
-- backend tests now run against an isolated SQLite database per test case, making mixed-area sessions much safer
-- Docker Compose deployment was rebuilt and verified successfully from the current working tree
-- income actual entry in the period detail page now uses a dedicated transaction modal instead of inline actual overrides
-- locked active cycles now preserve actual-entry and transaction flows while still guarding structural edits
-- `PeriodTransaction` is now the sole live transaction store after removal of obsolete legacy expense and investment transaction tables
-- backend startup schema patching has been removed in favor of an explicit cutover script for the current baseline
-- backend migration verification now includes a reusable Alembic harness for both clean upgrade and upgrade from a pre-feature SQLite snapshot
-- the frontend now uses Vite plus standalone Jest rather than Create React App
-- the frontend Docker image now uses Node 20 and the frontend dependency tree is currently clean on `npm audit`
-- the seeded demo budget now includes historical close-outs, a live current cycle, upcoming cycles, linked savings and investment setup, and budget-health-relevant activity rather than neutral placeholder transactions
-- account transfers are now generalised: any active account can be a transfer source or destination, with committed-amount balance validation and self-referential transfer blocking
-- expense items now support a `default_account_desc` for routing, with transaction-level account override and fallback to the primary account
-- investment transactions now expose and display their linked cash account (`affected_account_desc`)
-- two Alembic migrations backfill existing expense defaults and transaction account data safely and idempotently
-- dynamic account balance calculation now computes balances from the last frozen anchor (closed or pending-closure cycle) for open cycles, with a configurable `max_forward_balance_cycles` limit (default 10, range 1-50) and a 204 response when the limit is exceeded
-- balance propagation now triggers automatically after transaction recording and syncs stored values for cycles within the forward limit
-- period start and end dates are now stored as local midnight in the budget timezone (expressed as UTC), fixing boundary issues where cycles expired early for positive-offset timezones
-- `effectivedate` on expense and investment items follows the same timezone-aware midnight rule
+### Later
+- Metric library expansion (new metrics only when evidence + meaning are strong)
+- Rich reporting (graphs, comparisons, historical filters, more drilldowns)
 
 ## Activity Model
 
-This document now uses the project activity model defined in the documentation framework:
+This document uses the project activity model:
 
 - `Roadmap Area`
 - `Activity Group`
 - `Activity`
 
-Working rules for this document:
+Status convention:
 
-- each activity should have one canonical home
-- when an activity affects another roadmap area, capture that through notes in the relevant section rather than duplicating the item
-- `Quality` is a first-class roadmap area for UX/UI, bugs, test coverage, reliability, consistency, and polish work
-- roadmap areas are the strategic buckets; activity groups are the operational buckets inside them
+- `Idea`
+- `Active`
+- `Next`
+- `Later`
+- `Completed`
 
-Status convention used in this document:
+## Roadmap Areas (Beta)
 
-- `Idea`: worth capturing, but still exploratory and not yet shaped into near-term implementation work
-- `Active`: already underway or the clearest live continuation area
-- `Next`: not yet active, but a strong near-term candidate
-- `Later`: worth tracking, but not a current near-term priority
-- `Completed`: finished and intentionally retained here until the roadmap is next regrouped
+### 1) Budget Health Metrics + UX
 
-## Relationship To The Roadmap
+#### Activity Group: Expand Metrics
 
-[ROADMAP.md](/home/ubuntu/dosh/docs/ROADMAP.md) is now the release-shaped roadmap for Dosh.
+Status:
+- `Next`
 
-This document remains the detailed implementation and activity backlog that supports that roadmap.
+Activities:
+- add new metrics only when they have clear evidence + user-facing meaning
+- keep [BUDGET_HEALTH_METRIC_LIBRARY.md](/home/ubuntu/dosh/docs/BUDGET_HEALTH_METRIC_LIBRARY.md) updated as metrics evolve
 
-Interpretation rules:
+#### Activity Group: Health Trending / Momentum
 
-- use [ROADMAP.md](/home/ubuntu/dosh/docs/ROADMAP.md) to decide whether work belongs to `Beta Release`, `Phase 2`, or `Future Opportunities`
-- use this document to identify the actual implementation streams, activity groups, and likely next tasks inside those roadmap stages
-- when an activity here appears broader than the current beta scope, treat the roadmap as the release-boundary authority
-- when a roadmap item does not yet have a stable implementation breakdown here, keep it defined in [ROADMAP.md](/home/ubuntu/dosh/docs/ROADMAP.md) until the activity stream is ready to be managed in this document
+Status:
+- `Active`
 
-Roadmap-to-activity mapping:
+Activities:
+- define “trend” semantics (what changes, over what window, and why users should care)
+- add an initial trending visualization on budget summary (minimal but trustworthy)
 
-- `Beta Release > Close Out Process` is currently implemented through `Period Close Out`, plus supporting `Setup Assessment And Protected Configuration` and `Quality > Test Coverage`
-- `Beta Release > Cash Management` is complete for beta
-- `Beta Release > Localisation` is implemented for app-wide regional formatting, amount input, supported-option governance, and non-translation best-practice hardening through `Localisation and Regional Fit`; full text translation remains outside beta scope
-- `Beta Release > Budget Health Engine` is currently implemented through `Budget Health`, with supporting work from `Quality > Test Coverage` and demo-data maintenance
-- `Beta Release > Maintainability` is currently implemented primarily through `Quality > Reliability`, `Quality > Consistency`, and the release and migration policy documents
-- `Phase 2 > Reconciliation Module` is currently implemented through `Reconciliation`
-- `Phase 2 > Reporting Module` is currently implemented through `Reporting and Analysis`
-- `Phase 2 > Full Budget File Export` and `Phase 2 > Backup And Restore` are currently implemented through `Export and Backup`
-- `Future Opportunities > Bank Integration` is roadmap-only for now and does not yet have a stable activity home in this document
+#### Activity Group: Formula Expression Helpers (UX)
 
-## Roadmap Areas
+Status:
+- `Active`
 
-### 1. Reporting and Analysis
+Activities:
+- improve discoverability and guidance for expression entry where it exists (without weakening numeric-only normal entry)
+- consolidate “what operators are supported” into a single user-facing help surface
 
-Roadmap alignment:
-
-- `Phase 2 > Reporting Module`
-
-This remains the clearest next feature stream.
+### 2) Reporting Framework
 
 #### Activity Group: Reporting Foundations
 
 Status:
-
 - `Active`
 
-- add a period comparison summary endpoint
-- add reporting cards on the budget summary page
-- build account movement summaries grouped by source
-- build on the newly implemented single-cycle export surface instead of designing reporting output from scratch again
-- move period-detail summary-card rollups onto canonical backend-calculated summary values so the API, not the frontend page, owns the mixed budget, actual, and remaining calculations
+Activities:
+- define the canonical report payload shapes (backend-owned calculations)
+- ship the first reporting card set on budget summary
+- add the first drilldown slice (budget → line → transactions) where it materially helps trust
 
-#### Activity Group: Trend and Variance Visibility
-
-Status:
-
-- `Later`
-
-- add surplus trend and planned-vs-actual trend views
-- improve explanations of surplus changes over time
-- improve savings and investment trend visibility
-- add a `Forecast Remaining Position` summary card to period details so users can compare the live mixed remaining position with the existing budget and actual summary values
-
-#### Activity Group: Historical Reporting Usability
+#### Activity Group: Starter Reports / Graphs
 
 Status:
-
-- `Later`
-
-- add filters for historical transaction reporting
-- keep building better answers to "what changed and why?"
-
-Notes:
-
-- reporting should continue to use the ledger-backed model as the explanation source
-- reporting surfaces for closed cycles should prefer stored close-out snapshots where that preserves historical meaning
-
-Cross-links:
-
-- Period Close Out
-- Reconciliation
-- Quality > UX/UI
-
-### 2. Reconciliation
-
-Roadmap alignment:
-
-- `Phase 2 > Reconciliation Module`
-
-The centralized transaction ledger is already in place, so the next step is turning that foundation into a user-facing reconciliation workflow.
-
-#### Activity Group: Reconciliation Workflow
-
-Status:
-
 - `Next`
 
-- add account-by-account reconciliation screens
-- add running totals and discrepancy detection
-- add reconciliation summary views for each balance type
+Activities:
+- budget vs actual trend graphs
+- investment trend graphs
+- income allocation breakdown (expenses vs investments vs transfers)
 
-#### Activity Group: Ledger Review and Adjustment Visibility
+### 3) Scheduled Income
+
+Reference plan:
+- [SCHEDULED_INCOME_AND_AUTO_CARRY_FORWARD_PLAN.md](/home/ubuntu/dosh/docs/plans/SCHEDULED_INCOME_AND_AUTO_CARRY_FORWARD_PLAN.md)
+
+#### Activity Group: Mode + Schema + Safe Defaults
 
 Status:
-
 - `Next`
 
-- add grouped ledger views by account and transaction source
-- add visibility into unmatched or system-generated adjustments
-- add variance indicators between movement and explained transactions
-- add a system-adjustment review surface
+Activities:
+- implement `simple` vs `advanced` mode boundaries
+- add scheduling + allocation fields (migration with safe backfill)
+- implement generation behavior for `occurrence` (and one additional allocation mode if needed)
 
-#### Activity Group: Closed-Cycle Reconciliation Handoff
-
-Status:
-
-- `Active`
-
-- define the reconciliation workflow for fixing issues discovered after a cycle is closed
-- align setup-protection and reconciliation messaging so blocked setup edits explain the downstream consequence path clearly
-- consider statement import only after reliability is strong enough
-
-Cross-links:
-
-- Period Close Out
-- Setup Assessment And Protected Configuration
-- Quality > Test Coverage
-
-#### Activity Group: Transaction Correction and Reversal Handling
+#### Activity Group: Automation (Auto Income / Auto Carry-Forward)
 
 Status:
-
-- `Idea`
-
-- consider whether deleting a recorded transaction from income, expense, or investment modals should create a reversal transaction rather than hard-deleting the original row
-
-Notes:
-
-- current behavior hard-deletes the transaction while the cycle remains open, then recomputes derived state from the remaining ledger rows
-- reversal-style correction would better match stronger financial audit methodology and preserve a visible correction trail
-- hard delete is currently simpler for end-user understanding, especially in an open-cycle budgeting workflow that is not yet presenting itself as a full accounting ledger
-- any future change should distinguish clearly between open-cycle usability, closed-cycle historical integrity, and whether users are allowed to void, reverse, or fully remove erroneous entries
-
-Cross-links:
-
-- Period Close Out
-- Quality > Enhancements
-
-### 3. Period Close Out
-
-Roadmap alignment:
-
-- `Beta Release > Close Out Process`
-
-This is now an active implementation stream rather than just a future milestone.
-
-Reference:
-
-- [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_CYCLE_LIFECYCLE_PLAN.md)
-
-#### Activity Group: Lifecycle Hardening
-
-Status:
-
-- `Completed`
-
-- validate and harden the explicit lifecycle rules
-- ensure carry-forward and opening rebasing stay aligned after delete and regenerate flows
-- strengthen the handoff from `ACTIVE` to `CLOSED` to next `ACTIVE`
-- `Completed`: distinguish stored lifecycle state from derived user-facing cycle stage so `Pending Closure` can exist without weakening close-out integrity
-- `Completed`: allow multiple overdue open cycles while preserving a single `Current` cycle and aligned carry-forward continuity
-- `Completed`: derive cycle stage (`CURRENT`/`PENDING_CLOSURE`/`PLANNED`) from actual period dates rather than blindly trusting persisted `cycle_status`, ensuring stale status values do not mislead the UI when a new cycle start date passes
-
-#### Activity Group: Close-Out Experience
-
-Status:
-
-- `Completed`
-
-- `Completed`: finish the end-of-cycle review experience so it feels complete and trustworthy
-- `Completed`: refine the close-out modal and summary surfaces
-- `Completed`: added explicit "Carry forward surplus" checkbox to the close-out modal, defaulting to unchecked and hidden when surplus ≤ 0, so users must opt in to carrying surplus forward
-- `Completed`: aligned close-out preview totals (`expense_budget`, `investment_budget`, `surplus_budget`) with the Budget Cycle Details page calculation logic so the modal reflects true values
-- `Completed`: removed "Goals Going Forward" field from the close-out modal frontend UI; backend field preserved for future enrichment
-- `Completed`: close-out modal warning now uses a `Dismiss` button instead of a checkbox preference
-- `Completed`: Budget Cycle Details page now shows close-out health snapshot with the same `CurrentPeriodCheckPanel` component used by the Current Period Check, with metric cards collapsed by default and a `Show details` toggle
-- `Completed`: close-out comments on the Budget Cycle Details page now appear under a "Budget Cycle Notes & Observations" heading
-- `Completed`: cycle navigation chevrons moved above the close-out snapshot for consistent positioning
-- `Completed`: keep the new `Pending Closure` affordances, direct close-out shortcuts, and compact budget-summary prompts aligned across the budgets page, sidebar, and cycle list
-- `Completed`: restructured close-out snapshot section into a parent "Close Out Details" card with three child cards (Budget Health, Notes & Observations, Carried Forward) for clearer visual separation
-- `Completed`: carried forward section is now conditional on a non-zero carry-forward system transaction existing for the next period
-
-#### Activity Group: Historical Integrity and Read-Only Behavior
-
-Status:
-
-- `Completed`
-
-- `Completed`: make closed-cycle read-only behavior consistent across remaining write paths
-- `Completed`: add clearer read-only and reconciliation messaging on closed cycles
-- `Completed`: added `carry_forward_applied` to `PeriodCloseoutSnapshot` so historical close-out records explicitly state whether surplus was carried forward
-- `Completed`: closed-cycle banner text simplified to "This budget cycle is closed. All data for this budget cycle is now read-only."
-- `Completed`: locked-cycle banner is now dismissible for the current page session via a `DISMISS` anchor link
-- `Completed`: extend end-to-end coverage from the close-out happy path into post-close correction and reconciliation workflows
-- `Completed`: determine whether additional sign-off or audit fields are needed once user identity exists
-- `Completed`: locked banner dismiss state now persists across browser refreshes via `sessionStorage` key `dosh_dismiss_lock_banner:${periodId}`; banner reappears when the period unlocks or a different period is viewed
-
-Cross-links:
-
-- Reconciliation
-- Reporting and Analysis
-- Quality > Test Coverage
-- Quality > Bugs
-
-#### Activity Group: Inter-Period Expense Movement
-
-Status:
-
 - `Later`
 
-- add ability to move an unrecipted (nil transaction) expense from the budget cycle detail page to the next period, provided the next period is not locked
-- determine whether this should create a zero-budget suppression in the current period or shift the budget amount forward
-- `Completed`: ensure moved expenses preserve their setup linkage and do not break period totals or carry-forward calculations
-- add appropriate guards so only expenses with no recorded transactions can be moved
+Activities:
+- mirror auto-expense patterns for auto-income
+- add auto carry-forward for `PENDING_CLOSURE` only when it does not conflict with close-out snapshots
 
-Cross-links:
+### 4) User Guides + UX Helpers + Formula Library
 
-- Cash Management
-- Quality > UX/UI
-
-### 4. Setup Assessment And Protected Configuration
-
-Roadmap alignment:
-
-- supports `Beta Release > Close Out Process`
-- supports `Phase 2 > Reconciliation Module`
-
-This is an implemented foundation and should be treated as an active maintenance area rather than a speculative idea.
-
-Reference:
-
-- [SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md](/home/ubuntu/dosh/docs/plans/SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md)
-
-#### Activity Group: Generation Readiness
+#### Activity Group: Beta User Guides
 
 Status:
-
-- `Active`
-
-- keep centralized setup assessment as the source of truth for generation readiness
-- avoid reintroducing one-off page-level readiness logic
-- `Completed`: revise setup-assessment summary and section wording so it stays informative, supportive, and guiding without referring to downstream activities users may not have encountered yet
-
-#### Activity Group: Protected Configuration
-
-Status:
-
-- `Active`
-
-- extend protection reasoning only when it improves downstream safety and user understanding
-- keep setup editable where safe while blocking destructive changes once downstream dependence exists
-- `Completed`: scope account primary designation per balance type so `Savings` and `Cash` primaries no longer replace the required primary `Transaction` account
-- `Completed`: allow in-use accounts to change non-structural flags such as `is_primary` without tripping structure-lock enforcement when `balance_type` and `opening_balance` are unchanged
-- `Completed`: confirm that the current one-line-per-savings-account transfer model remains balance-safe, with later additions expected through transactions on that existing line
-- add stronger explanation surfaces for why a setup item is protected
-
-#### Activity Group: Consequence Visibility
-
-Status:
-
 - `Next`
 
-- extend consequence messaging for reconciliation or correction paths after setup becomes in use
+Activities:
+- “getting started” guide for beta users (workflow, what is safe, what is read-only)
+- short “common questions” guide for cycle states, health score meaning, and exports
 
-Cross-links:
-
-- Reconciliation
-- Quality > Consistency
-
-### 5. Budget Health
-
-Roadmap alignment:
-
-- `Beta Release > Budget Health Engine`
-
-The fixed budget health implementation has been replaced with a configurable Budget Health Engine. The core engine, personalization framework, point-in-time snapshots, and tone selection are now live.
-
-Reference:
-
-- [BUDGET_HEALTH_ENGINE_PLAN.md](/home/ubuntu/dosh/docs/archive/BUDGET_HEALTH_ENGINE_PLAN.md)
-- [BUDGET_HEALTH_ADDENDUM.md](/home/ubuntu/dosh/docs/archive/BUDGET_HEALTH_ADDENDUM.md)
-
-#### Activity Group: Engine Foundation
+#### Activity Group: Formula Library
 
 Status:
-
-- `Completed`
-
-- `Completed`: created core data models for the Budget Health Engine (`HealthDataSource`, `HealthMetricTemplate`, `HealthScale`, `BudgetHealthMatrix`, `BudgetHealthMatrixItem`, `PeriodHealthResult`, `BudgetHealthSummary`, `HealthMatrixTemplate`, and supporting relationship tables)
-- `Completed`: added Alembic migration `7a8b9c0d1e2f_add_budget_health_engine_tables.py` and seeded catalogs (`HealthDataSource`, `HealthScale`)
-- `Completed`: migrated all existing budgets to `BudgetHealthMatrix` instances with default `Standard Budget Health` matrices
-- `Completed`: implemented safe formula parser and engine runner (`health_engine/runner.py`) supporting `+`, `-`, `*`, `/`, parentheses, and data source references
-- `Completed`: implemented code-backed data source executors and metric executors for the four core templates (`setup_health`, `budget_discipline`, `planning_stability`, `current_period_check`)
-- `Completed`: refactored `setup_health` and `current_period_check` executors to consume `formula_result` and `source_values` instead of querying the database directly
-- `Completed`: updated `live_period_surplus` data source to include investments, aligning with closeout surplus calculation
-- `Completed`: added `PeriodHealthResult` persistence for close-out workflows so historical health meaning is preserved when engine logic evolves
-- `Completed`: migrated closeout preview to evaluate period health through the engine directly, removing dependence on legacy `closeout_health.py`
-- `Completed (0.5.0-alpha)`: radically simplified the engine to two hard-coded system metrics (`setup_health` and `budget_discipline`) with user-tunable `parameters_json`. Removed templates, data sources, scales, custom metric builder, formula evaluator, and drill-down concepts.
-- `Completed (0.5.0-alpha)`: created destructive Alembic migration `e1096e3868f0_simplify_budget_health_engine.py` that drops all legacy health tables, recreates the simplified schema, and backfills every budget with fresh defaults.
-- `Completed (0.6.0-alpha)`: replaced per-budget `HealthMetric` DB rows with a global code-based metric registry in `backend/app/health_engine/system_metrics.py`.
-- `Completed (0.6.0-alpha)`: expanded the engine from two metrics to six (`setup_health`, `budget_cycles_pending_closeout`, `budget_vs_actual_amount`, `budget_vs_actual_lines`, `in_cycle_budget_adjustments`, `revisions_on_paid_expenses`).
-- `Completed (0.6.0-alpha)`: changed `BudgetHealthMatrixItem` PK from `metric_id` to `metric_key` and renamed `parameters_json` to `health_metric_parameters`.
-- `Completed (0.6.0-alpha)`: created destructive Alembic migration `fb246c4482b7_rebuild_health_engine_with_global_.py` and fixed `e1096e3868f0` to not import the deleted model.
-
-#### Activity Group: Frontend Integration
-
-Status:
-
-- `Completed`
-
-- `Completed`: removed legacy threshold sliders from `PersonalisationTab.jsx` and embedded scale-aware threshold controls directly into each metric card
-- `Completed`: added View/Edit toggle to metric cards with formula display and data-source badges
-- `Completed`: added `GET /budgets/{id}/health-matrix/scales` endpoint to drive scale-aware threshold UI controls
-- `Completed`: expanded `PersonalisationTab.jsx` to manage matrix items (enable/disable, weight, sensitivity) and custom metric creation
-- `Completed (0.4.5-alpha)`: renamed `PersonalisationTab.jsx` to `BudgetHealthTab.jsx` and updated the budget setup section label from `Thresholds & Tolerances` to `Budget Health Engine`
-- `Completed (0.4.5-alpha)`: added matrix template selector with apply/reset actions and a `Customized` badge that detects when matrix items or thresholds diverge from template defaults
-- `Completed (0.4.5-alpha)`: added `GET /budgets/{id}/health-matrix/templates` and `POST /budgets/{id}/health-matrix/apply-template` endpoints so users can switch or reset their budget health matrix template
-- `Completed (0.4.5-alpha)`: added scope filter tabs (`All`, `Overall`, `Current Period`, `Both`) to the health matrix so users can see which metrics affect which health checks
-- `Completed (0.4.5-alpha)`: improved matrix item cards to show weight (with progress bar), sensitivity, and enabled state inline without expanding
-- `Completed (0.4.5-alpha)`: enhanced expanded metric details with human-readable threshold names, scale unit labels, and improved data-source insertion into the metric builder
-- `Completed (0.4.5-alpha)`: added scale and default-value selector to the custom metric builder
-- `Completed (0.4.5-alpha)`: removed the `UNIQUE` constraint on `BudgetHealthMatrix.budgetid` and added migration `a1b2c3d4e5f6` to support multiple matrices per budget (one active, others inactive)
-- `Completed`: added `health_tone` selector (`supportive`/`factual`/`friendly`) to budget settings and health evidence rendering
-- `Completed`: updated `BudgetsPage.jsx` to consume the engine health endpoint and render contextual drill-down links in health modals
-- `Completed`: removed the legacy fixed health endpoint implementation and consolidated all health traffic through the engine
-- `Fixed (0.4.2-alpha)`: corrected the frontend `getBudgetHealth` API path from `/health-engine` to `/health` so the dashboard health card loads correctly
-- `Completed (0.5.0-alpha)`: removed template selector, metric builder, scope tabs, Add Metric button, and dev-mode template controls from `BudgetHealthTab.jsx`.
-- `Completed (0.5.0-alpha)`: simplified the `BudgetHealthTab` UI to only the two metric cards with enable/disable, weight, sensitivity, and exposed parameter inputs.
-- `Completed (0.5.0-alpha)`: removed drill-down UI and links from `BudgetsPage.jsx` health modals.
-- `Completed (0.6.0-alpha)`: updated `BudgetHealthTab.jsx` to use `metric_key`, render parameter inputs for all six metrics, and remove remaining drill-down defensive fallbacks.
-- `Completed (0.6.0-alpha)`: updated `client.js` `updateMatrixItem` signature to accept `metricKey` instead of `metricId`.
-- `Completed (0.6.6-alpha)`: reworked `BudgetsPage.jsx` health modals to use per-metric cards with structured evidence, collapsed by default, expandable via "Show Details" and "Show Formula" buttons.
-- `Completed (0.6.6-alpha)`: extracted shared `CurrentPeriodCheckPanel` component from `BudgetsPage.jsx` for reuse across Current Period Check modal and Close-Out modal.
-- `Completed (0.6.6-alpha)`: removed `TrafficLight` component and indicators from budget summary; replaced with enlarged score circle and "Health Details" / "Overall Health Details" buttons.
-- `Completed (0.6.6-alpha)`: updated `CloseoutModal.jsx` to use `CurrentPeriodCheckPanel` with `showMetricCards={false}` and display dismissible close-out warning using `localStorage` key `dosh_dismiss_closeout_warning`.
-- `Completed (0.6.6-alpha)`: merged calendar modal "Today" label and button into a single clickable element.
-- `Completed (0.6.6-alpha)`: added "Open" button to Pending Closure list linking directly to budget cycle detail page, with reduced font sizes and improved wrapping.
-
-#### Activity Group: Scoring and Momentum
-
-Status:
-
-- `Later`
-
-- improve trend credibility
-- connect future corrective action to visible momentum
-- validate whether the current-period weighting inside the overall score feels proportionate in real use
-- build better momentum logic across completed periods
-- explain score movement more directly
-
-#### Activity Group: Current-Period Interpretation
-
-Status:
-
-- `Completed`
-
-- `Completed`: shift current-period planning stability away from required revision-comment capture by recording transaction line state and using off-plan activity history in budget health
-- `Completed`: align the overall budget health detail view with the dedicated current-period health check so the active-period story does not conflict between the two surfaces
-- `Completed`: refactored `current_period_check` executor to use `formula_result` (live period surplus) rather than re-querying period lines
-- `Completed`: migrated closeout preview health scoring to use the engine directly
-- `Fixed (0.4.2-alpha)`: aligned the `current_period_check` payload shape (`details` → `evidence`) with the frontend modal contract to prevent the Current Budget Cycle Check modal from crashing
-- `Completed (0.6.6-alpha)`: added `_current_period_summary(score, tone)` and `_closed_period_summary(score, tone)` to `runner.py` for tone-aware, score-band-based summaries in active and historical contexts.
-- `Completed (0.6.6-alpha)`: updated `build_closeout_preview` in `cycle_management.py` to pass `tone` to `evaluate_period_health` and return `metrics` array for close-out preview.
-
-#### Activity Group: Thresholds and Evidence Language
-
-Status:
-
-- `Completed`
-
-- `Completed`: removed legacy threshold sliders and made metric cards the single source of truth for thresholds
-- `Completed`: fixed seed data scale for `revision_sensitivity`, `savings_priority`, and `period_criticality_bias` from `percentage_0_100` to `ten_scale_1_10`
-- `Completed`: added backend validation for threshold values based on scale `min_value`/`max_value`
-- `Completed (0.6.6-alpha)`: restructured all six metric executors in `metric_executors.py` to return structured evidence objects (`label`, `value`, `raw_value`, `raw_unit`, `limit`, `raw_limit`, `detail`).
-- `Completed (0.6.6-alpha)`: added per-executor `calculation` strings showing exact arithmetic trace and propagated them through `runner.py` into pillar and current-period payloads.
-- `Completed`: refine evidence language so it reads naturally in budget terms
-- `Completed`: test and refine personalised threshold behavior
-- `Completed`: make the interaction between deficit percentage and maximum deficit amount clearer
-- `Completed`: decide whether some health evidence lines should mirror the threshold wording more closely
-- `Completed`: keep the thresholds section lightweight rather than turning it into an intimidating settings panel
-
-#### Activity Group: Terminology and Model Alignment
-
-Status:
-
-- `Completed`
-
-- `Completed`: renamed the health-engine "Personalisation" concept to "Thresholds & Tolerances" on the frontend and "Threshold" on the backend to accurately reflect that these values are metric inputs (thresholds/benchmarks) consumed during scoring, not post-calculation adjustments
-- `Completed`: backend renames: `HealthPersonalisationDefinition` → `HealthThresholdDefinition`, `BudgetMetricPersonalisation` → `BudgetMetricThreshold`, `personalisation_key` → `threshold_key`, `default_personalisation_key` → `default_threshold_key`
-- `Completed`: frontend renames: updated `PersonalisationTab` labels, headings, and helper copy from "Personalisation" to "Thresholds & Tolerances"
-- `Completed`: API renames: updated router paths, schema names, and request/response shapes to match the new backend naming (e.g., `/health-matrix/thresholds/{metric_id}`)
-- `Completed`: seed and migration alignment: updated `health_engine_seed.py` catalog keys/names and added Alembic migration `009297f69b52_rename_personalisation_to_threshold.py`
-- `Completed`: updated tests: backend tests referencing personalisation tables/keys, frontend `PersonalisationTab.test.jsx` labels, and API client tests
-- `Completed`: updated documentation: `DEVELOPMENT_ACTIVITIES.md`, `CHANGES.md`, `BUDGET_HEALTH_ENGINE_PLAN.md`, and `AGENTS.md` references to personalisation
-- `Fixed (0.4.4-alpha)`: corrected a model-migration mismatch where `backend/app/models.py` still referenced the old `personalisation` table names after the migration renamed them to `threshold_*`. This caused the health engine to query non-existent tables, resulting in empty health payloads and blank UI placeholders on the budget summary page. The fix aligned models, fresh-install migration, and upgrade migration to the same `threshold_*` naming.
-- `Completed (0.4.6-alpha)`: simplified the engine by collapsing `HealthThresholdDefinition` and `BudgetMetricThreshold` into `HealthMetric`/`HealthMetricTemplate` (`scale_key` + `default_value_json`) and `BudgetHealthMatrixItem` (`threshold_value_json`). This removes the fine-grained threshold-definition abstraction and makes scale + default value a direct metric property.
-- `Fixed`: corrected the `DELETE /health-matrix/templates/{key}` endpoint to fully cascade and delete derived `HealthMetric` rows, preventing foreign-key failures and orphaned metrics.
-- `Fixed`: updated `evaluate_budget_health` to return `None` when the active `BudgetHealthMatrix` has no items, so empty matrices do not produce misleading default scores.
-- `Fixed`: updated the budget dashboard (`BudgetsPage.jsx`) to hide the Budget Health card and placeholder skeletons entirely when no health data is available.
-- `Completed`: added a red warning banner in the frontend before deleting a matrix template in dev mode, explaining that derived metrics will be removed.
-- `Completed`: ensured the dev-mode `Save as Template` and `Create Empty Matrix` controls remain visible even when the template list is empty.
-- `Decision`: keep the `revision_sensitivity` threshold for `planning_stability` for now; the threshold is stored and surfaced in evidence but does not yet directly modulate scoring tolerance. A future session may decide to integrate it or remove it if it remains unused.
-
-#### Activity Group: Test Coverage
-
-Status:
-
-- `Completed`
-
-- `Completed`: added dedicated backend unit tests for formula evaluator, all four metric executors, executor registry, `evaluate_period_health`, and `evaluate_budget_health` (`test_health_engine.py`, 22 tests)
-- `Completed (0.4.8-alpha)`: implemented `custom_metric_v1` scoring executor and wired `scoring_logic_json` resolution into `runner.py` so custom metrics built in the UI compute real scores instead of returning a fallback "not yet implemented" result
-- `Completed (0.4.8-alpha)`: added `test_get_executor_returns_custom_metric_v1_for_scoring_logic_type` and `test_custom_metric_v1_executor_penalizes_above_threshold` to lock in custom metric scoring behavior
-- `Completed`: updated `test_lifecycle_and_health.py` to verify closeout health snapshots remain historical after live threshold changes
-- `Completed`: updated `PersonalisationTab.test.jsx` to cover new View/Edit toggle, formula display, and scale-aware threshold controls
-- `Completed (0.4.5-alpha)`: added backend tests for `GET /health-matrix/templates`, `POST /health-matrix/apply-template`, and `is_customized` detection in `test_health_matrices.py`
-- `Completed (0.4.5-alpha)`: renamed `PersonalisationTab.test.jsx` to `BudgetHealthTab.test.jsx` and expanded coverage for template selector, scope filtering, inline weight/sensitivity visibility, and metric builder threshold selection
-- `Completed (0.5.0-alpha)`: rewrote `test_health_engine.py`, `test_health_matrices.py`, and `BudgetHealthTab.test.jsx` for the simplified two-metric framework.
-- `Completed (0.5.0-alpha)`: updated integration tests (`test_closeout_flow.py`, `test_lifecycle_and_health.py`) to expect valid health responses from the simplified engine.
-- `Completed (0.6.0-alpha)`: updated `test_health_engine.py`, `test_health_matrices.py`, `migration_helpers.py`, `BudgetHealthTab.test.jsx`, and `client.test.js` for the global-metric, six-metric framework.
-- `Completed (0.6.6-alpha)`: updated `test_health_engine.py` to assert structured evidence shape and `calculation` field presence.
-- `Completed (0.6.6-alpha)`: updated `BudgetsPage.test.jsx` to cover collapsed metric cards, "Show Details" / "Show Formula" expansion, and calendar "Today" button behavior.
-- `Completed (0.6.6-alpha)`: updated `PeriodDetailPage.test.jsx` for new close-out warning text and `CloseoutModal.test.jsx` for dismissible warning and health preview assertions.
-- `Completed (0.6.6-alpha)`: all backend and frontend tests passing (223/223 frontend; backend suite green).
-
-#### Activity Group: Demo Data Alignment
-
-Status:
-
-- `Completed`
-
-- `Completed`: sidebar budget list cards now wrap text with `break-words` instead of `truncate`
-- `Completed`: demo budget health metric parameters tuned to relaxed thresholds so first-run health scores show green
-- `Completed`: demo budget grocery expense frequency changed from every 7 days to every 4 days to spread occurrences across the period
-- `Completed`: demo budget now closes out all historical cycles during seeding so overall health shows "Strong"
-- `Completed`: update the demo seed to match the lighter revision workflow and the newer transaction-backed planning-history model
-- `Completed`: update the demo seed to create default health matrices and seed engine catalogs automatically
-- `Completed`: keep development and demo data realistic enough that health surfaces remain meaningful during walkthroughs and regression checks
-- `Completed`: keep the demo seed aligned with later budget-health scoring changes so walkthrough data does not become misleading or stale
-- `Completed`: update the rolling demo seed so new walkthroughs include `Closed`, multiple `Pending Closure`, `Current`, and `Planned` cycle stages together with transaction-direction and budget-adjustment examples
-- `Completed`: expand the demo seed to include expense items with varied types and recurrence patterns (Fixed Day of Month, Every N Days) and mixed AUTO/MANUAL payment types so calendar, timing, cash-flow routing, and workflow walkthroughs better reflect real use
-- `Completed`: consider whether more than one demo seed profile is needed later, such as `healthy`, `under pressure`, or `recovery`, without weakening the current additive-only demo import behavior
-- `Completed`: removed `DEV_MODE` gating from frontend and backend; the "Create Demo Budget" option is now unconditionally available in the create-budget modal
-- `Completed`: added duplicate-prevention validation in `create_standard_demo_budget` so attempting to create a demo budget when one already exists returns `HTTP 409` with "Demo budget already exists."
-- `Completed`: frontend `createDemo` mutation now surfaces the 409 error via a browser alert
-- `Completed`: renamed the create-budget modal demo section label from "Developer shortcut" to "Demonstration and Evaluation"
-
-Cross-links:
-
-- Period Close Out
-- Quality > Test Coverage
-- Quality > UX/UI
-
-### 6. Localisation and Regional Fit
-
-Roadmap alignment:
-
-- `Beta Release > Localisation`
-
-Dosh now treats localisation as a deliberate product capability for regional formatting and amount entry.
-
-Current implemented slice:
-
-- account naming now has a budget-level display preference for `Transaction`, `Everyday`, and `Checking`
-- this should be treated as the reference pattern for terminology preferences that are display-layer only
-- the data model should stay stable underneath unless a deeper domain reason appears
-- budget records now carry `locale`, `currency`, `timezone`, and `date_format` preferences, defaulting to `en-AU`, `AUD`, `Australia/Sydney`, and `medium`
-- frontend display formatting now flows through shared localisation helpers built on `Intl.NumberFormat` and `Intl.DateTimeFormat`
-- normal money entry now uses localized numeric masks without currency symbols or codes inside editable fields, while deliberate arithmetic is triggered by simple operators or the still-supported leading `=` and still submits normalized decimal values
-- backend storage, API payloads, ledger calculations, migrations, and machine-readable exports remain locale-neutral
-- the implemented rules and boundaries are captured in [LOCALISATION_SUPPORT_PLAN.md](/home/ubuntu/dosh/docs/plans/LOCALISATION_SUPPORT_PLAN.md)
-- the beta non-translation hardening slice is now complete; full text translation and broader country-specific behavior remain outside beta scope
-
-#### Activity Group: Formatting Foundations
-
-Status:
-
-- `Completed`
-
-- `Completed`: introduce a shared expense-flow date field with consistent day-only `DD MMM YYYY` display for effective dates, while keeping stored values normalized and leaving broader locale and currency preference work for a later dedicated localisation pass
-- `Completed`: move locale, currency, percent, number, date, time, date-range, and timezone-aware today formatting out of hard-coded UI assumptions and into shared frontend localisation utilities
-- `Completed`: replace app-surface hard-coded regional display strings across dashboard, budget overview, budget cycles, period detail, setup tabs, history modals, amount previews, and settings while preserving normalized backend/API values
-- `Completed`: add regression coverage around locale-sensitive display, masked amount input, calculator previews, and budget preference validation
-
-#### Activity Group: Preferences and Resolution
-
-Status:
-
-- `Completed`
-
-- `Completed`: add budget-level `locale`, `currency`, `timezone`, and `date_format` preferences with backend validation, settings controls, and frontend resolution from the active budget
-- `Completed`: add Alembic migrations `9b7f3c2d1a4e` and `c4d8e6f1a2b3` for the budget localisation preferences and include them in the migration test harness
-
-#### Activity Group: Localisation Best-Practice Hardening
-
-Status:
-
-- `Completed`
-
-Roadmap assignment:
-
-- `Beta Release > Localisation`
-
-Purpose:
-
-- preserve the non-translation best-practice hardening completed after the `0.3.0-alpha` localisation release
-- keep the current “regional formatting, not translation” scope explicit for future sessions
-- preserve normalized backend/API values and numeric-only editable amount fields unless a future product decision explicitly changes that contract
-
-Completed hardening:
-
-- `Completed`: backend-provided supported-option governance now covers locales, currencies, timezones, and date formats through `/api/budgets/localisation-options`
-- `Completed`: backend validation now uses supported sets for locale, currency, and timezone rather than broad shape-only acceptance
-- `Completed`: `date_format` treats explicit `null` as `medium` and supports the selected custom token formats `MM-dd-yy` and `MMM-dd-yyyy` through the normal dropdown list
-- `Completed`: date-range formatting uses `Intl.DateTimeFormat.prototype.formatRange` where available, with a tested fallback
-- `Completed`: [DateField.jsx](/home/ubuntu/dosh/frontend/src/components/DateField.jsx) passes the active budget locale into `react-datepicker`
-- `Completed`: formatter caching now avoids repeated `Intl.NumberFormat` and `Intl.DateTimeFormat` construction on shared helper paths
-- `Completed`: localized amount parsing now uses string-based decimal normalization for pasted/grouped values, comma-decimal locales, non-breaking spaces, invalid mixed separators, and current negative-value rejection
-- `Completed`: AutoNumeric was removed and the custom numeric input helper contract was renamed to match the implemented component behavior
-- `Completed`: formula/calculator scope is documented as non-localized arithmetic; calculator mode is now triggered by simple arithmetic operators or the still-supported leading `=`
-- `Completed`: reviewed export labels and affordances; beta export remains machine-readable CSV/JSON and does not promise localized or human-readable output
-
-Remaining explicit constraints:
-
-- full text translation remains outside beta scope
-- non-Latin digit locales are out of scope for Dosh beta
-- localized or human-readable export should be introduced only as a separate explicit export mode
-- negative amount entry remains blocked in current amount fields; transaction reversals continue through the existing credit/refund direction model
-
-Suggested regression coverage:
-
-- keep representative utility tests for `en-AU/AUD`, `en-US/USD`, `en-GB/GBP`, and `de-DE/EUR`
-- keep amount input tests for focus/unfocus formatting, paste, partial decimal entry, negative-value policy, grouped values, comma-decimal values, and invalid mixed separators
-- keep formula tests confirming operator-triggered calculator mode, numeric-only normal entry, localized preview display, and normalized decimal submission
-- keep date tests for selected date-format presets, custom date formats, timezone boundary behavior, date-range formatting fallback, and date-picker display behavior
-- keep backend tests for supported locale/currency/timezone/date-format acceptance and rejection, explicit null-to-`medium` date-format behavior, and migration coverage for preference defaults
-
-Out of beta scope:
-
-- full text translation and translation-framework adoption remain outside this beta hardening group
-- country-specific legal, tax, or banking rules remain outside this group
-- backend domain model renaming remains outside this group
-
-#### Activity Group: Terminology and Regional Behavior
-
-Status:
-
-- `Later`
-
-- support regional budgeting cadence and terminology without fragmenting the core model
-- `Completed`: support custom budget and pay-cycle cadences defined by a fixed number of days, such as a 10-day cycle, without weakening the existing lifecycle and generation rules
-- make health language, labels, and helper copy adaptable by locale
-- prepare for country-specific conventions such as fortnightly budgeting, date ordering, and currency display
-- identify user-facing finance terminology that may need regional variants
-- decide cautiously whether period naming should follow the same preference pattern later; it was discussed this session and intentionally deferred
-- document which localisation decisions belong in product copy versus data model behavior
-- identify backend responses that should stay neutral versus pre-formatted for display
-- `Completed`: keep the current localisation pass scoped to regional formatting and input masking, not full text translation or backend domain-model renaming
-
-Cross-links:
-
-- Budget Health
-- Quality > Consistency
-- Quality > Test Coverage
-
-### 7. Cash Management
-
-Roadmap alignment:
-
-- `Beta Release > Cash Management`
-
-Status:
-
-- `Completed` for beta
-
-The core cash management model is now in place: generalised account transfers, committed-amount validation, expense and investment account routing, and dynamic balance calculation from frozen anchors with configurable forward limits and explicit limit-exceeded signaling.
-
-#### Activity Group: Cash Model Definition
-
-Status:
-
-- `Completed`
-
-- `Completed`: generalise the savings-transfer endpoint to `account-transfer`, allowing any active account as source or destination
-- `Completed`: add committed-amount transfer validation using `max(budget, actual)` for non-paid lines and `actual` for paid lines
-- `Completed`: block self-referential transfers at the API level
-- `Completed`: investment transactions now properly debit a source account and credit the linked account via `source_account_desc` and two-sided ledger handling in `build_investment_tx` and `account_delta_for_transaction`
-- `Completed`: define the relationship between account balances, planned spending, savings transfers, and investment allocations
-
-#### Activity Group: Cash Summary and Review Surfaces
-
-Status:
-
-- `Completed`
-
-- `Completed`: add `default_account_desc` to `ExpenseItem` so setup can define which account an expense debits by default
-- `Completed`: add transaction-level `account_desc` override for expense entries so users can route individual transactions to the correct account
-- `Completed`: expose `affected_account_desc` on investment transactions so users can see which cash account was debited
-- `Completed`: investment transactions allow transaction-time debit account override via `account_desc` in `InvestmentTxCreate`, with the modal defaulting to the item's configured source account
-- `Completed`: integrate dynamic balances into period detail and transfer validation so non-closed periods use live computed balances when stored values would be stale
-- `Completed`: add `max_forward_balance_cycles` budget setting (default 10, range 1-50) with backend validation and frontend settings UI
-- `Completed`: return explicit limit-exceeded signal (`200 []` + `X-Balances-Limit-Exceeded: true` header, plus `balances_limit_exceeded` flag in period detail) instead of HTTP 204
-
-Cross-links:
-
-- Reporting and Analysis
-- Quality > UX/UI
-- Quality > Test Coverage
-
-### 8. Export and Backup
-
-Roadmap alignment:
-
-- `Phase 2 > Full Budget File Export`
-- `Phase 2 > Backup And Restore`
-
-As Dosh becomes more trustworthy for day-to-day finance use, users will eventually expect straightforward ways to export their data and keep independent backups.
-
-Reference:
-
-- [BUDGET_CYCLE_EXPORT_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_CYCLE_EXPORT_PLAN.md)
-
-#### Activity Group: Export Scope and Format
-
-Status:
-
-- `Active`
-
-- `Completed`: add budget-cycle detail export from the period-detail header with user-selected flat `CSV` or grouped `JSON` download
-- `Completed`: add full budget backup and restore from the Budgets page with JSON download, version compatibility checks, selective restore, and overwrite support
-- keep the current flat CSV spreadsheet-friendly for Excel and Google Sheets while preserving line-to-transaction reconciliation
-- decide whether the next export slice should expand to budget-level, multi-cycle, account-level, or reconciliation-oriented reporting
-- make future export additions useful for both human review and machine-readable portability without weakening ledger explainability
-
-#### Activity Group: Backup and Restore Design
-
-Status:
-
-- `Completed`
-
-- `Completed`: implemented app-level JSON backup/restore through the Budgets page
-- `Completed`: backup includes full budget state (setup, periods, transactions, health matrices, setup history, close-out snapshots)
-- `Completed`: restore performs full ID remapping (budget, period, matrix IDs) so restored budgets are independent new records
-- `Completed`: version compatibility layer blocks restore from newer app versions; warns on older backups
-- `Completed`: overwrite support with explicit user confirmation when a budget with the same description already exists
-- `Completed`: unencrypted-file warning displayed in both backup and restore tabs
-- `Completed`: backend tests (`test_backup_restore.py`) and frontend tests (`BudgetsPage.test.jsx`) added
-
-#### Activity Group: Trust, Privacy, and Validation
-
-Status:
-
-- `Later`
-
-- keep export and backup aligned with the ledger-backed model so restored data stays explainable
-- identify privacy and security expectations around exported financial data
-- define stable export shapes for the most important financial records
-- continue expanding validation around export completeness now that the first flat CSV and JSON slice exists
-
-### 9. Quality
-
-Roadmap alignment:
-
-- primarily supports `Beta Release > Maintainability`
-- also supports `Beta Release > Close Out Process`, `Beta Release > Cash Management`, `Beta Release > Localisation`, and `Beta Release > Budget Health Engine`
-
-This roadmap area exists for work that improves trust, usability, consistency, and delivery quality across multiple feature areas.
-
-#### Activity Group: UX/UI
-
-Status:
-
 - `Next`
 
-- `Completed`: expense actual values now display green when under budget and red when over budget, matching the semantic color used for projected investment amounts
-- `Completed`: removed the inner momentum circle from the overall budget health score display on the budget summary page until the health score trending framework is implemented
-- `Completed`: consolidated Budget Setup and Period Detail add-expense scheduling onto a shared field set based on the Period Detail flow, standardize `Effective Date` wording, keep period-only note and include controls out of Budget Setup, and finish the accepted date-picker, fixed-day guidance, quick-fill, and neutral action-button polish in the touched expense workflows
-- `Completed`: add floating "Return to Top" buttons to Budget Cycles Summary and Budget Cycle Details pages, matching the existing Budget Setup implementation
-- `Completed`: relabel all user-facing "Planned" budget cycle stage text to "Upcoming" across pages, sidebar, utility logic, backend derivation, and tests
-- `Completed`: standardize banner-style alert boxes (locked, closed, error, warning) system-wide with softer border/background opacity, rounded-xl shape, bold text, and lock icons on cycle state banners
-- `Completed`: show surplus/deficit amount inside the Paid status pill for income, expense, and investment lines, with green for income (unrealised income is positive context), red for expense/investment deficit, and explicit +/- prefixes
-- `Completed`: change sidebar default so the Budget List starts expanded on page refresh, matching the Do$h banner logo behaviour
-- `Completed`: extend the release-notes modal so newly available versions can expand inline for details without losing the current-version focus
-- `Completed`: make the "N newer release available" badge in the release-notes modal clickable so it scrolls directly to the Available Updates section
-- provide clear definitions and calculation explanations for the period-detail summary cards, likely through hover helper text or another suitable method, with implementation approach to be confirmed before work starts
-- `Completed`: align the budget-setup account table headings and values, separate add-account helper copy more clearly, and tighten primary-account affordances so the setup flow explains what is active, what is primary, and why
-- `Completed`: rename budget-setup income wording from `Income Type` to `Income Source` across the relevant setup surfaces
-- `Completed`: make expense and investment `View transactions` behave as read-only details modals so they match the movement-details pattern instead of showing add-transaction controls
-- `Completed`: move the expense status filter inline with the period-detail status column header
-- `Completed`: tighten period-detail UI polish around totals and status affordances, especially for the income, investment, and balance sections
-- `Completed`: unify period-detail table column widths across Income, Expense, Investment, and Account Balances using shared `<colgroup>` definitions
-- `Completed`: standardize period-detail header alignment so Description/Investment/Account headers are left-aligned, Budget/Actual/Remaining are right-aligned, and Account/Schedule/Account Type are centered
-- `Completed`: reorganize Account Balances columns to Account → Opening → Movement → Closing → Account Type → Details with matching background colors
-- `Completed`: update transfer income display so descriptions read "Transfer from {source}" and the destination account appears in the Account column
-- `Completed`: add period-detail totals for investments and balances while keeping movement read-only and avoiding a meaningless movement total
-- `Completed`: continue navigation and information architecture cleanup so the sidebar stays centered on one active budget context at a time
-- `Completed`: replace the `Edit` text label on the budget cycle details page with a more appropriate icon-based affordance where that action is already visually established elsewhere
-- `Completed`: align the `+`, `-`, and details affordances properly in the income section of the budget cycle details page so row actions read as one intentional control set
-- `Completed`: add a delete-current-budget action to the `No budget cycles yet` card so an abandoned or exploratory budget can be removed directly from that empty state
-- `Completed`: identify the next summary card that best complements current balance and health without duplicating period-listing data, which was implemented as the calendar-style budget overview card
-- `Completed`: add a calendar-style view of income timing and expense due dates to the budget overview page, replacing the historical `# periods` summary card
-- `Completed`: restore current setup-line visibility inside the budget setup history modal while keeping revision and adjustment history visible alongside it
-- `Completed`: stabilize income-table action-column alignment on the budget-cycle detail page so delete-availability does not shift the numeric columns
-- `Completed`: add create-budget modal header copy that explains what a budget is and what the setup flow will help the user define
-- `Completed`: add locale, currency, timezone, and date format selects to the New Budget modal so regional preferences are set at creation time rather than requiring a post-creation Settings edit
-- `Completed`: restructure New Budget modal into a responsive two-column grid so all fields fit without scrolling on typical viewports
-- `Completed`: relabel New Budget modal submit button from "Save" to "Create" for clearer action intent
-- hide `Current Only` budget adjustment entries from the budget setup history modal so setup history stays focused on setup-level meaning
-- add revision and active-status columns to budget setup sections where that state is currently missing
-- add summary information to the budget cycles list page section headers, with the exact summary content still to be defined
+Activities:
+- create/maintain a single “formula definitions” document (what we compute, where it appears, and what it implies)
+- link from UI helpers and reporting cards instead of duplicating prose
 
-#### Activity Group: Bugs
+## Post-beta note
 
-Status:
+- Reconciliation is intentionally post-beta because it depends on bank integration / statement ingestion (import/OCR). See [ROADMAP.md](/home/ubuntu/dosh/docs/ROADMAP.md).
 
-- `Completed`
-
-- `Completed`: fix expense actual color so values display green when under budget and red when over budget, aligning with the semantic color pattern used for projected investment amounts
-- `Completed`: fix shared add-expense scheduling and transaction-entry inconsistencies including the expense modal icon mismatch, native-date-control replacement, clickable calendar icon behavior, fixed-day `31` rollover handling, and shared quick-fill rule drift across income, expense, and investment directions
-- `Completed`: fix `Surplus (Budget)` so current mixed-actual periods and untouched future periods both roll up correctly from line-level budget, actual, and remaining values rather than relying on one top-level actual-based shortcut
-- `Completed`: prevent account-setup edits or deletes from leaving the budget with no active primary transaction account, while defaulting the first transaction account to primary and warning before switching primary status
-- `Completed`: protect account opening balances from edits once downstream budget-cycle use exists and explain the lock reason in the setup UI
-- `Completed`: remove the retired income `isfixed` behavior so generated cycles now use the income source amount directly and new income sources default to auto-include unless the user unchecks it
-- `Completed`: correct period-detail remaining-expense, remaining-investment, and surplus rollups so deficit lines stay visible at the row level without distorting top-level remaining or budget-surplus totals
-- `Completed`: hide `Add Remaining` in credit or refund transaction-entry views and only show it when there is a real positive remaining obligation to add
-- `Completed`: fix the empty visual artifact at the end of the total income line on the period detail page
-- `Completed`: align the investment spent pill wording and behavior with the expense spent pill so both outflow workflows feel consistent
-- `Completed`: ensure `Surplus (Budget)` reflects deficit on expense lines even when the affected expense line is already in `Paid` state
-- `Completed`: fix the sidebar budget chevron behavior so collapsing a budget in the navigation panel also collapses its budget cycles reliably
-- `Completed`: fix budget deletion failing with "FOREIGN KEY constraint failed" error caused by legacy transaction tables (`periodexpense_transactions`, `periodinvestment_transactions`) not being fully removed during unified ledger migration; added Alembic migration `z1_drop_legacy_transaction_tables` to drop these tables if they exist
-- `Completed`: fix stale calendar data after budget deletion by invalidating `['periods', budgetId]` and `['budget-health', budgetId]` query keys in the `remove` mutation onSuccess handler
-- `Completed`: fix the `Go to budget cycles` action from Setup Assessment on the project setup page, which currently results in a blank screen
-- `Completed`: fix the `Add New Income Item` modal so it supports creating a brand-new income line inline, matching the supported `Add New Expense Item` modal workflow
-- `Completed`: resolve the dominant SonarQube frontend issue cluster by adding explicit React props validation across shared components, setup tabs, and high-traffic budget pages
-- `Completed`: fix the account setup section header alignment so the headings line up cleanly with the displayed column values
-- `Completed`: fix missing budget cycle shortcuts in the sidebar by aligning the frontend `getPeriodsForBudget` API path with the backend router (removed trailing slash), restoring current, planned, pending closure, and historic cycle navigation
-- `Completed`: fix the inability to edit an income line from budget setup
-- `Completed`: fix budget deletion so attempting to remove a budget does not fail with a SQLite `FOREIGN KEY constraint failed` error in the backend ASGI path once setup revision history exists
-- `Completed`: add the missing webpage favicon so browser tabs and installed shortcuts show the app identity correctly
-- `Completed`: recover the budget setup sections after the live setup-history schema mismatch temporarily made income, expense, and investment lines appear missing
-- `Completed`: fix scheduled expense period applicability so "Every N Days" and "Fixed Day of Month" expenses with a future effective date no longer create zero-budget rows in cycles where they do not occur
-- `Completed`: fix browser autofill overlapping the Effective Date calendar picker in the add-expense modal
-- `Completed`: fix misleading delete messaging for the last budget cycle so trailing cycles show "This budget cycle will be deleted." instead of "Delete this cycle and all upcoming cycles (1)"
-- `Completed`: hide Setup Assessment messaging on the Budget Setup page once any budget cycle exists for the budget
-- `Completed`: fix newly added active accounts not appearing in existing budget cycle details by backfilling `PeriodBalance` rows for current and future periods when an active account is created (closed and pending-closure periods are intentionally skipped)
-- `Completed`: fix transfer income line prefix so new transfers use `Transfer: {source} to {destination}` and legacy `Transfer from ` descriptions continue to parse correctly for backward compatibility
-- `Completed`: remediate issues arising from Cash Management workflow changes (generalised account transfers, expense routing, investment account tracking)
-  - `Completed`: remove the Transaction-only restriction on expense-item debit accounts so any active account can be selected
-  - `Completed`: replace the checkbox/conditional-dropdown account selector with a single "Debit Account" picklist that defaults to the primary account and stores `null` for the default
-  - `Completed`: relocate the `Always` scheduling helper text between Frequency Type and Pay Type fields for clearer context
-  - `Completed`: verify and protect pay-type editability for existing scheduled expense items with a regression test
-  - `Completed`: enforce `frequency_value` presence for `Fixed Day of Month` and `Every N Days` expenses in both backend validation and frontend form submission, preventing expenses from being saved with no interval set
-- `Completed`: fix period end-date boundary bug where periods ending on the current day were classified as `PENDING_CLOSURE` instead of `CURRENT` because `enddate` was stored as UTC midnight and compared directly against `utc_now()`; comparisons now use `enddate + 1 day` so the period remains current through the entire last day
-- `Completed`: fix frontend stale balances after transaction entry by invalidating the `period-balances` query key on all mutations that affect income, expense, investment, transfers, and close-out workflows
-- `Completed`: fixed missing `BalanceType` import in `investment_transactions.py` that caused a `NameError` on transaction submit
-- `Completed`: fixed account detail text wrapping in `InvestmentSection.jsx` to prevent truncation with long account names
-- `Completed`: fix investment and expense budget totals on the period detail page so the total row correctly sums budgeted amounts rather than substituting actuals for paid lines
-- `Completed`: fix budget cycle lifecycle state not refreshing automatically when a new cycle start date passes; `cycle_stage()` now derives `CURRENT`/`PENDING_CLOSURE`/`PLANNED` from actual dates rather than blindly trusting the persisted `cycle_status`, and the daily auto-expense scheduler now refreshes all lifecycle states before processing expenses
-- `Completed`: fix page refresh on deep links (e.g., `/budgets/1` or `/budgets/2/periods/23`) returning a "Not Found" error. The `SPAStaticFiles` handler was catching `fastapi.HTTPException` instead of `starlette.exceptions.HTTPException`, so the missing-file exception was not falling back to `index.html` correctly
-- `Completed`: rename "Projected Savings" to "Projected Investment" across backend, frontend, and tests to align terminology with the investment-focused surplus workflow
-- `Completed`: fix `Projected Investment` calculation to use linked-account balances plus committed investment amounts. Closed periods use linked account closing balance; Current / Pending Closure use linked account opening balance plus committed amount; Upcoming periods carry forward the most recent non-closed projected value plus their own committed amount. Committed funds logic uses `max(budgeted, actual)` with `PAID` using `actual`
-- `Completed`: fix surplus budget mismatch between budget cycles summary and period detail. The summary now uses the same surplus-contribution logic as the detail page (actual + positive remaining for outflows, actual-or-budget for income), so `Surplus (Budget)` is consistent across both surfaces
-- `Completed`: fix `create_next_cycle` initializing new period balances from `BalanceType.opening_balance` instead of the previous period's closing balance, which could cause balance chain corruption when cycles were created during close-out
-- `Completed`: fix SQLite datetime text-comparison bug in `propagate_balance_changes_from_period` and related queries where SQLAlchemy's space-separated datetime parameters did not match SQLite's `T`-separator storage format, causing the source period to be incorrectly included in "later periods" results
-- `Completed`: fix trailing-slash mismatch in backend tests (`/balance-types` vs `/balance-types/`) that caused 405 Method Not Allowed after FastAPI strict routing changes
-- `Completed`: fix demo-budget test after DEV_MODE was removed from the application
-
-Cross-links:
-
-- Cash Management
-- Reporting and Analysis
-
-#### Activity Group: Enhancements
-
-Status:
-
-- `Next`
-
-- `Completed`: move budget editing for income, expense, and investment lines onto a shared modal-driven adjustment workflow with note capture and current-or-future-unlocked scope
-- `Completed`: add setup-level history review for income, expense, and investment items using the shared `PeriodTransaction` and `BUDGETADJ` model
-- `Completed`: allow the add-income modal to create a brand-new income setup item inline, matching the supported expense workflow more closely
-- `Completed`: extend setup-item history so revision-number increases can show the actual changed setup fields, not only `BUDGETADJ` entries
-- `Completed`: align setup revision numbers with real stored history records and link setup-affecting future budget adjustments into that revision sequence
-- `Completed`: add inline arithmetic amount entry to period-detail transaction, budget-adjustment, add-income, and add-expense modals, with resolved previews for valid calculations and in-progress summaries for incomplete arithmetic input
-- `Completed`: revise amount entry so normal money fields use localized masking and arithmetic is entered deliberately through simple operators or the still-supported leading `=` trigger, with localized result previews and normalized decimal submission
-- `Completed`: add an expense status filter to the period-detail expenses table and align the control with the existing status column rather than introducing a separate toolbar
-- `Completed`: add a `View previous releases` option to the in-app release-notes modal by extending the backend payload and revealing older released versions on demand
-- provide an activation workflow for income lines in budget setup and align that workflow consistently across income, investment, and expense setup sections
-- `Completed`: change modal transaction quick-fill wording so `Add Remaining` appears only when expense or investment workflows have a true positive remaining amount, while credit or refund views continue using full-amount entry
-- `Completed`: implement Auto Expense so eligible scheduled expenses can run as `AUTO` or `MANUAL`, budget settings now control automation and offset timing, the period-detail page can run Auto Expense manually and switch scheduled lines between `AUTO` and `MANUAL`, and the backend now blocks `MANUAL -> AUTO` once recorded expense activity exists; use [AUTO_EXPENSE_PLAN.md](/home/ubuntu/dosh/docs/plans/AUTO_EXPENSE_PLAN.md) as the canonical rules reference
-
-#### Activity Group: Test Coverage
-
-Status:
-
-- `Completed`
-
-- `Completed`: add regression coverage for budget-adjustment history, carry-forward-on-close-out timing, and direct paid-to-revised workflow behavior
-- `Completed`: add dedicated frontend regression coverage for dashboard current-cycle summaries, threshold autosave and validation behavior, and inline amount-cell edit behavior after Sonar coverage surfaced those areas as under-tested
-- `Completed`: add regression test for `PENDING_CLOSURE` periods not being treated as frozen anchors in dynamic balance calculation
-- `Completed`: fix and add test coverage for expense transaction modal defaulting to the expense item's configured debit account
-- `Completed`: extend SonarQube follow-through coverage in `PeriodDetailPage.test.jsx`, `AmountExpressionInput.test.jsx`, and the new backend router suite [test_period_router_guards.py](/home/ubuntu/dosh/backend/tests/test_period_router_guards.py) while keeping the work behavior-first rather than metric-only
-- `Completed`: fix reliability bug in `health_engine/runner.py` where a conditional returned the same value regardless of truthiness (`python:S3923`)
-- `Completed`: add dedicated backend API regression coverage for health matrix CRUD and validation (`test_health_matrices.py`), including matrix retrieval, item updates, threshold updates, custom metric creation, and removal workflows
-- `Completed`: expand frontend test coverage for the health matrix threshold UI (`PersonalisationTab.test.jsx`), covering metric enablement, weight/sensitivity changes, threshold editing, custom metric builder validation, and error handling
-- `Completed`: expand frontend API client regression coverage (`client.test.js`) for budget health helpers, period-critical workflows (generate, close-out, transfers), expense/investment budget updates, transaction operations, and export filename parsing
-- `Completed`: improve form accessibility in `PersonalisationTab.jsx` by adding explicit `htmlFor`/`id` label associations for Weight, Scoring Sensitivity, Personalisation, and Metric Builder fields
-- keep new feature work under a test-with-change discipline rather than treating testing as a later cleanup phase
-- extend Playwright from the current happy-path lifecycle smoke into reconciliation, correction, and broader scenario-shaped flows
-- continue expanding setup-shape consequence coverage where technically valid configuration changes can still weaken later workflows
-- deepen ledger and reconciliation coverage without treating one-off migration backfill as normal product behavior
-- continue broadening budget health coverage as scoring and reporting evolve
-- extend backend and frontend coverage around close-out, carry-forward, and delete continuity
-- `Completed`: add dedicated migration coverage for clean Alembic upgrade and upgrade from a pre-feature SQLite snapshot, alongside focused Auto Expense backend and period-detail frontend regression coverage
-- `Completed`: add localisation regression coverage for budget preference validation, `Intl`-based formatting across representative locales, masked amount input, calculator behavior, and touched high-traffic surfaces
-- `Completed`: add backend regression coverage for generalised account-transfer validation, including committed-amount logic for paid and non-paid lines (`test_account_transfer_validation.py`)
-- `Completed`: add backend regression coverage for expense entry account routing, including default-account fallback and transaction-level override (`test_expense_entry_account_routing.py`)
-- `Completed`: add backend regression coverage for budget deletion with legacy transaction tables (`test_budget_delete_with_legacy_tables.py`), verifying FK constraint failures and confirming the fix
-- `Completed`: add backend regression coverage for dynamic account balance calculation, including frozen-anchor behavior, forward-limit handling, balance propagation, and limit-exceeded responses (`test_dynamic_account_balances.py`)
-- `Completed`: add frontend regression coverage for the balance-calculation-limit banner in `BalanceSection.test.jsx`
-- `Completed`: updated backend tests around dynamic balances, transactions, close-out, and budget setup to account for investment two-sided movement and balance-limit flag behavior
-- `Completed`: updated frontend tests in `InvestmentItemsTab.test.jsx` and `PeriodDetailPage.test.jsx` for investment account override and modal behavior
-- future setup and workflow testing should expand beyond the original `1 transaction + 1 savings` assumption
-- bookmark named scenarios such as `Single Account` and `Multi Transaction` so future sessions can deliberately test differing account shapes rather than relying on one default personal setup model
-- consider adding a richer demo-validation checklist or smoke flow once more reporting and reconciliation surfaces exist
-- add tests and cleanup around health thresholds and current-period threshold behavior
-
-#### Activity Group: Reliability
-
-Status:
-
-- `Completed`
-
-- `Completed`: **Beta Preparation — Development Framework Update (0.6.8-alpha):**
-  - Restructured README.md into user-facing product overview with Docker deployment instructions
-  - Archived original dev-focused README.md to docs/archive/README-0.6.8-alpha.md
-  - Updated docker-compose.yml to use GHCR image (`ghcr.io/mixednutts/dosh:latest`) with port 3080:3080
-  - Updated docker-compose.override.yml to provide local build context alongside Traefik labels
-  - Removed DEV_MODE environment variable (demo budget now unconditionally available)
-  - Removed scripts/release_with_migrations.sh (redundant with entrypoint.sh migrations)
-  - Updated entrypoint.sh and Dockerfile for port 3080
-  - Updated all documentation (AGENTS.md, GITHUB_RELEASE_RUNBOOK.md, DEVELOPMENT_ACTIVITIES.md, DOCUMENT_REGISTER.md)
-  - Added document pathing section to AGENTS.md for new session discovery
-  - Created .env file for GITHUB_RELEASES_TOKEN configuration
-- `Completed`: align the deployed SQLite schema to the new budget-adjustment and transaction-line-state code after deployment exposed the gap
-- `Completed`: align the live SQLite schema again after setup-history revision support exposed the missing `periodtransactions.revisionnum` column and `setuprevisionevents` table
-- `Completed`: pin frontend install behavior more reliably by keeping the Vite toolchain on a patched release and restoring a clean `npm audit` baseline
-- `Completed`: consolidated the Docker Compose stack from separate `backend` and `frontend` services into a single `backend` service. The backend Dockerfile now builds the React frontend in a multi-stage Node stage, and FastAPI serves the static SPA directly. This simplifies shipping, reduces moving parts, and keeps Traefik/HTTPS networking via the override on the single service.
-- keep the Node 20 frontend Docker baseline healthy and revisit newer LTS adoption only when the toolchain is ready
-- document expected production vs local deployment differences
-- confirm build and startup paths remain clean as the app grows
-- `Completed`: introduce route-level lazy loading for major pages in [App.jsx](/home/ubuntu/dosh/frontend/src/App.jsx) so the frontend stops shipping one oversized initial Vite chunk
-- clean up startup and timestamp deprecation warnings that appear during test and deployment runs
-- `Completed`: formalize the database migration strategy by introducing proper versioned migrations through Alembic from the current aligned baseline
-- `Completed`: turn the current explicit cutover-script baseline into a real migration history
-- make schema evolution safer and more observable than ad hoc one-time scripts
-- `Completed`: separate one-time migration work from normal app startup permanently for the current baseline
-- `Completed`: capture the unified-ledger baseline, close-out schema, and setup-assessment schema in the real migration path
-- `Completed`: align the backend container and GitHub workflow runtime baseline on Python 3.12 after deployment exposed that the current backend typing syntax is not Python 3.9-safe
-- `Completed`: harden the SonarQube workflow so failed quality-gate runs still upload sanitized artifacts with explicit failed-condition context and file-level measure hotspots
-- `Completed`: harden backend release-notes parsing by replacing the regex-based header parser with bounded string parsing and dedicated regression coverage after the regex DoS exposure was flagged
-- `Completed`: align Dosh to a GitHub-managed release-tagging and release-publishing workflow that creates official Git tags from validated version bumps on `main`, publishes GitHub Releases from validated repo release content, and feeds the in-app release-notes view through the backend GitHub Releases client; the repository workflows, protected `main` SonarQube gate, first remote `v0.1.3-alpha` tag, and first published GitHub Release are now in place, and the app now resolves `current_release` successfully from the published GitHub Release; use [GITHUB_RELEASE_MANAGEMENT_WORKFLOW_PLAN.md](/home/ubuntu/dosh/docs/plans/GITHUB_RELEASE_MANAGEMENT_WORKFLOW_PLAN.md) and [GITHUB_RELEASE_RUNBOOK.md](/home/ubuntu/dosh/docs/GITHUB_RELEASE_RUNBOOK.md) as the current references
-- `Completed`: deploy the schema-changing localisation release through the migration-aware Compose script, verify live schema revisions `9b7f3c2d1a4e` and `c4d8e6f1a2b3`, then fix and redeploy the post-deploy budgets-page refresh crash caused by a missing `formatDateRange` dependency in the pending-closure list; follow-up date-format migration `c4d8e6f1a2b3` is part of the same `0.3.0-alpha` release scope
-- `Completed`: implemented structured JSON logging output utilizing syslog naming conventions for backend services in `0.6.9-alpha`, ensuring consistent severity levels, structured context, and operational observability across containerized deployments
-- `Completed`: switched backend logging from JSON to plain-text ISO-8601 format and eliminated duplicate Alembic log lines on container startup in `0.6.10-alpha`
-
-#### Activity Group: Consistency
-
-Status:
-
-- `Next`
-
-- `Completed`: simplify paid-to-revised reopening by removing the separate revision-reason modal and relying on transaction-backed history instead
-- `Completed`: reduce the dominant backend SonarQube router noise by switching FastAPI endpoints to a shared `DbSession` dependency alias and centralized documented error responses
-- `Completed`: clear the active SonarQube new-code duplication hotspot in `PeriodDetailPage.jsx`; the verified follow-up run now shows duplication below the quality-gate threshold, shifting the remaining quality work toward coverage and residual frontend maintainability findings instead
-- `Completed`: complete three-phase modularization of `PeriodDetailPage.jsx` (2,911 lines → 642 lines, 78% reduction); extracted 15 components to organized directories and 3 utility modules
-- `Completed`: cleared the modularization-induced unused-import spike (`javascript:S1128`) and related unused-variable warnings (`S1481`/`S1854`) from `PeriodDetailPage.jsx`, `BudgetPeriodsPage.jsx`, `transactionHelpers.js`, and `periods.py`; SonarQube issue count reduced from 159 back toward the pre-modularization baseline
-- `Completed`: remove stale `.period-detail-table :nth-child()` width overrides from `index.css` that were conflicting with the unified `<colgroup>` layout and causing column width misalignment
-- `Completed (0.6.11-alpha)`: completed a four-phase SonarQube code quality cleanup — BLOCKER+quick wins (~40 issues), backend cognitive complexity (22 issues), frontend concentrated clusters (38 issues: prop-types, nested ternaries, form labels, negated conditions), and remaining scattered issues (~30 issues). No functional changes; all refactors verified by existing test suites.
-- `Completed`: FastAPI `Annotated[..., Depends()]` / `Annotated[..., Form()]` type hints adopted across routers (`budgets.py`) per `python:S8410`
-- `Completed`: string-literal constant extraction applied to repeated FK strings and metric executor literals per `python:S1192`
-- `Completed`: nested ternary flattening in `AddExpenseLineModal.jsx`, `ProgressStatusPill.jsx`, and `PeriodDetailPage.jsx` per `javascript:S3358`
-- `Completed`: `prop-types` declarations added across shared components (`iconButtons.jsx`, `BudgetHealthTab.jsx`, `BudgetsPage.jsx`, and period-detail sections) per `javascript:S6774`
-- `Completed`: cognitive-complexity reduction via helper extraction in `restore_service.py`, `cycle_management.py`, `metric_executors.py`, `transaction_ledger.py`, and `periods.py` per `python:S3776`
-- standardize terminology around savings and investments
-- standardize where the UI says `Budget Cycle` while backend and API continue using `period`
-- standardize health terminology around surplus, deficit, tolerance, threshold, and escalation
-- preserve backend naming stability while refining frontend wording
-- keep balance movement read-only and transaction-derived
-- avoid introducing edit paths that weaken ledger trust
-- keep actual-entry workflows transaction-first across income, expenses, and investments unless a deliberate exception is introduced
-
-#### Activity Group: Polish
-
-Status:
-
-- `Later`
-
-- decide whether repeated demo imports should eventually gain clearer naming, timestamps, or lightweight duplicate-management affordances
-
-## Recommended Session Backlog
-
-If we want a practical order of work rather than just a thematic roadmap, this is the strongest current sequence:
-
-1. Reconciliation > Closed-Cycle Reconciliation Handoff: design the correction path for closed cycles and close remaining write-path gaps.
-2. Reporting and Analysis > Reporting Foundations: add a reporting summary endpoint that rolls up period and ledger data.
-3. Reporting and Analysis > Reporting Foundations: surface a budget-level reporting card set in the frontend.
-4. Quality > Reliability: clean up deployment or deprecation warnings and address the outstanding `axios` audit advisory.
-5. Export and Backup > Export Scope and Format plus Backup and Restore Design: define the first export and backup scope, including format and restore expectations.
-
-## Implementation Notes To Preserve
-
-- Demo-budget creation is intentionally additive only. It should keep creating a new budget rather than overwriting or deleting existing budgets.
-- The "Create Demo Budget" option is unconditionally available in the create-budget modal. Duplicate prevention is enforced server-side via `HTTPException(409)` in `create_standard_demo_budget`.
-
-## Canonical Near-Term References
-
-To avoid duplicating the canonical roadmap entries above, use these sections as the main near-term reference points after first checking [ROADMAP.md](/home/ubuntu/dosh/docs/ROADMAP.md) for release-stage scope:
-
-- `Reconciliation > Closed-Cycle Reconciliation Handoff`
-- `Reporting and Analysis > Reporting Foundations`
-- `Localisation and Regional Fit > Terminology and Regional Behavior`
-- `Quality > Reliability`
-- `Quality > Consistency`
-- `Quality > Polish`
-
-Supporting validation material for near-term engineering work:
-
-- [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md)
-- [TEST_EXPANSION_PLAN.md](/home/ubuntu/dosh/docs/tests/TEST_EXPANSION_PLAN.md)
-- [TEST_RESULTS_SUMMARY.md](/home/ubuntu/dosh/docs/tests/TEST_RESULTS_SUMMARY.md)
-
-## Docker Image Publishing Note
-
-The `Publish Docker Image to GHCR` workflow is now available for manual builds. See `.github/workflows/publish-docker-image.yml` and `docs/GITHUB_RELEASE_RUNBOOK.md` for usage. Future automation can be enabled by uncommenting the tag trigger in the workflow and removing `if: false` from the trigger in `release-on-tag.yml`.
-
-## Guardrails For Future Work
-
-These project rules already emerge clearly from the existing docs and implementation and should continue guiding development:
-
-- functional clarity matters more than decorative redesign
-- workflow meaning should take priority over isolated CRUD convenience
-- balance movement should remain explainable from transactions
-- paid expenses should stay protected until explicitly revised
-- paid investments should follow the same protection and revision model as paid expenses
-- budget health should stay supportive and explainable, not overly authoritative
-- user-facing health and warning messages should use warm, practical, reassuring language rather than clinical finance wording
-- when health preferences assess deficit risk, the wording should say `deficit` clearly rather than implying that zero surplus is itself a problem
-- autosave is preferred for lightweight setup and threshold edits when validation is simple and failures can be surfaced clearly
-- backend and database naming should remain stable unless a change is clearly worth the cost
-- user-facing `Budget Cycle` wording can evolve independently of backend `period` naming when that improves clarity
-- setup validity and downstream protection should be centralized, not rebuilt ad hoc in each page
-- localisation should be explicit and centrally managed rather than emerging from scattered hard-coded formatting choices
-- cash management views should reflect trustworthy underlying money movement rather than introducing separate shadow balances
-- export and backup should preserve user trust by being understandable, complete enough to be useful, and compatible with ledger integrity
-- there should only ever be one `Current` cycle for a budget, while multiple overdue open cycles may remain visible as `Pending Closure`
-- closing a cycle should create a trustworthy point-in-time historical record, not a view that can drift later
-- carry-forward and next-cycle opening rebasing should be recalculated together so continuity does not drift or double count
-- deleting a cycle must not leave retained gaps; guided delete-and-regenerate is preferred over ambiguous continuity
-- tests should continue using isolated databases per case whenever backend work spans multiple functional areas
-- if a sidebar affordance points to the page the user is already viewing, it should be muted or otherwise downgraded rather than appearing broken
-- the main budget summary page should avoid duplicate edit/setup actions when one clear path already exists
-- brand accent color and positive/success color should remain distinct so navigation and financial meaning do not blur together
-
-## What Future Sessions Should Check First
-
-Before proposing major changes, review:
-
-- [README.md](/home/ubuntu/dosh/README.md)
-- [ROADMAP.md](/home/ubuntu/dosh/docs/ROADMAP.md)
-- [CHANGES.md](/home/ubuntu/dosh/docs/CHANGES.md)
-- [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md)
-
-That combination should be enough to understand:
-
-- which release stage the work belongs to
-- where the product is today
-- what decisions are already intentional
-- what the next sensible development activities are

@@ -1084,6 +1084,58 @@ Maintenance notes:
 
 ## Archived Documents
 
+### ROADMAP-pre-beta-2026-04-23.md
+
+Document:
+
+- [ROADMAP-pre-beta-2026-04-23.md](/home/ubuntu/dosh/docs/archive/ROADMAP-pre-beta-2026-04-23.md)
+
+Document type:
+
+- archived document
+
+Primary purpose:
+
+- historical reference for the pre-beta roadmap snapshot before the beta roadmap reset
+
+Primary source-of-truth scope:
+
+- none (archived for historical context only)
+
+Key relationships:
+
+- replaced by [ROADMAP.md](/home/ubuntu/dosh/docs/ROADMAP.md)
+
+Maintenance notes:
+
+- do not update; preserved for historical context only
+
+### DEVELOPMENT_ACTIVITIES-pre-beta-2026-04-23.md
+
+Document:
+
+- [DEVELOPMENT_ACTIVITIES-pre-beta-2026-04-23.md](/home/ubuntu/dosh/docs/archive/DEVELOPMENT_ACTIVITIES-pre-beta-2026-04-23.md)
+
+Document type:
+
+- archived document
+
+Primary purpose:
+
+- historical reference for the pre-beta development activities snapshot before the beta backlog reset
+
+Primary source-of-truth scope:
+
+- none (archived for historical context only)
+
+Key relationships:
+
+- replaced by [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md)
+
+Maintenance notes:
+
+- do not update; preserved for historical context only
+
 ### BUDGET_HEALTH_ADDENDUM.md
 
 Document:

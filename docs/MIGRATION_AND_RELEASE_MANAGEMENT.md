@@ -14,7 +14,7 @@ Use it when:
 
 - current canonical app version: `0.6.11-alpha`
 - current UI display format: `v0.6.11-alpha`
-- current app state classification: `alpha`
+- current app state classification: `beta`
 - current schema management authority: Alembic
 - current deployment path: Docker Compose
 - current backend runtime baseline: Python 3.12
@@ -139,7 +139,7 @@ Backlog-limit guidance:
 2. if the section now represents more than about `5` to `10` distinct release-worthy items, prefer cutting the next release rather than letting the backlog sprawl further
 3. use release coherence, testing confidence, and user-facing explainability as the deciding factors, not item count alone
 
-The repository includes [release_with_migrations.sh](/home/ubuntu/dosh/scripts/release_with_migrations.sh) to run the expected Compose-based build, backup, migration, and restart flow.
+The repository includes [db-migrate.sh](/home/ubuntu/dosh/scripts/db-migrate.sh) to run the expected migration step as part of deployment/update workflows.
 
 Guidance:
 
@@ -186,9 +186,13 @@ When a release includes a schema migration that affects budget data:
 4. Test restore of an older backup against the new schema in CI or locally.
 5. Document the breaking change in `RELEASE_NOTES.md` under the relevant version.
 
-## Alpha To Beta Criteria
+## Beta Status (and future criteria)
 
-Dosh should remain `alpha` until all of the following are true:
+Beta means the release/update path is stable and the product is ready for broader real-world use while still evolving.
+
+If Dosh regresses on any of the criteria below (for example, schema drift or non-repeatable release sequencing), treat that as a release-process incident and prioritize restoring stability.
+
+Baseline criteria for staying confidently in `beta`:
 
 - Alembic migrations are the normal path for schema updates
 - release sequencing is explicit and repeatable
@@ -196,4 +200,4 @@ Dosh should remain `alpha` until all of the following are true:
 - backup and rollback steps are documented and usable
 - at least one full upgrade using the new model has been exercised successfully
 
-At that point, Dosh can be reconsidered for `beta`.
+When those are consistently true, the next consideration is whether Dosh is ready for `rcN` / stable (suffix removal), which requires stronger onboarding, reporting/review surfaces, and sustained operational confidence.
