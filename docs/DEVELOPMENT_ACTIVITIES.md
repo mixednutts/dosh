@@ -61,6 +61,18 @@ Activities:
 
 A generalised area for bugs, UI inconsistencies, and UX improvements. Specific items are tracked below; ad-hoc bugs and UI tweaks should reference this roadmap area from the development activities document.
 
+#### Activity Group: Budget Cycle Detail Header Polish
+
+Status:
+- `Completed` (2026-04-23)
+
+Activities:
+- redesigned the Budget Cycle Details page header for improved visual hierarchy and clearer cycle status communication
+- enhanced breadcrumb navigation with hover transitions and truncation for long budget names
+- promoted cycle stage to a visual badge: filled brand-color pill with pulse indicator for Current cycles, bordered badges for Closed/Upcoming
+- improved metadata presentation with icon-enhanced frequency display and vertical divider pattern
+- deliverable: updated `PeriodDetailPage.jsx` header section (lines 302-347)
+
 #### Activity Group: Formula Expression Helpers
 
 Status:

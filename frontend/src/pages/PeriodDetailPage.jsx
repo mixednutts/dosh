@@ -299,18 +299,65 @@ export default function PeriodDetailPage() {
     <div className="space-y-5">
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-1">
-            <Link to="/budgets" className="hover:underline">Budgets</Link>
-            <ChevronRightIcon className="w-3 h-3" />
-            {budget && <Link to={`/budgets/${budget.budgetid}`} className="hover:underline">{budget.description}</Link>}
-            <ChevronRightIcon className="w-3 h-3" />
-            <span className="text-gray-800 dark:text-gray-200">Budget Cycle Details</span>
+        <div className="space-y-3">
+          {/* Breadcrumb */}
+          <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-sm">
+            <Link
+              to="/budgets"
+              className="text-gray-500 hover:text-dosh-600 dark:text-gray-400 dark:hover:text-dosh-400 transition-colors"
+            >
+              Budgets
+            </Link>
+            <ChevronRightIcon className="w-4 h-4 text-gray-300 dark:text-gray-600" />
+            {budget && (
+              <>
+                <Link
+                  to={`/budgets/${budget.budgetid}`}
+                  className="text-gray-500 hover:text-dosh-600 dark:text-gray-400 dark:hover:text-dosh-400 transition-colors max-w-[180px] truncate"
+                >
+                  {budget.description}
+                </Link>
+                <ChevronRightIcon className="w-4 h-4 text-gray-300 dark:text-gray-600" />
+              </>
+            )}
+            <span className="text-gray-900 dark:text-gray-100 font-medium">Cycle Details</span>
+          </nav>
+
+          {/* Title with Status */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-50 tracking-tight">
+              {fmtDateRange(period.startdate, period.enddate)}
+            </h1>
+            {cycleStage === 'CURRENT' ? (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-dosh-600 text-white dark:bg-dosh-500 shadow-sm">
+                <span className="inline-block h-1.5 w-1.5 rounded-full bg-green-300 animate-pulse" />
+                {getCycleStageLabel(cycleStage)}
+              </span>
+            ) : (
+              <span className={`
+                inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border
+                ${cycleStage === 'CLOSED' ? 'bg-slate-200 border-slate-300 text-slate-800 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-200' : ''}
+                ${cycleStage === 'PLANNED' ? 'bg-blue-100 border-blue-300 text-blue-800 dark:bg-blue-900/50 dark:border-blue-700 dark:text-blue-200' : ''}
+              `}
+              >
+                {getCycleStageLabel(cycleStage)}
+              </span>
+            )}
           </div>
-          <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-            {fmtDateRange(period.startdate, period.enddate)}
-          </h1>
-          {budget && <p className="text-sm text-gray-500 dark:text-gray-400">{budget.budget_frequency} · {budget.budgetowner} · {getCycleStageLabel(cycleStage)}</p>}
+
+          {/* Metadata Line */}
+          {budget && (
+            <div className="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400">
+              <span className="inline-flex items-center gap-1.5">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                {budget.budget_frequency}
+              </span>
+              <span className="w-px h-4 bg-gray-300 dark:bg-gray-600" />
+              <span>{budget.budgetowner}</span>
+            </div>
+          )}
         </div>
         <div className="flex gap-2">
           <button className="btn-secondary" onClick={() => setShowExport(true)} title="Export budget cycle">
