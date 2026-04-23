@@ -38,6 +38,7 @@ Dosh helps you manage your finances through a structured budget cycle approach:
 - **Regional Formatting** — Automatic locale-aware date, currency, and number formatting
 
 ## Preview
+(Summary Page Light/Dark ; Cycles Page Light/Dark ; Details Page Light/Dark)
 
 ![Dosh Preview](images/dosh_preview1.gif)
 
