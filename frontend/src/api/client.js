@@ -84,6 +84,8 @@ export const getPeriodsForBudget = budgetId =>
   api.get(`/budgets/${budgetId}/periods`).then(r => r.data)
 export const getPeriodSummariesForBudget = budgetId =>
   api.get(`/budgets/${budgetId}/periods/summary`).then(r => r.data)
+export const getCurrentPeriodDetail = budgetId =>
+  api.get(`/budgets/${budgetId}/periods/current`).then(r => r.data)
 export const getPeriodDetail = (budgetId, periodId) =>
   api.get(`/budgets/${budgetId}/periods/${periodId}`).then(r => r.data)
 export const getPeriodDeleteOptions = (budgetId, periodId) =>

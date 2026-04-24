@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Added
+
+- You can now jump straight to the current budget cycle using a simple URL shortcut: `/budgets/<id>/periods/current`. This automatically redirects to the active period for that budget, saving you from hunting through the cycle list.
+
 ### Engineering
 
 - Expanded automated test coverage across backend and frontend to improve long-term reliability and maintainability. Backend tests now cover auto-expense scheduler behavior, budget health engine metrics, and investment transaction workflows. Frontend tests now cover mobile-responsive card rendering, drag-and-drop reordering, and Dashboard mobile views.

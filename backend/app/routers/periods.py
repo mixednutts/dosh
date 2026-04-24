@@ -1055,6 +1055,28 @@ def list_period_summaries_for_budget(budgetid: int, db: DbSession):
     return summaries
 
 
+@router.get("/current", response_model=PeriodDetailOut, responses=error_responses(404))
+def get_current_period_detail(budgetid: int, db: DbSession):
+    if not db.get(Budget, budgetid):
+        raise HTTPException(404, "Budget not found")
+    periods = ordered_budget_periods(budgetid, db)
+    current_periods = [p for p in periods if cycle_stage(p) == CURRENT_STAGE]
+    if not current_periods:
+        raise HTTPException(404, "No current period found for this budget")
+    period = current_periods[0]
+    detail = _load_period_detail_components(period, db)
+    return PeriodDetailOut(
+        period=PeriodOut.model_validate(period),
+        incomes=detail["incomes"],
+        expenses=detail["expenses"],
+        investments=detail["investments"],
+        balances=detail["balances"],
+        balances_limit_exceeded=detail.get("balances_limit_exceeded", False),
+        projected_investment=detail["projected_investment"],
+        closeout_snapshot=period.closeout_snapshot,
+    )
+
+
 @router.get("/{finperiodid}", response_model=PeriodDetailOut, responses=error_responses(404))
 def get_period_detail(budgetid: int, finperiodid: int, db: DbSession):
     period = _get_period_or_404(finperiodid, budgetid, db)

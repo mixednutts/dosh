@@ -100,6 +100,17 @@ Activities:
 - added responsive grid stacking to TransactionEntryForm so fields arrange vertically on narrow screens
 - deliverable: new `MobileTableCards.jsx` reusable component; responsive changes across 13 frontend files; 6 new component tests
 
+#### Activity Group: Current Period URL Shortcut
+
+Status:
+- `Completed` (2026-04-25)
+
+Activities:
+- added `/budgets/:budgetId/periods/current` frontend route that redirects to the actual current period for a given budget
+- added backend `GET /budgets/{budgetid}/periods/current` endpoint returning full `PeriodDetailOut` for the current cycle
+- fallback redirects to `/budgets/:budgetId` when no current period exists
+- deliverable: `CurrentPeriodRedirect.jsx`, `periods.py` endpoint, `api/client.js` helper; 4 backend tests + 4 frontend tests
+
 #### Activity Group: Formula Expression Helpers
 
 Status:

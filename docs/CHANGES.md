@@ -4,7 +4,40 @@ This document captures the key product and implementation changes made during re
 
 It is intended to complement [README.md](/home/ubuntu/dosh/README.md), not replace it.
 
-## Latest Session: SonarQube Coverage Gap Remediation — Test Expansion (0.7.0-beta) (2026-04-25)
+## Latest Session: Current Period URL Shortcut (0.7.0-beta) (2026-04-25)
+
+### What changed
+
+- Added a `/budgets/:budgetId/periods/current` URL shortcut that redirects to the actual current period for a given budget.
+  - **Backend**: New `GET /budgets/{budgetid}/periods/current` endpoint (`periods.py`) returns full `PeriodDetailOut` for the current cycle, using existing `cycle_stage()` logic. Returns 404 if budget or current period is not found. Prefers earliest current period when multiple derive as current.
+  - **Frontend**: New `CurrentPeriodRedirect.jsx` component fetches current period detail via React Query and navigates to `/budgets/:budgetId/periods/:periodId`. Falls back to `/budgets/:budgetId` on error or missing period.
+  - **Routing**: Added route in `App.jsx`; added `getCurrentPeriodDetail()` API helper in `api/client.js`.
+
+### Testing
+
+- Added `backend/tests/test_current_period_endpoint.py` (4 tests): happy path, 404 when no current period, 404 for missing budget, earliest-current preference.
+- Added `frontend/src/__tests__/CurrentPeriodRedirect.test.jsx` (4 tests): loading spinner, successful redirect, API error fallback, null period fallback.
+- Full backend regression suite: **244 passed**, 0 regressions introduced.
+- Full frontend regression suite: **323 passed**, 0 regressions introduced.
+
+### Decisions preserved
+
+- Backend-only redirect approach chosen over frontend-only: the backend already has `cycle_stage()` logic and `ordered_budget_periods()`, so a dedicated endpoint avoids duplicating date-derived stage logic on the frontend.
+- The endpoint returns the full `PeriodDetailOut` (same schema as `/{finperiodid}`) so the redirect component can navigate immediately without a second API call.
+- Fallback to budget page on 404 provides a graceful UX when bookmarked `/current` URLs outlive their cycle.
+
+### Files touched
+
+- `backend/app/routers/periods.py`
+- `frontend/src/App.jsx`
+- `frontend/src/api/client.js`
+- `frontend/src/pages/CurrentPeriodRedirect.jsx` (new)
+- `backend/tests/test_current_period_endpoint.py` (new)
+- `frontend/src/__tests__/CurrentPeriodRedirect.test.jsx` (new)
+
+---
+
+## Session: SonarQube Coverage Gap Remediation — Test Expansion (0.7.0-beta) (2026-04-25)
 
 ### What changed
 
