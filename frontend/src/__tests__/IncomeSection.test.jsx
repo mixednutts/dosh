@@ -163,4 +163,65 @@ describe('IncomeSection', () => {
     const addTxButtons = screen.getAllByTitle('Add income transaction')
     expect(addTxButtons.every(b => b.disabled)).toBe(true)
   })
+
+  it('calls onAddTransaction when add transaction button is clicked', () => {
+    renderWithProviders(<IncomeSection {...baseProps} incomes={standardIncomes} />)
+    const addTxButtons = screen.getAllByTitle('Add income transaction')
+    fireEvent.click(addTxButtons[0])
+    expect(baseProps.onAddTransaction).toHaveBeenCalledWith(expect.objectContaining({ incomedesc: 'Salary' }))
+  })
+
+  it('calls onAddCorrection when correction button is clicked', () => {
+    renderWithProviders(<IncomeSection {...baseProps} incomes={standardIncomes} />)
+    const correctionButtons = screen.getAllByTitle('Add income correction')
+    fireEvent.click(correctionButtons[0])
+    expect(baseProps.onAddCorrection).toHaveBeenCalledWith(expect.objectContaining({ incomedesc: 'Salary' }))
+  })
+
+  describe('mobile rendering', () => {
+    function renderMobile(props = {}) {
+      const originalEnv = process.env.NODE_ENV
+      process.env.NODE_ENV = 'development'
+      try {
+        return renderWithProviders(<IncomeSection {...baseProps} {...props} incomes={standardIncomes} />)
+      } finally {
+        process.env.NODE_ENV = originalEnv
+      }
+    }
+
+    it('renders mobile card columns', () => {
+      renderMobile()
+      expect(screen.getAllByText('Salary').length).toBeGreaterThanOrEqual(1)
+      expect(screen.getAllByText('Account').length).toBeGreaterThanOrEqual(1)
+    })
+
+    it('mobile shows transfer destination for transfer income', () => {
+      renderMobile()
+      // Transfer: Savings to Main → mobile account column shows "Main"
+      expect(screen.getAllByText('Main').length).toBeGreaterThanOrEqual(1)
+    })
+
+    it('mobile actions include add transaction, correction, view, and delete', () => {
+      renderMobile()
+      expect(screen.getAllByTitle('Add income transaction').length).toBeGreaterThanOrEqual(1)
+      expect(screen.getAllByTitle('Add income correction').length).toBeGreaterThanOrEqual(1)
+      expect(screen.getAllByTitle('View transactions').length).toBeGreaterThanOrEqual(1)
+    })
+
+    it('mobile delete button calls deleteIncomeLine when confirmed', () => {
+      jest.spyOn(globalThis, 'confirm').mockReturnValue(true)
+      renderMobile()
+      const deleteButtons = screen.getAllByTitle('Remove from budget cycle')
+      expect(deleteButtons.length).toBeGreaterThanOrEqual(1)
+      fireEvent.click(deleteButtons[0])
+      expect(baseProps.deleteIncomeLine.mutate).toHaveBeenCalled()
+      globalThis.confirm.mockRestore()
+    })
+
+    it('mobile footer shows totals', () => {
+      renderMobile()
+      expect(screen.getAllByText('Total Income').length).toBeGreaterThanOrEqual(1)
+      expect(screen.getAllByText('$3000.00').length).toBeGreaterThanOrEqual(1)
+    })
+  })
 })

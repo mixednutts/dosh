@@ -120,4 +120,64 @@ describe('Dashboard', () => {
 
     expect(await screen.findByText('Current')).toBeTruthy()
   })
+
+  describe('mobile rendering', () => {
+    function renderMobile() {
+      const originalEnv = process.env.NODE_ENV
+      process.env.NODE_ENV = 'development'
+      try {
+        return renderWithProviders(<Dashboard />)
+      } finally {
+        process.env.NODE_ENV = originalEnv
+      }
+    }
+
+    it('shows mobile budget card with no cycles state', async () => {
+      client.getBudgets.mockResolvedValue([
+        { budgetid: 1, description: 'Home Budget', budgetowner: 'Alex', budget_frequency: 'Monthly' },
+      ])
+      client.getPeriodsForBudget.mockResolvedValue([])
+
+      renderMobile()
+
+      const items = await screen.findAllByText(/No budget cycles/)
+      expect(items.length).toBeGreaterThanOrEqual(1)
+    })
+
+    it('shows mobile budget card with active cycle details', async () => {
+      client.getBudgets.mockResolvedValue([
+        { budgetid: 1, description: 'Home Budget', budgetowner: 'Alex', budget_frequency: 'Monthly' },
+      ])
+      client.getPeriodsForBudget.mockResolvedValue([
+        { finperiodid: 99, cycle_status: 'ACTIVE', startdate: '2026-04-01', enddate: '2026-04-30', islocked: false },
+      ])
+      client.getPeriodDetail.mockResolvedValue({
+        incomes: [{ budgetamount: 3000, actualamount: 3100 }],
+        expenses: [{ budgetamount: 1000, actualamount: 900, status: 'Current' }],
+        investments: [{ budgeted_amount: 300, actualamount: 280 }],
+      })
+
+      renderMobile()
+
+      const budgetItems = await screen.findAllByText('Home Budget')
+      expect(budgetItems.length).toBeGreaterThanOrEqual(1)
+      // Wait for period detail to load then check for a calculated value
+      const incomeActual = await screen.findAllByText('$3,100.00')
+      expect(incomeActual.length).toBeGreaterThanOrEqual(1)
+    })
+
+    it('shows mobile card with no current cycle but upcoming planned', async () => {
+      client.getBudgets.mockResolvedValue([
+        { budgetid: 1, description: 'Travel Budget', budgetowner: 'Sam', budget_frequency: 'Monthly' },
+      ])
+      client.getPeriodsForBudget.mockResolvedValue([
+        { finperiodid: 11, cycle_status: 'PLANNED', startdate: '2026-05-01', enddate: '2026-05-31', islocked: false },
+      ])
+
+      renderMobile()
+
+      const items = await screen.findAllByText(/No current budget cycle/)
+      expect(items.length).toBeGreaterThanOrEqual(1)
+    })
+  })
 })

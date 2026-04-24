@@ -175,4 +175,126 @@ describe('ExpenseSection', () => {
 
     expect(baseProps.onStatusFilterChange).toHaveBeenCalledWith('Paid')
   })
+
+  it('calls drag handlers on table rows', () => {
+    renderWithProviders(<ExpenseSection {...baseProps} expenses={expenses} filteredExpenses={expenses} />)
+
+    const groceriesCell = screen.getByText('Groceries')
+    const row = groceriesCell.closest('tr')
+
+    fireEvent.dragStart(row)
+    expect(baseProps.onDragStart).toHaveBeenCalledWith('Groceries')
+
+    fireEvent.dragOver(row)
+    expect(baseProps.onDragOver).toHaveBeenCalled()
+
+    fireEvent.dragLeave(row)
+    expect(baseProps.onDragLeave).toHaveBeenCalled()
+
+    fireEvent.drop(row)
+    expect(baseProps.onDrop).toHaveBeenCalled()
+  })
+
+  it('shows drag highlight when dragOver matches row', () => {
+    const { container } = renderWithProviders(
+      <ExpenseSection {...baseProps} expenses={expenses} filteredExpenses={expenses} dragOver="Groceries" />
+    )
+    expect(container.querySelector('.bg-dosh-50')).toBeTruthy()
+  })
+
+  it('disables drag when status filter is not all', () => {
+    const { container } = renderWithProviders(
+      <ExpenseSection {...baseProps} expenses={expenses} filteredExpenses={expenses} expenseStatusFilter="Paid" />
+    )
+    expect(container.querySelector('.cursor-not-allowed')).toBeTruthy()
+  })
+
+  it('disables drag when locked or closed', () => {
+    const { container: lockedContainer } = renderWithProviders(
+      <ExpenseSection {...baseProps} expenses={expenses} filteredExpenses={expenses} locked />
+    )
+    expect(lockedContainer.querySelector('.cursor-not-allowed')).toBeTruthy()
+
+    const { container: closedContainer } = renderWithProviders(
+      <ExpenseSection {...baseProps} expenses={expenses} filteredExpenses={expenses} closed />
+    )
+    expect(closedContainer.querySelector('.cursor-not-allowed')).toBeTruthy()
+  })
+
+  it('shows static paytype badge when autoExpenseEnabled is false (mobile)', () => {
+    const originalEnv = process.env.NODE_ENV
+    process.env.NODE_ENV = 'development'
+    try {
+      renderWithProviders(
+        <ExpenseSection {...baseProps} expenses={expenses} filteredExpenses={expenses} autoExpenseEnabled={false} />
+      )
+      // Groceries has AUTO paytype but autoExpenseEnabled=false → mobile shows static span
+      const autoSpans = screen.getAllByText('AUTO').filter(el => el.tagName === 'SPAN')
+      expect(autoSpans.length).toBeGreaterThanOrEqual(1)
+    } finally {
+      process.env.NODE_ENV = originalEnv
+    }
+  })
+
+  it('shows em-dash for paytype when no paytype is set', () => {
+    const expensesNoPaytype = [
+      { expensedesc: 'Misc', budgetamount: 100, actualamount: 0, remaining_amount: 100, status: 'Current' },
+    ]
+    renderWithProviders(
+      <ExpenseSection {...baseProps} expenses={expensesNoPaytype} filteredExpenses={expensesNoPaytype} />
+    )
+    expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(1)
+  })
+
+  describe('mobile rendering', () => {
+    function renderMobile(props = {}) {
+      const originalEnv = process.env.NODE_ENV
+      process.env.NODE_ENV = 'development'
+      try {
+        return renderWithProviders(<ExpenseSection {...baseProps} {...props} expenses={expenses} filteredExpenses={expenses} />)
+      } finally {
+        process.env.NODE_ENV = originalEnv
+      }
+    }
+
+    it('renders mobile card columns', () => {
+      renderMobile()
+      expect(screen.getAllByText('Groceries').length).toBeGreaterThanOrEqual(1)
+      expect(screen.getAllByText('Payment Type').length).toBeGreaterThanOrEqual(1)
+    })
+
+    it('mobile paytype toggle calls updateExpensePayType', () => {
+      renderMobile()
+      const autoButtons = screen.getAllByText('AUTO').filter(el => el.tagName === 'BUTTON')
+      expect(autoButtons.length).toBeGreaterThanOrEqual(1)
+      fireEvent.click(autoButtons[0])
+      expect(baseProps.updateExpensePayType.mutate).toHaveBeenCalledWith({ desc: 'Groceries', paytype: 'MANUAL' })
+    })
+
+    it('mobile actions include add transaction, refund, view, and delete', () => {
+      renderMobile()
+      const addTxButtons = screen.getAllByTitle('Add expense transaction')
+      expect(addTxButtons.length).toBeGreaterThanOrEqual(1)
+      const refundButtons = screen.getAllByTitle('Add refund/credit')
+      expect(refundButtons.length).toBeGreaterThanOrEqual(1)
+      const viewButtons = screen.getAllByTitle('View transactions')
+      expect(viewButtons.length).toBeGreaterThanOrEqual(1)
+    })
+
+    it('mobile delete button calls deleteExpenseLine when confirmed', () => {
+      jest.spyOn(globalThis, 'confirm').mockReturnValue(true)
+      renderMobile()
+      const deleteButtons = screen.getAllByTitle('Remove from budget cycle (no actuals, zero budget)')
+      expect(deleteButtons.length).toBeGreaterThanOrEqual(1)
+      fireEvent.click(deleteButtons[0])
+      expect(baseProps.deleteExpenseLine.mutate).toHaveBeenCalled()
+      globalThis.confirm.mockRestore()
+    })
+
+    it('mobile footer shows totals', () => {
+      renderMobile()
+      expect(screen.getAllByText('Total Expenses').length).toBeGreaterThanOrEqual(1)
+      expect(screen.getAllByText('$1500.00').length).toBeGreaterThanOrEqual(1)
+    })
+  })
 })

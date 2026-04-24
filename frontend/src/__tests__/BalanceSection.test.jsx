@@ -133,4 +133,41 @@ describe('BalanceSection', () => {
     expect(screen.getByText('Transaction')).toBeTruthy()
     expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(1)
   })
+
+  describe('mobile rendering', () => {
+    function renderMobile(props = {}) {
+      const originalEnv = process.env.NODE_ENV
+      process.env.NODE_ENV = 'development'
+      try {
+        return renderWithProviders(
+          <BalanceSection balances={balances} formatters={formatters} onViewTransactions={() => {}} {...props} />
+        )
+      } finally {
+        process.env.NODE_ENV = originalEnv
+      }
+    }
+
+    it('renders mobile card columns', () => {
+      renderMobile()
+      expect(screen.getAllByText('Main Account').length).toBeGreaterThanOrEqual(1)
+      expect(screen.getAllByText('Opening').length).toBeGreaterThanOrEqual(1)
+      expect(screen.getAllByText('Movement').length).toBeGreaterThanOrEqual(1)
+      expect(screen.getAllByText('Closing').length).toBeGreaterThanOrEqual(1)
+    })
+
+    it('mobile shows view transactions button', () => {
+      const onViewTransactions = jest.fn()
+      renderMobile({ onViewTransactions })
+      const buttons = screen.getAllByTitle('View supporting transactions')
+      expect(buttons.length).toBeGreaterThanOrEqual(1)
+      fireEvent.click(buttons[0])
+      expect(onViewTransactions).toHaveBeenCalledWith(expect.objectContaining({ balancedesc: 'Main Account' }))
+    })
+
+    it('mobile footer shows totals', () => {
+      renderMobile()
+      expect(screen.getAllByText('Total Balances').length).toBeGreaterThanOrEqual(1)
+      expect(screen.getAllByText('$1500.00').length).toBeGreaterThanOrEqual(1)
+    })
+  })
 })

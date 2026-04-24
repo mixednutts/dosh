@@ -158,4 +158,41 @@ describe('InvestmentSection', () => {
     const { container } = renderWithProviders(<InvestmentSection {...baseProps} investments={[]} />)
     expect(container.firstChild).toBeNull()
   })
+
+  describe('mobile rendering', () => {
+    function renderMobile(props = {}) {
+      const originalEnv = process.env.NODE_ENV
+      process.env.NODE_ENV = 'development'
+      try {
+        return renderWithProviders(<InvestmentSection {...baseProps} {...props} investments={investments} />)
+      } finally {
+        process.env.NODE_ENV = originalEnv
+      }
+    }
+
+    it('renders mobile card columns', () => {
+      renderMobile()
+      expect(screen.getAllByText('Superannuation').length).toBeGreaterThanOrEqual(1)
+      expect(screen.getAllByText('Account').length).toBeGreaterThanOrEqual(1)
+    })
+
+    it('mobile shows account routing with source and linked accounts', () => {
+      renderMobile()
+      expect(screen.getAllByText(/Main/).length).toBeGreaterThanOrEqual(1)
+      expect(screen.getAllByText(/Super Fund/).length).toBeGreaterThanOrEqual(1)
+    })
+
+    it('mobile actions include add transaction, withdrawal, and view', () => {
+      renderMobile()
+      expect(screen.getAllByTitle('Add investment transaction').length).toBeGreaterThanOrEqual(1)
+      expect(screen.getAllByTitle('Add subtraction/withdrawal').length).toBeGreaterThanOrEqual(1)
+      expect(screen.getAllByTitle('View transactions').length).toBeGreaterThanOrEqual(1)
+    })
+
+    it('mobile footer shows totals', () => {
+      renderMobile()
+      expect(screen.getAllByText('Total Investments').length).toBeGreaterThanOrEqual(1)
+      expect(screen.getAllByText('$500.00').length).toBeGreaterThanOrEqual(1)
+    })
+  })
 })
