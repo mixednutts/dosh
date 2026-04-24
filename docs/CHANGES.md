@@ -4,7 +4,52 @@ This document captures the key product and implementation changes made during re
 
 It is intended to complement [README.md](/home/ubuntu/dosh/README.md), not replace it.
 
-## Latest Session: Mobile Presentation Layer Improvements (0.7.0-beta) (2026-04-24)
+## Latest Session: SonarQube Coverage Gap Remediation — Test Expansion (0.7.0-beta) (2026-04-25)
+
+### What changed
+
+- Expanded backend test coverage for high-value workflow modules:
+  - **`test_auto_expense.py`**: Added 12 new tests covering scheduler eligibility, AUTO/MANUAL protection, due date calculations, deduplication, offset behavior, and naive timezone handling. Total: 26 tests.
+  - **`test_health_engine.py`**: Added 12 new tests covering empty matrix handling, missing budget, no current period, tone variations (supportive/friendly/direct), momentum with snapshots, and snapshot persistence. Total: 20 tests.
+  - **`test_investment_transactions.py`**: Added 13 new tests covering CRUD, actual updates, paid/closed cycle guards, account validation, and ordering. Total: 13 tests.
+
+- Expanded frontend test coverage for period-section components and Dashboard mobile paths:
+  - **`ExpenseSection.test.jsx`**: Added drag/drop handler tests, paytype toggle coverage for non-AUTO scenarios, mobile rendering tests for columns/actions/footer, and delete confirmation flows. Total: 27 tests.
+  - **`IncomeSection.test.jsx`**: Added transaction/correction button click tests, mobile rendering tests for transfer parsing, carry_forward badge, actions, and footer. Total: 22 tests.
+  - **`InvestmentSection.test.jsx`**: Added mobile rendering tests for account routing, actions, and footer. Total: 18 tests.
+  - **`BalanceSection.test.jsx`**: Added mobile rendering tests for columns, view-transactions button, and footer. Total: 10 tests.
+  - **`Dashboard.test.jsx`**: Added mobile card tests for no-cycles state, active cycle details, and upcoming planned cycles. Total: 9 tests.
+
+- Coverage improvements (frontend):
+  - `period-sections/` directory: 50.6% statements → 82.5% statements, 54.0% branches → 85.2% branches.
+  - Overall frontend: 77.6% statements → 79.1% statements, 81.2% lines → 82.8% lines.
+  - SonarQube new_coverage gate: 79.1% (threshold 80%) — remaining gap is ~0.9%.
+
+### Testing
+
+- Full backend regression suite: **240 passed**, 0 regressions introduced.
+- Full frontend regression suite: **319 passed**, 0 regressions introduced.
+
+### Decisions preserved
+
+- Mobile rendering paths in components gated by `process.env.NODE_ENV !== 'test'` are tested by temporarily switching `NODE_ENV` to `'development'` within test cases. Istanbul coverage instrumentation does not always track these lines because the instrumented module is loaded before the environment switch, so coverage reports may undercount executed mobile paths.
+- Drag/drop tests use `fireEvent.dragStart/dragOver/dragLeave/drop` on table row elements rather than mocking drag handlers directly.
+- Tests follow TEST_STRATEGY.md principles: behavior-focused, avoid coverage theater, prefer backend tests for financial rules, frontend tests for conditional states and user-critical flows.
+
+### Files touched
+
+- `backend/tests/test_auto_expense.py`
+- `backend/tests/test_health_engine.py`
+- `backend/tests/test_investment_transactions.py` (new)
+- `frontend/src/__tests__/ExpenseSection.test.jsx`
+- `frontend/src/__tests__/IncomeSection.test.jsx`
+- `frontend/src/__tests__/InvestmentSection.test.jsx`
+- `frontend/src/__tests__/BalanceSection.test.jsx`
+- `frontend/src/__tests__/Dashboard.test.jsx`
+
+---
+
+## Session: Mobile Presentation Layer Improvements (0.7.0-beta) (2026-04-24)
 
 ### What changed
 

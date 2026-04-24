@@ -40,6 +40,7 @@ Observed current state:
 - the project now has a credible regression foundation for controlled enhancement work
 - coverage is still selective rather than exhaustive, so new behavior should continue to be added together with tests
 - the latest recorded backend, frontend, and deployment verification outcomes live in [TEST_RESULTS_SUMMARY.md](/home/ubuntu/dosh/docs/tests/TEST_RESULTS_SUMMARY.md)
+- frontend coverage is approaching the SonarQube 80% new_coverage threshold (currently 79.1% statements, 82.8% lines); remaining gaps are concentrated in `client.js`, `Dashboard.jsx` mobile paths, `PeriodDetailPage.jsx` conditional branches, and `BackupRestoreModal.jsx` tab states
 - the latest localisation session left a critical `npm audit` advisory for `axios <1.15.0` unresolved because it was outside the scoped localisation change; future dependency maintenance should review and resolve it deliberately
 - the GitHub workflow and backend container baseline now align on Python 3.12, so backend CI and deploy verification should treat that as the supported runtime
 
@@ -526,6 +527,10 @@ Current frontend run command:
 cd frontend
 CI=true npm test -- --watchAll=false --runInBand
 ```
+
+Current test counts:
+- Backend: 240 tests
+- Frontend: 319 tests
 
 Current end-to-end run command:
 

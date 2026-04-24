@@ -187,6 +187,28 @@ Activities:
 - create/maintain a single "formula definitions" document (what we compute, where it appears, and what it implies)
 - link from UI helpers and reporting cards instead of duplicating prose
 
+### 6) Quality
+
+#### Activity Group: SonarQube Coverage Gate Remediation
+
+Status:
+- `Active`
+
+Activities:
+- close the remaining ~0.9% gap to reach SonarQube 80% new_coverage threshold
+- highest-value remaining targets: `client.js` API wrappers, `PeriodDetailPage.jsx` conditional branches, `BackupRestoreModal.jsx` tab states
+- continue following TEST_STRATEGY.md principles: behavior over implementation, backend priority, avoid coverage theater
+
+#### Activity Group: Frontend Test Hardening
+
+Status:
+- `Active`
+
+Activities:
+- add mobile-path coverage for components gated by `process.env.NODE_ENV !== 'test'` (Dashboard, period-sections)
+- verify drag/drop reordering behavior for expense line items
+- expand coverage for status filter changes and paytype toggle edge cases
+
 ## Post-beta note
 
 - Reconciliation is intentionally post-beta because it depends on bank integration / statement ingestion (import/OCR). See [ROADMAP.md](/home/ubuntu/dosh/docs/ROADMAP.md).

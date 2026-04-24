@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Engineering
+
+- Expanded automated test coverage across backend and frontend to improve long-term reliability and maintainability. Backend tests now cover auto-expense scheduler behavior, budget health engine metrics, and investment transaction workflows. Frontend tests now cover mobile-responsive card rendering, drag-and-drop reordering, and Dashboard mobile views.
+
 ## 0.7.0-beta | released | 2026-04-24
 
 ### Fixed
