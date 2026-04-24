@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.7.0-beta | released | 2026-04-24
+
 ### Fixed
 
 - Fixed the in-app Release Notes modal incorrectly showing "Current Version" badges against older releases in the "Previous Releases" section. Previous releases now display a "Previous Release" badge with neutral gray styling instead.
@@ -9,6 +11,10 @@
 ### Changed
 
 - The Budget Cycle Details page header has been redesigned for clearer visual hierarchy and better status communication. The date range title is now larger and more prominent, the cycle stage appears as a colored badge (filled teal with pulse indicator for Current cycles, bordered badges for Closed and Upcoming), and the metadata line uses a cleaner icon-plus-divider layout.
+
+### Improved
+
+- The app is now much easier to use on mobile devices. All tables in Budget Setup and Budget Cycle Details render as stacked cards on small screens instead of requiring horizontal scrolling. Summary tables on the Budget Cycles and Dashboard pages scroll smoothly within their containers. Buttons and controls have larger touch targets on mobile while the desktop layout remains exactly as it was. Modals now expand to full-screen on narrow devices for easier interaction.
 
 ## 0.6.11-beta | released | 2026-04-22
 

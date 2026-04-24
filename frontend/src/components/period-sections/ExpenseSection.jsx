@@ -2,6 +2,7 @@ import PropTypes from 'prop-types'
 import { PlusIcon, MinusIcon, ListBulletIcon, Bars2Icon } from '@heroicons/react/24/outline'
 import { ExpenseStatusPill } from '../status'
 import { BudgetAmountCell, ActionIconButton, EmptyActionSlot, DeleteActionButton, getExpenseScheduleBadge, isScheduledExpense } from '../../utils'
+import MobileTableCards from '../MobileTableCards'
 
 export function ExpenseSection({
   expenses,
@@ -34,17 +35,137 @@ export function ExpenseSection({
 }) {
   const fmt = formatters.fmt
 
+  const mobileColumns = [
+    {
+      key: 'expensedesc',
+      label: 'Description',
+      render: (_v, row) => <span className="font-medium">{row.expensedesc}</span>,
+    },
+    {
+      key: 'budgetamount',
+      label: 'Budget',
+      render: (_v, row) => {
+        const canEditBudget = !locked && !closed && row.status !== 'Paid'
+        return (
+          <BudgetAmountCell
+            amount={row.budgetamount}
+            canEdit={canEditBudget}
+            formatters={formatters}
+            onEdit={() => onEditBudget(row)}
+            label={row.expensedesc}
+          />
+        )
+      },
+    },
+    { key: 'actualamount', label: 'Actual', render: v => <span className="font-semibold">{fmt(v)}</span> },
+    {
+      key: 'remaining_amount',
+      label: 'Remaining',
+      render: (_v, row) => {
+        const remaining = Number(row.remaining_amount ?? 0)
+        return row.status === 'Paid'
+          ? <span className="font-medium text-success-600 dark:text-success-400">Paid</span>
+          : <span className={`font-medium ${remaining >= 0 ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'}`}>{fmt(remaining)}</span>
+      },
+    },
+    {
+      key: 'schedule',
+      label: 'Schedule',
+      render: (_v, row) => getExpenseScheduleBadge(row),
+    },
+    {
+      key: 'paytype',
+      label: 'Payment Type',
+      render: (_v, row) => {
+        const canToggle = autoExpenseEnabled && isScheduledExpense(row) && !locked && !closed && row.status !== 'Paid'
+        if (!canToggle) {
+          return row.paytype ? <span className={row.paytype === 'AUTO' ? 'badge-green' : 'badge-gray'}>{row.paytype}</span> : <span className="text-gray-400">—</span>
+        }
+        return (
+          <button
+            type="button"
+            className={row.paytype === 'AUTO' ? 'badge-green' : 'badge-gray'}
+            onClick={() => updateExpensePayType.mutate({ desc: row.expensedesc, paytype: row.paytype === 'AUTO' ? 'MANUAL' : 'AUTO' })}
+          >
+            {row.paytype}
+          </button>
+        )
+      },
+    },
+  ]
+
+  const mobileActions = row => (
+    <>
+      <ActionIconButton
+        disabled={closed || row.status === 'Paid'}
+        onClick={() => onAddTransaction(row)}
+        title="Add expense transaction"
+        tone="danger"
+        icon={PlusIcon}
+      />
+      <ActionIconButton
+        disabled={closed || row.status === 'Paid'}
+        onClick={() => onAddRefund(row)}
+        title="Add refund/credit"
+        tone="dosh"
+        icon={MinusIcon}
+      />
+      <ActionIconButton
+        onClick={() => onViewTransactions(row)}
+        title="View transactions"
+        icon={ListBulletIcon}
+      />
+      {!locked && !closed && Number(row.actualamount) === 0 && Number(row.budgetamount) === 0 ? (
+        <DeleteActionButton
+          onClick={() => {
+            if (globalThis.confirm(`Remove "${row.expensedesc}" from this budget cycle?`))
+              deleteExpenseLine.mutate(row.expensedesc)
+          }}
+          title="Remove from budget cycle (no actuals, zero budget)"
+        />
+      ) : (
+        <EmptyActionSlot />
+      )}
+    </>
+  )
+
+  const mobileStatus = row => (
+    <ExpenseStatusPill
+      expense={row}
+      onMarkPaid={() => onMarkPaid(row)}
+      onRevise={() => setExpenseStatus.mutate({ desc: row.expensedesc, status: 'Revised' })}
+      formatters={formatters}
+    />
+  )
+
+  const mobileFooter = (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Total Expenses</span>
+        <span className="text-sm text-gray-600 dark:text-gray-400">{fmt(effectiveExpenseBudget)}</span>
+      </div>
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Total Actual</span>
+        <span className={`text-sm ${totalExpenseActual <= effectiveExpenseBudget ? 'text-success-700 dark:text-success-400' : 'text-red-700 dark:text-red-400'}`}>{fmt(totalExpenseActual)}</span>
+      </div>
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Remaining</span>
+        <span className={`text-sm font-medium ${totalExpenseRemaining >= 0 ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'}`}>{fmt(totalExpenseRemaining)}</span>
+      </div>
+    </div>
+  )
+
   return (
     <div className="card">
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800">
-        <span className="font-semibold text-gray-700 dark:text-gray-200 text-sm">Expenses</span>
+        <span className="font-semibold text-gray-700 dark:text-gray-200 text-sm md:text-sm text-base border-l-4 border-red-500 pl-2.5 md:border-0 md:pl-0">Expenses</span>
         {!locked && !closed && (
           <button className="btn-secondary text-xs" onClick={onAddExpense}>
             <PlusIcon className="w-3.5 h-3.5" /> Add New Expense Line Item
           </button>
         )}
       </div>
-      <div className="overflow-x-auto">
+      <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-sm period-detail-table">
           <colgroup>
             <col className="w-10" />
@@ -214,6 +335,15 @@ export function ExpenseSection({
           </tfoot>
         </table>
       </div>
+      <MobileTableCards
+        columns={mobileColumns}
+        rows={filteredExpenses}
+        keyExtractor={row => row.expensedesc}
+        actions={mobileActions}
+        status={mobileStatus}
+        footer={filteredExpenses.length > 0 ? mobileFooter : null}
+        emptyMessage="No expense line items match this status."
+      />
     </div>
   )
 }

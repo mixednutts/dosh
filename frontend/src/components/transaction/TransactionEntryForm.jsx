@@ -127,7 +127,7 @@ export function TransactionEntryForm({
         </div>
       )}
       {/* Grid layout: Amount | [Quick Fill] | Note/Date */}
-      <div className={`grid gap-2 ${showQuickFill ? 'grid-cols-[0.5fr_0.5fr_1fr]' : 'grid-cols-[0.7fr_1.3fr]'}`}>
+      <div className={`grid gap-2 grid-cols-1 ${showQuickFill ? 'sm:grid-cols-[0.5fr_0.5fr_1fr]' : 'sm:grid-cols-[0.7fr_1.3fr]'}`}>
         {/* Column 1: Amount - spans full height (Note + Date stacked) */}
         <AmountExpressionInput
           autoFocus

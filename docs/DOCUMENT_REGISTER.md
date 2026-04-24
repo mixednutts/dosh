@@ -493,6 +493,36 @@ Maintenance notes:
 
 - should remain the main design-boundary document for inline arithmetic amount entry rather than becoming a second change log
 
+### MOBILE_PRESENTATION_LAYER_PLAN.md
+
+Document:
+
+- [MOBILE_PRESENTATION_LAYER_PLAN.md](/home/ubuntu/dosh/docs/plans/MOBILE_PRESENTATION_LAYER_PLAN.md)
+
+Document type:
+
+- domain or workflow plan
+
+Primary purpose:
+
+- preserve the implemented mobile-responsive UX decisions for touch targets, card-based table views, scrollable containers, and responsive layout polish
+
+Primary source-of-truth scope:
+
+- mobile presentation layer behavior and responsive breakpoint gating
+- `MobileTableCards` component contract and column-stacking rules
+- desktop-preservation guarantees for all mobile adaptations
+
+Key relationships:
+
+- informs UX/UI roadmap items in [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md)
+- complements current-state and handoff guidance in [AGENTS.md](/home/ubuntu/dosh/AGENTS.md)
+
+Maintenance notes:
+
+- should remain focused on mobile-responsive boundaries rather than becoming a general frontend style guide
+- should be updated if new tables or modals need mobile adaptation patterns
+
 ### LOCALISATION_SUPPORT_PLAN.md
 
 Document:

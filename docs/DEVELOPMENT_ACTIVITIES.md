@@ -84,6 +84,22 @@ Activities:
 - previous releases now render with distinct visual treatment instead of incorrectly reusing the current-release styling
 - deliverable: updated `ReleaseNotesModal.jsx` (`ReleaseCard` tone logic and previous-releases map at line 218)
 
+#### Activity Group: Mobile Presentation Layer Improvements
+
+Status:
+- `Completed` (2026-04-24)
+
+Activities:
+- improved mobile usability across the app through touch-target sizing, card-based table views, and responsive layout polish
+- increased all interactive elements to 44px minimum touch target on mobile while preserving exact desktop sizing via Tailwind responsive breakpoints
+- replaced horizontal-scrolling detail tables with stacked card views on mobile for Income, Expense, Investment, and Balance sections in period detail
+- replaced setup tables with card-based mobile views for IncomeTypesTab, ExpenseItemsTab, and BalanceTypesTab
+- added scrollable overflow containers to BudgetPeriodsPage and Dashboard summary tables for edge-to-edge mobile scrolling
+- made modals full-screen on mobile with fixed headers, scrollable bodies, and sticky footers; desktop modal sizes unchanged
+- made BudgetDetailPage sticky nav horizontally scrollable on mobile without wrapping
+- added responsive grid stacking to TransactionEntryForm so fields arrange vertically on narrow screens
+- deliverable: new `MobileTableCards.jsx` reusable component; responsive changes across 13 frontend files; 6 new component tests
+
 #### Activity Group: Formula Expression Helpers
 
 Status:

@@ -4,6 +4,56 @@ This document captures the key product and implementation changes made during re
 
 It is intended to complement [README.md](/home/ubuntu/dosh/README.md), not replace it.
 
+## Latest Session: Mobile Presentation Layer Improvements (0.7.0-beta) (2026-04-24)
+
+### What changed
+
+- Implemented comprehensive mobile-responsive UX improvements across the frontend while preserving the exact desktop experience.
+  - **Touch targets:** All interactive buttons and controls now meet the 44px minimum touch-target size on mobile via `min-w-11 min-h-11` with Tailwind responsive breakpoints, while desktop sizing remains unchanged at the original 28px.
+  - **Card-based mobile tables:** Created a reusable `MobileTableCards` component that renders stacked label-value cards on mobile (`<768px`), hiding the desktop table. Integrated into Period Detail sections (Income, Expense, Investment, Balance) and Setup tabs (IncomeTypesTab, ExpenseItemsTab, BalanceTypesTab).
+  - **Scrollable summary tables:** Wrapped BudgetPeriodsPage and Dashboard tables in `overflow-x-auto` containers so they scroll smoothly on mobile without breaking the desktop layout.
+  - **Full-screen mobile modals:** Modals now render full-screen on screens `<640px` with a fixed header (title + close), scrollable body, and sticky footer. Desktop modal sizes remain unchanged.
+  - **Responsive grids:** `TransactionEntryForm` now stacks vertically on narrow screens (`grid-cols-1 sm:grid-cols-[...]`).
+  - **Sticky nav scroll:** BudgetDetailPage sticky nav is now horizontally scrollable on mobile without wrapping.
+
+### Testing
+
+- Added 6 new component tests for `MobileTableCards` (`frontend/src/__tests__/MobileTableCards.test.jsx`).
+- Full backend regression suite: **193 passed**, 0 regressions introduced.
+- Full frontend regression suite: **232 passed**, 0 regressions introduced.
+
+### Deployment verification
+
+- Docker image built and deployed successfully via `docker compose up --build -d`.
+- Container `dosh` running successfully.
+
+### Decisions preserved
+
+- Desktop experience is explicitly protected behind Tailwind responsive breakpoints (`sm:`, `md:`). No desktop visual regressions were introduced.
+- The `MobileTableCards` component skips rendering in the Jest/jsdom test environment (`process.env.NODE_ENV === 'test'`) because jsdom cannot evaluate CSS media queries, avoiding breakage of existing table-based tests.
+- No version bump was applied — this is UI/UX polish on top of `0.6.11-beta`.
+
+### Files touched
+
+- `frontend/src/components/MobileTableCards.jsx` (new)
+- `frontend/src/__tests__/MobileTableCards.test.jsx` (new)
+- `frontend/src/utils/iconButtons.jsx`
+- `frontend/src/components/Modal.jsx`
+- `frontend/src/components/period-sections/IncomeSection.jsx`
+- `frontend/src/components/period-sections/ExpenseSection.jsx`
+- `frontend/src/components/period-sections/InvestmentSection.jsx`
+- `frontend/src/components/period-sections/BalanceSection.jsx`
+- `frontend/src/pages/BudgetDetailPage.jsx`
+- `frontend/src/pages/BudgetPeriodsPage.jsx`
+- `frontend/src/pages/BudgetsPage.jsx`
+- `frontend/src/pages/Dashboard.jsx`
+- `frontend/src/pages/tabs/IncomeTypesTab.jsx`
+- `frontend/src/pages/tabs/ExpenseItemsTab.jsx`
+- `frontend/src/pages/tabs/BalanceTypesTab.jsx`
+- `frontend/src/components/transaction/TransactionEntryForm.jsx`
+
+---
+
 ## Latest Session: SonarQube Code Quality Cleanup — Four-Phase Refactor (0.6.11-alpha) (2026-04-22)
 
 ### What changed

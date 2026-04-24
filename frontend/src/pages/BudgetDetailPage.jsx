@@ -350,12 +350,12 @@ export default function BudgetDetailPage() {
       </div>
 
       <div className="sticky top-0 z-10 -mx-4 border-y border-gray-200 bg-white/95 px-4 py-3 backdrop-blur dark:border-gray-700 dark:bg-gray-950/95 lg:-mx-6 lg:px-6">
-        <div className="flex flex-wrap gap-2">
+        <div className="flex overflow-x-auto sm:overflow-visible flex-nowrap sm:flex-wrap gap-2 pb-1 sm:pb-0" style={{ scrollbarWidth: 'none' }}>
           {SECTIONS.map(section => (
             <button
               key={section.id}
               onClick={() => jumpToSection(section.id)}
-              className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
+              className={`flex-shrink-0 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
                 activeSection === section.id
                   ? 'border-dosh-600 bg-dosh-50 text-dosh-700 dark:border-dosh-500 dark:bg-dosh-900/30 dark:text-dosh-300'
                   : 'border-gray-300 text-gray-600 hover:border-dosh-300 hover:text-dosh-700 dark:border-gray-700 dark:text-gray-300 dark:hover:border-dosh-700 dark:hover:text-dosh-300'

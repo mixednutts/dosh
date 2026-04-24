@@ -8,6 +8,7 @@ import Modal from '../../components/Modal'
 import SetupItemHistoryModal from '../../components/SetupItemHistoryModal'
 import ExpenseItemSchedulingFields from '../../components/ExpenseItemSchedulingFields'
 import LocalizedAmountInput from '../../components/LocalizedAmountInput'
+import MobileTableCards from '../../components/MobileTableCards'
 import { useLocalisation } from '../../components/LocalisationContext'
 import { getNextFixedDayOccurrence } from '../../utils/fixedDayScheduling'
 
@@ -17,15 +18,11 @@ const emptyForm = {
   default_account_desc: '',
 }
 
-/**
- * Calculate the next due date after `today` for a given expense item.
- * Returns a Date or null.
- */
 function calcNextDue(freqtype, frequencyValue, effectivedate, todayDate = new Date()) {
   const today = new Date(todayDate)
   today.setHours(0, 0, 0, 0)
 
-  if (freqtype === 'Always') return null  // always in period, no specific date
+  if (freqtype === 'Always') return null
 
   if (freqtype === 'Fixed Day of Month') {
     const day = Number.parseInt(frequencyValue, 10)
@@ -265,6 +262,55 @@ export default function ExpenseItemsTab({ budgetId }) {
     return <span className="text-gray-400">—</span>
   }
 
+  const mobileColumns = [
+    { key: 'expensedesc', label: 'Description', render: v => <span className="font-medium">{v}</span> },
+    {
+      key: 'freqtype',
+      label: 'Frequency',
+      render: (_v, row) => <FreqBadge freqtype={row.freqtype} frequencyValue={row.frequency_value} />,
+    },
+    { key: 'paytype', label: 'Pay Type', render: v => getPayTypeBadge(v) },
+    { key: 'expenseamount', label: 'Amount', render: v => formatCurrency(v) },
+    {
+      key: 'effectivedate',
+      label: 'Effective Date',
+      render: v => v ? formatDate(v, 'medium') : <span className="text-gray-400">—</span>,
+    },
+    {
+      key: 'nextDue',
+      label: 'Next Due',
+      render: (_v, row) => {
+        const nextDue = calcNextDue(row.freqtype, row.frequency_value, row.effectivedate, getToday())
+        return nextDue
+          ? <span className="text-dosh-600 dark:text-dosh-400">{formatDate(nextDue, 'medium')}</span>
+          : <span className="text-gray-400">—</span>
+      },
+    },
+    { key: 'revisionnum', label: 'Rev', render: v => v },
+    {
+      key: 'active',
+      label: 'Status',
+      render: v => v ? <span className="badge-green">Active</span> : <span className="badge-gray">Inactive</span>,
+    },
+  ]
+
+  const mobileActions = row => {
+    const usage = expenseUsageByDesc[row.expensedesc]
+    return (
+      <>
+        <button className="btn-secondary min-h-11 min-w-11 justify-center" title="View history details" onClick={() => setHistoryItem(row)}>
+          <ClockIcon className="w-3 h-3" />
+        </button>
+        <button className="btn-secondary min-h-11 min-w-11 justify-center" onClick={() => setModal({ mode: 'edit', item: row })}>
+          <PencilIcon className="w-3 h-3" />
+        </button>
+        <button className="btn-danger min-h-11 min-w-11 justify-center" disabled={usage ? usage.can_delete === false : false} title={usage?.can_delete === false ? usage.reasons.join('. ') : undefined} onClick={() => { if (globalThis.confirm(`Delete "${row.expensedesc}"?`)) remove.mutate(row.expensedesc) }}>
+          <TrashIcon className="w-3 h-3" />
+        </button>
+      </>
+    )
+  }
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
@@ -289,65 +335,66 @@ export default function ExpenseItemsTab({ budgetId }) {
           No expense items{!showInactive ? ' (active)' : ''} defined.
         </div>
       ) : (
-        <div className="overflow-x-auto card">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 dark:border-gray-800 text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide bg-gray-50 dark:bg-gray-800/50">
-                <th className="w-16 px-2 py-2 text-center">Order</th>
-                <th className="px-4 py-2 text-left">Description</th>
-                <th className="px-3 py-2 text-left">Frequency</th>
-                <th className="px-3 py-2 text-left">Pay</th>
-                <th className="px-3 py-2 text-right">Amount</th>
-                <th className="px-3 py-2 text-left">Effective Date</th>
-                <th className="px-3 py-2 text-left">Next Due</th>
-                <th className="px-3 py-2 text-left">Rev</th>
-                <th className="px-3 py-2 text-left">Status</th>
-                <th className="px-3 py-2"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
-              {displayed.map((item, idx) => {
-                const usage = expenseUsageByDesc[item.expensedesc]
-                const nextDue = calcNextDue(item.freqtype, item.frequency_value, item.effectivedate, getToday())
-                const nextDueStr = nextDue ? formatDate(nextDue, 'medium') : '—'
-                const commDate = item.effectivedate ? formatDate(item.effectivedate, 'medium') : '—'
-                return (
-                  <tr key={item.expensedesc} className="table-row">
-                    <td className="px-2 py-2">
-                      <div className="flex flex-col items-center gap-0.5">
-                        <button onClick={() => moveItem(item.expensedesc, 'up')} disabled={idx === 0}
-                          className="p-0.5 rounded text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-20" title="Move up">
-                          <ChevronUpIcon className="w-3.5 h-3.5" />
-                        </button>
-                        <button onClick={() => moveItem(item.expensedesc, 'down')} disabled={idx === displayed.length - 1}
-                          className="p-0.5 rounded text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-20" title="Move down">
-                          <ChevronDownIcon className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                    <td className="px-4 py-2 font-medium text-gray-800 dark:text-gray-100">
-                      {item.expensedesc}
-                      {usage?.in_use ? <span className="ml-2 badge-amber">In Use</span> : null}
-                    </td>
-                    <td className="px-3 py-2">
-                      <FreqBadge freqtype={item.freqtype} frequencyValue={item.frequency_value} />
-                    </td>
-                    <td className="px-3 py-2">
-                      {getPayTypeBadge(item.paytype)}
-                    </td>
-                    <td className="px-3 py-2 text-right text-gray-800 dark:text-gray-100 font-medium">{formatCurrency(item.expenseamount)}</td>
-                    <td className="px-3 py-2 text-gray-500 dark:text-gray-400 text-xs">{commDate}</td>
-                    <td className="px-3 py-2 text-xs font-medium">
-                      {nextDue
-                        ? <span className="text-dosh-600 dark:text-dosh-400">{nextDueStr}</span>
-                        : <span className="text-gray-400">—</span>}
-                    </td>
-                    <td className="px-3 py-2 text-gray-500 dark:text-gray-400">{item.revisionnum}</td>
-                    <td className="px-3 py-2">
-                      {item.active ? <span className="badge-green">Active</span> : <span className="badge-gray">Inactive</span>}
-                    </td>
-                    <td className="px-3 py-2">
-                      <div className="flex gap-1">
+        <div className="card overflow-hidden">
+          <div className="hidden md:block overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 dark:border-gray-800 text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide bg-gray-50 dark:bg-gray-800/50">
+                  <th className="w-16 px-2 py-2 text-center">Order</th>
+                  <th className="px-4 py-2 text-left">Description</th>
+                  <th className="px-3 py-2 text-left">Frequency</th>
+                  <th className="px-3 py-2 text-left">Pay</th>
+                  <th className="px-3 py-2 text-right">Amount</th>
+                  <th className="px-3 py-2 text-left">Effective Date</th>
+                  <th className="px-3 py-2 text-left">Next Due</th>
+                  <th className="px-3 py-2 text-left">Rev</th>
+                  <th className="px-3 py-2 text-left">Status</th>
+                  <th className="px-3 py-2"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
+                {displayed.map((item, idx) => {
+                  const usage = expenseUsageByDesc[item.expensedesc]
+                  const nextDue = calcNextDue(item.freqtype, item.frequency_value, item.effectivedate, getToday())
+                  const nextDueStr = nextDue ? formatDate(nextDue, 'medium') : '—'
+                  const commDate = item.effectivedate ? formatDate(item.effectivedate, 'medium') : '—'
+                  return (
+                    <tr key={item.expensedesc} className="table-row">
+                      <td className="px-2 py-2">
+                        <div className="flex flex-col items-center gap-0.5">
+                          <button onClick={() => moveItem(item.expensedesc, 'up')} disabled={idx === 0}
+                            className="flex items-center justify-center min-w-11 min-h-11 sm:w-auto sm:h-auto sm:min-w-0 sm:min-h-0 rounded text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-20" title="Move up">
+                            <ChevronUpIcon className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={() => moveItem(item.expensedesc, 'down')} disabled={idx === displayed.length - 1}
+                            className="flex items-center justify-center min-w-11 min-h-11 sm:w-auto sm:h-auto sm:min-w-0 sm:min-h-0 rounded text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-20" title="Move down">
+                            <ChevronDownIcon className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                      <td className="px-4 py-2 font-medium text-gray-800 dark:text-gray-100">
+                        {item.expensedesc}
+                        {usage?.in_use ? <span className="ml-2 badge-amber">In Use</span> : null}
+                      </td>
+                      <td className="px-3 py-2">
+                        <FreqBadge freqtype={item.freqtype} frequencyValue={item.frequency_value} />
+                      </td>
+                      <td className="px-3 py-2">
+                        {getPayTypeBadge(item.paytype)}
+                      </td>
+                      <td className="px-3 py-2 text-right text-gray-800 dark:text-gray-100 font-medium">{formatCurrency(item.expenseamount)}</td>
+                      <td className="px-3 py-2 text-gray-500 dark:text-gray-400 text-xs">{commDate}</td>
+                      <td className="px-3 py-2 text-xs font-medium">
+                        {nextDue
+                          ? <span className="text-dosh-600 dark:text-dosh-400">{nextDueStr}</span>
+                          : <span className="text-gray-400">—</span>}
+                      </td>
+                      <td className="px-3 py-2 text-gray-500 dark:text-gray-400">{item.revisionnum}</td>
+                      <td className="px-3 py-2">
+                        {item.active ? <span className="badge-green">Active</span> : <span className="badge-gray">Inactive</span>}
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="flex gap-1">
                         <button className="btn-secondary" title="View history details" onClick={() => setHistoryItem(item)}>
                           <ClockIcon className="w-3 h-3" />
                         </button>
@@ -357,13 +404,20 @@ export default function ExpenseItemsTab({ budgetId }) {
                         <button className="btn-danger" disabled={usage ? usage.can_delete === false : false} title={usage?.can_delete === false ? usage.reasons.join('. ') : undefined} onClick={() => { if (globalThis.confirm(`Delete "${item.expensedesc}"?`)) remove.mutate(item.expensedesc) }}>
                           <TrashIcon className="w-3 h-3" />
                         </button>
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+          <MobileTableCards
+            columns={mobileColumns}
+            rows={displayed}
+            keyExtractor={row => row.expensedesc}
+            actions={mobileActions}
+          />
         </div>
       )}
 

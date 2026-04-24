@@ -2,6 +2,7 @@ import PropTypes from 'prop-types'
 import { PlusIcon, MinusIcon, ListBulletIcon } from '@heroicons/react/24/outline'
 import { IncomeStatusPill } from '../status'
 import { BudgetAmountCell, ActionIconButton, EmptyActionSlot, DeleteActionButton } from '../../utils'
+import MobileTableCards from '../MobileTableCards'
 
 function parseTransferIncome(incomedesc) {
   if (typeof incomedesc === 'string' && incomedesc.startsWith('Transfer: ')) {
@@ -36,17 +37,128 @@ export function IncomeSection({
 }) {
   const fmt = formatters.fmt
 
+  const mobileColumns = [
+    {
+      key: 'incomedesc',
+      label: 'Description',
+      render: (_v, row) => {
+        const transfer = parseTransferIncome(row.incomedesc)
+        return (
+          <span className="flex items-center gap-1.5">
+            {transfer.displayDesc}
+            {row.system_key === 'carry_forward' && <span className="badge-blue">System</span>}
+          </span>
+        )
+      },
+    },
+    {
+      key: 'budgetamount',
+      label: 'Budget',
+      render: (_v, row) => (
+        <BudgetAmountCell
+          amount={row.budgetamount}
+          canEdit={!locked && !closed && row.system_key !== 'carry_forward'}
+          formatters={formatters}
+          onEdit={() => onEditBudget(row)}
+          label={row.incomedesc}
+        />
+      ),
+    },
+    { key: 'actualamount', label: 'Actual', render: v => <span className="font-semibold">{fmt(v)}</span> },
+    {
+      key: 'remaining',
+      label: 'Remaining',
+      render: (_v, row) => {
+        const remaining = Number(row.actualamount) - Number(row.budgetamount)
+        return row.status === 'Paid'
+          ? <span className="font-medium text-success-600 dark:text-success-400">Paid</span>
+          : <span className="font-medium text-success-600 dark:text-success-400">{fmt(remaining)}</span>
+      },
+    },
+    {
+      key: 'account',
+      label: 'Account',
+      render: (_v, row) => {
+        const transfer = parseTransferIncome(row.incomedesc)
+        if (transfer.isTransfer) return <span className="text-purple-600 dark:text-purple-400">{transfer.destination}</span>
+        if (row.linked_account) return <span className="text-purple-600 dark:text-purple-400">{row.linked_account}</span>
+        return <span className="text-gray-300 dark:text-gray-600">—</span>
+      },
+    },
+  ]
+
+  const mobileActions = row => (
+    <>
+      <ActionIconButton
+        disabled={closed || row.status === 'Paid'}
+        onClick={() => onAddTransaction(row)}
+        title="Add income transaction"
+        tone="success"
+        icon={PlusIcon}
+      />
+      <ActionIconButton
+        disabled={closed || row.status === 'Paid'}
+        onClick={() => onAddCorrection(row)}
+        title="Add income correction"
+        tone="danger"
+        icon={MinusIcon}
+      />
+      <ActionIconButton
+        onClick={() => onViewTransactions(row)}
+        title="View transactions"
+        icon={ListBulletIcon}
+      />
+      {!locked && !closed && row.system_key !== 'carry_forward' && row.status !== 'Paid' ? (
+        <DeleteActionButton
+          onClick={() => {
+            if (globalThis.confirm(`Remove "${row.incomedesc}" from this budget cycle?`))
+              deleteIncomeLine.mutate(row.incomedesc)
+          }}
+          title="Remove from budget cycle"
+        />
+      ) : (
+        <EmptyActionSlot />
+      )}
+    </>
+  )
+
+  const mobileStatus = row => (
+    <IncomeStatusPill
+      income={row}
+      onMarkPaid={() => onMarkPaid(row)}
+      formatters={formatters}
+      onRevise={() => setIncomeStatus.mutate({ desc: row.incomedesc, status: 'Revised' })}
+    />
+  )
+
+  const mobileFooter = (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Total Income</span>
+        <span className="text-sm text-gray-600 dark:text-gray-400">{fmt(totalIncomeBudget)}</span>
+      </div>
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Total Actual</span>
+        <span className="text-sm text-success-700 dark:text-success-400">{fmt(totalIncomeActual)}</span>
+      </div>
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Remaining</span>
+        <span className="text-sm text-success-600 dark:text-success-400">{fmt(totalIncomeActual - totalIncomeBudget)}</span>
+      </div>
+    </div>
+  )
+
   return (
     <div className="card">
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800">
-        <span className="font-semibold text-gray-700 dark:text-gray-200 text-sm">Income</span>
+        <span className="font-semibold text-gray-700 dark:text-gray-200 text-sm md:text-sm text-base border-l-4 border-dosh-500 pl-2.5 md:border-0 md:pl-0">Income</span>
         {!locked && !closed && (
           <button className="btn-secondary text-xs" onClick={onAddIncome}>
             <PlusIcon className="w-3.5 h-3.5" /> Add New Income Line Item
           </button>
         )}
       </div>
-      <div className="overflow-x-auto">
+      <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-sm period-detail-table">
           <colgroup>
             <col className="w-10" />
@@ -173,6 +285,15 @@ export function IncomeSection({
           </tfoot>
         </table>
       </div>
+      <MobileTableCards
+        columns={mobileColumns}
+        rows={incomes}
+        keyExtractor={row => row.incomedesc}
+        actions={mobileActions}
+        status={mobileStatus}
+        footer={incomes.length > 0 ? mobileFooter : null}
+        emptyMessage="No income entries"
+      />
     </div>
   )
 }

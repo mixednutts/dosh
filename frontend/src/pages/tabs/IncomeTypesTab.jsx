@@ -6,6 +6,7 @@ import { getIncomeTypes, createIncomeType, updateIncomeType, deleteIncomeType, g
 import Modal from '../../components/Modal'
 import SetupItemHistoryModal from '../../components/SetupItemHistoryModal'
 import LocalizedAmountInput from '../../components/LocalizedAmountInput'
+import MobileTableCards from '../../components/MobileTableCards'
 import { useLocalisation } from '../../components/LocalisationContext'
 import { getBalanceTypeLabel } from '../../utils/accountNaming'
 
@@ -137,6 +138,35 @@ export default function IncomeTypesTab({ budgetId, budget }) {
   const incomeUsageByDesc = Object.fromEntries((setupAssessment?.income_types || []).map(item => [item.incomedesc, item]))
   const accountNamingPreference = budget?.account_naming_preference || 'Transaction'
 
+  const mobileColumns = [
+    { key: 'incomedesc', label: 'Description', render: v => <span className="font-medium">{v}</span> },
+    { key: 'amount', label: 'Amount', render: v => formatCurrency(v) },
+    { key: 'linked_account', label: 'Paid into Account', render: v => v ?? <span className="text-gray-400 italic">—</span> },
+    { key: 'autoinclude', label: 'Auto', render: v => v ? <span className="badge-green">Yes</span> : <span className="badge-gray">No</span> },
+  ]
+
+  const mobileActions = row => {
+    const usage = incomeUsageByDesc[row.incomedesc]
+    return (
+      <>
+        <button className="btn-secondary min-h-11 min-w-11 justify-center" title="View history details" onClick={() => setHistoryItem(row)}>
+          <ClockIcon className="w-3 h-3" />
+        </button>
+        <button className="btn-secondary min-h-11 min-w-11 justify-center" onClick={() => setModal({ mode: 'edit', item: row })}>
+          <PencilIcon className="w-3 h-3" />
+        </button>
+        <button className="btn-danger min-h-11 min-w-11 justify-center" disabled={usage ? usage.can_delete === false : false} title={usage?.can_delete === false ? usage.reasons.join('. ') : undefined} onClick={() => { if (globalThis.confirm(`Delete "${row.incomedesc}"?`)) remove.mutate(row.incomedesc) }}>
+          <TrashIcon className="w-3 h-3" />
+        </button>
+      </>
+    )
+  }
+
+  const mobileStatus = row => {
+    const usage = incomeUsageByDesc[row.incomedesc]
+    return usage?.in_use ? <span className="badge-amber">In Use</span> : null
+  }
+
   if (isLoading) return null
 
   return (
@@ -157,30 +187,31 @@ export default function IncomeTypesTab({ budgetId, budget }) {
         <div className="card p-8 text-center text-gray-500 dark:text-gray-400">No income sources defined yet.</div>
       ) : (
         <div className="card overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
-                <th className="table-header-cell text-left">Description</th>
-                <th className="table-header-cell text-right">Amount</th>
-                <th className="table-header-cell text-left">Paid into Account</th>
-                <th className="table-header-cell text-center">Auto</th>
-                <th className="table-header-cell"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-              {types.map(t => {
-                const usage = incomeUsageByDesc[t.incomedesc]
-                return (
-                <tr key={t.incomedesc} className="table-row">
-                  <td className="table-cell font-medium text-gray-800 dark:text-gray-100">
-                    {t.incomedesc}
-                    {usage?.in_use ? <span className="ml-2 badge-amber">In Use</span> : null}
-                  </td>
-                  <td className="table-cell text-right text-gray-600 dark:text-gray-300">{formatCurrency(t.amount)}</td>
-                  <td className="table-cell text-gray-600 dark:text-gray-300">{t.linked_account ?? <span className="text-gray-400 italic">—</span>}</td>
-                  <td className="table-cell text-center">{t.autoinclude ? <span className="badge-green">Yes</span> : <span className="badge-gray">No</span>}</td>
-                  <td className="table-cell">
-                    <div className="flex gap-1 justify-end">
+          <div className="hidden md:block">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
+                  <th className="table-header-cell text-left">Description</th>
+                  <th className="table-header-cell text-right">Amount</th>
+                  <th className="table-header-cell text-left">Paid into Account</th>
+                  <th className="table-header-cell text-center">Auto</th>
+                  <th className="table-header-cell"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                {types.map(t => {
+                  const usage = incomeUsageByDesc[t.incomedesc]
+                  return (
+                  <tr key={t.incomedesc} className="table-row">
+                    <td className="table-cell font-medium text-gray-800 dark:text-gray-100">
+                      {t.incomedesc}
+                      {usage?.in_use ? <span className="ml-2 badge-amber">In Use</span> : null}
+                    </td>
+                    <td className="table-cell text-right text-gray-600 dark:text-gray-300">{formatCurrency(t.amount)}</td>
+                    <td className="table-cell text-gray-600 dark:text-gray-300">{t.linked_account ?? <span className="text-gray-400 italic">—</span>}</td>
+                    <td className="table-cell text-center">{t.autoinclude ? <span className="badge-green">Yes</span> : <span className="badge-gray">No</span>}</td>
+                    <td className="table-cell">
+                      <div className="flex gap-1 justify-end">
                       <button className="btn-secondary" title="View history details" onClick={() => setHistoryItem(t)}>
                         <ClockIcon className="w-3 h-3" />
                       </button>
@@ -190,12 +221,20 @@ export default function IncomeTypesTab({ budgetId, budget }) {
                       <button className="btn-danger" disabled={usage ? usage.can_delete === false : false} title={usage?.can_delete === false ? usage.reasons.join('. ') : undefined} onClick={() => { if (globalThis.confirm(`Delete "${t.incomedesc}"?`)) remove.mutate(t.incomedesc) }}>
                         <TrashIcon className="w-3 h-3" />
                       </button>
-                    </div>
-                  </td>
-                </tr>
-              )})}
-            </tbody>
-          </table>
+                      </div>
+                    </td>
+                  </tr>
+                )})}
+              </tbody>
+            </table>
+          </div>
+          <MobileTableCards
+            columns={mobileColumns}
+            rows={types}
+            keyExtractor={row => row.incomedesc}
+            actions={mobileActions}
+            status={mobileStatus}
+          />
         </div>
       )}
 

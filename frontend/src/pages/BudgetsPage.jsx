@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import PropTypes from 'prop-types'
 import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
-import { ArrowLeftIcon, ArrowPathIcon, ArrowRightIcon, ArrowTrendingDownIcon, ArrowTrendingUpIcon, CalendarDaysIcon, MinusIcon, PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline'
+import { ArchiveBoxArrowDownIcon, ArrowLeftIcon, ArrowRightIcon, ArrowTrendingDownIcon, ArrowTrendingUpIcon, CalendarDaysIcon, MinusIcon, PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline'
 import { addMonths, differenceInCalendarDays, endOfMonth, endOfWeek, isSameDay, isSameMonth, parseISO, startOfMonth, startOfWeek, subMonths } from 'date-fns'
 import { getBudgets, createBudget, createDemoBudget, deleteBudget, getPeriodsForBudget, getBudgetHealth, getPeriodDetail } from '../api/client'
 import Modal from '../components/Modal'
@@ -1357,7 +1357,8 @@ export default function BudgetsPage() {
         <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Budgets</h1>
         <div className="flex gap-2">
           <button className="btn-secondary" onClick={() => setBackupModalOpen(true)}>
-            <ArrowPathIcon className="w-4 h-4" /> Backup & Restore
+            <ArchiveBoxArrowDownIcon className="w-4 h-4" />
+            <span className="hidden sm:inline">Backup & Restore</span>
           </button>
           <button className="btn-primary" onClick={() => setModal({ mode: 'create' })}>
             <PlusIcon className="w-4 h-4" /> New Budget

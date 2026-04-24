@@ -5,6 +5,7 @@ import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline'
 import { getBalanceTypes, createBalanceType, updateBalanceType, deleteBalanceType, getBudgetSetupAssessment } from '../../api/client'
 import Modal from '../../components/Modal'
 import LocalizedAmountInput from '../../components/LocalizedAmountInput'
+import MobileTableCards from '../../components/MobileTableCards'
 import { useLocalisation } from '../../components/LocalisationContext'
 import { getBalanceTypeLabel, getPreferredTransactionLabel } from '../../utils/accountNaming'
 
@@ -310,6 +311,51 @@ export default function BalanceTypesTab({ budgetId, budget }) {
   const hasTransactionAccount = types.some(type => type.balance_type === 'Transaction')
   const hasActiveTransactionPrimary = types.some(type => type.active && type.is_primary && type.balance_type === 'Transaction')
 
+  const mobileColumns = [
+    {
+      key: 'balancedesc',
+      label: 'Account',
+      render: v => <span className="font-medium">{v}</span>,
+    },
+    {
+      key: 'balance_type',
+      label: 'Type',
+      render: v => <span className={TYPE_BADGE[v] ?? 'badge-gray'}>{getBalanceTypeLabel(v, accountNamingPreference)}</span>,
+    },
+    { key: 'opening_balance', label: 'Opening Balance', render: v => formatCurrency(v) },
+    {
+      key: 'is_primary',
+      label: 'Primary',
+      render: v => v ? <span className="badge-green">Yes</span> : <span className="badge-gray">—</span>,
+    },
+    {
+      key: 'active',
+      label: 'Active',
+      render: v => v ? <span className="badge-green">Active</span> : <span className="badge-gray">Inactive</span>,
+    },
+  ]
+
+  const mobileActions = row => {
+    const usage = accountUsageByDesc[row.balancedesc]
+    const deleteAllowed = canDeleteAccount(types, row, usage)
+    const deleteDisabledReason = !deleteAllowed ? getDeleteDisabledReason(row, usage) : undefined
+    return (
+      <>
+        <button className="btn-secondary min-h-11 min-w-11 justify-center" onClick={() => setModal({ mode: 'edit', item: row })}>
+          <PencilIcon className="w-3 h-3" />
+        </button>
+        <button className="btn-danger min-h-11 min-w-11 justify-center" disabled={!deleteAllowed} title={deleteDisabledReason} onClick={() => { if (globalThis.confirm(`Delete "${row.balancedesc}"?`)) remove.mutate(row.balancedesc) }}>
+          <TrashIcon className="w-3 h-3" />
+        </button>
+      </>
+    )
+  }
+
+  const mobileStatus = row => {
+    const usage = accountUsageByDesc[row.balancedesc]
+    return usage?.in_use ? <span className="badge-amber">In Use</span> : null
+  }
+
   if (isLoading) return null
 
   return (
@@ -332,49 +378,58 @@ export default function BalanceTypesTab({ budgetId, budget }) {
         </div>
       ) : (
         <div className="card overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 bg-gray-50 dark:border-gray-800 dark:bg-gray-800/50">
-                <th className="table-header-cell text-left">Account</th>
-                <th className="table-header-cell text-left">Type</th>
-                <th className="table-header-cell text-right">Opening Balance</th>
-                <th className="table-header-cell text-center">Primary</th>
-                <th className="table-header-cell text-center">Active</th>
-                <th className="table-header-cell" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-              {types.map(t => {
-                const usage = accountUsageByDesc[t.balancedesc]
-                const deleteAllowed = canDeleteAccount(types, t, usage)
-                const deleteDisabledReason = !deleteAllowed ? getDeleteDisabledReason(t, usage) : undefined
-                return (
-                  <tr key={t.balancedesc} className="table-row">
-                    <td className="table-cell font-medium text-gray-800 dark:text-gray-100">
-                      {t.balancedesc}
-                      {usage?.in_use ? <span className="ml-2 badge-amber">In Use</span> : null}
-                    </td>
-                    <td className="table-cell">
-                      <span className={TYPE_BADGE[t.balance_type] ?? 'badge-gray'}>{getBalanceTypeLabel(t.balance_type, accountNamingPreference)}</span>
-                    </td>
-                    <td className="table-cell text-right text-gray-600 dark:text-gray-300">{formatCurrency(t.opening_balance)}</td>
-                    <td className="table-cell text-center">{t.is_primary ? <span className="badge-green">Yes</span> : <span className="badge-gray">—</span>}</td>
-                    <td className="table-cell text-center">{t.active ? <span className="badge-green">Active</span> : <span className="badge-gray">Inactive</span>}</td>
-                    <td className="table-cell">
-                      <div className="flex justify-end gap-1">
+          <div className="hidden md:block">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 bg-gray-50 dark:border-gray-800 dark:bg-gray-800/50">
+                  <th className="table-header-cell text-left">Account</th>
+                  <th className="table-header-cell text-left">Type</th>
+                  <th className="table-header-cell text-right">Opening Balance</th>
+                  <th className="table-header-cell text-center">Primary</th>
+                  <th className="table-header-cell text-center">Active</th>
+                  <th className="table-header-cell" />
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                {types.map(t => {
+                  const usage = accountUsageByDesc[t.balancedesc]
+                  const deleteAllowed = canDeleteAccount(types, t, usage)
+                  const deleteDisabledReason = !deleteAllowed ? getDeleteDisabledReason(t, usage) : undefined
+                  return (
+                    <tr key={t.balancedesc} className="table-row">
+                      <td className="table-cell font-medium text-gray-800 dark:text-gray-100">
+                        {t.balancedesc}
+                        {usage?.in_use ? <span className="ml-2 badge-amber">In Use</span> : null}
+                      </td>
+                      <td className="table-cell">
+                        <span className={TYPE_BADGE[t.balance_type] ?? 'badge-gray'}>{getBalanceTypeLabel(t.balance_type, accountNamingPreference)}</span>
+                      </td>
+                      <td className="table-cell text-right text-gray-600 dark:text-gray-300">{formatCurrency(t.opening_balance)}</td>
+                      <td className="table-cell text-center">{t.is_primary ? <span className="badge-green">Yes</span> : <span className="badge-gray">—</span>}</td>
+                      <td className="table-cell text-center">{t.active ? <span className="badge-green">Active</span> : <span className="badge-gray">Inactive</span>}</td>
+                      <td className="table-cell">
+                        <div className="flex justify-end gap-1">
                         <button className="btn-secondary" onClick={() => setModal({ mode: 'edit', item: t })}>
                           <PencilIcon className="w-3 h-3" />
                         </button>
                         <button className="btn-danger" disabled={!deleteAllowed} title={deleteDisabledReason} onClick={() => { if (globalThis.confirm(`Delete "${t.balancedesc}"?`)) remove.mutate(t.balancedesc) }}>
                           <TrashIcon className="w-3 h-3" />
                         </button>
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+          <MobileTableCards
+            columns={mobileColumns}
+            rows={types}
+            keyExtractor={row => row.balancedesc}
+            actions={mobileActions}
+            status={mobileStatus}
+          />
         </div>
       )}
 
