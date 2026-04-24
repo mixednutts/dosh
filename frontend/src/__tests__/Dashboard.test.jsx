@@ -84,4 +84,40 @@ describe('Dashboard', () => {
     expect(screen.getByText('$1,900.00')).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Details →' }).getAttribute('href')).toBe('/budgets/1/periods/99')
   })
+
+  it('shows locked badge when cycle is locked', async () => {
+    client.getBudgets.mockResolvedValue([
+      { budgetid: 1, description: 'Locked Budget', budgetowner: 'Alex', budget_frequency: 'Monthly' },
+    ])
+    client.getPeriodsForBudget.mockResolvedValue([
+      { finperiodid: 99, cycle_status: 'ACTIVE', startdate: '2026-04-01', enddate: '2026-04-30', islocked: true },
+    ])
+    client.getPeriodDetail.mockResolvedValue({
+      incomes: [{ budgetamount: 3000, actualamount: 3000 }],
+      expenses: [{ budgetamount: 1000, actualamount: 900, status: 'Current' }],
+      investments: [],
+    })
+
+    renderWithProviders(<Dashboard />)
+
+    expect(await screen.findByText('Locked')).toBeTruthy()
+  })
+
+  it('shows current stage label when cycle is active and not locked', async () => {
+    client.getBudgets.mockResolvedValue([
+      { budgetid: 1, description: 'Active Budget', budgetowner: 'Alex', budget_frequency: 'Monthly' },
+    ])
+    client.getPeriodsForBudget.mockResolvedValue([
+      { finperiodid: 99, cycle_status: 'ACTIVE', startdate: '2026-04-01', enddate: '2026-04-30', islocked: false },
+    ])
+    client.getPeriodDetail.mockResolvedValue({
+      incomes: [{ budgetamount: 3000, actualamount: 3000 }],
+      expenses: [{ budgetamount: 1000, actualamount: 900, status: 'Current' }],
+      investments: [],
+    })
+
+    renderWithProviders(<Dashboard />)
+
+    expect(await screen.findByText('Current')).toBeTruthy()
+  })
 })

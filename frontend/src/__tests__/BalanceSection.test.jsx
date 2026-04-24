@@ -1,5 +1,5 @@
 import React from 'react'
-import { screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 
 import { BalanceSection } from '../components/period-sections/BalanceSection'
 import { renderWithProviders } from '../testUtils'
@@ -71,5 +71,66 @@ describe('BalanceSection', () => {
     )
 
     expect(container.firstChild).toBeNull()
+  })
+
+  it('calls onViewTransactions when detail button is clicked', () => {
+    const onViewTransactions = jest.fn()
+    renderWithProviders(
+      <BalanceSection
+        balances={balances}
+        formatters={formatters}
+        onViewTransactions={onViewTransactions}
+      />
+    )
+
+    const detailButtons = screen.getAllByTitle('View supporting transactions')
+    fireEvent.click(detailButtons[0])
+
+    expect(onViewTransactions).toHaveBeenCalledWith(expect.objectContaining({ balancedesc: 'Main Account' }))
+  })
+
+  it('renders footer totals correctly', () => {
+    renderWithProviders(
+      <BalanceSection
+        balances={balances}
+        formatters={formatters}
+        onViewTransactions={() => {}}
+      />
+    )
+
+    expect(screen.getByText('Total Balances')).toBeTruthy()
+    // Total opening: 1000 + 500 = 1500
+    expect(screen.getByText('$1500.00')).toBeTruthy()
+    // Total closing: 1100 + 450 = 1550
+    expect(screen.getByText('$1550.00')).toBeTruthy()
+  })
+
+  it('renders movement with positive tone for credit and negative tone for debit', () => {
+    renderWithProviders(
+      <BalanceSection
+        balances={balances}
+        formatters={formatters}
+        onViewTransactions={() => {}}
+      />
+    )
+
+    expect(screen.getByText('$100.00')).toBeTruthy()
+    expect(screen.getByText('$-50.00')).toBeTruthy()
+  })
+
+  it('renders balance type or em-dash when missing', () => {
+    renderWithProviders(
+      <BalanceSection
+        balances={[
+          { balancedesc: 'Main', balance_type: 'Transaction', opening_amount: '100', movement_amount: '0' },
+          { balancedesc: 'Misc', opening_amount: '50', movement_amount: '0' },
+        ]}
+        formatters={formatters}
+        onViewTransactions={() => {}}
+      />
+    )
+
+    expect(screen.getByText('Transaction')).toBeTruthy()
+    expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(1)
   })
 })
