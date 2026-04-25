@@ -59,6 +59,19 @@ Goals:
 - helpers that reduce "what does this mean?" friction at the moment of decision
 - a maintained library of formula definitions (what we calculate, why, and where it shows up)
 
+### 6) AI Insights
+
+Goals:
+
+- optional LLM-powered insights for the current budget period
+- user-controlled provider configuration (BYO API key)
+- privacy-first design with encrypted storage and clear data-sharing warnings
+- dynamic model selection via trusted vendor manifest (OpenRouter)
+- tone-aware responses aligned with Budget Health engine
+
+Reference plan:
+- [AI_INSIGHTS_IMPLEMENTATION_PLAN.md](/home/ubuntu/dosh/docs/plans/AI_INSIGHTS_IMPLEMENTATION_PLAN.md)
+
 ## Post-beta (Phase 2)
 
 ### Reconciliation (gated)

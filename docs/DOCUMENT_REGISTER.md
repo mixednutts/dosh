@@ -458,10 +458,49 @@ Key relationships:
 
 - related to [BUDGET_CYCLE_LIFECYCLE_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_CYCLE_LIFECYCLE_PLAN.md)
 - may inform roadmap or history documents if decisions from it are adopted
+- superseded by [AI_INSIGHTS_IMPLEMENTATION_PLAN.md](/home/ubuntu/dosh/docs/plans/AI_INSIGHTS_IMPLEMENTATION_PLAN.md) for implementation direction
 
 Maintenance notes:
 
 - should not become the primary lifecycle source of truth if lifecycle rules are owned elsewhere
+- archived once AI Insights implementation is complete
+
+### AI_INSIGHTS_IMPLEMENTATION_PLAN.md
+
+Document:
+
+- [AI_INSIGHTS_IMPLEMENTATION_PLAN.md](/home/ubuntu/dosh/docs/plans/AI_INSIGHTS_IMPLEMENTATION_PLAN.md)
+
+Document type:
+
+- domain or workflow plan
+
+Primary purpose:
+
+- define the implementation approach for optional LLM-powered AI Insights in Dosh
+
+Primary source-of-truth scope:
+
+- AI Insights feature architecture and phased implementation
+- encryption strategy for API keys
+- vendor manifest integration (OpenRouter)
+- OpenAI-compatible provider fallback
+- backend schema, API endpoints, and service layer
+- frontend settings UI and Period Detail integration
+- testing strategy
+
+Key relationships:
+
+- informs roadmap item `6) AI Insights` in [ROADMAP.md](/home/ubuntu/dosh/docs/ROADMAP.md)
+- tracked under `Activity Group: AI Insights` in [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md)
+- supersedes discovery-only [AI_INSIGHT_ON_CLOSEOUT_PLAN.md](/home/ubuntu/dosh/docs/plans/AI_INSIGHT_ON_CLOSEOUT_PLAN.md)
+- references [BUDGET_HEALTH_METRIC_LIBRARY.md](/home/ubuntu/dosh/docs/BUDGET_HEALTH_METRIC_LIBRARY.md) for tone semantics
+
+Maintenance notes:
+
+- should be updated as implementation progresses through each phase
+- should remain the canonical design reference for AI Insights decisions
+- archive to `docs/archive/` once implementation is complete and feature is stable
 
 ### INLINE_EXPRESSION_AMOUNT_INPUT_PLAN.md
 

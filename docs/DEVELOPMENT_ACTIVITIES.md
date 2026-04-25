@@ -18,6 +18,7 @@ This is the **beta execution backlog** for Dosh.
 ### Later
 - Metric library expansion (new metrics only when evidence + meaning are strong)
 - Rich reporting (graphs, comparisons, historical filters, more drilldowns)
+- AI Insights (optional LLM-powered budget period insights)
 
 ## Activity Model
 
@@ -110,6 +111,20 @@ Activities:
 - added backend `GET /budgets/{budgetid}/periods/current` endpoint returning full `PeriodDetailOut` for the current cycle
 - fallback redirects to `/budgets/:budgetId` when no current period exists
 - deliverable: `CurrentPeriodRedirect.jsx`, `periods.py` endpoint, `api/client.js` helper; 4 backend tests + 4 frontend tests
+
+#### Activity Group: AI Insights
+
+Status:
+- `Later`
+
+Activities:
+- implement optional LLM-powered financial insights for the current budget period
+- budget-level settings for provider selection (OpenRouter / OpenAI-compatible), model, API key, and system prompt
+- encrypted API key storage at rest using Fernet with `DOSH_ENCRYPTION_SECRET`
+- dynamic vendor/model manifest fetched from OpenRouter API
+- tone-aware prompt generation using existing `health_tone` setting
+- AI Insight button on Period Detail page (current period only) with modal display
+- reference plan: [AI_INSIGHTS_IMPLEMENTATION_PLAN.md](/home/ubuntu/dosh/docs/plans/AI_INSIGHTS_IMPLEMENTATION_PLAN.md)
 
 #### Activity Group: Formula Expression Helpers
 
