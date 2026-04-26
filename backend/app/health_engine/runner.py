@@ -90,8 +90,7 @@ def evaluate_budget_health(
 
     Returns a payload similar to the legacy BudgetHealthOut schema.
     """
-    from ..models import Budget, BudgetHealthMatrix, BudgetHealthMatrixItem, FinancialPeriod
-    from ..cycle_constants import CLOSED
+    from ..models import Budget, BudgetHealthMatrix, BudgetHealthMatrixItem
 
     budget = db.get(Budget, budgetid)
     if not budget:
@@ -108,13 +107,17 @@ def evaluate_budget_health(
 
     now = datetime.now(timezone.utc)
 
-    # Resolve current period (exclude already-closed periods)
-    current_period = db.query(FinancialPeriod).filter(
-        FinancialPeriod.budgetid == budgetid,
-        FinancialPeriod.startdate <= now,
-        FinancialPeriod.enddate >= now,
-        FinancialPeriod.cycle_status != CLOSED,
-    ).first()
+    # Resolve current period using canonical cycle_stage logic so the
+    # health engine agrees with the rest of the app on what is "current".
+    from ..cycle_management import cycle_stage, ordered_budget_periods
+    from ..cycle_constants import CURRENT_STAGE
+
+    periods = ordered_budget_periods(budgetid, db)
+    current_periods = [
+        p for p in periods
+        if cycle_stage(p) == CURRENT_STAGE
+    ]
+    current_period = current_periods[0] if current_periods else None
 
     # Evaluate metrics for current period
     tone = budget.health_tone or "supportive"

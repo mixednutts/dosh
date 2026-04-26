@@ -387,3 +387,36 @@ def test_evaluate_period_health_handles_invalid_parameters_json(client, db_sessi
     results = evaluate_period_health(db_session, budget, None, matrix)
     # Should still return results, using empty dict for corrupted parameters
     assert len(results) == 6
+
+
+def test_evaluate_budget_health_finds_current_period_on_last_day(client, db_session) -> None:
+    """A period whose enddate has passed but is less than a full day ago must still be
+    treated as current by the health engine, matching cycle_stage() behaviour.
+    """
+    from datetime import datetime, timezone, timedelta
+    from tests.factories import create_budget
+    from app.health_engine_seed import create_default_matrix_for_budget
+    from app.models import FinancialPeriod
+
+    budget = create_budget(db_session)
+    create_default_matrix_for_budget(db_session, budget)
+    db_session.commit()
+
+    now = datetime.now(timezone.utc)
+    # enddate is 1 hour in the past: now > enddate, but now < enddate + 1 day
+    period = FinancialPeriod(
+        budgetid=budget.budgetid,
+        startdate=now - timedelta(days=30),
+        enddate=now - timedelta(hours=1),
+        islocked=False,
+    )
+    db_session.add(period)
+    db_session.commit()
+
+    payload = evaluate_budget_health(db_session, budget.budgetid)
+    assert payload is not None
+    cpc = payload["current_period_check"]
+    assert cpc is not None
+
+    for m in cpc["metrics"]:
+        assert m["summary"] != "No current period to evaluate."

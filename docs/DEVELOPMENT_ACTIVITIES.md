@@ -278,6 +278,18 @@ Activities:
 - added Hard Control #9 to AGENTS.md: NEVER reorder existing Alembic migrations
 - recorded full incident report in AGENTS.md with root cause, fix, and prevention rules
 
+#### Activity Group: Health Engine Current Period Date Boundary Fix
+
+Status:
+- `Completed` (2026-04-27)
+
+Activities:
+- fixed Budget Health Engine `evaluate_budget_health()` in `runner.py` using raw `enddate >= now` query that disagreed with canonical `cycle_stage()` logic
+- a period is current through `enddate + 1 day`, but the health engine stopped matching it exactly at `enddate`, causing "No current period to evaluate" on the last day of a budget cycle
+- replaced raw SQL query with `ordered_budget_periods` + `cycle_stage` to align health engine current-period resolution with the rest of the app
+- added regression test `test_evaluate_budget_health_finds_current_period_on_last_day` covering the end-of-cycle boundary
+- version bump: `0.8.2-beta` → `0.8.3-beta`
+
 ## Post-beta note
 
 - Reconciliation is intentionally post-beta because it depends on bank integration / statement ingestion (import/OCR). See [ROADMAP.md](/home/ubuntu/dosh/docs/ROADMAP.md).

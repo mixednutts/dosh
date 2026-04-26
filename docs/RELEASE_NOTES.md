@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.8.3-beta | released | 2026-04-27
+
+### Fixed
+
+- Fixed the Budget Health Engine incorrectly reporting "No current period to evaluate" on the last day of a budget cycle. Current period health checks now correctly include the entire final day, matching the cycle stage logic used everywhere else in the app.
+
 ## 0.8.2-beta | released | 2026-04-26
 
 ### Fixed
