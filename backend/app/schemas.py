@@ -119,6 +119,13 @@ class BudgetBase(BaseModel):
     date_format: str = "medium"
     max_forward_balance_cycles: int = 10
     health_tone: str = "supportive"
+    ai_insights_enabled: bool = False
+    ai_provider: Optional[str] = None
+    ai_model: Optional[str] = None
+    ai_base_url: Optional[str] = None
+    ai_custom_model: Optional[str] = None
+    ai_system_prompt: Optional[str] = None
+    ai_insights_on_closeout: bool = False
 
     @field_validator("health_tone")
     @classmethod
@@ -204,6 +211,14 @@ class BudgetUpdate(BaseModel):
     record_line_status_changes: Optional[bool] = None
     max_forward_balance_cycles: Optional[int] = None
     health_tone: Optional[str] = None
+    ai_insights_enabled: Optional[bool] = None
+    ai_provider: Optional[str] = None
+    ai_model: Optional[str] = None
+    ai_base_url: Optional[str] = None
+    ai_custom_model: Optional[str] = None
+    ai_system_prompt: Optional[str] = None
+    ai_insights_on_closeout: Optional[bool] = None
+    ai_api_key: Optional[str] = None
 
     @field_validator("health_tone")
     @classmethod
@@ -213,6 +228,16 @@ class BudgetUpdate(BaseModel):
         allowed = {"supportive", "factual", "friendly"}
         if v not in allowed:
             raise ValueError(f"health_tone must be one of {allowed}")
+        return v
+
+    @field_validator("ai_provider")
+    @classmethod
+    def validate_optional_ai_provider(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        allowed = {"openrouter", "openai_compatible"}
+        if v not in allowed:
+            raise ValueError(f"ai_provider must be one of {allowed}")
         return v
 
     @field_validator("max_forward_balance_cycles")
@@ -326,6 +351,14 @@ class BudgetOut(BudgetBase):
     record_line_status_changes: bool = False
     max_forward_balance_cycles: int = 10
     health_tone: str = "supportive"
+    ai_insights_enabled: bool = False
+    ai_provider: Optional[str] = None
+    ai_model: Optional[str] = None
+    ai_base_url: Optional[str] = None
+    ai_custom_model: Optional[str] = None
+    ai_system_prompt: Optional[str] = None
+    ai_insights_on_closeout: bool = False
+    ai_api_key_configured: bool = False
     model_config = {"from_attributes": True}
 
 
@@ -757,6 +790,7 @@ class PeriodCloseoutSnapshotOut(BaseModel):
     carry_forward_applied: bool = False
     health_snapshot_json: str
     totals_snapshot_json: str
+    ai_insight_text: Optional[str] = None
     created_at: datetime
     model_config = {"from_attributes": True}
 
@@ -776,6 +810,7 @@ class PeriodCloseoutRequest(BaseModel):
     carry_forward: bool = False
     comments: Optional[str] = None
     goals: Optional[str] = None
+    ai_insight_text: Optional[str] = None
 
 
 # ── PeriodInvestmentTransaction ───────────────────────────────────────────────

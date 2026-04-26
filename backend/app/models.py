@@ -46,6 +46,18 @@ class Budget(Base):
     record_line_status_changes = Column(Boolean, nullable=False, default=False)
     max_forward_balance_cycles = Column(Integer, nullable=False, default=10)
     health_tone = Column(String, nullable=False, default="supportive")
+    ai_insights_enabled = Column(Boolean, nullable=False, default=False)
+    ai_provider = Column(String, nullable=True)
+    ai_model = Column(String, nullable=True)
+    ai_api_key_encrypted = Column(String, nullable=True)
+    ai_base_url = Column(String, nullable=True)
+    ai_custom_model = Column(String, nullable=True)
+    ai_system_prompt = Column(Text, nullable=True)
+    ai_insights_on_closeout = Column(Boolean, nullable=False, default=False)
+
+    @property
+    def ai_api_key_configured(self) -> bool:
+        return self.ai_api_key_encrypted is not None
 
     periods = relationship("FinancialPeriod", back_populates="budget", cascade="all, delete-orphan")
     income_types = relationship("IncomeType", back_populates="budget", cascade="all, delete-orphan")
@@ -323,6 +335,7 @@ class PeriodCloseoutSnapshot(Base):
     carry_forward_applied = Column(Boolean, nullable=False, default=False)
     health_snapshot_json = Column(Text, nullable=False, default="{}")
     totals_snapshot_json = Column(Text, nullable=False, default="{}")
+    ai_insight_text = Column(Text, nullable=True)
     created_at = Column(UTCDateTime, default=lambda: dt.now(timezone.utc), nullable=False)
 
     period = relationship("FinancialPeriod", back_populates="closeout_snapshot")

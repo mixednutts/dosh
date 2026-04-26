@@ -487,6 +487,7 @@ Primary source-of-truth scope:
 - OpenAI-compatible provider fallback
 - backend schema, API endpoints, and service layer
 - frontend settings UI and Period Detail integration
+- close-out modal AI insight preview and persistence
 - testing strategy
 
 Key relationships:
@@ -498,7 +499,7 @@ Key relationships:
 
 Maintenance notes:
 
-- should be updated as implementation progresses through each phase
+- updated to reflect actual implementation (close-out preview flow, encryption gating, verify-key JSON payload, Health Details modal integration)
 - should remain the canonical design reference for AI Insights decisions
 - archive to `docs/archive/` once implementation is complete and feature is stable
 

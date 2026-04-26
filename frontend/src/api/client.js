@@ -112,6 +112,13 @@ export const closeOutPeriod = (budgetId, periodId, data) =>
 export const deletePeriod = (budgetId, periodId, deleteMode = 'single') =>
   api.delete(`/budgets/${budgetId}/periods/${periodId}?delete_mode=${deleteMode}`)
 
+export const getAIVendorManifest = () => api.get('/ai-vendors/manifest').then(r => r.data)
+export const getAIConfigStatus = () => api.get('/ai-config/status').then(r => r.data)
+export const generateAIInsight = (budgetId, periodId, data) =>
+  api.post(`/budgets/${budgetId}/periods/${periodId}/ai-insight`, data).then(r => r.data)
+export const verifyAIKey = (budgetId, data) =>
+  api.post(`/budgets/${budgetId}/ai-insight/verify-key`, data).then(r => r.data)
+
 export const updateIncomeActual = (budgetId, periodId, desc, actualamount) =>
   api.patch(`/budgets/${budgetId}/periods/${periodId}/income/${encodeURIComponent(desc)}`, { actualamount }).then(r => r.data)
 export const addToIncomeActual = (budgetId, periodId, desc, amount) =>

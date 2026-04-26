@@ -23,12 +23,14 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def _backfill_global_health(db: Session) -> None:
     """Delete all legacy matrix data, then recreate with global metric_key references."""
-    from app.models import Budget, BudgetHealthMatrix, BudgetHealthMatrixItem
+    from app.models import BudgetHealthMatrix, BudgetHealthMatrixItem
     from app.health_engine.system_metrics import SYSTEM_METRICS
 
-    budgets = db.query(Budget).all()
-    for budget in budgets:
-        matrices = db.query(BudgetHealthMatrix).filter_by(budgetid=budget.budgetid).all()
+    # Use raw SQL to avoid ORM column mismatch with future model changes
+    budget_rows = db.execute(sa.text("SELECT budgetid FROM budgets")).fetchall()
+    for row in budget_rows:
+        budgetid = row[0]
+        matrices = db.query(BudgetHealthMatrix).filter_by(budgetid=budgetid).all()
         active_matrix = None
         for m in matrices:
             if m.is_active and active_matrix is None:
@@ -37,7 +39,7 @@ def _backfill_global_health(db: Session) -> None:
                 db.delete(m)
         if active_matrix is None:
             active_matrix = BudgetHealthMatrix(
-                budgetid=budget.budgetid,
+                budgetid=budgetid,
                 name="Budget Health",
                 is_active=True,
             )

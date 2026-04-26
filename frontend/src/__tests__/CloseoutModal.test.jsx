@@ -26,7 +26,7 @@ describe('CloseoutModal', () => {
       can_close_early: true,
     })
 
-    renderWithProviders(<CloseoutModal periodId={10} budgetId={1} onClose={jest.fn()} />)
+    renderWithProviders(<CloseoutModal periodId={10} budgetId={1} budget={{}} onClose={jest.fn()} />)
 
     expect(await screen.findByText('Tracking well.')).toBeTruthy()
     // Carry-forward checkbox shown because surplus > 0
@@ -53,7 +53,7 @@ describe('CloseoutModal', () => {
       can_close_early: true,
     })
 
-    renderWithProviders(<CloseoutModal periodId={10} budgetId={1} onClose={jest.fn()} />)
+    renderWithProviders(<CloseoutModal periodId={10} budgetId={1} budget={{}} onClose={jest.fn()} />)
 
     await screen.findByText('Tracking well.')
     expect(screen.queryByLabelText(/Carry this amount forward/i)).toBeNull()
@@ -77,7 +77,7 @@ describe('CloseoutModal', () => {
     })
     client.closeOutPeriod.mockResolvedValue({})
 
-    renderWithProviders(<CloseoutModal periodId={11} budgetId={1} onClose={jest.fn()} />)
+    renderWithProviders(<CloseoutModal periodId={11} budgetId={1} budget={{}} onClose={jest.fn()} />)
 
     const closeButton = await screen.findByText('Close Out Cycle')
     expect(closeButton.disabled).toBe(false)
@@ -95,6 +95,7 @@ describe('CloseoutModal', () => {
         goals: '',
         create_next_cycle: false,
         carry_forward: true,
+        ai_insight_text: null,
       })
     })
   })
@@ -110,7 +111,7 @@ describe('CloseoutModal', () => {
       can_close_early: true,
     })
 
-    renderWithProviders(<CloseoutModal periodId={13} budgetId={1} onClose={jest.fn()} />)
+    renderWithProviders(<CloseoutModal periodId={13} budgetId={1} budget={{}} onClose={jest.fn()} />)
 
     await screen.findByText(/Closing a budget cycle makes it read-only/i)
     const dismissBtn = screen.getByText('Dismiss')
@@ -132,7 +133,7 @@ describe('CloseoutModal', () => {
       response: { data: { detail: 'Close-out is blocked.' } },
     })
 
-    renderWithProviders(<CloseoutModal periodId={12} budgetId={1} onClose={jest.fn()} />)
+    renderWithProviders(<CloseoutModal periodId={12} budgetId={1} budget={{}} onClose={jest.fn()} />)
 
     fireEvent.click(await screen.findByText('Close Out Cycle'))
 

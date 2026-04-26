@@ -2161,6 +2161,13 @@ def close_out_period(budgetid: int,
         raise HTTPException(409, str(exc)) from exc
     db.commit()
     db.refresh(period)
+
+    # Save AI insight from close-out request if provided
+    if payload.ai_insight_text and period.closeout_snapshot:
+        period.closeout_snapshot.ai_insight_text = payload.ai_insight_text
+        db.commit()
+        logger.info("ai_insight_saved_on_closeout", extra={"period_id": finperiodid})
+
     logger.info("close_out_period completed")
     return get_period_detail(budgetid, finperiodid, db)
 

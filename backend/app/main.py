@@ -17,6 +17,7 @@ from .release_notes import release_notes_payload
 from .schemas import ReleaseNotesResponseOut
 from .version import APP_VERSION, get_schema_revision
 from .routers import (
+    ai_insights,
     budgets,
     periods,
     income_types,
@@ -42,6 +43,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(ai_insights.router, prefix="/api")
 app.include_router(budgets.router, prefix="/api")
 app.include_router(periods.router, prefix="/api")
 app.include_router(income_types.router, prefix="/api")

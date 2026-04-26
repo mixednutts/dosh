@@ -265,6 +265,19 @@ Important testing rule:
 
 ## Status
 
-Current status: discovery plan only.
+**Superseded by [AI_INSIGHTS_IMPLEMENTATION_PLAN.md](/home/ubuntu/dosh/docs/plans/AI_INSIGHTS_IMPLEMENTATION_PLAN.md).**
 
-This file should be updated as findings become concrete, especially once payload shape, privacy posture, and UI flow decisions move from discussion into approved implementation work.
+This discovery plan has been superseded by the implementation plan, which documents the actual built feature. The key decisions from this discovery document that were adopted:
+
+- AI insights are optional, user-controlled, and BYO-provider
+- Data is summarized and aggregated before sending to the LLM
+- Close-out insight is generated **before** confirming close-out (user reviews it in the modal)
+- Close-out never fails because of AI issues
+- API keys are encrypted at rest
+
+Decisions that differ from this discovery document:
+
+- Provider configuration is **budget-level** (not user-level or installation-level)
+- Insight is generated **before** close-out and passed in the request (not fire-and-forget after)
+- No "review payload before submission" step — the structured payload is not shown to the user
+- No dedicated `PeriodAIInsight` table — insights are either transient (current period) or stored in `PeriodCloseoutSnapshot.ai_insight_text` (closed cycles)

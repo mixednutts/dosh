@@ -2,8 +2,11 @@
 
 ## Unreleased
 
+## 0.8.0-beta | released | 2026-04-26
+
 ### Added
 
+- **AI Insights** — You can now generate LLM-powered financial insights for your budget periods. Enable AI Insights in Budget Settings, choose a provider (OpenRouter or a custom OpenAI-compatible endpoint), enter your API key, and click "Generate Insight" from the Budget Cycle Details page or the Close Out modal. Insights are generated on-demand and can be copied to your clipboard. When closing a budget cycle, you can preview the AI insight before saving it with the close-out snapshot.
 - You can now jump straight to the current budget cycle using a simple URL shortcut: `/budgets/<id>/periods/current`. This automatically redirects to the active period for that budget, saving you from hunting through the cycle list.
 
 ### Engineering

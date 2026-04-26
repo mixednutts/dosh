@@ -4,7 +4,71 @@ This document captures the key product and implementation changes made during re
 
 It is intended to complement [README.md](/home/ubuntu/dosh/README.md), not replace it.
 
-## Latest Session: Current Period URL Shortcut (0.7.0-beta) (2026-04-25)
+## Latest Session: AI Insights Implementation (0.7.0-beta) (2026-04-26)
+
+### What changed
+
+- Implemented optional LLM-powered AI Insights for budget periods.
+  - **Backend**: New `encryption.py` module with Fernet encryption for API keys (PBKDF2-HMAC, 480k iterations). Returns `None` gracefully when `DOSH_ENCRYPTION_SECRET` is not configured; callers return HTTP 503.
+  - **Backend**: New `ai_vendor_manifest.py` fetches 355 models from OpenRouter API.
+  - **Backend**: New `ai_insights.py` service builds summarized financial payloads (~3-6 KB, no PII, no raw transactions) and calls OpenRouter or OpenAI-compatible providers.
+  - **Backend**: New `ai_insights.py` router with endpoints: `GET /api/ai-vendors/manifest`, `GET /api/ai-config/status`, `POST /api/budgets/{id}/periods/{pid}/ai-insight`, `POST /api/budgets/{id}/ai-insight/verify-key`.
+  - **Backend**: `Budget` model gained 8 AI columns (`ai_insights_enabled`, `ai_provider`, `ai_model`, `ai_api_key_encrypted`, `ai_base_url`, `ai_custom_model`, `ai_system_prompt`, `ai_insights_on_closeout`) plus `ai_api_key_configured` computed property.
+  - **Backend**: `PeriodCloseoutSnapshot` gained `ai_insight_text` column.
+  - **Backend**: `update_budget()` in `budgets.py` encrypts `ai_api_key` and returns 503 if encryption not ready.
+  - **Backend**: `close_out_period()` in `periods.py` saves `ai_insight_text` from request payload to snapshot (never fails if missing).
+  - **Backend**: Alembic migration `5a87833110e0_add_ai_insights_settings.py` adds schema columns.
+  - **Frontend**: `BudgetHealthTab.jsx` AI Insights section with provider selector, alphabetically-sorted model dropdown, API key input, verify-key button, system prompt textarea, close-out toggle, and encryption-secret gating banner.
+  - **Frontend**: `PeriodDetailPage.jsx` "Generate AI Insights" button (current period only) with inline modal (loading/error/success states, copy/regenerate).
+  - **Frontend**: `CloseoutModal.jsx` AI Insight section — user generates and reviews insight before confirming close-out. Insight passed in close-out request.
+  - **Frontend**: `BudgetsPage.jsx` `CurrentPeriodCheckModal` now supports on-demand AI insight generation.
+  - **Frontend**: Verify-key sends current form values as JSON and displays full provider error detail.
+
+### UX Decisions
+
+- Close-out AI insight is **previewed before confirming**, not generated fire-and-forget after. This lets the user review what will be saved.
+- If the user doesn't generate an insight, close-out proceeds normally.
+- If AI insight generation fails, the error is displayed but close-out is never blocked.
+- Encryption secret gating prevents users from enabling AI when the server admin hasn't configured `DOSH_ENCRYPTION_SECRET`.
+- Model dropdown is sorted alphabetically for easier discovery among 355 OpenRouter models.
+
+### Testing
+
+- Full backend regression suite: **244 passed**, 0 regressions introduced.
+- Full frontend regression suite: **323 passed**, 0 regressions introduced.
+- Note: Dedicated `test_ai_insights.py` and `AIInsights.test.jsx` test files are planned but not yet implemented.
+
+### Decisions preserved
+
+- Budget-level AI configuration (not user-level or installation-level) aligns with Dosh's single-user-per-budget model.
+- Hybrid persistence: current-period insights are transient; close-out insights are persisted in the snapshot as historical artifacts.
+- Static salt for encryption is acceptable given the threat model (casual plaintext exposure, not targeted attack).
+- Verify-key uses JSON body instead of Form fields for reliability across axios/FastAPI.
+
+### Files touched
+
+- `backend/app/encryption.py` (new)
+- `backend/app/ai_vendor_manifest.py` (new)
+- `backend/app/ai_insights.py` (new)
+- `backend/app/routers/ai_insights.py` (new)
+- `backend/alembic/versions/5a87833110e0_add_ai_insights_settings.py` (new)
+- `backend/app/models.py`
+- `backend/app/schemas.py`
+- `backend/app/routers/budgets.py`
+- `backend/app/routers/periods.py`
+- `backend/app/main.py`
+- `backend/requirements.txt`
+- `frontend/src/api/client.js`
+- `frontend/src/pages/tabs/BudgetHealthTab.jsx`
+- `frontend/src/pages/PeriodDetailPage.jsx`
+- `frontend/src/components/modals/CloseoutModal.jsx`
+- `frontend/src/pages/BudgetsPage.jsx`
+- `frontend/src/__tests__/CloseoutModal.test.jsx`
+- `.env.example`
+
+---
+
+## Session: Current Period URL Shortcut (0.7.0-beta) (2026-04-25)
 
 ### What changed
 

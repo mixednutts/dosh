@@ -18,7 +18,6 @@ This is the **beta execution backlog** for Dosh.
 ### Later
 - Metric library expansion (new metrics only when evidence + meaning are strong)
 - Rich reporting (graphs, comparisons, historical filters, more drilldowns)
-- AI Insights (optional LLM-powered budget period insights)
 
 ## Activity Model
 
@@ -115,15 +114,22 @@ Activities:
 #### Activity Group: AI Insights
 
 Status:
-- `Later`
+- `Completed` (2026-04-26)
 
 Activities:
-- implement optional LLM-powered financial insights for the current budget period
+- implemented optional LLM-powered financial insights for budget periods
 - budget-level settings for provider selection (OpenRouter / OpenAI-compatible), model, API key, and system prompt
 - encrypted API key storage at rest using Fernet with `DOSH_ENCRYPTION_SECRET`
-- dynamic vendor/model manifest fetched from OpenRouter API
+- dynamic vendor/model manifest fetched from OpenRouter API (355 models), sorted alphabetically
 - tone-aware prompt generation using existing `health_tone` setting
-- AI Insight button on Period Detail page (current period only) with modal display
+- AI Insight generation on Period Detail page (current period only) with modal display
+- AI Insight preview in Close-out modal — user generates and reviews before confirming close-out
+- AI Insight persisted in `PeriodCloseoutSnapshot.ai_insight_text` when included in close-out request
+- on-demand AI Insight generation in Budget Summary Health Details modal (`CurrentPeriodCheckModal`)
+- encryption secret gating — AI checkbox disabled with explanatory banner when `DOSH_ENCRYPTION_SECRET` not configured
+- verify-key endpoint accepts current form values (JSON body) so users can test keys before saving
+- verify-key returns full provider error detail (e.g., "Invalid API key or authentication failed...")
+- graceful encryption handling — returns `None` silently when secret missing, callers return HTTP 503
 - reference plan: [AI_INSIGHTS_IMPLEMENTATION_PLAN.md](/home/ubuntu/dosh/docs/plans/AI_INSIGHTS_IMPLEMENTATION_PLAN.md)
 
 #### Activity Group: Formula Expression Helpers

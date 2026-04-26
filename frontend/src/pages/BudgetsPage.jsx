@@ -4,7 +4,7 @@ import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/rea
 import { Link, useNavigate } from 'react-router-dom'
 import { ArchiveBoxArrowDownIcon, ArrowLeftIcon, ArrowRightIcon, ArrowTrendingDownIcon, ArrowTrendingUpIcon, CalendarDaysIcon, MinusIcon, PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline'
 import { addMonths, differenceInCalendarDays, endOfMonth, endOfWeek, isSameDay, isSameMonth, parseISO, startOfMonth, startOfWeek, subMonths } from 'date-fns'
-import { getBudgets, createBudget, createDemoBudget, deleteBudget, getPeriodsForBudget, getBudgetHealth, getPeriodDetail } from '../api/client'
+import { getBudgets, createBudget, createDemoBudget, deleteBudget, getPeriodsForBudget, getBudgetHealth, getPeriodDetail, generateAIInsight, getCurrentPeriodDetail } from '../api/client'
 import Modal from '../components/Modal'
 import { BackupRestoreModal } from '../components/modals'
 import Spinner from '../components/Spinner'
@@ -1010,9 +1010,70 @@ CurrentPeriodCheckPanel.propTypes = {
 }
 
 function CurrentPeriodCheckModal({ budget, assessment, evaluatedAt, onClose }) {
+  const [aiInsight, setAiInsight] = useState(null)
+  const [aiInsightLoading, setAiInsightLoading] = useState(false)
+  const [aiInsightError, setAiInsightError] = useState(null)
+  const aiEnabled = budget?.ai_insights_enabled && budget?.ai_api_key_configured
+
+  const handleGenerateInsight = async () => {
+    setAiInsightLoading(true)
+    setAiInsightError(null)
+    try {
+      const period = await getCurrentPeriodDetail(budget.budgetid)
+      const result = await generateAIInsight(budget.budgetid, period.period.finperiodid)
+      setAiInsight(result.insight)
+    } catch (err) {
+      setAiInsightError(err?.response?.data?.detail || 'Failed to generate AI insight.')
+    } finally {
+      setAiInsightLoading(false)
+    }
+  }
+
   return (
     <Modal title={`Current Budget Cycle Check — ${budget.description || 'Untitled Budget'}`} onClose={onClose} size="lg">
-      <CurrentPeriodCheckPanel assessment={assessment} evaluatedAt={evaluatedAt} />
+      <div className="space-y-4">
+        <CurrentPeriodCheckPanel assessment={assessment} evaluatedAt={evaluatedAt} />
+        {aiEnabled && (
+          <div className="rounded-xl border border-dosh-200 bg-dosh-50 p-4 dark:border-dosh-800 dark:bg-dosh-900/20">
+            <div className="flex items-center justify-between">
+              <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">AI Insight</p>
+              {!aiInsight && !aiInsightLoading && (
+                <button
+                  type="button"
+                  className="btn-secondary text-xs"
+                  onClick={handleGenerateInsight}
+                >
+                  Generate Insight
+                </button>
+              )}
+            </div>
+            {aiInsightLoading && (
+              <div className="flex items-center gap-2 py-3">
+                <svg className="animate-spin text-dosh-600 w-4 h-4" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                <span className="text-xs text-gray-500">Generating insight...</span>
+              </div>
+            )}
+            {aiInsightError && (
+              <p className="mt-2 text-xs text-red-600">{aiInsightError}</p>
+            )}
+            {aiInsight && (
+              <div className="mt-2 space-y-2">
+                <p className="text-sm leading-relaxed text-gray-700 dark:text-gray-300">{aiInsight}</p>
+                <button
+                  type="button"
+                  className="text-xs text-dosh-700 hover:underline dark:text-dosh-300"
+                  onClick={handleGenerateInsight}
+                >
+                  Regenerate
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </Modal>
   )
 }

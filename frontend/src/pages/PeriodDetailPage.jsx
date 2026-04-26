@@ -3,7 +3,7 @@ import { useParams, Link, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   LockClosedIcon, LockOpenIcon, ChevronRightIcon, ChevronLeftIcon,
-  ArrowDownTrayIcon, ArrowUpIcon,
+  ArrowDownTrayIcon, ArrowUpIcon, SparklesIcon,
 } from '@heroicons/react/24/outline'
 import {
   getPeriodDetail, getBudget, setPeriodLock, getPeriodsForBudget, getPeriodBalances,
@@ -11,6 +11,7 @@ import {
   setPeriodExpenseStatus, updatePeriodExpenseBudget, removePeriodExpense,
   updatePeriodInvestmentBudget, removePeriodIncome, updatePeriodIncomeBudget, setPeriodIncomeStatus,
   setPeriodInvestmentStatus, updatePeriodExpensePayType, runPeriodAutoExpenses,
+  generateAIInsight,
 } from '../api/client'
 import Modal from '../components/Modal'
 import Spinner from '../components/Spinner'
@@ -70,6 +71,10 @@ export default function PeriodDetailPage() {
   const [balanceModal, setBalanceModal] = useState(null)
   const [showCloseout, setShowCloseout] = useState(false)
   const [showExport, setShowExport] = useState(false)
+  const [aiInsightModal, setAiInsightModal] = useState(null)
+  const [aiInsightData, setAiInsightData] = useState(null)
+  const [aiInsightLoading, setAiInsightLoading] = useState(false)
+  const [aiInsightError, setAiInsightError] = useState(null)
   const [expenseStatusFilter, setExpenseStatusFilter] = useState('all')
   const [autoExpenseFeedback, setAutoExpenseFeedback] = useState(null)
   const [expensePayTypeWarning, setExpensePayTypeWarning] = useState(null)
@@ -363,6 +368,27 @@ export default function PeriodDetailPage() {
           <button className="btn-secondary" onClick={() => setShowExport(true)} title="Export budget cycle">
             <ArrowDownTrayIcon className="w-4 h-4" /> Export
           </button>
+          {budget?.ai_insights_enabled && budget?.ai_api_key_configured && activeCycle && !closed && (
+            <button
+              className="btn-secondary"
+              onClick={() => {
+                setAiInsightModal(true)
+                setAiInsightLoading(true)
+                setAiInsightError(null)
+                generateAIInsight(budgetid, id, {})
+                  .then(data => {
+                    setAiInsightData(data)
+                    setAiInsightLoading(false)
+                  })
+                  .catch(err => {
+                    setAiInsightError(err?.response?.data?.detail || 'Failed to generate insight.')
+                    setAiInsightLoading(false)
+                  })
+              }}
+            >
+              <SparklesIcon className="w-4 h-4" /> Generate AI Insights
+            </button>
+          )}
           {autoExpenseEnabled && !closed && (
             <button className="btn-secondary" onClick={() => runAutoExpenses.mutate()} title="Run Auto Expense">
               {runAutoExpenses.isPending ? 'Running…' : 'Run Auto Expense'}
@@ -469,6 +495,12 @@ export default function PeriodDetailPage() {
             <div className="card p-4">
               <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Carried Forward</p>
               <p className="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">{fmt(data.closeout_snapshot.carry_forward_amount)}</p>
+            </div>
+          )}
+          {data.closeout_snapshot.ai_insight_text && (
+            <div className="card p-4">
+              <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">AI Insight</p>
+              <p className="mt-1 text-sm leading-relaxed text-gray-600 dark:text-gray-300">{data.closeout_snapshot.ai_insight_text}</p>
             </div>
           )}
         </div>
@@ -694,7 +726,71 @@ export default function PeriodDetailPage() {
       )}
       {showCloseout && (
         <Modal title="Close Out Budget Cycle" onClose={closeCloseoutModal} size="lg">
-          <CloseoutModal periodId={id} budgetId={period.budgetid} onClose={closeCloseoutModal} />
+          <CloseoutModal periodId={id} budgetId={period.budgetid} budget={budget} onClose={closeCloseoutModal} />
+        </Modal>
+      )}
+      {aiInsightModal && (
+        <Modal title="AI Insight" onClose={() => setAiInsightModal(false)} size="lg">
+          <div className="space-y-4">
+            {aiInsightLoading && (
+              <div className="flex justify-center py-8">
+                <Spinner />
+              </div>
+            )}
+            {aiInsightError && (
+              <div className="space-y-3">
+                <p className="text-sm text-red-600">{aiInsightError}</p>
+                <div className="flex justify-end">
+                  <button className="btn-secondary" onClick={() => setAiInsightModal(false)}>Close</button>
+                </div>
+              </div>
+            )}
+            {aiInsightData && (
+              <div className="space-y-4">
+                <div className="rounded-lg border border-dosh-200 bg-dosh-50 p-4 dark:border-dosh-800 dark:bg-dosh-900/20">
+                  <p className="text-sm leading-relaxed text-gray-800 dark:text-gray-100">{aiInsightData.insight}</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+                  <span>Model: {aiInsightData.model_used}</span>
+                  <span className="hidden sm:inline">·</span>
+                  <span>Prompt tokens: {aiInsightData.prompt_tokens}</span>
+                  <span className="hidden sm:inline">·</span>
+                  <span>Completion tokens: {aiInsightData.completion_tokens}</span>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <button
+                    className="btn-secondary"
+                    onClick={() => {
+                      if (aiInsightData?.insight) {
+                        navigator.clipboard.writeText(aiInsightData.insight)
+                      }
+                    }}
+                  >
+                    Copy to Clipboard
+                  </button>
+                  <button
+                    className="btn-secondary"
+                    onClick={() => {
+                      setAiInsightLoading(true)
+                      setAiInsightError(null)
+                      generateAIInsight(budgetid, id, {})
+                        .then(data => {
+                          setAiInsightData(data)
+                          setAiInsightLoading(false)
+                        })
+                        .catch(err => {
+                          setAiInsightError(err?.response?.data?.detail || 'Failed to generate insight.')
+                          setAiInsightLoading(false)
+                        })
+                    }}
+                  >
+                    Regenerate
+                  </button>
+                  <button className="btn-primary" onClick={() => setAiInsightModal(false)}>Close</button>
+                </div>
+              </div>
+            )}
+          </div>
         </Modal>
       )}
       {showExport && (

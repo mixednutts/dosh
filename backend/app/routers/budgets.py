@@ -12,6 +12,7 @@ from ..health_engine import evaluate_budget_health
 from ..health_engine_seed import create_default_matrix_for_budget
 from ..models import Budget
 from ..restore_service import inspect_backup, restore_budgets
+from ..encryption import encrypt_value, encryption_ready
 from ..schemas import (
     BudgetCreate,
     BudgetOut,
@@ -96,7 +97,17 @@ def update_budget(budgetid: int, payload: BudgetUpdate, db: DbSession):
     budget = db.get(Budget, budgetid)
     if not budget:
         raise HTTPException(404, "Budget not found")
-    for field, value in payload.model_dump(exclude_unset=True).items():
+    data = payload.model_dump(exclude_unset=True)
+    # Handle AI API key encryption
+    if "ai_api_key" in data:
+        if not encryption_ready():
+            raise HTTPException(503, "DOSH_ENCRYPTION_SECRET is not configured on the server. AI features cannot be used.")
+        api_key = data.pop("ai_api_key")
+        if api_key:
+            budget.ai_api_key_encrypted = encrypt_value(api_key)
+        else:
+            budget.ai_api_key_encrypted = None
+    for field, value in data.items():
         setattr(budget, field, value)
     db.commit()
     db.refresh(budget)
