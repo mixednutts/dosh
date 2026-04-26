@@ -9,6 +9,7 @@ import httpx
 
 from .encryption import decrypt_value, encryption_ready
 from .models import Budget
+from .url_security import UnsafeUrlError, validate_external_url
 
 logger = logging.getLogger(__name__)
 
@@ -204,6 +205,10 @@ def generate_insight(
         raise ValueError("AI provider base URL is not configured")
     if not model_id:
         raise ValueError("AI model is not configured")
+    try:
+        validate_external_url(base_url)
+    except UnsafeUrlError as exc:
+        raise ValueError(f"Invalid AI provider URL: {exc}") from exc
 
     tone = budget.health_tone or "supportive"
     user_prompt = budget.ai_system_prompt

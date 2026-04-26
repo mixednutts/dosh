@@ -241,6 +241,31 @@ Activities:
 - verify drag/drop reordering behavior for expense line items
 - expand coverage for status filter changes and paytype toggle edge cases
 
+#### Activity Group: Security Vulnerability Remediation (SonarQube)
+
+Status:
+- `Completed` (2026-04-26)
+
+Activities:
+- fixed predictable salt vulnerability (`python:S2053`) in `backend/app/encryption.py` — replaced hardcoded salt with random 16-byte salt per encryption operation
+- fixed SSRF vulnerability (`pythonsecurity:S5144`) in AI Insights router and service — added `validate_external_url()` in new `backend/app/url_security.py` to block private IPs, localhost, and non-http/https schemes
+- added backward-compatible legacy ciphertext fallback in `decrypt_value()` so existing encrypted API keys continue to work
+- added 13 URL security tests and 5 encryption/SSRF tests in `test_url_security.py` and `test_ai_insights.py`
+- deliverable: `url_security.py`, `test_url_security.py`, updated `encryption.py`, `ai_insights.py`, `routers/ai_insights.py`
+
+#### Activity Group: Migration Chain Reordering Incident (v0.8.0-beta)
+
+Status:
+- `Completed` (2026-04-26)
+
+Activities:
+- identified critical production startup failure caused by Alembic migration chain reordering in v0.8.0-beta commit
+- restored original `down_revision` pointers for `8e182dad69ad` and `z1_drop_legacy_transaction_tables`
+- appended new `5a87833110e0` migration to original head (`z1`) instead of inserting between existing migrations
+- verified upgrade paths: fresh database, v0.7.0-beta (`z1` head) → fixed v0.8.0, and `8e18` intermediate → head
+- added Hard Control #9 to AGENTS.md: NEVER reorder existing Alembic migrations
+- recorded full incident report in AGENTS.md with root cause, fix, and prevention rules
+
 ## Post-beta note
 
 - Reconciliation is intentionally post-beta because it depends on bank integration / statement ingestion (import/OCR). See [ROADMAP.md](/home/ubuntu/dosh/docs/ROADMAP.md).

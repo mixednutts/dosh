@@ -4,7 +4,53 @@ This document captures the key product and implementation changes made during re
 
 It is intended to complement [README.md](/home/ubuntu/dosh/README.md), not replace it.
 
-## Latest Session: AI Insights Implementation (0.7.0-beta) (2026-04-26)
+## Latest Session: Critical Fix — Migration Chain Reordering + Security Vulnerabilities (0.8.1-beta) (2026-04-26)
+
+### What changed
+
+- **Fixed critical production startup failure** caused by Alembic migration chain reordering in v0.8.0-beta.
+  - Root cause: the v0.8.0-beta commit swapped `down_revision` pointers between two existing migrations (`8e182dad69ad` and `z1_drop_legacy_transaction_tables`), breaking upgrade for databases already at v0.7.0-beta.
+  - Fix: restored original `down_revision` values — `8e182dad69ad` → `fb246c4482b7`, `z1_drop_legacy_transaction_tables` → `8e182dad69ad`.
+  - New migration `5a87833110e0` now correctly appends to original head (`z1`) instead of inserting between existing migrations.
+  - Verified upgrade paths: fresh database, v0.7.0-beta (`z1` head) → fixed v0.8.0, and `8e18` intermediate → head.
+  - Added **Hard Control #9** to AGENTS.md: NEVER reorder existing Alembic migrations.
+
+- **Fixed SonarQube security vulnerabilities** introduced by v0.8.0-beta AI Insights feature.
+  - `python:S2053` (CRITICAL): replaced hardcoded predictable salt `b"dosh-static-salt-v1"` in `encryption.py` with random 16-byte salt per encryption via `secrets.token_bytes()`.
+  - `pythonsecurity:S5144` (MAJOR): added `backend/app/url_security.py` with `validate_external_url()` that blocks localhost, private/reserved IP ranges (10/8, 172.16/12, 192.168/16, etc.), IPv6 loopback, file/ftp schemes, and `.local` domains.
+  - Applied URL validation in both `ai_insights.py` service and `routers/ai_insights.py` verify-key endpoint before HTTP requests.
+  - Added backward-compatible legacy ciphertext fallback in `decrypt_value()` so existing encrypted API keys continue to decrypt.
+
+### Testing
+
+- Full backend regression suite: **296 passed**, 0 regressions introduced.
+- Added `backend/tests/test_url_security.py` (13 tests): public URL allowance, localhost rejection, private IPv4 ranges, IPv6 loopback, scheme validation, empty URL, local domain patterns.
+- Added 5 tests to `backend/tests/test_ai_insights.py`: random salt uniqueness, legacy ciphertext backward compatibility, verify-key rejects localhost/private-IP/file-scheme URLs, generate_insight rejects malicious budget `ai_base_url`.
+
+### Decisions preserved
+
+- Alembic migrations are append-only. Once committed and deployed, a migration's position in the chain is immutable.
+- New migrations MUST only append to the current head. Never modify `down_revision` on existing migrations.
+- Encryption salt must be unpredictable per operation. The salt is prepended to ciphertext (not secret) so decryption can recover it.
+- Legacy ciphertext fallback is acceptable because the AI Insights feature is new and encrypted key volume is low; future sessions should remove legacy fallback once all known ciphertexts have been re-encrypted.
+- SSRF prevention is defense-in-depth: URL validation happens at the service layer (`generate_insight`) AND the router layer (`verify_ai_key`).
+
+### Files touched
+
+- `backend/alembic/versions/8e182dad69ad_add_carry_forward_applied_to_.py`
+- `backend/alembic/versions/z1_drop_legacy_transaction_tables.py`
+- `backend/alembic/versions/5a87833110e0_add_ai_insights_settings.py`
+- `backend/app/encryption.py`
+- `backend/app/url_security.py` (new)
+- `backend/app/ai_insights.py`
+- `backend/app/routers/ai_insights.py`
+- `backend/tests/test_ai_insights.py`
+- `backend/tests/test_url_security.py` (new)
+- `AGENTS.md`
+
+---
+
+## Session: AI Insights Implementation (0.8.0-beta) (2026-04-26)
 
 ### What changed
 

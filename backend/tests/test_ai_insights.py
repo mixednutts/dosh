@@ -51,6 +51,41 @@ class TestEncryption:
         monkeypatch.setattr(encryption, "_ENCRYPTION_KEY", "a-very-long-secret-key-32-chars!!")
         assert encryption.decrypt_value(None) is None
 
+    def test_encrypt_value_uses_random_salt(self, monkeypatch):
+        monkeypatch.setattr(encryption, "_ENCRYPTION_KEY", "a-very-long-secret-key-32-chars!!")
+        plaintext = "my-api-key-12345"
+        ciphertext1 = encryption.encrypt_value(plaintext)
+        ciphertext2 = encryption.encrypt_value(plaintext)
+        assert ciphertext1 != ciphertext2
+        assert encryption.decrypt_value(ciphertext1) == plaintext
+        assert encryption.decrypt_value(ciphertext2) == plaintext
+
+    def test_decrypt_value_fallback_for_legacy_ciphertext(self, monkeypatch):
+        monkeypatch.setattr(encryption, "_ENCRYPTION_KEY", "a-very-long-secret-key-32-chars!!")
+        # Ciphertext produced with the old static salt "dosh-static-salt-v1"
+        legacy_ciphertext = (
+            "gAAAAABnK1j3i7mXqYpRtUvWxYz1234567890abcdef"
+            "ghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789ab=="
+        )
+        # Build a known-good legacy token manually to ensure the fallback works
+        import base64
+        from cryptography.fernet import Fernet
+        from cryptography.hazmat.primitives import hashes
+        from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+
+        kdf = PBKDF2HMAC(
+            algorithm=hashes.SHA256(),
+            length=32,
+            salt=b"dosh-static-salt-v1",
+            iterations=480_000,
+        )
+        key = base64.urlsafe_b64encode(kdf.derive("a-very-long-secret-key-32-chars!!".encode()))
+        legacy_token = Fernet(key).encrypt(b"legacy-secret-key")
+        legacy_ciphertext = base64.urlsafe_b64encode(legacy_token).decode()
+
+        decrypted = encryption.decrypt_value(legacy_ciphertext)
+        assert decrypted == "legacy-secret-key"
+
 
 # ── Payload Builder Tests ─────────────────────────────────────────────────────
 
@@ -241,6 +276,30 @@ class TestGeneratePeriodAIInsight:
         response = client.post("/api/budgets/99999/periods/1/ai-insight")
         assert response.status_code == 404
 
+    def test_generate_insight_rejects_localhost_base_url(self, client, db_session, monkeypatch):
+        monkeypatch.setattr(encryption, "_ENCRYPTION_KEY", "a-very-long-secret-key-32-chars!!")
+        setup = create_minimum_budget_setup(db_session)
+        budget = setup["budget"]
+        budget.ai_insights_enabled = True
+        budget.ai_provider = "openai_compatible"
+        budget.ai_base_url = "http://localhost:11434/v1"
+        budget.ai_custom_model = "llama2"
+        budget.ai_api_key_encrypted = encryption.encrypt_value("sk-test-key")
+        db_session.commit()
+
+        from app.time_utils import utc_now
+        startdate = utc_now().replace(hour=0, minute=0, second=0, microsecond=0)
+        gen_response = client.post(
+            f"/api/budgets/{budget.budgetid}/periods/generate",
+            json={"budgetid": budget.budgetid, "startdate": iso_date(startdate), "count": 1},
+        )
+        assert gen_response.status_code == 201
+        period_id = gen_response.json()["finperiodid"]
+
+        response = client.post(f"/api/budgets/{budget.budgetid}/periods/{period_id}/ai-insight")
+        assert response.status_code == 400
+        assert "Invalid AI provider URL" in response.json()["detail"]
+
     def test_generate_insight_with_mocked_llm(self, client, db_session, monkeypatch):
         monkeypatch.setattr(encryption, "_ENCRYPTION_KEY", "a-very-long-secret-key-32-chars!!")
         setup = create_minimum_budget_setup(db_session)
@@ -347,6 +406,42 @@ class TestVerifyAIKey:
         assert response.status_code == 402
         detail = response.json()["detail"]
         assert "Invalid API key" in detail or "Missing Authentication" in detail
+
+    def test_verify_key_rejects_localhost_url(self, client, db_session, monkeypatch):
+        monkeypatch.setattr(encryption, "_ENCRYPTION_KEY", "a-very-long-secret-key-32-chars!!")
+        setup = create_minimum_budget_setup(db_session)
+        budget = setup["budget"]
+
+        response = client.post(
+            f"/api/budgets/{budget.budgetid}/ai-insight/verify-key",
+            json={"api_key": "sk-test", "provider": "openai_compatible", "base_url": "http://localhost:11434/v1"},
+        )
+        assert response.status_code == 400
+        assert "Invalid AI provider URL" in response.json()["detail"]
+
+    def test_verify_key_rejects_private_ip_url(self, client, db_session, monkeypatch):
+        monkeypatch.setattr(encryption, "_ENCRYPTION_KEY", "a-very-long-secret-key-32-chars!!")
+        setup = create_minimum_budget_setup(db_session)
+        budget = setup["budget"]
+
+        response = client.post(
+            f"/api/budgets/{budget.budgetid}/ai-insight/verify-key",
+            json={"api_key": "sk-test", "provider": "openai_compatible", "base_url": "https://192.168.1.10/v1"},
+        )
+        assert response.status_code == 400
+        assert "Invalid AI provider URL" in response.json()["detail"]
+
+    def test_verify_key_rejects_file_scheme(self, client, db_session, monkeypatch):
+        monkeypatch.setattr(encryption, "_ENCRYPTION_KEY", "a-very-long-secret-key-32-chars!!")
+        setup = create_minimum_budget_setup(db_session)
+        budget = setup["budget"]
+
+        response = client.post(
+            f"/api/budgets/{budget.budgetid}/ai-insight/verify-key",
+            json={"api_key": "sk-test", "provider": "openai_compatible", "base_url": "file:///etc/passwd"},
+        )
+        assert response.status_code == 400
+        assert "Invalid AI provider URL" in response.json()["detail"]
 
 
 # ── Budget Update Encryption Tests ────────────────────────────────────────────

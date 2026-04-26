@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 0.8.1-beta | released | 2026-04-26
+
+### Fixed
+
+- Fixed a critical issue that prevented the app from starting when updating from version 0.7.0-beta to 0.8.0-beta. The database migration chain was incorrectly reordered, causing a "duplicate column name" error during startup. Updates now proceed smoothly.
+- Fixed a security issue where API keys for AI Insights were encrypted with a predictable salt. Encryption now uses a random salt for each key, improving protection of stored credentials.
+- Fixed a security issue where the AI Insights feature could send requests to unintended internal network addresses. The app now validates provider URLs and blocks requests to local addresses, private networks, and non-standard protocols.
+
 ## 0.8.0-beta | released | 2026-04-26
 
 ### Added

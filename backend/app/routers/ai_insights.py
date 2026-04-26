@@ -12,6 +12,7 @@ from ..api_docs import DbSession, error_responses
 from ..encryption import decrypt_value, encryption_ready
 from ..models import Budget
 from ..schemas import PeriodDetailOut
+from ..url_security import UnsafeUrlError, validate_external_url
 
 logger = logging.getLogger(__name__)
 
@@ -133,6 +134,11 @@ def verify_ai_key(
 
     if not test_base_url:
         raise HTTPException(400, "AI provider base URL is not configured")
+
+    try:
+        validate_external_url(test_base_url)
+    except UnsafeUrlError as exc:
+        raise HTTPException(400, f"Invalid AI provider URL: {exc}") from exc
 
     import httpx
 
