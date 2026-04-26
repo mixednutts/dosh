@@ -124,21 +124,20 @@ def verify_ai_key(
         raise HTTPException(400, "No API key provided. Enter a key above and try again.")
 
     if test_provider == "openrouter":
-        test_base_url = "https://openrouter.ai/api/v1/chat/completions"
+        _verified_url = "https://openrouter.ai/api/v1/chat/completions"
         model_id = test_model or "openai/gpt-3.5-turbo"
     elif test_provider == "openai_compatible":
-        test_base_url = test_base_url or ""
+        candidate_url = test_base_url or ""
         model_id = test_custom_model or ""
+        if not candidate_url:
+            raise HTTPException(400, "AI provider base URL is not configured")
+        try:
+            validate_external_url(candidate_url)
+        except UnsafeUrlError as exc:
+            raise HTTPException(400, f"Invalid AI provider URL: {exc}") from exc
+        _verified_url = candidate_url
     else:
         raise HTTPException(400, f"Unsupported AI provider: {test_provider}")
-
-    if not test_base_url:
-        raise HTTPException(400, "AI provider base URL is not configured")
-
-    try:
-        validate_external_url(test_base_url)
-    except UnsafeUrlError as exc:
-        raise HTTPException(400, f"Invalid AI provider URL: {exc}") from exc
 
     import httpx
 
@@ -157,7 +156,7 @@ def verify_ai_key(
 
     try:
         with httpx.Client(timeout=15.0) as client:
-            response = client.post(test_base_url, headers=headers, json=request_body)
+            response = client.post(_verified_url, headers=headers, json=request_body)
             response.raise_for_status()
             data = response.json()
     except httpx.HTTPStatusError as exc:

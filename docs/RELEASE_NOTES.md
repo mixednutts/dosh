@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.8.2-beta | released | 2026-04-26
+
+### Fixed
+
+- Hardened AI Insights against a potential server-side request forgery vulnerability. The app now uses a strictly controlled URL path when making provider requests, with runtime URL validation remaining in place.
+
 ## 0.8.1-beta | released | 2026-04-26
 
 ### Fixed

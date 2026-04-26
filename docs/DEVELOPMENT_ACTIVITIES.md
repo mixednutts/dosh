@@ -253,6 +253,18 @@ Activities:
 - added 13 URL security tests and 5 encryption/SSRF tests in `test_url_security.py` and `test_ai_insights.py`
 - deliverable: `url_security.py`, `test_url_security.py`, updated `encryption.py`, `ai_insights.py`, `routers/ai_insights.py`
 
+#### Activity Group: SSRF Taint-Analysis Hardening (SonarQube S5144 follow-up)
+
+Status:
+- `Completed` (2026-04-26)
+
+Activities:
+- restructured `verify_ai_key()` in `backend/app/routers/ai_insights.py` to use `_verified_url` — hardcoded for openrouter, validated-then-assigned for openai_compatible — breaking the taint chain to `httpx.post()`
+- restructured `generate_insight()` in `backend/app/ai_insights.py` with same `_verified_url` pattern
+- runtime SSRF protection via `validate_external_url()` remains unchanged
+- no new tests needed — existing SSRF tests in `test_ai_insights.py` and `test_url_security.py` continue to cover the behavior
+- version bump: `0.8.1-beta` → `0.8.2-beta`
+
 #### Activity Group: Migration Chain Reordering Incident (v0.8.0-beta)
 
 Status:
