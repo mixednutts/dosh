@@ -465,6 +465,35 @@ Maintenance notes:
 - should not become the primary lifecycle source of truth if lifecycle rules are owned elsewhere
 - archived once AI Insights implementation is complete
 
+### DIRECT_INVESTMENT_INCOME_SURPLUS_FIX_PLAN.md
+
+Document:
+
+- [DIRECT_INVESTMENT_INCOME_SURPLUS_FIX_PLAN.md](/home/ubuntu/dosh/docs/plans/DIRECT_INVESTMENT_INCOME_SURPLUS_FIX_PLAN.md)
+
+Document type:
+
+- domain or workflow plan
+
+Primary purpose:
+
+- preserve the implemented plan decisions for excluding direct-to-investment income from surplus calculations
+
+Primary source-of-truth scope:
+
+- direct-to-investment income identification rules (`linked_account` matching `linked_account_desc`)
+- surplus formula adjustment semantics across backend and frontend
+- generation logic changes for `auto_add_surplus_to_investment`
+
+Key relationships:
+
+- informs surplus-calculation behavior in [CHANGES.md](/home/ubuntu/dosh/docs/CHANGES.md) and [AGENTS.md](/home/ubuntu/dosh/AGENTS.md)
+- referenced by [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) for regression test coverage expectations
+
+Maintenance notes:
+
+- should remain focused on the direct-to-investment surplus exclusion rule rather than becoming a general formula reference
+
 ### AI_INSIGHTS_IMPLEMENTATION_PLAN.md
 
 Document:

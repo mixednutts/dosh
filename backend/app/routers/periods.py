@@ -26,6 +26,8 @@ from ..cycle_constants import (
     WORKING,
 )
 from ..cycle_management import (
+    _direct_investment_income_for_period,
+    _direct_investment_income_from_types,
     assign_period_lifecycle_states,
     build_closeout_preview,
     close_cycle,
@@ -409,6 +411,24 @@ def _surplus_contribution_for_investment(investment: PeriodInvestment) -> Decima
     if remaining > Decimal("0.00"):
         return actual + remaining
     return actual
+
+
+def _direct_investment_income_for_rows(
+    incomes: list[PeriodIncome],
+    income_type_lookup: dict[str, str | None],
+    investment_accounts: set[str],
+) -> tuple[Decimal, Decimal, Decimal]:
+    """Return (budget_amount, actual_amount, surplus_budget_amount) of income routed directly to investment accounts."""
+    budget_total = Decimal("0.00")
+    actual_total = Decimal("0.00")
+    surplus_total = Decimal("0.00")
+    for inc in incomes:
+        linked_account = income_type_lookup.get(inc.incomedesc)
+        if linked_account in investment_accounts:
+            budget_total += Decimal(str(inc.budgetamount or 0))
+            actual_total += Decimal(str(inc.actualamount or 0))
+            surplus_total += _surplus_contribution_for_income(inc)
+    return budget_total, actual_total, surplus_total
 
 
 def _serialize_export_value(value):
@@ -871,7 +891,12 @@ def generate_period(budgetid: int, payload: PeriodGenerateRequest, db: DbSession
 
         _populate_period_balances(period, budgetid, balance_types, prev_period, db)
 
-        projected_period_surplus = sum((Decimal(str(it.amount)) for it in income_types), Decimal("0.00")) - projected_expense_budget
+        direct_investment_income = _direct_investment_income_from_types(income_types, investment_items)
+        projected_period_surplus = (
+            sum((Decimal(str(it.amount)) for it in income_types), Decimal("0.00"))
+            - direct_investment_income
+            - projected_expense_budget
+        )
         auto_surplus_amount = projected_period_surplus if projected_period_surplus > Decimal("0.00") else Decimal("0.00")
 
         _populate_period_investments(
@@ -936,6 +961,19 @@ def list_period_summaries_for_budget(budgetid: int, db: DbSession):
         .filter(PeriodInvestment.finperiodid.in_(period_ids))
         .all()
     )
+    income_type_lookup = {
+        it.incomedesc: it.linked_account
+        for it in db.query(IncomeType).filter(IncomeType.budgetid == budgetid).all()
+    }
+    investment_accounts = {
+        row[0] for row in
+        db.query(InvestmentItem.linked_account_desc)
+        .filter(
+            InvestmentItem.budgetid == budgetid,
+            InvestmentItem.linked_account_desc.isnot(None),
+        )
+        .all()
+    }
     incomes_by_period: dict[int, list[PeriodIncome]] = defaultdict(list)
     expenses_by_period: dict[int, list[PeriodExpense]] = defaultdict(list)
     investments_by_period: dict[int, list[PeriodInvestment]] = defaultdict(list)
@@ -1034,6 +1072,9 @@ def list_period_summaries_for_budget(budgetid: int, db: DbSession):
         income_surplus_contrib = sum((_surplus_contribution_for_income(row) for row in incomes), Decimal("0.00"))
         expense_surplus_contrib = sum((_surplus_contribution_for_expense(row) for row in expenses), Decimal("0.00"))
         investment_surplus_contrib = sum((_surplus_contribution_for_investment(row) for row in investments), Decimal("0.00"))
+        _direct_inv_budget, _direct_inv_actual, direct_inv_surplus_budget = _direct_investment_income_for_rows(
+            incomes, income_type_lookup, investment_accounts
+        )
 
         summaries.append(PeriodSummaryOut(
             period=PeriodOut.model_validate(period),
@@ -1044,8 +1085,8 @@ def list_period_summaries_for_budget(budgetid: int, db: DbSession):
             expense_actual=expense_actual,
             investment_budget=investment_budget,
             investment_actual=investment_actual,
-            surplus_budget=income_surplus_contrib - expense_surplus_contrib - investment_surplus_contrib,
-            surplus_actual=income_actual - expense_actual - investment_actual,
+            surplus_budget=income_surplus_contrib - expense_surplus_contrib - investment_surplus_contrib - direct_inv_surplus_budget,
+            surplus_actual=income_actual - expense_actual - investment_actual - _direct_inv_actual,
             projected_investment=projected_investment,
             can_delete=can_delete,
             delete_mode=delete_mode,

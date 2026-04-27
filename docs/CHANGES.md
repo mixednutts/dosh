@@ -4,6 +4,48 @@ This document captures the key product and implementation changes made during re
 
 It is intended to complement [README.md](/home/ubuntu/dosh/README.md), not replace it.
 
+## Latest Session: Direct-to-Investment Income Surplus Fix (0.8.4-beta) (2026-04-27)
+
+### What changed
+
+- **Fixed surplus calculations including direct-to-investment income.**
+  - Income routed directly to an investment/savings account (via `IncomeType.linked_account` matching `InvestmentItem.linked_account_desc`) was incorrectly counted as spendable surplus.
+  - This caused phantom carry-forward amounts at close-out and inflated surplus displays across the app.
+  - **Backend fix (`cycle_management.py`)**: Added `_direct_investment_income_for_period(period, db)` helper that sums income actuals for incomes linked to investment accounts. Updated `current_period_totals()` to subtract direct-to-investment amounts from both `surplus_actual` and `surplus_budget`. Updated `carry_forward_amount_for_period()` signature to accept `db`.
+  - **Backend fix (`routers/periods.py`)**: Updated `list_period_summaries_for_budget()` to compute `direct_investment_income` per period and subtract from `surplus_actual` / `surplus_budget`. Updated `_surplus_contribution_for_income()` to exclude direct-to-investment portion. Updated `generate_period()` so `auto_surplus_amount` excludes direct-to-investment income from projected surplus.
+  - **Backend fix (`ai_insights.py`)**: Updated `build_period_payload()` to subtract `direct_investment_income` from `surplus_actual`.
+  - **Frontend fix (`PeriodDetailPage.jsx`)**: Computes `directInvestmentIncome` from incomes where `linked_account` matches an investment `linked_account_desc`; subtracts from `surplusActual` and `budgetIncomeContribution`.
+  - **Frontend fix (`Dashboard.jsx`)**: Computes `directInvestmentIncome` and subtracts from `surplusActual` and `surplusBudget` in both summary cards and table blocks. **Also fixed pre-existing bug**: both blocks previously calculated `surplusActual = incomeActual - expenseActual` (missing `investmentBudget` subtraction); now correctly subtracts `investmentBudget` and `directInvestmentIncome`.
+
+### Testing
+
+- Full backend regression suite: **298 passed**, 0 regressions introduced.
+- Full frontend regression suite: **330 passed**, 0 regressions introduced.
+- Added `backend/tests/test_closeout_flow.py::test_closeout_excludes_direct_to_investment_income_from_surplus` verifying $0 carry-forward when $100 interest goes direct to a linked investment account and expenses match remaining spendable income.
+- Updated `frontend/src/__tests__/Dashboard.test.jsx` expected surplus values to reflect corrected formula.
+
+### Decisions preserved
+
+- Direct-to-investment income is treated as pre-allocated to investment, not spendable surplus. This aligns with the cash-flow reality: money that bypasses the transaction account and lands directly in a savings/investment account was never available to spend.
+- The fix applies consistently across close-out preview, period summaries, period detail, dashboard, AI insights payload, and auto-surplus generation logic.
+- The `carry_forward_amount_for_period()` signature change (adding `db` parameter) was propagated to all call sites including `build_closeout_preview()`.
+
+### Files touched
+
+- `backend/app/cycle_management.py`
+- `backend/app/routers/periods.py`
+- `backend/app/ai_insights.py`
+- `backend/tests/test_closeout_flow.py`
+- `frontend/src/pages/PeriodDetailPage.jsx`
+- `frontend/src/pages/Dashboard.jsx`
+- `frontend/src/__tests__/Dashboard.test.jsx`
+
+### Reference plan
+
+- [DIRECT_INVESTMENT_INCOME_SURPLUS_FIX_PLAN.md](/home/ubuntu/dosh/docs/plans/DIRECT_INVESTMENT_INCOME_SURPLUS_FIX_PLAN.md)
+
+---
+
 ## Latest Session: Critical Fix — Migration Chain Reordering + Security Vulnerabilities (0.8.1-beta) (2026-04-26)
 
 ### What changed

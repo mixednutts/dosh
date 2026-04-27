@@ -278,6 +278,19 @@ Activities:
 - added Hard Control #9 to AGENTS.md: NEVER reorder existing Alembic migrations
 - recorded full incident report in AGENTS.md with root cause, fix, and prevention rules
 
+#### Activity Group: Direct-to-Investment Income Surplus Fix
+
+Status:
+- `Completed` (2026-04-27)
+
+Activities:
+- fixed surplus calculations incorrectly including income routed directly to an investment/savings account (via `IncomeType.linked_account` matching `InvestmentItem.linked_account_desc`)
+- treated direct-to-investment income as pre-allocated to investment, excluding it from `surplus_actual` and `surplus_budget` across close-out preview, period summaries, period detail, dashboard, and AI insights payload
+- updated `auto_add_surplus_to_investment` generation logic so `auto_surplus_amount` excludes direct-to-investment income
+- fixed pre-existing Dashboard bug where `surplusActual` omitted `investmentBudget` subtraction
+- added regression test `test_closeout_excludes_direct_to_investment_income_from_surplus`
+- version bump: `0.8.3-beta` → `0.8.4-beta`
+
 #### Activity Group: Health Engine Current Period Date Boundary Fix
 
 Status:

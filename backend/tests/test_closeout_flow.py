@@ -6,7 +6,7 @@ from app.cycle_constants import CARRIED_FORWARD_DESC
 from app.models import FinancialPeriod, PeriodCloseoutSnapshot, PeriodIncome, InvestmentItem
 from app.time_utils import utc_now
 
-from .factories import create_minimum_budget_setup, generate_periods
+from .factories import create_income_type, create_minimum_budget_setup, generate_periods
 
 
 def test_closeout_preview_and_closeout_persist_snapshot_and_carry_forward(client, db_session):
@@ -138,3 +138,55 @@ def test_closeout_can_create_missing_next_cycle_when_requested(client, db_sessio
     assert len(payload) == 2
     assert sum(1 for period in payload if period["cycle_status"] == "ACTIVE") == 1
     assert sum(1 for period in payload if period["cycle_status"] == "CLOSED") == 1
+
+
+def test_closeout_excludes_direct_to_investment_income_from_surplus(client, db_session):
+    """Income routed directly to an investment account should not count as surplus."""
+    setup = create_minimum_budget_setup(db_session)
+    budget = setup["budget"]
+    emergency_fund = db_session.get(InvestmentItem, (budget.budgetid, "Emergency Fund"))
+    emergency_fund.linked_account_desc = "Savings Account"
+    emergency_fund.source_account_desc = "Main Account"
+    db_session.commit()
+
+    # Add interest income that goes straight to the investment-linked account
+    create_income_type(
+        db_session,
+        budgetid=budget.budgetid,
+        incomedesc="Interest",
+        amount=Decimal("100.00"),
+        linked_account="Savings Account",
+    )
+
+    periods = generate_periods(
+        client,
+        budgetid=budget.budgetid,
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
+        count=2,
+    )
+    active_period = next(period for period in periods if period["cycle_status"] == "ACTIVE")
+
+    # Salary covers rent exactly, interest goes to savings
+    client.patch(
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/income/Salary",
+        json={"actualamount": "2500.00"},
+    )
+    client.patch(
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/income/Interest",
+        json={"actualamount": "100.00"},
+    )
+    client.patch(
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/expense/Rent",
+        json={"actualamount": "2500.00"},
+    )
+
+    preview_response = client.get(
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/closeout-preview"
+    )
+    assert preview_response.status_code == 200, preview_response.text
+    preview_payload = preview_response.json()
+
+    # Without the fix this would be 100.00; with the fix it should be 0
+    assert Decimal(preview_payload["carry_forward_amount"]) == Decimal("0.00")
+    assert Decimal(preview_payload["totals"]["surplus_actual"]) == Decimal("0.00")
+    assert Decimal(preview_payload["totals"]["surplus_budget"]) == Decimal("0.00")

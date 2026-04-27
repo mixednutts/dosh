@@ -51,7 +51,14 @@ def build_period_payload(
     expense_actual = sum(_to_float(e.get("actualamount", 0)) for e in expenses)
     investment_budget = sum(_to_float(inv.get("budgeted_amount", 0)) for inv in investments)
     investment_actual = sum(_to_float(inv.get("actualamount", 0)) for inv in investments)
-    surplus_actual = income_actual - expense_actual - investment_actual
+    investment_accounts = {
+        inv.get("linked_account_desc") for inv in investments if inv.get("linked_account_desc")
+    }
+    direct_investment_income = sum(
+        _to_float(i.get("actualamount", 0)) for i in incomes
+        if i.get("linked_account") in investment_accounts
+    )
+    surplus_actual = income_actual - expense_actual - investment_actual - direct_investment_income
 
     payload: dict[str, Any] = {
         "budget": {

@@ -250,7 +250,19 @@ export default function PeriodDetailPage() {
   const totalInvestmentRemaining = investments.reduce((s, inv) => s + getPositiveRemainingValue(inv.remaining_amount), 0)
   const totalExpenseRemaining = expenses.reduce((s, e) => s + getPositiveRemainingValue(e.remaining_amount), 0)
 
-  const surplusActual = totalIncomeActual - totalExpenseActual - totalInvestmentActual
+  const investmentLinkedAccounts = new Set(
+    investments.map(inv => inv.linked_account_desc).filter(Boolean)
+  )
+  const directInvestmentIncomeActual = incomes.reduce((s, inc) => (
+    investmentLinkedAccounts.has(inc.linked_account) ? s + Number(inc.actualamount) : s
+  ), 0)
+  const directInvestmentIncomeBudget = incomes.reduce((s, inc) => (
+    investmentLinkedAccounts.has(inc.linked_account)
+      ? s + getIncomeSurplusContribution({ budgetAmount: inc.budgetamount, actualAmount: inc.actualamount })
+      : s
+  ), 0)
+
+  const surplusActual = totalIncomeActual - totalExpenseActual - totalInvestmentActual - directInvestmentIncomeActual
   const budgetIncomeContribution = incomes.reduce((s, income) => (
     s + getIncomeSurplusContribution({
       budgetAmount: income.budgetamount,
@@ -269,7 +281,7 @@ export default function PeriodDetailPage() {
       remainingAmount: investment.remaining_amount,
     })
   ), 0)
-  const surplusBudget = budgetIncomeContribution - budgetExpenseContribution - budgetInvestmentContribution
+  const surplusBudget = budgetIncomeContribution - budgetExpenseContribution - budgetInvestmentContribution - directInvestmentIncomeBudget
   const projectedInvestment = Number(data.projected_investment ?? 0)
   const filteredExpenses = expenses.filter(expense => expenseStatusFilter === 'all' || expense.status === expenseStatusFilter)
 

@@ -79,8 +79,18 @@ function PeriodMobileCard({ budget, period }) {
     expenseBudget = data.expenses.reduce((s, e) => s + Number(e.status === 'Paid' ? e.actualamount : e.budgetamount), 0)
     expenseActual = data.expenses.reduce((s, e) => s + Number(e.actualamount), 0)
     const investmentBudget = data.investments.reduce((s, inv) => s + Number(inv.budgeted_amount ?? 0), 0)
-    surplusBudget = incomeBudget - expenseBudget - investmentBudget
-    surplusActual = incomeActual - expenseActual
+    const investmentActual = data.investments.reduce((s, inv) => s + Number(inv.actualamount ?? 0), 0)
+    const investmentLinkedAccounts = new Set(
+      data.investments.map(inv => inv.linked_account_desc).filter(Boolean)
+    )
+    const directInvestmentIncomeBudget = data.incomes.reduce((s, i) => (
+      investmentLinkedAccounts.has(i.linked_account) ? s + Number(i.budgetamount) : s
+    ), 0)
+    const directInvestmentIncomeActual = data.incomes.reduce((s, i) => (
+      investmentLinkedAccounts.has(i.linked_account) ? s + Number(i.actualamount) : s
+    ), 0)
+    surplusBudget = incomeBudget - expenseBudget - investmentBudget - directInvestmentIncomeBudget
+    surplusActual = incomeActual - expenseActual - investmentActual - directInvestmentIncomeActual
   }
 
   const expenseTone = expenseActual <= expenseBudget ? 'text-success-700 dark:text-success-400' : 'text-red-600 dark:text-red-400'
@@ -222,8 +232,18 @@ function PeriodRow({ budget, period }) {
   const effectiveExpenseBudget = data ? data.expenses.reduce((s, e) => s + Number(e.status === 'Paid' ? e.actualamount : e.budgetamount), 0) : null
   const expenseActual = data ? data.expenses.reduce((s, e) => s + Number(e.actualamount), 0) : null
   const investmentBudget = data ? data.investments.reduce((s, inv) => s + Number(inv.budgeted_amount ?? 0), 0) : null
-  const surplusBudget = data ? incomeBudget - effectiveExpenseBudget - investmentBudget : null
-  const surplusActual = data ? incomeActual - expenseActual : null
+  const investmentActual = data ? data.investments.reduce((s, inv) => s + Number(inv.actualamount ?? 0), 0) : null
+  const investmentLinkedAccounts = data ? new Set(
+    data.investments.map(inv => inv.linked_account_desc).filter(Boolean)
+  ) : new Set()
+  const directInvestmentIncomeBudget = data ? data.incomes.reduce((s, i) => (
+    investmentLinkedAccounts.has(i.linked_account) ? s + Number(i.budgetamount) : s
+  ), 0) : null
+  const directInvestmentIncomeActual = data ? data.incomes.reduce((s, i) => (
+    investmentLinkedAccounts.has(i.linked_account) ? s + Number(i.actualamount) : s
+  ), 0) : null
+  const surplusBudget = data ? incomeBudget - effectiveExpenseBudget - investmentBudget - directInvestmentIncomeBudget : null
+  const surplusActual = data ? incomeActual - expenseActual - investmentActual - directInvestmentIncomeActual : null
 
   const cell = (val, cls = '') => loading
     ? <td className="table-cell text-right"><span className="inline-block w-16 h-4 rounded bg-gray-100 dark:bg-gray-800 animate-pulse" /></td>

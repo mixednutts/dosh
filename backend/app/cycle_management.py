@@ -114,7 +114,58 @@ def _quantize_money(value: Decimal) -> Decimal:
     return value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
-def current_period_totals(period: FinancialPeriod) -> dict[str, Decimal]:
+def _investment_linked_accounts(budgetid: int, db: Session) -> set[str]:
+    """Return the set of account descriptions linked to investment items for this budget."""
+    return {
+        row[0] for row in
+        db.query(InvestmentItem.linked_account_desc)
+        .filter(
+            InvestmentItem.budgetid == budgetid,
+            InvestmentItem.linked_account_desc.isnot(None),
+        )
+        .all()
+    }
+
+
+def _direct_investment_income_for_period(period: FinancialPeriod, db: Session) -> tuple[Decimal, Decimal, Decimal]:
+    """Return (budget_amount, actual_amount, surplus_budget_amount) of period income routed directly to investment accounts."""
+    inv_accounts = _investment_linked_accounts(period.budgetid, db)
+    if not inv_accounts:
+        return Decimal("0.00"), Decimal("0.00"), Decimal("0.00")
+
+    income_types = {
+        it.incomedesc: it.linked_account
+        for it in db.query(IncomeType).filter(IncomeType.budgetid == period.budgetid).all()
+    }
+
+    budget_total = Decimal("0.00")
+    actual_total = Decimal("0.00")
+    surplus_total = Decimal("0.00")
+    for inc in period.period_incomes:
+        if income_types.get(inc.incomedesc) in inv_accounts:
+            budget_total += _to_decimal(inc.budgetamount)
+            actual_total += _to_decimal(inc.actualamount)
+            actual = _to_decimal(inc.actualamount)
+            surplus_total += actual if actual else _to_decimal(inc.budgetamount)
+    return budget_total, actual_total, surplus_total
+
+
+def _direct_investment_income_from_types(
+    income_types: list[IncomeType],
+    investment_items: list[InvestmentItem],
+) -> Decimal:
+    """Return budgeted amount of income routed directly to investment accounts."""
+    inv_accounts = {
+        ii.linked_account_desc for ii in investment_items
+        if ii.linked_account_desc
+    }
+    return sum(
+        (Decimal(str(it.amount)) for it in income_types if it.linked_account in inv_accounts),
+        Decimal("0.00"),
+    )
+
+
+def current_period_totals(period: FinancialPeriod, db: Session) -> dict[str, Decimal]:
     """Calculate budget and actual totals for a period.
 
     surplus_budget mirrors the detail-page logic: income uses actual when activity
@@ -145,10 +196,13 @@ def current_period_totals(period: FinancialPeriod) -> dict[str, Decimal]:
         remaining = budget - actual
         return actual + remaining if remaining > Decimal("0.00") else actual
 
+    direct_inv_budget, direct_inv_actual, direct_inv_surplus_budget = _direct_investment_income_for_period(period, db)
+
     surplus_budget = (
         sum((_income_surplus(i) for i in period.period_incomes), Decimal("0"))
         - sum((_outflow_surplus(e) for e in period.period_expenses), Decimal("0"))
         - sum((_outflow_surplus(i, "budgeted_amount") for i in period.period_investments), Decimal("0"))
+        - direct_inv_surplus_budget
     )
 
     return {
@@ -159,12 +213,12 @@ def current_period_totals(period: FinancialPeriod) -> dict[str, Decimal]:
         "investment_budget": investment_budget,
         "investment_actual": investment_actual,
         "surplus_budget": surplus_budget,
-        "surplus_actual": income_actual - expense_actual - investment_actual,
+        "surplus_actual": income_actual - expense_actual - investment_actual - direct_inv_actual,
     }
 
 
-def carry_forward_amount_for_period(period: FinancialPeriod) -> Decimal:
-    totals = current_period_totals(period)
+def carry_forward_amount_for_period(period: FinancialPeriod, db: Session) -> Decimal:
+    totals = current_period_totals(period, db)
     return Decimal(str(totals["surplus_actual"])).quantize(Decimal("0.01"))
 
 
@@ -226,7 +280,7 @@ def _apply_carry_forward(period: FinancialPeriod, previous_period: FinancialPeri
             upsert_carried_forward_line(
                 period.finperiodid,
                 period.budgetid,
-                carry_forward_amount_for_period(previous_period),
+                carry_forward_amount_for_period(previous_period, db),
                 db,
             )
             return
@@ -383,7 +437,7 @@ def create_next_cycle(period: FinancialPeriod, budget: Budget, db: Session) -> F
 
 def build_closeout_preview(period: FinancialPeriod, budget: Budget, db: Session) -> dict:
     sync_period_state(period.finperiodid, db)
-    totals = current_period_totals(period)
+    totals = current_period_totals(period, db)
     next_period = next_period_for(period, db)
 
     # Compute health using the Budget Health Engine directly
@@ -422,7 +476,7 @@ def build_closeout_preview(period: FinancialPeriod, budget: Budget, db: Session)
     return {
         "period": period,
         "next_period": next_period,
-        "carry_forward_amount": carry_forward_amount_for_period(period),
+        "carry_forward_amount": carry_forward_amount_for_period(period, db),
         "totals": {key: str(value) for key, value in totals.items()},
         "health": health,
         "next_cycle_exists": next_period is not None,

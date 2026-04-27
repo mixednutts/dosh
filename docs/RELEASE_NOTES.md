@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## 0.8.4-beta | released | 2026-04-27
+
+### Fixed
+
+- Fixed surplus calculations incorrectly including income that is routed directly to an investment or savings account. Interest, dividends, or other income credited straight to a linked investment account is now excluded from `surplus_actual` and `surplus_budget`, and does not produce a carry-forward amount at close-out. This fixes cases where phantom surplus was carried forward even though the cash never entered the spendable pool.
+
+### Engineering
+
+- Fixed a pre-existing bug in the Dashboard surplus calculation where `investment_actual` was not being subtracted from `surplus_actual`.
+
 ## 0.8.3-beta | released | 2026-04-27
 
 ### Fixed
