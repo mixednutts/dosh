@@ -92,7 +92,7 @@ describe('BudgetHealthTab', () => {
       },
       {
         metric_key: 'revisions_on_paid_expenses',
-        name: 'Revisions made on Paid Expenses',
+        name: 'In Cycle Expense Revisions',
         description: 'How many times a revision was recorded for an expense.',
         scope: 'CURRENT_PERIOD',
         weight: 0.2,
@@ -147,7 +147,7 @@ describe('BudgetHealthTab', () => {
     expect(screen.getByText('Budget vs Actual (Amount)')).toBeTruthy()
     expect(screen.getByText('Budget vs Actual (Lines)')).toBeTruthy()
     expect(screen.getByText('In Cycle Budget Adjustments')).toBeTruthy()
-    expect(screen.getByText('Revisions made on Paid Expenses')).toBeTruthy()
+    expect(screen.getByText('In Cycle Expense Revisions')).toBeTruthy()
   })
 
   it('allows toggling a metric on and off', async () => {

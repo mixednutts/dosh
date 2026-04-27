@@ -121,6 +121,99 @@ def test_budget_vs_actual_amount_executor_penalises_overrun(client, db_session) 
     assert result["status"] in ("Watch", "Needs Attention")
 
 
+def test_revisions_on_paid_expenses_counts_only_expense_revisions_after_start(client, db_session) -> None:
+    from tests.factories import create_budget
+    from app.models import FinancialPeriod, PeriodTransaction
+    from app.transaction_ledger import ENTRY_KIND_STATUS_CHANGE
+
+    budget = create_budget(db_session)
+    now = datetime.now(timezone.utc)
+    period = FinancialPeriod(
+        budgetid=budget.budgetid,
+        startdate=now - timedelta(days=10),
+        enddate=now + timedelta(days=20),
+        islocked=False,
+    )
+    db_session.add(period)
+    db_session.commit()
+
+    # Pre-cycle expense revision — should NOT count (before start)
+    db_session.add(PeriodTransaction(
+        finperiodid=period.finperiodid,
+        budgetid=budget.budgetid,
+        source="expense",
+        type="STATUS",
+        amount=Decimal("0.00"),
+        entrydate=now - timedelta(days=15),
+        entry_kind=ENTRY_KIND_STATUS_CHANGE,
+        system_reason="Line marked Revised",
+    ))
+
+    # Post-cycle expense revision — SHOULD count
+    db_session.add(PeriodTransaction(
+        finperiodid=period.finperiodid,
+        budgetid=budget.budgetid,
+        source="expense",
+        type="STATUS",
+        amount=Decimal("0.00"),
+        entrydate=now - timedelta(days=5),
+        entry_kind=ENTRY_KIND_STATUS_CHANGE,
+        system_reason="Line marked Revised",
+    ))
+
+    # Post-cycle expense marked Paid — should NOT count (not a revision)
+    db_session.add(PeriodTransaction(
+        finperiodid=period.finperiodid,
+        budgetid=budget.budgetid,
+        source="expense",
+        type="STATUS",
+        amount=Decimal("0.00"),
+        entrydate=now - timedelta(days=5),
+        entry_kind=ENTRY_KIND_STATUS_CHANGE,
+        system_reason="Line marked Paid",
+    ))
+
+    # Post-cycle income revision — should NOT count (wrong source)
+    db_session.add(PeriodTransaction(
+        finperiodid=period.finperiodid,
+        budgetid=budget.budgetid,
+        source="income",
+        type="STATUS",
+        amount=Decimal("0.00"),
+        entrydate=now - timedelta(days=5),
+        entry_kind=ENTRY_KIND_STATUS_CHANGE,
+        system_reason="Line marked Revised",
+    ))
+
+    # Post-cycle investment revision — should NOT count (wrong source)
+    db_session.add(PeriodTransaction(
+        finperiodid=period.finperiodid,
+        budgetid=budget.budgetid,
+        source="investment",
+        type="STATUS",
+        amount=Decimal("0.00"),
+        entrydate=now - timedelta(days=5),
+        entry_kind=ENTRY_KIND_STATUS_CHANGE,
+        system_reason="Line marked Revised",
+    ))
+
+    db_session.commit()
+
+    executor = get_executor("revisions_on_paid_expenses")
+    result = executor(
+        db=db_session,
+        budget=budget,
+        period=period,
+        parameters={"upper_tolerance_instances": 2},
+        scoring_sensitivity=50,
+        tone="factual",
+    )
+    assert result["score"] == 85  # 1 revision within tolerance of 2 → 100 - 15 = 85
+    assert result["status"] == "Strong"
+    evidence = result["evidence"]
+    assert any(ev["raw_value"] == 1 for ev in evidence)
+
+
 def test_evaluate_budget_health_returns_structure(client, db_session) -> None:
     from tests.factories import create_budget
     from app.health_engine_seed import create_default_matrix_for_budget

@@ -69,7 +69,9 @@ def test_backup_all_budgets(client, db_session):
 
     response = client.post("/api/budgets/backup")
     assert response.status_code == 200
-    assert response.headers["content-disposition"].startswith('attachment; filename="dosh-backup-all.json"')
+    cd = response.headers["content-disposition"]
+    assert cd.startswith('attachment; filename="dosh-backup-all-')
+    assert cd.endswith('.json"')
 
     data = json.loads(response.content)
     assert data["dosh_backup"] is True
@@ -85,7 +87,9 @@ def test_backup_single_budget(client, db_session):
 
     response = client.post("/api/budgets/backup", data={"budgetid": budget.budgetid})
     assert response.status_code == 200
-    assert f"dosh-backup-budget-{budget.budgetid}.json" in response.headers["content-disposition"]
+    cd = response.headers["content-disposition"]
+    assert f"dosh-backup-budget-{budget.budgetid}-" in cd
+    assert cd.endswith('.json"')
 
     data = json.loads(response.content)
     assert len(data["budgets"]) == 1

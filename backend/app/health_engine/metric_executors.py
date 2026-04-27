@@ -464,6 +464,9 @@ def _revisions_on_paid_expenses_executor(
         .filter(
             PeriodTransaction.finperiodid == period.finperiodid,
             PeriodTransaction.entry_kind == "status_change",
+            PeriodTransaction.source == "expense",
+            PeriodTransaction.system_reason == "Line marked Revised",
+            PeriodTransaction.entrydate > period.startdate,
         )
         .count()
     )
@@ -512,7 +515,7 @@ def _revisions_on_paid_expenses_executor(
             "raw_unit": "count",
             "limit": f"{upper_tolerance_instances}",
             "raw_limit": upper_tolerance_instances,
-            "detail": "Number of status change transactions (Paid → Revised) recorded in the current period.",
+            "detail": "Number of expense status change transactions (Paid → Revised) recorded after the period started.",
         },
     ]
 

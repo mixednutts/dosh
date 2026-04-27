@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### Fixed
+
+- Fixed the "In Cycle Expense Revisions" health metric incorrectly counting all expense status changes. It now counts only actual revision transactions (when an expense is marked Revised), and only those recorded after the period started.
+
+### Changed
+
+- Backup filenames now include a datetime stamp (`YYYYMMDDHH24MISS`) so repeated backups are unique and sortable.
+- Renamed the health metric from "Revisions made on Paid Expenses" to "In Cycle Expense Revisions" to better reflect what it measures.
+
 ## 0.8.6-beta | released | 2026-04-28
 
 ### Fixed

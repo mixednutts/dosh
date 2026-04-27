@@ -221,6 +221,19 @@ Activities:
 
 ### 6) Quality
 
+#### Activity Group: Backup and Health Metric Patch Fixes
+
+Status:
+- `Completed` (2026-04-28)
+
+Activities:
+- added datetime stamp (`YYYYMMDDHH24MISS`) to backup filenames so multiple backups are unique and sortable
+- fixed "Revisions made on Paid Expenses" health metric counting all expense status changes instead of only actual revisions
+- metric now filters by `system_reason = "Line marked Revised"`, `source = "expense"`, and `entrydate > period.startdate`
+- renamed metric to "In Cycle Expense Revisions" to better reflect what it measures
+- updated `system_metrics.py` name/description, frontend tests, and `BUDGET_HEALTH_METRIC_LIBRARY.md`
+- deliverable: `budgets.py` backup router, `metric_executors.py`, `system_metrics.py`, `test_backup_restore.py`, `test_health_engine.py`
+
 #### Activity Group: SonarQube Coverage Gate Remediation
 
 Status:

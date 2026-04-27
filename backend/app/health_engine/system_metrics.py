@@ -52,8 +52,8 @@ SYSTEM_METRICS = {
         "default_display_order": 4,
     },
     "revisions_on_paid_expenses": {
-        "name": "Revisions made on Paid Expenses",
-        "description": "How many times a revision was recorded for an expense.",
+        "name": "In Cycle Expense Revisions",
+        "description": "Number of expense revision transactions recorded after the period started.",
         "scope": "CURRENT_PERIOD",
         "default_parameters": {"upper_tolerance_instances": 2},
         "default_weight": Decimal("0.20"),

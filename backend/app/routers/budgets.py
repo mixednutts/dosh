@@ -133,15 +133,17 @@ def backup_budgets(
     budgetid: Annotated[int | None, Form()] = None,
 ):
     """Download a JSON backup of one or all budgets."""
+    from datetime import datetime, timezone
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
     if budgetid is not None:
         budget = db.get(Budget, budgetid)
         if not budget:
             raise HTTPException(404, "Budget not found")
         budgets = [budget]
-        filename = f"dosh-backup-budget-{budgetid}.json"
+        filename = f"dosh-backup-budget-{budgetid}-{timestamp}.json"
     else:
         budgets = db.query(Budget).all()
-        filename = "dosh-backup-all.json"
+        filename = f"dosh-backup-all-{timestamp}.json"
 
     payload = build_backup_payload(budgets, db)
     content = json.dumps(payload, indent=2)

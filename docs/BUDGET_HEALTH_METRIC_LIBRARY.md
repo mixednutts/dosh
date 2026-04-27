@@ -140,15 +140,15 @@ The per-budget items store tunable `weight`, `scoring_sensitivity`, `is_enabled`
 
 ---
 
-### `revisions_on_paid_expenses` — Revisions made on Paid Expenses
+### `revisions_on_paid_expenses` — In Cycle Expense Revisions
 
 | Attribute | Value |
 |-----------|-------|
 | **Scope** | `CURRENT_PERIOD` |
-| **Description** | How many times a revision was recorded for an expense. |
+| **Description** | Number of expense revision transactions recorded after the period started. |
 
 **Calculation:**
-- Count `PeriodTransaction` rows where `entry_kind = "status_change"` in the current period.
+- Count `PeriodTransaction` rows where `entry_kind = "status_change"`, `source = "expense"`, `system_reason = "Line marked Revised"`, and `entrydate > period.startdate`.
 - Same scoring curve as In Cycle Budget Adjustments.
 - If `record_line_status_changes` is disabled, count is naturally zero.
 
