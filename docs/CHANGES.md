@@ -4,6 +4,73 @@ This document captures the key product and implementation changes made during re
 
 It is intended to complement [README.md](/home/ubuntu/dosh/README.md), not replace it.
 
+## Latest Session: Close-Out UX Polish and Remaining Calculation Consistency (0.8.6-beta) (2026-04-28)
+
+### What changed
+
+- **Removed score breakdown from close-out and health panels.**
+  - Deleted the `ScoreBreakdown` component and its usage inside `CurrentPeriodCheckPanel` and `BudgetHealthModal`.
+  - The metric cards and formula details already communicate the same information, making the score breakdown redundant.
+
+- **Reordered period detail layout.**
+  - Moved the budget cycle summary cards (Income Budget, Income Actual, Expense Budget, Expense Actual, Remaining Expenses, Projected Investment, Surplus) above the Close Out Details block.
+  - This puts the quantitative cycle summary before the qualitative close-out notes, AI insight, and health snapshot.
+
+- **Normalised heading style for Close Out Details.**
+  - Changed the "Close Out Details" heading from `text-xs uppercase tracking-wide text-gray-500` to `font-semibold text-gray-700 dark:text-gray-200 text-base` to match the "Income" section heading.
+
+- **Fixed expense status pill at exactly 100% budget usage.**
+  - `isNearLimit` was `rawPercent >= 90 && rawPercent <= 100`, causing the pill to render amber when actual exactly equalled budget.
+  - Changed `isNearLimit` to `rawPercent >= 90 && rawPercent < 100` and added explicit `isExact` handling (green tones) for `rawPercent === 100`.
+
+- **Fixed investment and income status pill colours for over-performance.**
+  - Income and investment `actual > budget` was treated as "over" (red) because `isOver = rawPercent > 100`.
+  - For income/investment, over-performance is good, so `isOver` is now `false` and `isExact` is `true` whenever `rawPercent >= 100`.
+  - This makes both the progress bar and the Paid pill render green when actual meets or exceeds budget.
+
+- **Fixed zero-budget expense lines showing green when actual > 0.**
+  - `rawPercent` is hard-coded to `0` when budget is `0` to avoid division-by-zero, which made `isOver` false and the pill background green.
+  - `isOver` for expenses now falls back to `actual > budget` when budget is `0`, so any spending on a zero-budget line correctly shows red.
+
+- **Fixed income total remaining to equal the sum of per-line remainings.**
+  - Footer remaining was `max(0, totalBudget - totalActual)`, which gave `0` when some lines were under-budget and others over-budget.
+  - Now `totalIncomeRemaining` is computed as the sum of `max(0, line.budget - line.actual)` for each income line, passed to `IncomeSection`, and rendered in both desktop and mobile footers.
+
+- **Fixed investment remaining to match income remaining logic.**
+  - Per-line investment remaining now uses `max(0, budgeted_amount - actualamount)` instead of the backend's `remaining_amount` (which could be negative).
+  - Total investment remaining is computed the same way in `PeriodDetailPage`.
+  - `handleMarkInvestmentPaid` now uses the clamped remaining, so over-budget investments can be marked paid directly without a confirmation modal.
+
+### Testing
+
+- Full backend regression suite: **298 passed**, 0 regressions introduced.
+- Full frontend regression suite: **334 passed**, 0 regressions introduced.
+- Added `IncomeSection.test.jsx` test verifying total remaining equals the sum of per-line clamped remainings.
+- Added `InvestmentSection.test.jsx` test verifying per-line remaining is clamped to zero and footer totals sum correctly.
+- Updated `PeriodDetailPage.test.jsx` over-budget investment test to expect direct paid marking (no modal), and added a new test confirming under-budget investments still require confirmation.
+
+### Decisions preserved
+
+- Remaining values for income and investment should never be negative; they represent how much more is needed to reach the budget target, not variance from target.
+- Total remaining must be the sum of per-line clamped remainings, not the clamped difference of totals, to avoid lines with over-performance masking lines with under-performance.
+- Status pill colours should reflect the semantic direction of each category: expense over-budget is bad (red), income/investment over-budget is good (green).
+- Zero-budget expenses with any actual spending are treated as over-budget.
+
+### Files touched
+
+- `frontend/src/pages/BudgetsPage.jsx`
+- `frontend/src/pages/PeriodDetailPage.jsx`
+- `frontend/src/components/period-sections/IncomeSection.jsx`
+- `frontend/src/components/period-sections/InvestmentSection.jsx`
+- `frontend/src/components/status/ProgressStatusPill.jsx`
+- `frontend/src/utils/periodCalculations.jsx`
+- `frontend/src/__tests__/IncomeSection.test.jsx`
+- `frontend/src/__tests__/InvestmentSection.test.jsx`
+- `frontend/src/__tests__/PeriodDetailPage.test.jsx`
+- `frontend/src/__tests__/periodCalculations.test.jsx`
+
+---
+
 ## Latest Session: Income Remaining Fix and Investment Transaction UX Hardening (0.8.5-beta) (2026-04-28)
 
 ### What changed

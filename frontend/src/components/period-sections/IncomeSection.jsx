@@ -23,6 +23,7 @@ export function IncomeSection({
   closed,
   totalIncomeBudget,
   totalIncomeActual,
+  totalIncomeRemaining,
   formatters,
   onAddIncome,
   onEditBudget,
@@ -143,7 +144,7 @@ export function IncomeSection({
       </div>
       <div className="flex items-center justify-between">
         <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Remaining</span>
-        <span className="text-sm text-success-600 dark:text-success-400">{fmt(Math.max(0, totalIncomeBudget - totalIncomeActual))}</span>
+        <span className="text-sm text-success-600 dark:text-success-400">{fmt(totalIncomeRemaining)}</span>
       </div>
     </div>
   )
@@ -277,7 +278,7 @@ export function IncomeSection({
               <td className="px-4 py-2 text-right text-success-700 dark:text-success-400 text-sm">{fmt(totalIncomeActual)}</td>
               <td className="px-4 py-2 text-right text-sm">
                 <span className="text-success-600 dark:text-success-400">
-                  {fmt(Math.max(0, totalIncomeBudget - totalIncomeActual))}
+                  {fmt(totalIncomeRemaining)}
                 </span>
               </td>
               <td colSpan={2} />
@@ -304,6 +305,7 @@ IncomeSection.propTypes = {
   closed: PropTypes.bool.isRequired,
   totalIncomeBudget: PropTypes.number.isRequired,
   totalIncomeActual: PropTypes.number.isRequired,
+  totalIncomeRemaining: PropTypes.number.isRequired,
   formatters: PropTypes.object.isRequired,
   onAddIncome: PropTypes.func.isRequired,
   onEditBudget: PropTypes.func.isRequired,

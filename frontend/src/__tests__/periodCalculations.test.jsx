@@ -128,6 +128,13 @@ describe('getProgressToneClasses', () => {
     const classes = getProgressToneClasses({ isOver: false, isNearLimit: false, status: 'Revised' })
     expect(classes.labelClass).toContain('text-amber-700')
   })
+
+  it('returns green tones when exactly at limit', () => {
+    const classes = getProgressToneClasses({ isOver: false, isExact: true, isNearLimit: false, status: 'Current' })
+    expect(classes.trackClass).toContain('bg-success-100')
+    expect(classes.fillClass).toContain('bg-success-500')
+    expect(classes.labelClass).toContain('text-success-700')
+  })
 })
 
 describe('getPeriodBudgetMutation', () => {

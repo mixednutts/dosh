@@ -2495,7 +2495,7 @@ describe('PeriodDetailPage', () => {
     expect(screen.queryByText('Include in')).toBeTruthy()
   })
 
-  it('requires confirmation before marking an over-budget investment as paid', async () => {
+  it('allows marking an over-budget investment as paid directly without confirmation', async () => {
     client.getBudget.mockResolvedValue({
       budgetid: 1,
       budgetowner: 'Alex',
@@ -2541,8 +2541,60 @@ describe('PeriodDetailPage', () => {
 
     fireEvent.click(await screen.findByText('Spent'))
 
+    // Over-budget investment has remaining = max(0, 100 - 140) = 0, so no confirmation modal
+    expect(screen.queryByText('Mark Investment as Paid?')).toBeNull()
+    await waitFor(() => {
+      expect(client.setPeriodInvestmentStatus).toHaveBeenCalledWith(1, 58, 'Emergency Fund', 'Paid', null)
+    })
+  })
+
+  it('requires confirmation before marking an under-budget investment as paid', async () => {
+    client.getBudget.mockResolvedValue({
+      budgetid: 1,
+      budgetowner: 'Alex',
+      description: 'Home Budget',
+      budget_frequency: 'Monthly',
+      allow_cycle_lock: true,
+    })
+    client.getPeriodDetail.mockResolvedValue({
+      period: {
+        finperiodid: 58,
+        budgetid: 1,
+        startdate: '2026-06-01T00:00:00',
+        enddate: '2026-06-30T00:00:00',
+        islocked: false,
+        cycle_status: 'ACTIVE',
+      },
+      incomes: [],
+      expenses: [],
+      investments: [
+        {
+          finperiodid: 58,
+          budgetid: 1,
+          investmentdesc: 'Emergency Fund',
+          budgeted_amount: '100.00',
+          actualamount: '60.00',
+          remaining_amount: '40.00',
+          linked_account_desc: 'Savings',
+          opening_value: '1000.00',
+          closing_value: '1060.00',
+          status: 'Current',
+          revision_comment: null,
+        },
+      ],
+      balances: [],
+      closeout_snapshot: null,
+    })
+    client.setPeriodInvestmentStatus.mockResolvedValue({})
+
+    renderWithProviders(<PeriodDetailPage />, {
+      route: '/budgets/1/periods/58',
+      path: '/budgets/:budgetId/periods/:periodId',
+    })
+
+    fireEvent.click(await screen.findByText('Spent'))
+
     expect(await screen.findByText('Mark Investment as Paid?')).toBeTruthy()
-    expect(screen.getByText(/This investment is \$40\.00 over budget\. Mark it as paid anyway\?/)).toBeTruthy()
     expect(screen.getByText(/Paid investments are locked until revised\./)).toBeTruthy()
 
     fireEvent.click(screen.getByText('Mark Paid'))

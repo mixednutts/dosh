@@ -15,6 +15,7 @@ describe('IncomeSection', () => {
     closed: false,
     totalIncomeBudget: 3000,
     totalIncomeActual: 3200,
+    totalIncomeRemaining: 0,
     formatters,
     onAddIncome: jest.fn(),
     onEditBudget: jest.fn(),
@@ -145,6 +146,33 @@ describe('IncomeSection', () => {
     expect(screen.getByText('$3000.00')).toBeTruthy()
     expect(screen.getByText('$3200.00')).toBeTruthy()
     expect(screen.getAllByText('$0.00').length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('sums total remaining from per-line clamped remainings, not from totals diff', () => {
+    // Two lines: one under-budget (100 remaining) and one over-budget (0 remaining)
+    const mixedIncomes = [
+      { incomedesc: 'Salary', budgetamount: 1000, actualamount: 900, status: 'Current', linked_account: 'Main' },
+      { incomedesc: 'Bonus', budgetamount: 500, actualamount: 700, status: 'Current', linked_account: 'Main' },
+    ]
+    // totalIncomeBudget = 1500, totalIncomeActual = 1600
+    // Old logic: max(0, 1500 - 1600) = 0
+    // New logic: max(0, 1000-900) + max(0, 500-700) = 100 + 0 = 100
+    renderWithProviders(
+      <IncomeSection
+        {...baseProps}
+        incomes={mixedIncomes}
+        totalIncomeBudget={1500}
+        totalIncomeActual={1600}
+        totalIncomeRemaining={100}
+      />,
+    )
+
+    expect(screen.getByText('Total Income')).toBeTruthy()
+    expect(screen.getByText('$1500.00')).toBeTruthy()
+    expect(screen.getByText('$1600.00')).toBeTruthy()
+    // Total remaining should be $100 (sum of per-line clamped remainings)
+    const remainingCells = screen.getAllByText('$100.00')
+    expect(remainingCells.length).toBeGreaterThanOrEqual(1)
   })
 
   it('disables transaction buttons for paid income', () => {

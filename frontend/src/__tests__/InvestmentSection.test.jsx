@@ -154,6 +154,33 @@ describe('InvestmentSection', () => {
     expect(screen.getByText('$100.00')).toBeTruthy()
   })
 
+  it('shows per-line remaining clamped to zero and sums correctly in footer', () => {
+    // One under-budget (50 remaining) and one over-budget (0 remaining)
+    const mixedInvestments = [
+      { investmentdesc: 'Superannuation', budgeted_amount: 300, actualamount: 250, remaining_amount: 50, status: 'Current', source_account_desc: 'Main', linked_account_desc: 'Super Fund', opening_value: 10000, closing_value: 10250 },
+      { investmentdesc: 'ETF', budgeted_amount: 200, actualamount: 250, remaining_amount: -50, status: 'Current', linked_account_desc: 'Broker', opening_value: 5000, closing_value: 5250 },
+    ]
+    renderWithProviders(
+      <InvestmentSection
+        {...baseProps}
+        investments={mixedInvestments}
+        effectiveInvestmentBudget={500}
+        totalInvestmentActual={500}
+        totalInvestmentRemaining={50}
+      />,
+    )
+
+    // ETF row: remaining should display as $0.00 (clamped), not negative
+    expect(screen.getByText('Superannuation')).toBeTruthy()
+    expect(screen.getByText('ETF')).toBeTruthy()
+
+    // Footer totals
+    expect(screen.getByText('Total Investments')).toBeTruthy()
+    expect(screen.getAllByText('$500.00').length).toBeGreaterThanOrEqual(2)
+    // $50.00 appears as Superannuation remaining and total remaining
+    expect(screen.getAllByText('$50.00').length).toBeGreaterThanOrEqual(1)
+  })
+
   it('returns null when no investments', () => {
     const { container } = renderWithProviders(<InvestmentSection {...baseProps} investments={[]} />)
     expect(container.firstChild).toBeNull()

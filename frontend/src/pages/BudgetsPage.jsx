@@ -919,39 +919,6 @@ MetricCard.propTypes = {
   }).isRequired,
 }
 
-function ScoreBreakdown({ score, metrics, label }) {
-  const [open, setOpen] = useState(false)
-  return (
-    <div>
-      <button
-        type="button"
-        onClick={() => setOpen(v => !v)}
-        className="text-xs font-medium text-dosh-700 hover:text-dosh-800 dark:text-dosh-300 dark:hover:text-dosh-200"
-      >
-        {open ? '[-] Hide score breakdown' : '[+] Score breakdown'}
-      </button>
-      {open && (
-        <div className="mt-2 space-y-1 rounded-md border border-dosh-100 bg-dosh-50/40 px-3 py-2 dark:border-dosh-900 dark:bg-dosh-950/20">
-          <p className="text-xs font-semibold text-gray-700 dark:text-gray-200">{label} — {score}</p>
-          <div className="space-y-1">
-            {metrics.map(m => (
-              <p key={m.key || m.name} className="text-xs text-gray-600 dark:text-gray-300">
-                {m.name}: {m.score} × {Math.round((m.weight || 0) * 100)}% = {m.weighted_contribution ?? (m.score * (m.weight || 0)).toFixed(1)} pts
-              </p>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-ScoreBreakdown.propTypes = {
-  score: PropTypes.number.isRequired,
-  metrics: PropTypes.arrayOf(PropTypes.object).isRequired,
-  label: PropTypes.string.isRequired,
-}
-
 export function CurrentPeriodCheckPanel({ assessment, evaluatedAt, showMetricCards = true, defaultMetricCardsOpen = true }) {
   const { formatDateTime, timezone } = useLocalisation()
   const metrics = assessment.metrics || []
@@ -967,7 +934,6 @@ export function CurrentPeriodCheckPanel({ assessment, evaluatedAt, showMetricCar
                 Evaluated {formatDateTime(evaluatedAt, 'medium')} {timezone}
               </p>
             )}
-            <ScoreBreakdown score={assessment.score} metrics={metrics} label="Current Period Check" />
           </div>
           <div className={`flex h-16 w-16 items-center justify-center rounded-full text-xl font-light shadow-sm ${healthCircleClass(assessment.status)}`}>
             {assessment.score}
@@ -1099,9 +1065,6 @@ function BudgetHealthModal({ budget, health, onClose }) {
               <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
                 Evaluated {formatDateTime(health.evaluated_at, 'medium')} {timezone}
               </p>
-              <div className="mt-2">
-                <ScoreBreakdown score={health.overall_score} metrics={health.pillars} label="Overall Budget Health" />
-              </div>
             </div>
           </div>
         </div>

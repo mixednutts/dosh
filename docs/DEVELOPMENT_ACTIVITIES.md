@@ -326,6 +326,25 @@ Activities:
 - prevented self-referential investment transactions by filtering the investment's own `linked_account_desc` out of the debit account selector in `InvestmentTxModal.jsx`
 - updated `test_investment_transactions.py` and `InvestmentItemsTab.test.jsx`
 
+#### Activity Group: Close-Out UX Polish and Remaining Calculation Consistency
+
+Status:
+- `Completed` (2026-04-28)
+
+Activities:
+- removed the collapsible score-breakdown section from `CurrentPeriodCheckPanel` and `BudgetHealthModal` because metric details already provide the same information
+- moved the budget cycle summary cards (Income Budget, Income Actual, Expense Budget, etc.) above the Close Out Details block on the period detail page for better information hierarchy
+- aligned the "Close Out Details" heading style with the "Income" section heading for visual consistency
+- fixed expense status pill showing amber at exactly 100% budget usage; now shows green when actual equals budget
+- fixed investment status pill showing positive/green variance when actual was below budget; now shows negative/red shortfall consistent with under-budget semantics
+- fixed zero-budget expense lines incorrectly showing a green paid pill when actual > 0; now correctly shows red
+- fixed income total remaining not matching the sum of per-line remaining values; total remaining now sums `max(0, budget - actual)` for each line
+- fixed investment per-line and total remaining to use the same clamped logic as income (`max(0, budget - actual)`) instead of displaying backend negative remainings
+- fixed income and investment status pills showing red when actual > budget; over-performance is now shown in green
+- over-budget investments can now be marked as paid directly without confirmation since remaining is clamped to zero
+- added tests verifying income and investment footer totals match the sum of per-line clamped remainings
+- version bump: `0.8.5-beta` → `0.8.6-beta`
+
 ## Post-beta note
 
 - Reconciliation is intentionally post-beta because it depends on bank integration / statement ingestion (import/OCR). See [ROADMAP.md](/home/ubuntu/dosh/docs/ROADMAP.md).

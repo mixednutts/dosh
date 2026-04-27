@@ -49,10 +49,10 @@ export function InvestmentSection({
       key: 'remaining_amount',
       label: 'Remaining',
       render: (_v, row) => {
-        const remaining = Number(row.remaining_amount ?? 0)
+        const remaining = Math.max(0, Number(row.budgeted_amount ?? 0) - Number(row.actualamount ?? 0))
         return row.status === 'Paid'
           ? <span className="font-medium text-success-600 dark:text-success-400">Paid</span>
-          : <span className={`font-medium ${remaining >= 0 ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'}`}>{fmt(remaining)}</span>
+          : <span className="font-medium text-success-600 dark:text-success-400">{fmt(remaining)}</span>
       },
     },
     {
@@ -147,7 +147,7 @@ export function InvestmentSection({
           </thead>
           <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
             {investments.map(inv => {
-              const remaining = Number(inv.remaining_amount ?? 0)
+              const remaining = Math.max(0, Number(inv.budgeted_amount ?? 0) - Number(inv.actualamount ?? 0))
               return (
                 <tr key={inv.investmentdesc} className="table-row">
                   <td className="table-cell font-medium text-left" colSpan={2}>{inv.investmentdesc}</td>
@@ -165,7 +165,7 @@ export function InvestmentSection({
                     {inv.status === 'Paid' ? (
                       <span className="font-medium text-success-600 dark:text-success-400">Paid</span>
                     ) : (
-                      <span className={`font-medium ${remaining >= 0 ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'}`}>
+                      <span className="font-medium text-success-600 dark:text-success-400">
                         {fmt(remaining)}
                       </span>
                     )}

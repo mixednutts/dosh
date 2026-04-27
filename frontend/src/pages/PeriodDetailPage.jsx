@@ -243,11 +243,12 @@ export default function PeriodDetailPage() {
   }
   const totalIncomeBudget    = incomes.reduce((s, i) => s + Number(i.budgetamount), 0)
   const totalIncomeActual    = incomes.reduce((s, i) => s + Number(i.actualamount), 0)
+  const totalIncomeRemaining = incomes.reduce((s, i) => s + Math.max(0, Number(i.budgetamount ?? 0) - Number(i.actualamount ?? 0)), 0)
   const effectiveExpenseBudget = expenses.reduce((s, e) => s + Number(e.budgetamount), 0)
   const totalExpenseActual   = expenses.reduce((s, e) => s + Number(e.actualamount), 0)
   const effectiveInvestmentBudget = investments.reduce((s, inv) => s + Number(inv.budgeted_amount ?? 0), 0)
   const totalInvestmentActual = investments.reduce((s, inv) => s + Number(inv.actualamount ?? 0), 0)
-  const totalInvestmentRemaining = investments.reduce((s, inv) => s + getPositiveRemainingValue(inv.remaining_amount), 0)
+  const totalInvestmentRemaining = investments.reduce((s, inv) => s + Math.max(0, Number(inv.budgeted_amount ?? 0) - Number(inv.actualamount ?? 0)), 0)
   const totalExpenseRemaining = expenses.reduce((s, e) => s + getPositiveRemainingValue(e.remaining_amount), 0)
 
   const investmentLinkedAccounts = new Set(
@@ -295,7 +296,7 @@ export default function PeriodDetailPage() {
   }
 
   const handleMarkInvestmentPaid = investment => {
-    const remaining = Number(investment.remaining_amount ?? 0)
+    const remaining = Math.max(0, Number(investment.budgeted_amount ?? 0) - Number(investment.actualamount ?? 0))
     if (remaining !== 0) {
       setConfirmPaidInvestmentModal({ investment })
       return
@@ -486,9 +487,28 @@ export default function PeriodDetailPage() {
         </Link>
       </div>
 
+      {/* Summary cards */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {[
+          { label: 'Income Budget',  value: totalIncomeBudget,  cls: 'text-gray-700 dark:text-gray-300' },
+          { label: 'Income Actual',  value: totalIncomeActual,  cls: 'text-success-700 dark:text-success-400' },
+          { label: 'Expense Budget', value: effectiveExpenseBudget, cls: 'text-gray-700 dark:text-gray-300' },
+          { label: 'Expense Actual', value: totalExpenseActual, cls: totalExpenseActual <= effectiveExpenseBudget ? 'text-success-700 dark:text-success-400' : 'text-red-700 dark:text-red-400' },
+          { label: 'Remaining Expenses', value: totalExpenseRemaining, cls: totalExpenseRemaining >= 0 ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400' },
+          { label: 'Projected Investment', value: projectedInvestment },
+          { label: 'Surplus (Budget)', value: surplusBudget },
+          { label: 'Surplus (Actual)', value: surplusActual },
+        ].map(({ label, value, cls }) => (
+          <div key={label} className="card px-4 py-3">
+            <p className="text-xs text-gray-500 dark:text-gray-400">{label}</p>
+            <p className={`text-lg font-bold ${cls || (value >= 0 ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400')}`}>{fmt(value)}</p>
+          </div>
+        ))}
+      </div>
+
       {closed && data.closeout_snapshot && (
         <div className="card p-4 space-y-3">
-          <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Close Out Details</p>
+          <p className="font-semibold text-gray-700 dark:text-gray-200 text-base">Close Out Details</p>
           {closeoutHealth && (
             <div className="card p-4">
               <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Budget Health</p>
@@ -518,31 +538,13 @@ export default function PeriodDetailPage() {
         </div>
       )}
 
-      {/* Summary cards */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {[
-          { label: 'Income Budget',  value: totalIncomeBudget,  cls: 'text-gray-700 dark:text-gray-300' },
-          { label: 'Income Actual',  value: totalIncomeActual,  cls: 'text-success-700 dark:text-success-400' },
-          { label: 'Expense Budget', value: effectiveExpenseBudget, cls: 'text-gray-700 dark:text-gray-300' },
-          { label: 'Expense Actual', value: totalExpenseActual, cls: totalExpenseActual <= effectiveExpenseBudget ? 'text-success-700 dark:text-success-400' : 'text-red-700 dark:text-red-400' },
-          { label: 'Remaining Expenses', value: totalExpenseRemaining, cls: totalExpenseRemaining >= 0 ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400' },
-          { label: 'Projected Investment', value: projectedInvestment },
-          { label: 'Surplus (Budget)', value: surplusBudget },
-          { label: 'Surplus (Actual)', value: surplusActual },
-        ].map(({ label, value, cls }) => (
-          <div key={label} className="card px-4 py-3">
-            <p className="text-xs text-gray-500 dark:text-gray-400">{label}</p>
-            <p className={`text-lg font-bold ${cls || (value >= 0 ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400')}`}>{fmt(value)}</p>
-          </div>
-        ))}
-      </div>
-
       <IncomeSection
         incomes={incomes}
         locked={locked}
         closed={closed}
         totalIncomeBudget={totalIncomeBudget}
         totalIncomeActual={totalIncomeActual}
+        totalIncomeRemaining={totalIncomeRemaining}
         formatters={formatters}
         onAddIncome={() => setShowAddIncome(true)}
         onEditBudget={(i) => setBudgetAdjustModal({ category: 'income', desc: i.incomedesc, budgetamount: i.budgetamount, title: i.incomedesc })}

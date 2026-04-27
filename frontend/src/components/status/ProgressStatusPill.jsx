@@ -7,8 +7,17 @@ export function ProgressStatusPill({ item, budgetAmount, actualAmount, remaining
   const remaining = Number(remainingAmount ?? 0)
   const rawPercent = budget > 0 ? (actual / budget) * 100 : 0
   const clampedPercent = Math.max(0, Math.min(rawPercent, 100))
-  const isOver = rawPercent > 100
-  const isNearLimit = rawPercent >= 90 && rawPercent <= 100
+  let isOver, isExact, isNearLimit
+  if (category === 'expense') {
+    isOver = budget > 0 ? rawPercent > 100 : actual > budget
+    isExact = rawPercent === 100
+    isNearLimit = rawPercent >= 90 && rawPercent < 100
+  } else {
+    // income / investment: over-performance (actual >= budget) is good → green
+    isOver = false
+    isExact = budget > 0 ? rawPercent >= 100 : actual > 0 && actual > budget
+    isNearLimit = rawPercent >= 90 && rawPercent < 100
+  }
   const revisionComment = item.revision_comment?.trim()
   const title = budget > 0
     ? `${formatters.fmtPercent(Math.round(rawPercent))} spent • ${formatters.fmt(actual)} of ${formatters.fmt(budget)} • Remaining ${formatters.fmt(remaining)}`
@@ -17,9 +26,11 @@ export function ProgressStatusPill({ item, budgetAmount, actualAmount, remaining
   if (status === 'Paid') {
     const paidCls = isOver
       ? 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/40 dark:text-red-300 dark:hover:bg-red-900/60'
-      : 'bg-dosh-100 text-dosh-700 hover:bg-dosh-200 dark:bg-dosh-900/40 dark:text-dosh-300 dark:hover:bg-dosh-900/60'
+      : isExact
+        ? 'bg-success-100 text-success-700 hover:bg-success-200 dark:bg-success-900/40 dark:text-success-300 dark:hover:bg-success-900/60'
+        : 'bg-dosh-100 text-dosh-700 hover:bg-dosh-200 dark:bg-dosh-900/40 dark:text-dosh-300 dark:hover:bg-dosh-900/60'
 
-    const displayValue = category === 'income'
+    const displayValue = category === 'income' || category === 'investment'
       ? actual - budget
       : budget - actual
 
@@ -48,7 +59,7 @@ export function ProgressStatusPill({ item, budgetAmount, actualAmount, remaining
     )
   }
 
-  const { trackClass, fillClass, labelClass } = getProgressToneClasses({ isOver, isNearLimit, status })
+  const { trackClass, fillClass, labelClass } = getProgressToneClasses({ isOver, isExact, isNearLimit, status })
   const revisionSuffix = revisionComment ? ` • Revision: ${revisionComment}` : ''
   const progressTitle = `${title}${revisionSuffix} • Click to mark Paid`
 

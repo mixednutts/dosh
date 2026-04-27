@@ -65,7 +65,7 @@ export function getOutflowSurplusContribution({
   return Number(actualAmount ?? 0) + getPositiveRemainingValue(remainingAmount)
 }
 
-export function getProgressToneClasses({ isOver, isNearLimit, status }) {
+export function getProgressToneClasses({ isOver, isExact = false, isNearLimit, status }) {
   let trackClass = 'bg-gray-200 dark:bg-gray-700'
   let fillClass = 'bg-dosh-500'
   let labelClass = 'text-gray-700 dark:text-gray-200'
@@ -74,6 +74,10 @@ export function getProgressToneClasses({ isOver, isNearLimit, status }) {
     trackClass = 'bg-red-100 dark:bg-red-900/30'
     fillClass = 'bg-red-500'
     labelClass = 'text-red-700 dark:text-red-300'
+  } else if (isExact) {
+    trackClass = 'bg-success-100 dark:bg-success-900/30'
+    fillClass = 'bg-success-500'
+    labelClass = 'text-success-700 dark:text-success-300'
   } else if (isNearLimit) {
     trackClass = 'bg-amber-100 dark:bg-amber-900/30'
     fillClass = 'bg-amber-500'

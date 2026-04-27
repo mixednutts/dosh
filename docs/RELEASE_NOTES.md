@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+## 0.8.6-beta | released | 2026-04-28
+
+### Fixed
+
+- Income and investment "Remaining" values now calculate correctly at the total level. The footer total matches the sum of each line's remaining value, so over-performing lines no longer hide under-performing lines in the total.
+- Investment remaining now behaves the same as income remaining: it shows how much more is needed to reach the budget target, and never displays a negative value.
+- Expense status pills now show green when you spend exactly your budgeted amount, instead of amber.
+- Income and investment status pills now show green when actual meets or exceeds budget, reflecting that earning or investing more than planned is a positive result.
+- Zero-budget expense lines that have actual spending now correctly show a red status pill, matching other over-budget expenses.
+
+### Changed
+
+- The budget cycle summary cards on the Budget Cycle Details page now appear above the Close Out Details section, making the key numbers easier to find.
+- The "Close Out Details" heading now uses the same style as the "Income" and "Expenses" section headings for a more consistent look.
+- Removed the collapsible score breakdown from the Close Out Details and Budget Health panels. The metric cards already communicate the same information in a clearer way.
+
 ## 0.8.5-beta | released | 2026-04-28
 
 ### Fixed
