@@ -304,7 +304,7 @@ export default function PeriodDetailPage() {
   }
 
   const handleMarkIncomePaid = income => {
-    const remaining = Number(income.actualamount ?? 0) - Number(income.budgetamount ?? 0)
+    const remaining = Math.max(0, Number(income.budgetamount ?? 0) - Number(income.actualamount ?? 0))
     if (remaining !== 0) {
       setConfirmPaidIncomeModal({ income })
       return

@@ -69,7 +69,7 @@ export function IncomeSection({
       key: 'remaining',
       label: 'Remaining',
       render: (_v, row) => {
-        const remaining = Number(row.actualamount) - Number(row.budgetamount)
+        const remaining = Math.max(0, Number(row.budgetamount) - Number(row.actualamount))
         return row.status === 'Paid'
           ? <span className="font-medium text-success-600 dark:text-success-400">Paid</span>
           : <span className="font-medium text-success-600 dark:text-success-400">{fmt(remaining)}</span>
@@ -143,7 +143,7 @@ export function IncomeSection({
       </div>
       <div className="flex items-center justify-between">
         <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Remaining</span>
-        <span className="text-sm text-success-600 dark:text-success-400">{fmt(totalIncomeActual - totalIncomeBudget)}</span>
+        <span className="text-sm text-success-600 dark:text-success-400">{fmt(Math.max(0, totalIncomeBudget - totalIncomeActual))}</span>
       </div>
     </div>
   )
@@ -188,7 +188,7 @@ export function IncomeSection({
               </tr>
             )}
             {incomes.map(i => {
-              const remaining = Number(i.actualamount) - Number(i.budgetamount)
+              const remaining = Math.max(0, Number(i.budgetamount) - Number(i.actualamount))
               const transfer = parseTransferIncome(i.incomedesc)
               return (
                 <tr key={i.incomedesc} className="table-row">
@@ -277,7 +277,7 @@ export function IncomeSection({
               <td className="px-4 py-2 text-right text-success-700 dark:text-success-400 text-sm">{fmt(totalIncomeActual)}</td>
               <td className="px-4 py-2 text-right text-sm">
                 <span className="text-success-600 dark:text-success-400">
-                  {fmt(totalIncomeActual - totalIncomeBudget)}
+                  {fmt(Math.max(0, totalIncomeBudget - totalIncomeActual))}
                 </span>
               </td>
               <td colSpan={2} />

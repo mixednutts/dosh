@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+## 0.8.5-beta | released | 2026-04-28
+
+### Fixed
+
+- Income "Remaining" values now display consistently with expense remaining: positive when actual is below budget, and zero when actual meets or exceeds budget. Previously the remaining column showed variance (negative when under budget, positive when over), which was confusing and inconsistent with the rest of the app.
+
+### Changed
+
+- The Add/Edit Investment modal in Budget Setup no longer shows a "Destination Account" field. This removes a source of confusion because the destination for investment contributions is implicit.
+- Investment transactions can no longer debit the same account they credit. The debit account dropdown now excludes the investment's own linked account, preventing accidental no-op transactions.
+
+### Engineering
+
+- Removed an obsolete backend validation rule that rejected investment transactions when the investment line had no default debit account configured. Since the transaction modal already lets users pick the debit account at transaction time, this rule was no longer valid.
+
 ## 0.8.4-beta | released | 2026-04-27
 
 ### Fixed

@@ -18,7 +18,7 @@ def test_info_endpoint_returns_app_version(client):
 
     assert response.status_code == 200
     assert response.json()["app"] == "Dosh"
-    assert response.json()["version"] == "0.8.4-beta"
+    assert response.json()["version"] == "0.8.5-beta"
 
 
 def test_release_notes_endpoint_returns_current_release(client, monkeypatch):
@@ -43,10 +43,10 @@ def test_release_notes_endpoint_returns_current_release(client, monkeypatch):
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["current_version"] == "0.8.4-beta"
+    assert payload["current_version"] == "0.8.5-beta"
     assert payload["update_available"] is False
     assert payload["newer_release_count"] == 0
-    assert payload["current_release"]["version"] == "0.8.4-beta"
+    assert payload["current_release"]["version"] == "0.8.5-beta"
 
 
 def test_generate_period_creates_expected_core_rows(client, db_session):

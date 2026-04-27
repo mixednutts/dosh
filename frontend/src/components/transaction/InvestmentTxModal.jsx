@@ -103,7 +103,7 @@ export function InvestmentTxModal({ periodId, budgetId, investmentdesc, openingV
       onDelete={txId => remove.mutate(txId)}
       onClose={onClose}
       totalValue={null}
-      accounts={balanceTypes.filter(bt => bt.active !== false)}
+      accounts={balanceTypes.filter(bt => bt.active !== false && bt.balancedesc !== destinationAccount)}
       selectedAccount={selectedAccount}
       setSelectedAccount={setSelectedAccount}
       sourceAccount={sourceAccount}

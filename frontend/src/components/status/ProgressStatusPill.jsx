@@ -134,7 +134,7 @@ export function IncomeStatusPill({ income, onMarkPaid, onRevise, formatters }) {
       item={income}
       budgetAmount={income.budgetamount}
       actualAmount={income.actualamount}
-      remainingAmount={income.actualamount - income.budgetamount}
+      remainingAmount={Math.max(0, Number(income.budgetamount ?? 0) - Number(income.actualamount ?? 0))}
       status={income.status}
       onMarkPaid={onMarkPaid}
       onRevise={onRevise}

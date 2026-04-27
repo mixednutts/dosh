@@ -61,16 +61,7 @@ function InvestmentForm({ initial = emptyForm, isEdit = false, onSubmit, onClose
         </select>
         <p className="text-xs text-gray-400 mt-1">Transactions will debit this account by default. You can override it when recording transactions.</p>
       </div>
-      <div>
-        <label htmlFor={`${formIdPrefix}-linked-account`} className="label">Destination Account</label>
-        <select id={`${formIdPrefix}-linked-account`} disabled={structureLocked} className="input" value={form.linked_account_desc} onChange={e => set('linked_account_desc', e.target.value)}>
-          <option value="">— none —</option>
-          {balanceTypes.map(bt => (
-            <option key={bt.balancedesc} value={bt.balancedesc}>{bt.balancedesc}{bt.balance_type ? ` (${getBalanceTypeLabel(bt.balance_type, accountNamingPreference)})` : ''}</option>
-          ))}
-        </select>
-        <p className="text-xs text-gray-400 mt-1">Contributions to this investment will be credited to this account balance.</p>
-      </div>
+
       <label htmlFor={`${formIdPrefix}-active`} className="flex items-center gap-2 text-sm cursor-pointer">
         <input id={`${formIdPrefix}-active`} disabled={structureLocked} type="checkbox" checked={form.active} onChange={e => set('active', e.target.checked)}
           className="rounded border-gray-300 dark:border-gray-600 text-dosh-600 focus:ring-dosh-500" />

@@ -71,7 +71,7 @@ ConfirmPaidInvestmentModal.propTypes = {
 }
 
 export function ConfirmPaidIncomeModal({ income, onConfirm, onClose, formatters }) {
-  const remaining = Number(income.actualamount ?? 0) - Number(income.budgetamount ?? 0)
+  const remaining = Math.max(0, Number(income.budgetamount ?? 0) - Number(income.actualamount ?? 0))
   return (
     <ConfirmPaidModal
       noun="income"

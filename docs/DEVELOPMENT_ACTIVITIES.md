@@ -303,6 +303,29 @@ Activities:
 - added regression test `test_evaluate_budget_health_finds_current_period_on_last_day` covering the end-of-cycle boundary
 - version bump: `0.8.2-beta` → `0.8.3-beta`
 
+#### Activity Group: Income Remaining Display Fix
+
+Status:
+- `Completed` (2026-04-28)
+
+Activities:
+- fixed income "Remaining" column showing variance (`actual - budget`) instead of true remaining (`max(0, budget - actual)`)
+- aligned income remaining behavior with expense remaining: positive when under budget, zero when actual meets or exceeds budget
+- updated `IncomeSection.jsx` (per-row, table footer, mobile footer), `PeriodDetailPage.jsx` mark-as-paid check, `ConfirmPaidModal.jsx`, and `ProgressStatusPill.jsx`
+- updated `IncomeSection.test.jsx` expectations to match new behavior
+- version bump: `0.8.4-beta` → `0.8.5-beta`
+
+#### Activity Group: Investment Transaction UX Hardening
+
+Status:
+- `Completed` (2026-04-28)
+
+Activities:
+- removed obsolete backend 422 validation in `investment_transactions.py` that blocked transactions when no default debit account was configured on the investment item; the modal already allows inline debit account selection
+- removed the "Destination Account" dropdown from the Add/Edit Investment modal in Budget Setup to reduce confusion; existing `linked_account_desc` values are preserved for backward compatibility
+- prevented self-referential investment transactions by filtering the investment's own `linked_account_desc` out of the debit account selector in `InvestmentTxModal.jsx`
+- updated `test_investment_transactions.py` and `InvestmentItemsTab.test.jsx`
+
 ## Post-beta note
 
 - Reconciliation is intentionally post-beta because it depends on bank integration / statement ingestion (import/OCR). See [ROADMAP.md](/home/ubuntu/dosh/docs/ROADMAP.md).

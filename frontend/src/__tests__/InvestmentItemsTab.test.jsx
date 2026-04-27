@@ -39,7 +39,7 @@ describe('InvestmentItemsTab', () => {
     client.getInvestmentItemHistory.mockResolvedValue({ item_desc: 'Emergency Fund', category: 'investment', current_revisionnum: 0, entries: [] })
   })
 
-  it('creates a primary investment line with a linked account', async () => {
+  it('creates a primary investment line with a source account', async () => {
     client.getInvestmentItems.mockResolvedValue([])
     client.getBalanceTypes.mockResolvedValue([{ balancedesc: 'Savings', balance_type: 'Savings' }])
     client.createInvestmentItem.mockResolvedValue({})
@@ -63,9 +63,6 @@ describe('InvestmentItemsTab', () => {
     fireEvent.change(selects[0], {
       target: { value: 'Savings' },
     })
-    fireEvent.change(selects[1], {
-      target: { value: 'Savings' },
-    })
 
     const toggles = screen.getAllByRole('checkbox')
     fireEvent.click(toggles[1])
@@ -78,7 +75,7 @@ describe('InvestmentItemsTab', () => {
         effectivedate: '2026-08-01',
         initial_value: 500,
         planned_amount: 0,
-        linked_account_desc: 'Savings',
+        linked_account_desc: null,
         source_account_desc: 'Savings',
         is_primary: true,
       })
@@ -149,9 +146,6 @@ describe('InvestmentItemsTab', () => {
     const selects = screen.getAllByRole('combobox')
     fireEvent.change(selects[0], {
       target: { value: 'Broker Cash' },
-    })
-    fireEvent.change(selects[1], {
-      target: { value: 'Investments' },
     })
 
     const toggles = screen.getAllByRole('checkbox')
@@ -277,7 +271,7 @@ describe('InvestmentItemsTab', () => {
     expect(deleteButton.disabled).toBe(true)
   })
 
-  it('shows the preferred transaction naming in linked account options', async () => {
+  it('shows the preferred transaction naming in source account options', async () => {
     client.getInvestmentItems.mockResolvedValue([])
     client.getBalanceTypes.mockResolvedValue([{ balancedesc: 'Daily Spending', balance_type: 'Transaction' }])
 
@@ -291,7 +285,6 @@ describe('InvestmentItemsTab', () => {
     fireEvent.click(await screen.findByText('Add Investment'))
     const selects = screen.getAllByRole('combobox')
     expect(selects[0].querySelector('option[value="Daily Spending"]')).toBeTruthy()
-    expect(selects[1].querySelector('option[value="Daily Spending"]')).toBeTruthy()
   })
 
   it('shows history details for an investment line', async () => {

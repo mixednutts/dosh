@@ -4,6 +4,60 @@ This document captures the key product and implementation changes made during re
 
 It is intended to complement [README.md](/home/ubuntu/dosh/README.md), not replace it.
 
+## Latest Session: Income Remaining Fix and Investment Transaction UX Hardening (0.8.5-beta) (2026-04-28)
+
+### What changed
+
+- **Fixed income remaining display to align with expense remaining behavior.**
+  - Income "Remaining" was calculated as `actual - budget`, producing negative values when under budget and positive variance when over budget. This was inconsistent with expense remaining (`budget - actual`, clamped at zero).
+  - Changed all income remaining displays to `max(0, budget - actual)`: positive when under budget, zero when actual meets or exceeds budget.
+  - Updated `frontend/src/components/period-sections/IncomeSection.jsx` (per-row remaining, table footer, mobile footer).
+  - Updated `frontend/src/pages/PeriodDetailPage.jsx` mark-as-paid remaining check.
+  - Updated `frontend/src/components/status/ConfirmPaidModal.jsx` income remaining calculation.
+  - Updated `frontend/src/components/status/ProgressStatusPill.jsx` `IncomeStatusPill` remaining amount.
+  - Updated `frontend/src/__tests__/IncomeSection.test.jsx` to match new behavior.
+
+- **Removed obsolete investment transaction debit-account validation.**
+  - Backend `investment_transactions.py` raised 422 when `account_desc` was not provided and `item.source_account_desc` was null.
+  - Since the transaction modal allows selecting the debit account inline, this validation was no longer valid.
+  - Replaced the rejection test with a success test confirming transactions proceed without a default debit account.
+
+- **Removed Destination Account field from investment setup modal.**
+  - The Add/Edit Investment modal in `frontend/src/pages/tabs/InvestmentItemsTab.jsx` no longer renders the "Destination Account" dropdown.
+  - Existing `linked_account_desc` values are preserved in form state for backward compatibility when editing existing investments.
+  - Updated `frontend/src/__tests__/InvestmentItemsTab.test.jsx` to reflect the single-select (source account only) form layout.
+
+- **Prevented self-referential investment transactions.**
+  - The debit account dropdown in `frontend/src/components/transaction/InvestmentTxModal.jsx` now filters out `destinationAccount` (the investment's own `linked_account_desc`).
+  - This prevents users from accidentally creating a transaction that debits and credits the same account.
+
+### Testing
+
+- Full backend regression suite: **298 passed**, 0 regressions introduced.
+- Full frontend regression suite: **330 passed**, 0 regressions introduced.
+
+### Decisions preserved
+
+- Income remaining should behave like expense remaining: it represents how much more income is needed to reach the budget target, not variance from target.
+- A default debit account on an investment item is optional because the transaction modal allows overriding it at transaction time.
+- Removing the Destination Account field from the setup modal simplifies the UX without breaking existing data.
+- Investment transactions should never debit their own credit account; the UI should prevent this selection rather than allowing it and creating a no-op transaction.
+
+### Files touched
+
+- `backend/app/routers/investment_transactions.py`
+- `backend/tests/test_investment_transactions.py`
+- `frontend/src/components/period-sections/IncomeSection.jsx`
+- `frontend/src/pages/PeriodDetailPage.jsx`
+- `frontend/src/components/status/ConfirmPaidModal.jsx`
+- `frontend/src/components/status/ProgressStatusPill.jsx`
+- `frontend/src/components/transaction/InvestmentTxModal.jsx`
+- `frontend/src/pages/tabs/InvestmentItemsTab.jsx`
+- `frontend/src/__tests__/IncomeSection.test.jsx`
+- `frontend/src/__tests__/InvestmentItemsTab.test.jsx`
+
+---
+
 ## Latest Session: Direct-to-Investment Income Surplus Fix (0.8.4-beta) (2026-04-27)
 
 ### What changed

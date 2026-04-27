@@ -95,8 +95,7 @@ def add_transaction(
             raise HTTPException(422, f'Account "{account_desc}" does not exist for this budget')
         if not bt.active:
             raise HTTPException(422, f'Account "{account_desc}" is inactive')
-    elif item and not item.source_account_desc:
-        raise HTTPException(422, "Investment item does not have a debit account configured. Set one in Budget Setup before recording transactions.")
+
 
     tx = build_investment_tx(
         finperiodid,

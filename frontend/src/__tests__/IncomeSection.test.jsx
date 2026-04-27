@@ -58,8 +58,8 @@ describe('IncomeSection', () => {
   it('shows remaining amount for current income', () => {
     renderWithProviders(<IncomeSection {...baseProps} incomes={standardIncomes} />)
 
-    // Salary: actual 2100 - budget 2000 = 100 remaining
-    expect(screen.getByText('$100.00')).toBeTruthy()
+    // Carried Forward: budget 500 - actual 0 = 500 remaining (Salary/Bonus actual > budget so 0)
+    expect(screen.getAllByText('$500.00').length).toBeGreaterThanOrEqual(1)
   })
 
   it('allows budget editing for non-system-key income but not for carry_forward', () => {
@@ -144,7 +144,7 @@ describe('IncomeSection', () => {
     expect(screen.getByText('Total Income')).toBeTruthy()
     expect(screen.getByText('$3000.00')).toBeTruthy()
     expect(screen.getByText('$3200.00')).toBeTruthy()
-    expect(screen.getByText('$200.00')).toBeTruthy()
+    expect(screen.getAllByText('$0.00').length).toBeGreaterThanOrEqual(1)
   })
 
   it('disables transaction buttons for paid income', () => {

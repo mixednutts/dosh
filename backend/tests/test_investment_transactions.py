@@ -109,7 +109,7 @@ def test_add_investment_transaction_rejects_nonexistent_account(client, db_sessi
     assert "does not exist" in response.json()["detail"].lower()
 
 
-def test_add_investment_transaction_rejects_missing_debit_account(client, db_session):
+def test_add_investment_transaction_allows_debit_account_override(client, db_session):
     setup = _minimum_setup(db_session)
     budget = setup["budget"]
     # Create investment item with no source_account_desc
@@ -124,8 +124,11 @@ def test_add_investment_transaction_rejects_missing_debit_account(client, db_ses
         f"/api/budgets/{budget.budgetid}/periods/{period_id}/investments/Emergency%20Fund/transactions",
         json={"amount": "100.00"},
     )
-    assert response.status_code == 422
-    assert "debit account" in response.json()["detail"].lower()
+    # Without account_desc and no default source_account_desc, the transaction
+    # should still succeed — the modal allows selecting the debit account inline.
+    assert response.status_code == 201, response.text
+    data = response.json()
+    assert Decimal(data["amount"]) == Decimal("100.00")
 
 
 def test_add_investment_transaction_rejects_paid_investment(client, db_session):
