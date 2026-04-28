@@ -846,6 +846,66 @@ Maintenance notes:
 - update if new third-party loggers need tuning or if formatter fields change
 - revise if log level defaults or environment variable names change
 
+### CASH_ONLY_BUDGET_SHAPE_PLAN.md
+
+Document:
+
+- [CASH_ONLY_BUDGET_SHAPE_PLAN.md](/home/ubuntu/dosh/docs/plans/CASH_ONLY_BUDGET_SHAPE_PLAN.md)
+
+Document type:
+
+- domain or workflow plan
+
+Primary purpose:
+
+- preserve the implemented plan decisions for making the primary account type-agnostic and enforcing a single primary per budget
+
+Primary source-of-truth scope:
+
+- primary account resolver behavior changes
+- cross-type primary demotion rules
+- setup assessment and balance type router guard changes
+- frontend helper and copy updates for global primary logic
+
+Key relationships:
+
+- informs current-state wording in [AGENTS.md](/home/ubuntu/dosh/AGENTS.md)
+- complements [SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md](/home/ubuntu/dosh/docs/plans/SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md)
+- referenced by [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) for regression test coverage expectations
+
+Maintenance notes:
+
+- should remain focused on the type-agnostic primary account behavior rather than becoming a general account management document
+
+### SPENDABLE_VS_SAVED_BALANCE_DISPLAY_PLAN.md
+
+Document:
+
+- [SPENDABLE_VS_SAVED_BALANCE_DISPLAY_PLAN.md](/home/ubuntu/dosh/docs/plans/SPENDABLE_VS_SAVED_BALANCE_DISPLAY_PLAN.md)
+
+Document type:
+
+- domain or workflow plan
+
+Primary purpose:
+
+- define options for distinguishing spendable and saved account balances in the UI
+
+Primary source-of-truth scope:
+
+- balance display grouping and summary options
+- spendable vs saved categorisation rules
+
+Key relationships:
+
+- informs UX/UI roadmap items in [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md)
+- complements [CASH_MANAGEMENT_WORKFLOW_PLAN.md](/home/ubuntu/dosh/docs/plans/CASH_MANAGEMENT_WORKFLOW_PLAN.md)
+
+Maintenance notes:
+
+- should be updated if the balance display grouping approach is implemented or revised
+- should remain focused on the spendable/saved distinction rather than becoming a general balance design document
+
 ### GITHUB_RELEASE_RUNBOOK.md
 
 Document:

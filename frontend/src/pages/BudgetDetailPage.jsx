@@ -305,7 +305,7 @@ export default function BudgetDetailPage() {
   const preferredTransactionLabel = getPreferredTransactionLabel(budget.account_naming_preference)
   const accountsHelper = primaryAccount
     ? null
-    : `Choose one account as the primary ${preferredTransactionLabel.toLowerCase()} account, this allow expenses to know which account to deduct from by default.`
+    : `Choose one account as the primary account, so expenses know which account to deduct from by default.`
   const incomeHelper = hasAccounts ? null : 'Add an account first if you want income to flow into a tracked account.'
   const expenseHelper = hasAccounts ? null : 'Add an account first so future expense entries can be connected to one when you need that.'
   const investmentHelper = hasAccounts ? null : 'Add an account first if you want investment contributions linked to a tracked account.'

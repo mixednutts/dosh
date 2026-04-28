@@ -16,10 +16,9 @@ function getPrimaryAccountTypeLabel(balanceType, accountNamingPreference) {
   return getBalanceTypeLabel(balanceType, accountNamingPreference).toLowerCase()
 }
 
-function getPrimaryAccountName(accounts, balanceType, currentDesc = null) {
+function getPrimaryAccountName(accounts, currentDesc = null) {
   return accounts.find(
     account =>
-      account.balance_type === balanceType &&
       account.is_primary &&
       account.active &&
       account.balancedesc !== currentDesc
@@ -46,14 +45,14 @@ function buildSimulatedAccounts(accounts, currentDesc = null, nextForm = null) {
   return simulated
 }
 
-function hasAnyActivePrimary(accounts, balanceType, currentDesc = null, nextForm = null) {
+function hasAnyActivePrimary(accounts, currentDesc = null, nextForm = null) {
   return buildSimulatedAccounts(accounts, currentDesc, nextForm)
-    .some(account => account.active && account.is_primary && account.balance_type === balanceType)
+    .some(account => account.active && account.is_primary)
 }
 
-function hasAnyActiveTransactionAccount(accounts, currentDesc = null, nextForm = null) {
+function hasAnyActiveAccount(accounts, currentDesc = null, nextForm = null) {
   return buildSimulatedAccounts(accounts, currentDesc, nextForm)
-    .some(account => account.active && account.balance_type === 'Transaction')
+    .some(account => account.active)
 }
 
 function canDeleteAccount(accounts, account, usage) {
@@ -61,17 +60,16 @@ function canDeleteAccount(accounts, account, usage) {
     return false
   }
 
-  if (!(account.active && account.is_primary && account.balance_type === 'Transaction')) {
+  if (!(account.active && account.is_primary)) {
     return true
   }
 
-  const otherActiveTransactions = accounts.filter(candidate =>
+  const otherActiveAccounts = accounts.filter(candidate =>
     candidate.balancedesc !== account.balancedesc &&
-    candidate.active &&
-    candidate.balance_type === 'Transaction'
+    candidate.active
   )
 
-  if (otherActiveTransactions.length === 0) {
+  if (otherActiveAccounts.length === 0) {
     return true
   }
 
@@ -87,7 +85,7 @@ function getDeleteDisabledReason(account, usage) {
     return usage.reasons.join('. ')
   }
 
-  if (account.active && account.is_primary && account.balance_type === 'Transaction') {
+  if (account.active && account.is_primary) {
     return 'Choose another primary account before deleting this one.'
   }
 
@@ -121,10 +119,10 @@ function BalanceTypeForm({
   const handleSubmit = e => {
     e.preventDefault()
     const nextForm = { ...form, opening_balance: Number.parseFloat(form.opening_balance) || 0 }
-    const currentPrimaryName = getPrimaryAccountName(existingAccounts, nextForm.balance_type, currentDesc)
-    const willHaveTransactionPrimary = hasAnyActivePrimary(existingAccounts, 'Transaction', currentDesc, nextForm)
+    const currentPrimaryName = getPrimaryAccountName(existingAccounts, currentDesc)
+    const willHavePrimary = hasAnyActivePrimary(existingAccounts, currentDesc, nextForm)
 
-    if (!willHaveTransactionPrimary && hasAnyActiveTransactionAccount(existingAccounts, currentDesc, nextForm)) {
+    if (!willHavePrimary && hasAnyActiveAccount(existingAccounts, currentDesc, nextForm)) {
       setConfirmation({
         type: 'missing-primary',
         title: 'Primary Account Required',
@@ -179,12 +177,8 @@ function BalanceTypeForm({
             <input id={`${formIdPrefix}-primary`} type="checkbox" checked={!!form.is_primary} onChange={e => set('is_primary', e.target.checked)}
             className="rounded border-gray-300 text-dosh-600 focus:ring-dosh-500" />
             <span className="space-y-0.5">
-              <span className="block font-medium text-gray-800 dark:text-gray-100">Primary {primaryAccountLabel} account</span>
-              <span className="block text-xs text-gray-500 dark:text-gray-400">
-                {form.balance_type === 'Transaction'
-                  ? 'Expenses are deducted from this account by default.'
-                  : 'Use this as the primary account for this account type.'}
-              </span>
+              <span className="block font-medium text-gray-800 dark:text-gray-100">Primary account</span>
+              <span className="block text-xs text-gray-500 dark:text-gray-400">Expenses are deducted from this account by default.</span>
             </span>
           </label>
         </div>
@@ -206,7 +200,7 @@ function BalanceTypeForm({
         <Modal title={confirmation.title} onClose={() => setConfirmation(null)} size="sm">
           <div className="space-y-4">
             <p className="text-sm text-gray-600 dark:text-gray-300">
-              {confirmation.currentPrimaryName} is currently the primary {primaryAccountLabel} account. Saving will switch the primary {primaryAccountLabel} account to {form.balancedesc || 'this account'}.
+              {confirmation.currentPrimaryName} is currently the primary account. Saving will switch the primary account to {form.balancedesc || 'this account'}.
             </p>
             <div className="flex justify-end gap-2">
               <button type="button" className="btn-secondary" onClick={() => setConfirmation(null)}>Cancel</button>
@@ -226,7 +220,7 @@ function BalanceTypeForm({
         <Modal title={confirmation.title} onClose={() => setConfirmation(null)} size="sm">
           <div className="space-y-4">
             <p className="text-sm text-gray-600 dark:text-gray-300">
-              An active primary {transactionAccountLabel} account is required so expense deductions have a default account.
+              An active primary account is required so expense deductions have a default account.
             </p>
             <div className="flex justify-end">
               <button type="button" className="btn-primary" onClick={() => setConfirmation(null)}>
@@ -308,8 +302,7 @@ export default function BalanceTypesTab({ budgetId, budget }) {
 
   const accountUsageByDesc = Object.fromEntries((setupAssessment?.accounts || []).map(account => [account.balancedesc, account]))
   const accountNamingPreference = budget?.account_naming_preference || 'Transaction'
-  const hasTransactionAccount = types.some(type => type.balance_type === 'Transaction')
-  const hasActiveTransactionPrimary = types.some(type => type.active && type.is_primary && type.balance_type === 'Transaction')
+  const hasActivePrimary = types.some(type => type.active && type.is_primary)
 
   const mobileColumns = [
     {
@@ -444,7 +437,7 @@ export default function BalanceTypesTab({ budgetId, budget }) {
               is_primary: modal.item.is_primary ?? false,
             } : {
               ...emptyForm,
-              is_primary: !hasActiveTransactionPrimary && !hasTransactionAccount,
+              is_primary: !hasActivePrimary,
             }}
             structureLocked={modal.item ? accountUsageByDesc[modal.item.balancedesc]?.can_edit_structure === false : false}
             lockReasons={modal.item ? (accountUsageByDesc[modal.item.balancedesc]?.reasons || []) : []}

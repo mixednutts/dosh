@@ -270,7 +270,7 @@ describe('BudgetPeriodsPage', () => {
     client.getBudgetSetupAssessment.mockResolvedValue({
       budgetid: 1,
       can_generate: false,
-      blocking_issues: ['Choose one active account as the primary transaction account so expense entries have a default home.'],
+      blocking_issues: ['Choose one active account as the primary account so expense entries have a default home.'],
       warnings: [],
       accounts: [],
     })
@@ -281,10 +281,10 @@ describe('BudgetPeriodsPage', () => {
       path: '/budgets/:budgetId',
     })
 
-    expect(await screen.findByText(/Choose one active account as the primary transaction account so expense entries have a default home\./)).toBeTruthy()
+    expect(await screen.findByText(/Choose one active account as the primary account so expense entries have a default home\./)).toBeTruthy()
     expect(screen.getByText(/Complete the setup steps first, then come back here to generate the first budget cycle\./)).toBeTruthy()
 
-    const newCycleButton = screen.getByTitle('Choose one active account as the primary transaction account so expense entries have a default home.')
+    const newCycleButton = screen.getByTitle('Choose one active account as the primary account so expense entries have a default home.')
     expect(newCycleButton.disabled).toBe(true)
 
     const firstCycleButton = screen.getByText('Generate First Budget Cycle')

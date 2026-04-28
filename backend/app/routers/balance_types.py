@@ -35,10 +35,9 @@ def list_balance_types(budgetid: int, db: DbSession):
     return db.query(BalanceType).filter(BalanceType.budgetid == budgetid).all()
 
 
-def _clear_primary(budgetid: int, balance_type: str | None, db: Session) -> None:
+def _clear_primary(budgetid: int, db: Session) -> None:
     db.query(BalanceType).filter(
         BalanceType.budgetid == budgetid,
-        BalanceType.balance_type == balance_type,
         BalanceType.is_primary == True,  # noqa: E712
     ).update({"is_primary": False})
 
@@ -71,21 +70,18 @@ def _assert_active_primary_will_remain(
     was_active_primary = bool(bt.active and bt.is_primary)
     will_be_active = updates.get("active", bt.active)
     will_be_primary = updates.get("is_primary", bt.is_primary)
-    active_transaction_accounts_exist = (
+    active_accounts_exist = (
         db.query(BalanceType)
         .filter(
             BalanceType.budgetid == budgetid,
             BalanceType.balancedesc != balancedesc,
             BalanceType.active == True,  # noqa: E712
-            BalanceType.balance_type == "Transaction",
         )
         .first()
         is not None
-    ) or (
-        updates.get("balance_type", bt.balance_type) == "Transaction" and will_be_active
-    )
+    ) or will_be_active
 
-    if not was_active_primary or (will_be_active and will_be_primary) or not active_transaction_accounts_exist:
+    if not was_active_primary or (will_be_active and will_be_primary) or not active_accounts_exist:
         return
 
     other_active_primary = (
@@ -95,7 +91,6 @@ def _assert_active_primary_will_remain(
             BalanceType.balancedesc != balancedesc,
             BalanceType.active == True,  # noqa: E712
             BalanceType.is_primary == True,  # noqa: E712
-            BalanceType.balance_type == "Transaction",
         )
         .first()
     )
@@ -108,20 +103,19 @@ def _assert_delete_wont_remove_required_primary(
     bt: BalanceType,
     db: Session,
 ) -> None:
-    if not (bt.active and bt.is_primary and bt.balance_type == "Transaction"):
+    if not (bt.active and bt.is_primary):
         return
 
-    other_active_transaction = (
+    other_active_account = (
         db.query(BalanceType)
         .filter(
             BalanceType.budgetid == budgetid,
             BalanceType.balancedesc != bt.balancedesc,
             BalanceType.active == True,  # noqa: E712
-            BalanceType.balance_type == "Transaction",
         )
         .first()
     )
-    if other_active_transaction is None:
+    if other_active_account is None:
         return
 
     other_active_primary = (
@@ -131,7 +125,6 @@ def _assert_delete_wont_remove_required_primary(
             BalanceType.balancedesc != bt.balancedesc,
             BalanceType.active == True,  # noqa: E712
             BalanceType.is_primary == True,  # noqa: E712
-            BalanceType.balance_type == "Transaction",
         )
         .first()
     )
@@ -146,7 +139,7 @@ def create_balance_type(budgetid: int, payload: BalanceTypeCreate, db: DbSession
     if existing:
         raise HTTPException(409, "Balance type with this description already exists")
     if payload.is_primary:
-        _clear_primary(budgetid, payload.balance_type, db)
+        _clear_primary(budgetid, db)
     bt = BalanceType(budgetid=budgetid, **payload.model_dump())
     db.add(bt)
     db.commit()
@@ -193,7 +186,7 @@ def update_balance_type(
     updates = payload.model_dump(exclude_none=True)
     _assert_active_primary_will_remain(budgetid, balancedesc, bt, updates, db)
     if payload.is_primary:
-        _clear_primary(budgetid, updates.get("balance_type", bt.balance_type), db)
+        _clear_primary(budgetid, db)
     if "active" in updates and updates["active"] is False:
         _assert_balance_deactivate_allowed(budgetid, balancedesc, db)
 

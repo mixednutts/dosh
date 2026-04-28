@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from app.setup_assessment import budget_setup_assessment
+from app.transaction_ledger import get_primary_account_desc
 from app.models import FinancialPeriod, PeriodBalance, PeriodTransaction
 from app.time_utils import utc_now
 
@@ -23,10 +24,10 @@ def test_setup_assessment_reports_blocking_primary_account_gap(client, db_sessio
     assert response.status_code == 200, response.text
     payload = response.json()
     assert payload["can_generate"] is False
-    assert any("primary transaction account" in issue.lower() for issue in payload["blocking_issues"])
+    assert any("primary account" in issue.lower() for issue in payload["blocking_issues"])
 
 
-def test_setup_assessment_ignores_non_transaction_primary_accounts(client, db_session):
+def test_setup_assessment_allows_non_transaction_primary_accounts(client, db_session):
     budget = create_budget(db_session)
     create_income_type(db_session, budgetid=budget.budgetid)
     create_expense_item(db_session, budgetid=budget.budgetid)
@@ -42,11 +43,11 @@ def test_setup_assessment_ignores_non_transaction_primary_accounts(client, db_se
 
     assert response.status_code == 200, response.text
     payload = response.json()
-    assert payload["can_generate"] is False
-    assert any("primary transaction account" in issue.lower() for issue in payload["blocking_issues"])
+    assert payload["can_generate"] is True
+    assert not any("primary account" in issue.lower() for issue in payload["blocking_issues"])
 
 
-def test_balance_type_primary_is_scoped_per_account_type(client, db_session):
+def test_balance_type_primary_is_global_and_demotes_existing_primary(client, db_session):
     budget = create_budget(db_session)
     create_balance_type(
         db_session,
@@ -73,7 +74,7 @@ def test_balance_type_primary_is_scoped_per_account_type(client, db_session):
     assert list_response.status_code == 200, list_response.text
     balances = {item["balancedesc"]: item for item in list_response.json()}
 
-    assert balances["Everyday"]["is_primary"] is True
+    assert balances["Everyday"]["is_primary"] is False
     assert balances["Rainy Day Savings"]["is_primary"] is True
 
 
@@ -387,3 +388,69 @@ def test_edit_rejects_investment_line_that_is_already_in_use(client, db_session)
 
     assert update_response.status_code == 422
     assert "in use" in update_response.json()["detail"].lower()
+
+
+def test_setup_assessment_cash_only_budget_can_generate(client, db_session):
+    budget = create_budget(db_session)
+    create_income_type(db_session, budgetid=budget.budgetid)
+    create_expense_item(db_session, budgetid=budget.budgetid)
+    create_balance_type(
+        db_session,
+        budgetid=budget.budgetid,
+        balancedesc="Cash Jar",
+        balance_type="Cash",
+        is_primary=True,
+    )
+
+    response = client.get(f"/api/budgets/{budget.budgetid}/setup-assessment")
+
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["can_generate"] is True
+
+
+def test_get_primary_account_desc_resolves_cash_primary(db_session):
+    budget = create_budget(db_session)
+    create_balance_type(
+        db_session,
+        budgetid=budget.budgetid,
+        balancedesc="Petty Cash",
+        balance_type="Cash",
+        is_primary=True,
+    )
+
+    desc = get_primary_account_desc(budget.budgetid, db_session)
+    assert desc == "Petty Cash"
+
+
+def test_update_demotes_cross_type_primary(client, db_session):
+    budget = create_budget(db_session)
+    create_balance_type(
+        db_session,
+        budgetid=budget.budgetid,
+        balancedesc="Everyday",
+        balance_type="Transaction",
+        is_primary=True,
+    )
+    create_balance_type(
+        db_session,
+        budgetid=budget.budgetid,
+        balancedesc="Savings Jar",
+        balance_type="Savings",
+        is_primary=False,
+    )
+
+    update_response = client.patch(
+        f"/api/budgets/{budget.budgetid}/balance-types/Savings%20Jar",
+        json={"is_primary": True},
+    )
+
+    assert update_response.status_code == 200, update_response.text
+    assert update_response.json()["is_primary"] is True
+
+    list_response = client.get(f"/api/budgets/{budget.budgetid}/balance-types/")
+    assert list_response.status_code == 200, list_response.text
+    balances = {item["balancedesc"]: item for item in list_response.json()}
+
+    assert balances["Everyday"]["is_primary"] is False
+    assert balances["Savings Jar"]["is_primary"] is True

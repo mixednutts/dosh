@@ -260,6 +260,7 @@ The following setup-shape combinations are currently covered by automated tests.
 | `No Accounts` | no accounts, no income, no expenses, no investments | setup guidance and blocked first-cycle generation | frontend |
 | `Single Account` | 1 primary transaction account, no savings account | valid setup rendering without false missing-account guidance | frontend |
 | `Single Account` | 1 primary transaction account, no savings account | reject savings-transfer behavior that depends on a real savings account | backend |
+| `Cash-Only` | 1 primary Cash account, no transaction account | valid generation and expense entry routing when primary is non-Transaction | backend + frontend |
 | `Accounts Present, No Primary` | accounts exist but none selected as primary | centralized setup assessment should block generation and reject downstream expense activity until setup is repaired | frontend + backend |
 | `Accounts In Use` | generated cycles or linked references already depend on the account setup | protect account structure from delete, deactivate, or unsafe structural edits while still allowing safe reassignment paths | frontend + backend |
 | `Income Types In Use` | generated cycles or recorded activity already depend on the income setup | protect income setup from destructive edits or deletion once downstream cycles depend on it | frontend + backend |
@@ -530,7 +531,7 @@ CI=true npm test -- --watchAll=false --runInBand
 ```
 
 Current test counts:
-- Backend: 302 tests
+- Backend: 305 tests
 - Frontend: 342 tests
 
 Current end-to-end run command:

@@ -52,7 +52,7 @@ describe('BalanceTypesTab', () => {
       target: { value: '1250' },
     })
 
-    expect(screen.getByLabelText(/Primary transaction account/i).checked).toBe(true)
+    expect(screen.getByLabelText(/Primary account/i).checked).toBe(true)
     fireEvent.click(screen.getByText('Save'))
 
     await waitFor(() => {
@@ -97,7 +97,7 @@ describe('BalanceTypesTab', () => {
       target: { value: '500' },
     })
 
-    fireEvent.click(screen.getByLabelText(/Primary savings account/i))
+    fireEvent.click(screen.getByLabelText(/Primary account/i))
     fireEvent.click(screen.getByText('Save'))
 
     expect(await screen.findByRole('heading', { name: 'Switch Primary Account?' })).toBeTruthy()
@@ -137,9 +137,8 @@ describe('BalanceTypesTab', () => {
     fireEvent.click((await screen.findAllByRole('button'))[3])
     expect(await screen.findByRole('heading', { name: 'Edit Account' })).toBeTruthy()
 
-    expect(screen.getByLabelText(/Primary savings account/i)).toBeTruthy()
-    expect(screen.getByText(/Use this as the primary account for this account type/i)).toBeTruthy()
-    expect(screen.queryByLabelText(/Primary transaction account/i)).toBeNull()
+    expect(screen.getByLabelText(/Primary account/i)).toBeTruthy()
+    expect(screen.getByText(/Expenses are deducted from this account by default/i)).toBeTruthy()
   })
 
   it('prevents saving when removing the only active primary account', async () => {
@@ -158,7 +157,7 @@ describe('BalanceTypesTab', () => {
     expect(await screen.findByText('Main Account')).toBeTruthy()
     fireEvent.click(screen.getAllByRole('button')[1])
 
-    fireEvent.click(screen.getByLabelText(/Primary transaction account/i))
+    fireEvent.click(screen.getByLabelText(/Primary account/i))
     fireEvent.click(screen.getByText('Save'))
 
     expect(await screen.findByRole('heading', { name: 'Primary Account Required' })).toBeTruthy()
@@ -262,7 +261,7 @@ describe('BalanceTypesTab', () => {
     expect(screen.getByText(/Opening balance can only be changed before this account is used/i)).toBeTruthy()
   })
 
-  it('disables deleting the active primary transaction account when that would leave no primary', async () => {
+  it('disables deleting the active primary account when that would leave no primary', async () => {
     client.getBalanceTypes.mockResolvedValue([
       {
         balancedesc: 'Main Account',
@@ -310,7 +309,7 @@ describe('BalanceTypesTab', () => {
     fireEvent.click(screen.getAllByRole('button')[1])
     expect(await screen.findByRole('heading', { name: 'Edit Account' })).toBeTruthy()
     expect(screen.getByRole('option', { name: 'Checking' })).toBeTruthy()
-    expect(screen.getByText(/Primary checking account/i)).toBeTruthy()
+    expect(screen.getByText(/Primary account/i)).toBeTruthy()
     expect(screen.getByText(/Expenses are deducted from this account by default/i)).toBeTruthy()
   })
 })

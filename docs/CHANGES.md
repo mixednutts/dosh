@@ -4,6 +4,53 @@ This document captures the key product and implementation changes made during re
 
 It is intended to complement [README.md](/home/ubuntu/dosh/README.md), not replace it.
 
+## Latest Session: Cash-Only Budget Shape — Type-Agnostic Primary Account (0.9.1-beta) (2026-04-29)
+
+### What changed
+
+- **Made the primary account resolver type-agnostic across the entire stack.**
+  - `backend/app/transaction_ledger.py`: `get_primary_account_desc()` no longer filters by `balance_type == "Transaction"`. It returns the first active primary account of any type.
+  - `backend/app/setup_assessment.py`: `budget_setup_assessment()` now accepts any active primary (Transaction, Savings, or Cash) to satisfy generation readiness when expenses exist.
+  - `backend/app/routers/balance_types.py`: `_clear_primary()` demotes any existing primary regardless of type. `_assert_active_primary_will_remain()` and `_assert_delete_wont_remove_required_primary()` enforce exactly one active primary per budget globally.
+  - Frontend `BalanceTypesTab.jsx`: `getPrimaryAccountName()`, `hasAnyActivePrimary()`, `canDeleteAccount()`, and `getDeleteDisabledReason()` all operate globally across types. Create-form defaults `is_primary` when no active primary of any type exists. Primary checkbox label and confirmation modals use unified generic copy.
+  - Frontend `ExpenseEntriesModal.jsx`: primary account lookup is now type-agnostic.
+  - Frontend `BudgetDetailPage.jsx`: accounts helper text updated to generic "primary account" wording.
+
+- **Breaking behavioral change for multi-primary budgets.**
+  - Under the previous model, budgets could have one primary per balance type (e.g., one Transaction primary and one Savings primary).
+  - Under the new model, only one primary total is allowed per budget. Editing any account to make it primary will demote the existing primary across all types.
+  - Existing budgets with multiple primaries will see one primary demoted when any account is edited.
+
+### Testing
+
+- Full backend regression suite: **305 passed**, 0 regressions introduced.
+- Full frontend regression suite: **342 passed**, 0 regressions introduced.
+- New backend tests: `test_setup_assessment_cash_only_budget_can_generate`, `test_get_primary_account_desc_resolves_cash_primary`, `test_update_demotes_cross_type_primary`.
+- Rewrote `test_balance_type_primary_is_global_and_demotes_existing_primary` (formerly `test_balance_type_primary_is_scoped_per_account_type`) to assert cross-type demotion.
+- Updated `test_setup_assessment_ignores_non_transaction_primary_accounts` to expect `can_generate = True` for Savings-primary budgets.
+- Updated frontend tests in `BalanceTypesTab.test.jsx`, `BudgetDetailPage.test.jsx`, and `BudgetPeriodsPage.test.jsx` to match new generic "primary account" copy.
+
+### Decisions preserved
+
+- No database schema migration was required; the change is purely behavioral and frontend-facing.
+- The `balance_type` field continues to exist for display and categorisation purposes but no longer gates primary eligibility.
+- The `active_expense_items` guard in setup assessment is preserved: a primary is only required when the budget has active expenses. A budget with no expenses and only a Savings primary can still generate cycles.
+
+### Files touched
+
+- `backend/app/transaction_ledger.py`
+- `backend/app/setup_assessment.py`
+- `backend/app/routers/balance_types.py`
+- `frontend/src/components/transaction/ExpenseEntriesModal.jsx`
+- `frontend/src/pages/tabs/BalanceTypesTab.jsx`
+- `frontend/src/pages/BudgetDetailPage.jsx`
+- `backend/tests/test_setup_assessment.py`
+- `frontend/src/__tests__/BalanceTypesTab.test.jsx`
+- `frontend/src/__tests__/BudgetDetailPage.test.jsx`
+- `frontend/src/__tests__/BudgetPeriodsPage.test.jsx`
+
+---
+
 ## Latest Session: Editable Transaction Date/Time, Date Validation, and Date Picker Alignment (0.9.0-beta) (2026-04-28)
 
 ### What changed

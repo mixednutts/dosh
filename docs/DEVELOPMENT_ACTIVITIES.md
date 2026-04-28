@@ -147,6 +147,22 @@ Activities:
 - graceful encryption handling — returns `None` silently when secret missing, callers return HTTP 503
 - reference plan: [AI_INSIGHTS_IMPLEMENTATION_PLAN.md](/home/ubuntu/dosh/docs/plans/AI_INSIGHTS_IMPLEMENTATION_PLAN.md)
 
+#### Activity Group: Cash-Only Budget Shape — Type-Agnostic Primary Account
+
+Status:
+- `Completed` (2026-04-29)
+
+Activities:
+- made the primary account resolver type-agnostic across backend and frontend
+- `get_primary_account_desc()` no longer filters by `balance_type == "Transaction"`
+- `budget_setup_assessment()` accepts any active primary for generation readiness
+- `balance_types.py` router enforces exactly one active primary per budget globally
+- frontend helpers (`getPrimaryAccountName`, `hasAnyActivePrimary`, `canDeleteAccount`, `getDeleteDisabledReason`) operate globally across types
+- unified primary checkbox label and confirmation copy to generic "Primary account" wording
+- added backend regression tests for cash-only generation, Cash primary resolution, and cross-type demotion
+- updated frontend tests for new generic copy
+- version bump: `0.9.0-beta` → `0.9.1-beta`
+
 #### Activity Group: Formula Expression Helpers
 
 Status:

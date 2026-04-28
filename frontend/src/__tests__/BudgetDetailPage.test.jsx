@@ -63,7 +63,7 @@ describe('BudgetDetailPage', () => {
     client.getInvestmentItems.mockResolvedValue([])
     mockSetupAssessment({
       can_generate: false,
-      blocking_issues: ['Choose one active account as the primary transaction account so expense entries have a default home.'],
+      blocking_issues: ['Choose one active account as the primary account so expense entries have a default home.'],
     })
     mockNoPeriods()
 
@@ -72,12 +72,12 @@ describe('BudgetDetailPage', () => {
       path: '/budgets/:budgetId/setup',
     })
 
-    expect(await screen.findByText(/Choose one account as the primary transaction account, this allow expenses to know which account to deduct from by default\./)).toBeTruthy()
+    expect(await screen.findByText(/Choose one account as the primary account, so expenses know which account to deduct from by default\./)).toBeTruthy()
     expect(screen.getByText(/Add an account first if you want income to flow into a tracked account\./)).toBeTruthy()
     expect(screen.getByText(/Add an account first if you want investment contributions linked to a tracked account\./)).toBeTruthy()
     expect(screen.getByText(/A few setup details still need attention before the first budget cycle can be created\./)).toBeTruthy()
     expect(screen.getAllByText('Needs Attention')).toHaveLength(1)
-    expect(screen.getByText(/Choose one active account as the primary transaction account so expense entries have a default home\./)).toBeTruthy()
+    expect(screen.getByText(/Choose one active account as the primary account so expense entries have a default home\./)).toBeTruthy()
   })
 
   it('reflects a mixed-account setup shape without no-account guidance', async () => {
@@ -178,7 +178,7 @@ describe('BudgetDetailPage', () => {
     client.getInvestmentItems.mockResolvedValue([{ investmentdesc: 'ETF Portfolio' }])
     mockSetupAssessment({
       can_generate: false,
-      blocking_issues: ['Choose one active account as the primary transaction account so expense entries have a default home.'],
+      blocking_issues: ['Choose one active account as the primary account so expense entries have a default home.'],
     })
     mockNoPeriods()
 
@@ -187,7 +187,7 @@ describe('BudgetDetailPage', () => {
       path: '/budgets/:budgetId/setup',
     })
 
-    expect(await screen.findByText(/Choose one account as the primary transaction account, this allow expenses to know which account to deduct from by default\./)).toBeTruthy()
+    expect(await screen.findByText(/Choose one account as the primary account, so expenses know which account to deduct from by default\./)).toBeTruthy()
     expect(screen.queryByText(/Add an account first if you want income to flow into a tracked account\./)).toBeNull()
     expect(screen.queryByText(/Add an account first if you want investment contributions linked to a tracked account\./)).toBeNull()
     expect(screen.getByText(/A few setup details still need attention before the first budget cycle can be created\./)).toBeTruthy()

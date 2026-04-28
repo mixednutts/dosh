@@ -51,7 +51,7 @@ export function ExpenseEntriesModal({ periodId, budgetId, expensedesc, budgetamo
     queryFn: () => getExpenseItems(budgetId),
   })
 
-  const primaryAccount = balanceTypes.find(bt => bt.is_primary && bt.balance_type === 'Transaction')
+  const primaryAccount = balanceTypes.find(bt => bt.is_primary)
 
   useEffect(() => {
     setSelectedAccount('')

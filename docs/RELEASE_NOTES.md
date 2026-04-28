@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 0.9.1-beta | released | 2026-04-29
+
+### Changed
+
+- The primary account is no longer restricted to transaction-type accounts. Any active account — Transaction, Savings, or Cash — can be set as the primary account for a budget. This means cash-only budgets (for example, a single Cash account with no transaction account) can now generate budget cycles and record expense entries without requiring a separate transaction account.
+- When you create a new primary account, the existing primary is automatically demoted, regardless of account type. There is now exactly one primary account per budget.
+- Budget Setup guidance, account deletion guards, and primary-switching confirmation messages have been updated to use generic "primary account" wording instead of "primary transaction account."
+
 ## 0.9.0-beta | released | 2026-04-28
 
 ### Added
