@@ -358,6 +358,20 @@ Activities:
 - added tests verifying income and investment footer totals match the sum of per-line clamped remainings
 - version bump: `0.8.5-beta` → `0.8.6-beta`
 
+#### Activity Group: Budget Cycles Table Header Restructure and Upcoming Tooltip UX
+
+Status:
+- `Completed` (2026-04-28)
+
+Activities:
+- restructured Budget Cycles Summary table column grouping so the "Investments" heading spans Budget, Actual, and Projected Investment columns
+- added a "Tracking" heading that groups Surplus Budget and Surplus Actual columns for clearer information hierarchy
+- added days-until-start tooltip to "Upcoming" badges on both Budget Cycles Summary and Budget Cycle Details pages
+- tooltip shows "Days until - n" on hover, calculated from the budget timezone for accuracy
+- added `cursor-help` to Upcoming badges so users can discover the tooltip affordance
+- changed locked-cycle banner dismiss persistence from `sessionStorage` to `localStorage` so the dismiss state survives browser reloads and hard refreshes
+- deliverable: `BudgetPeriodsPage.jsx` (table headers, mobile/desktop badge tooltips), `PeriodDetailPage.jsx` (badge tooltip, localStorage dismiss)
+
 ## Post-beta note
 
 - Reconciliation is intentionally post-beta because it depends on bank integration / statement ingestion (import/OCR). See [ROADMAP.md](/home/ubuntu/dosh/docs/ROADMAP.md).

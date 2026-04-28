@@ -17,6 +17,7 @@ import Modal from '../components/Modal'
 import Spinner from '../components/Spinner'
 import { useLocalisation } from '../components/LocalisationContext'
 import { useFormatters } from '../components/useFormatters'
+import { differenceInCalendarDays, parseISO } from 'date-fns'
 import { getCycleStage, getCycleStageLabel } from '../utils/periodStage'
 import {
   getPeriodBudgetMutation,
@@ -83,7 +84,7 @@ export default function PeriodDetailPage() {
   const [showReturnTop, setShowReturnTop] = useState(false)
   const LOCK_BANNER_KEY = `dosh_dismiss_lock_banner:${id}`
   const [dismissLockedBanner, setDismissLockedBanner] = useState(() => {
-    try { return sessionStorage.getItem(LOCK_BANNER_KEY) === 'true' } catch { return false }
+    try { return localStorage.getItem(LOCK_BANNER_KEY) === 'true' } catch { return false }
   })
 
   const [localExpenses, setLocalExpenses] = useState(null)
@@ -93,6 +94,7 @@ export default function PeriodDetailPage() {
   // Localised formatters (use localisation context from budget)
   const formatters = useFormatters()
   const { fmt, fmtDate, fmtDateRange } = formatters
+  const { getToday } = useLocalisation()
 
   const { data, isLoading, isError } = useQuery({ queryKey: ['period', id], queryFn: () => getPeriodDetail(budgetid, id) })
   const { data: balancesData } = useQuery({
@@ -164,18 +166,21 @@ export default function PeriodDetailPage() {
   const period = data?.period ?? null
 
   useEffect(() => {
-    try { setDismissLockedBanner(sessionStorage.getItem(LOCK_BANNER_KEY) === 'true') } catch { setDismissLockedBanner(false) }
+    try { setDismissLockedBanner(localStorage.getItem(LOCK_BANNER_KEY) === 'true') } catch { setDismissLockedBanner(false) }
   }, [id, LOCK_BANNER_KEY])
 
   useEffect(() => {
     if (period && !period.islocked) {
-      try { sessionStorage.removeItem(LOCK_BANNER_KEY) } catch { /* ignore */ }
+      try { localStorage.removeItem(LOCK_BANNER_KEY) } catch { /* ignore */ }
       setDismissLockedBanner(false)
     }
   }, [period?.islocked, LOCK_BANNER_KEY])
 
   const cycleStage = getCycleStage(period)
   const activeCycle = cycleStage === 'CURRENT' || cycleStage === 'PENDING_CLOSURE'
+  const daysUntilStart = cycleStage === 'PLANNED' && period?.startdate
+    ? Math.max(0, differenceInCalendarDays(parseISO(period.startdate), getToday()))
+    : null
 
   useEffect(() => {
     if (activeCycle && searchParams.get('closeout') === '1' && !showCloseout) {
@@ -352,11 +357,14 @@ export default function PeriodDetailPage() {
                 {getCycleStageLabel(cycleStage)}
               </span>
             ) : (
-              <span className={`
-                inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border
-                ${cycleStage === 'CLOSED' ? 'bg-slate-200 border-slate-300 text-slate-800 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-200' : ''}
-                ${cycleStage === 'PLANNED' ? 'bg-blue-100 border-blue-300 text-blue-800 dark:bg-blue-900/50 dark:border-blue-700 dark:text-blue-200' : ''}
-              `}
+              <span
+                className={`
+                  inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border
+                  ${cycleStage === 'CLOSED' ? 'bg-slate-200 border-slate-300 text-slate-800 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-200' : ''}
+                  ${cycleStage === 'PLANNED' ? 'bg-blue-100 border-blue-300 text-blue-800 dark:bg-blue-900/50 dark:border-blue-700 dark:text-blue-200' : ''}
+                  ${daysUntilStart !== null ? 'cursor-help' : ''}
+                `}
+                title={daysUntilStart !== null ? `Days until - ${daysUntilStart}` : undefined}
               >
                 {getCycleStageLabel(cycleStage)}
               </span>
@@ -440,7 +448,7 @@ export default function PeriodDetailPage() {
               type="button"
               className="shrink-0 text-xs font-semibold uppercase tracking-wide text-amber-700 hover:text-amber-900 dark:text-amber-400 dark:hover:text-amber-200"
               onClick={() => {
-                try { sessionStorage.setItem(LOCK_BANNER_KEY, 'true') } catch { /* ignore */ }
+                try { localStorage.setItem(LOCK_BANNER_KEY, 'true') } catch { /* ignore */ }
                 setDismissLockedBanner(true)
               }}
             >

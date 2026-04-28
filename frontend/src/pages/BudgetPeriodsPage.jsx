@@ -3,7 +3,7 @@ import PropTypes from 'prop-types'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronDownIcon, ChevronRightIcon, PlusIcon, Cog6ToothIcon, TrashIcon, ArrowUpIcon } from '@heroicons/react/24/outline'
-import { addDays, format, parseISO } from 'date-fns'
+import { addDays, differenceInCalendarDays, format, parseISO } from 'date-fns'
 import { deleteBudget, deletePeriod, getBudget, getBudgetSetupAssessment, getPeriodDeleteOptions, getPeriodSummariesForBudget, generatePeriod } from '../api/client'
 import clsx from 'clsx'
 import Modal from '../components/Modal'
@@ -38,9 +38,12 @@ const PERIOD_SUMMARY_COLGROUP = (
 )
 
 function PeriodSummaryMobileCard({ summary, onDelete }) {
-  const { formatCurrency, formatDate } = useLocalisation()
+  const { formatCurrency, formatDate, getToday } = useLocalisation()
   const { period } = summary
   const stage = getCycleStage(period)
+  const daysUntilStart = stage === 'PLANNED' && period?.startdate
+    ? Math.max(0, differenceInCalendarDays(parseISO(period.startdate), getToday()))
+    : null
   const startLabel = formatDate(period.startdate)
   const endLabel = formatDate(period.enddate)
 
@@ -48,6 +51,7 @@ function PeriodSummaryMobileCard({ summary, onDelete }) {
   if (stage === 'CURRENT') cycleBadgeClass = 'badge-blue'
   else if (stage === 'PENDING_CLOSURE') cycleBadgeClass = 'inline-flex items-center justify-center rounded-full px-2.5 py-1 text-[11px] font-semibold leading-none text-center bg-slate-100 text-amber-700 dark:bg-slate-800 dark:text-amber-300'
   else if (stage === 'CLOSED') cycleBadgeClass = 'badge-gray'
+  if (daysUntilStart !== null) cycleBadgeClass += ' cursor-help'
 
   const row = (label, budget, actual, budgetTone, actualTone) => (
     <div className="flex items-center justify-between text-sm">
@@ -75,7 +79,7 @@ function PeriodSummaryMobileCard({ summary, onDelete }) {
           <span className="block">{startLabel} - {endLabel}</span>
         </Link>
         <div className="flex flex-wrap justify-end gap-1 flex-shrink-0">
-          <span className={cycleBadgeClass}>{getCycleStageLabel(stage)}</span>
+          <span className={cycleBadgeClass} title={daysUntilStart !== null ? `Days until - ${daysUntilStart}` : undefined}>{getCycleStageLabel(stage)}</span>
           {period.islocked && <span className="badge-amber">Locked</span>}
         </div>
       </div>
@@ -193,9 +197,12 @@ function getGroupedPeriodSummaries(periodSummaries) {
 }
 
 function PeriodSummaryRow({ summary, onDelete }) {
-  const { formatCurrency, formatDate } = useLocalisation()
+  const { formatCurrency, formatDate, getToday } = useLocalisation()
   const { period } = summary
   const stage = getCycleStage(period)
+  const daysUntilStart = stage === 'PLANNED' && period?.startdate
+    ? Math.max(0, differenceInCalendarDays(parseISO(period.startdate), getToday()))
+    : null
   const surplusBudgetTone = Number(summary.surplus_budget) >= 0 ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'
   const surplusActualTone = Number(summary.surplus_actual) >= 0 ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'
   const projectedInvestmentTone = Number(summary.projected_investment) >= 0 ? 'text-success-700 dark:text-success-400' : 'text-red-600 dark:text-red-400'
@@ -209,6 +216,7 @@ function PeriodSummaryRow({ summary, onDelete }) {
   } else if (stage === 'CLOSED') {
     cycleBadgeClass = 'badge-gray'
   }
+  if (daysUntilStart !== null) cycleBadgeClass += ' cursor-help'
 
   return (
     <tr className="table-row align-top">
@@ -222,7 +230,7 @@ function PeriodSummaryRow({ summary, onDelete }) {
           <span className="block whitespace-nowrap">{endLabel}</span>
         </Link>
         <div className="mt-1">
-          <span className={clsx('mr-1.5', cycleBadgeClass)}>
+          <span className={clsx('mr-1.5', cycleBadgeClass)} title={daysUntilStart !== null ? `Days until - ${daysUntilStart}` : undefined}>
             {getCycleStageLabel(stage)}
           </span>
           {period.islocked && <span className="badge-amber">Locked</span>}
@@ -337,10 +345,8 @@ function PeriodSummaryGroup({ title, summaries, collapsed = false, collapsible =
                   <th className="table-header-cell text-left"></th>
                   <th className="table-header-cell text-center" colSpan="2">Income</th>
                   <th className="table-header-cell text-center" colSpan="2">Expenses</th>
-                  <th className="table-header-cell text-center" colSpan="2">Investments</th>
-                  <th className="table-header-cell"></th>
-                  <th className="table-header-cell"></th>
-                  <th className="table-header-cell"></th>
+                  <th className="table-header-cell text-center" colSpan="3">Investments</th>
+                  <th className="table-header-cell text-center" colSpan="2">Tracking</th>
                   <th className="table-header-cell"></th>
                 </tr>
                 <tr className="border-b border-gray-200 dark:border-gray-800">

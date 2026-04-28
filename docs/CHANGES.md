@@ -4,6 +4,45 @@ This document captures the key product and implementation changes made during re
 
 It is intended to complement [README.md](/home/ubuntu/dosh/README.md), not replace it.
 
+## Latest Session: Budget Cycles Table Header Restructure, Upcoming Tooltip UX, and Locked Banner Persistence (0.8.6-beta) (2026-04-28)
+
+### What changed
+
+- **Restructured Budget Cycles Summary table column grouping.**
+  - The "Investments" heading now spans 3 columns: Budget, Actual, and Projected Investment.
+  - Added a new "Tracking" heading that groups Surplus Budget and Surplus Actual columns.
+  - This aligns the visual hierarchy with how users mentally categorise the data.
+
+- **Added days-until-start tooltip to Upcoming badges.**
+  - Both Budget Cycles Summary and Budget Cycle Details pages now show "Days until - n" when hovering over an "Upcoming" badge.
+  - Calculation uses `differenceInCalendarDays` from `date-fns` with the budget's timezone (via `getToday()` from localisation context) for accuracy.
+  - Added `cursor-help` CSS class to Upcoming badges so the cursor indicates a tooltip is available.
+
+- **Fixed locked-cycle banner dismiss not persisting across reloads.**
+  - The dismiss action was using `sessionStorage`, which only persists for the current tab session and can be cleared on hard refresh.
+  - Changed all four references (initial read, effect sync, unlock cleanup, dismiss click) to use `localStorage` instead.
+  - The banner now stays dismissed across browser reloads, hard refreshes, and new tabs for the same budget cycle.
+  - The dismiss key remains scoped per cycle (`dosh_dismiss_lock_banner:{periodId}`) and is cleared when the cycle is unlocked.
+
+### Testing
+
+- Full backend regression suite: **299 passed**, 0 regressions introduced.
+- Full frontend regression suite: **334 passed**, 0 regressions introduced.
+- No new tests added — changes are pure UI/UX presentation and storage-layer switching with no new workflow behavior.
+
+### Decisions preserved
+
+- Tooltip text format: "Days until - n" (hyphen separator, no "D-n" shorthand in the tooltip itself).
+- Days remaining is calculated as calendar days from today (budget timezone) to cycle start date, clamped at zero.
+- Locked banner dismiss should persist like the Close-Out warning dismiss (`dosh_dismiss_closeout_warning`), which already uses `localStorage`.
+
+### Files touched
+
+- `frontend/src/pages/BudgetPeriodsPage.jsx`
+- `frontend/src/pages/PeriodDetailPage.jsx`
+
+---
+
 ## Latest Session: Close-Out UX Polish and Remaining Calculation Consistency (0.8.6-beta) (2026-04-28)
 
 ### What changed
