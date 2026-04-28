@@ -3,7 +3,7 @@
 ## Problem
 Income that is routed directly to an investment/savings account (via `IncomeType.linked_account` matching `InvestmentItem.linked_account_desc`) is currently included in the surplus calculation. This money is not available to spend in the period — it sits in the investment account — yet it inflates `surplus_actual` and `surplus_budget`, causing incorrect carry-forward amounts in close-out and misleading surplus displays across the app.
 
-User's concrete example: $10 interest credited to "ANZ Savings Account" (linked to the "Savings" investment line) produces a $10 carry-forward even though the cash never entered the spendable pool.
+User's concrete example: $10 interest credited to "Test Savings Account" (linked to the "Savings" investment line) produces a $10 carry-forward even though the cash never entered the spendable pool.
 
 ## Root Cause
 The surplus formula `income - expenses - investments` assumes all income lands in a spendable transaction account and investments are explicit transfers *from* that account. When income bypasses the transaction account and goes straight to an investment account, it is counted as available surplus even though it is not.

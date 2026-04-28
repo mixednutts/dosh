@@ -262,7 +262,7 @@ def test_in_use_account_allows_primary_flag_change_when_structure_is_unchanged(c
     create_balance_type(
         db_session,
         budgetid=budget.budgetid,
-        balancedesc="ANZ Savings Account",
+        balancedesc="Test Savings Account",
         balance_type="Savings",
         opening_balance="500.00",
         is_primary=False,
@@ -276,7 +276,7 @@ def test_in_use_account_allows_primary_flag_change_when_structure_is_unchanged(c
     )
 
     update_response = client.patch(
-        f"/api/budgets/{budget.budgetid}/balance-types/ANZ%20Savings%20Account",
+        f"/api/budgets/{budget.budgetid}/balance-types/Test%20Savings%20Account",
         json={
             "balance_type": "Savings",
             "opening_balance": "500.00",
