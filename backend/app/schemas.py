@@ -19,7 +19,7 @@ SUPPORTED_TIMEZONES = (
     "Europe/Berlin",
     "UTC",
 )
-DATE_FORMAT_OPTIONS = ("compact", "short", "medium", "long", "numeric", "MM-dd-yy", "MMM-dd-yyyy")
+DATE_FORMAT_OPTIONS = ("compact", "short", "medium", "numeric", "MM-dd-yy", "MMM-dd-yyyy")
 SUPPORTED_CURRENCY_VALUES = set(SUPPORTED_CURRENCIES)
 SUPPORTED_TIMEZONE_VALUES = set(SUPPORTED_TIMEZONES)
 DATE_FORMAT_VALUES = set(DATE_FORMAT_OPTIONS)

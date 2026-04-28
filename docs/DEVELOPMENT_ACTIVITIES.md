@@ -100,6 +100,21 @@ Activities:
 - added responsive grid stacking to TransactionEntryForm so fields arrange vertically on narrow screens
 - deliverable: new `MobileTableCards.jsx` reusable component; responsive changes across 13 frontend files; 6 new component tests
 
+#### Activity Group: Editable Transaction Date/Time and Date Validation
+
+Status:
+- `Completed` (2026-04-28)
+
+Activities:
+- replaced read-only transaction date display in all three transaction modals with an editable manual text input supporting 14 common `date-fns` parse formats
+- implemented `tryParseDateTime()` helper and period-aware validation on blur and form submit using native browser validity APIs
+- implemented period-aware default dates: modals open with today's date when inside the period, or the period start date when outside
+- aligned investment setup date picker with expense scheduling by replacing native `<input type="date">` with the shared `DateField` component
+- removed `"long"` date format option from frontend and backend `DATE_FORMAT_OPTIONS`
+- fixed FastAPI startup deprecation by replacing `@app.on_event("startup")` with `lifespan` context manager
+- cleaned up orphaned `DateField.jsx` props and unused dropdown CSS from earlier date-picker experiments
+- deliverable: `TransactionEntryForm.jsx`, `transactionHelpers.js`, three modal wrappers, `InvestmentItemsTab.jsx`, `DateField.jsx`, `index.css`; 3 backend tests + 8 frontend tests
+
 #### Activity Group: Current Period URL Shortcut
 
 Status:

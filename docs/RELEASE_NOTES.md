@@ -2,10 +2,17 @@
 
 ## Unreleased
 
+## 0.9.0-beta | released | 2026-04-28
+
+### Added
+
+- You can now edit the date and time when recording or updating any transaction — income, expense, or investment. The date field accepts natural typed input (for example, "28 Apr 2026, 3:29 PM") and validates that the date falls within the current budget cycle.
+- When opening a transaction modal for a past or future budget cycle, the date now defaults to the cycle's start date instead of today's date, so you don't accidentally record transactions on the wrong date.
+
 ### Fixed
 
-- Fixed the "In Cycle Expense Revisions" health metric incorrectly counting all expense status changes. It now counts only actual revision transactions (when an expense is marked Revised), and only those recorded after the period started.
-- Fixed the locked-cycle banner dismiss action not persisting across browser reloads or hard refreshes. The dismiss state now uses `localStorage` instead of `sessionStorage`.
+- The "In Cycle Expense Revisions" health metric incorrectly counted all expense status changes. It now counts only actual revision transactions (when an expense is marked Revised), and only those recorded after the period started.
+- The locked-cycle banner dismiss action did not persist across browser reloads or hard refreshes. The dismiss state now uses `localStorage` instead of `sessionStorage`.
 
 ### Changed
 
@@ -13,6 +20,12 @@
 - Renamed the health metric from "Revisions made on Paid Expenses" to "In Cycle Expense Revisions" to better reflect what it measures.
 - The Budget Cycles Summary table now groups the "Projected Investment" column under the "Investments" heading, and the surplus columns (Surplus Budget and Surplus Actual) are grouped under a new "Tracking" heading for clearer information hierarchy.
 - "Upcoming" budget cycle badges now show a "Days until - n" tooltip on hover, indicating how many days remain until the cycle starts. The cursor changes to a help icon when hovering over these badges to signal that extra information is available.
+- The investment setup form now uses the same date picker as expense scheduling, providing a consistent experience across the app.
+- Removed the "Long" date format option from settings to keep the date format list focused on commonly used formats.
+
+### Engineering
+
+- Replaced the deprecated FastAPI startup event handler with a modern `lifespan` context manager.
 
 ## 0.8.6-beta | released | 2026-04-28
 

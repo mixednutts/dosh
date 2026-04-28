@@ -27,7 +27,7 @@ describe('SettingsTab', () => {
         'Europe/Berlin',
         'UTC',
       ],
-      date_formats: ['compact', 'short', 'medium', 'long', 'numeric', 'MM-dd-yy', 'MMM-dd-yyyy'],
+      date_formats: ['compact', 'short', 'medium', 'numeric', 'MM-dd-yy', 'MMM-dd-yyyy'],
     })
   })
 

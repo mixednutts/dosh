@@ -204,3 +204,21 @@ def test_income_transactions_respect_locked_active_and_closed_cycle_rules_and_bl
     salary_row = db_session.get(PeriodIncome, (finperiodid, "Salary"))
     assert salary_row is not None
     assert Decimal(str(salary_row.actualamount)) == Decimal("0.00")
+
+
+def test_add_income_transaction_rejects_malformed_entrydate(client, db_session):
+    setup = create_minimum_budget_setup(db_session)
+    budget = setup["budget"]
+    active_period = generate_periods(
+        client,
+        budgetid=budget.budgetid,
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
+        count=1,
+    )[0]
+    finperiodid = active_period["finperiodid"]
+
+    response = client.post(
+        f"/api/budgets/{budget.budgetid}/periods/{finperiodid}/income/Salary/transactions/",
+        json={"amount": "500.00", "entrydate": "not-a-valid-date"},
+    )
+    assert response.status_code == 422

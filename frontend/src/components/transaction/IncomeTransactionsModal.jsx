@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react'
 import PropTypes from 'prop-types'
+import { format, parseISO } from 'date-fns'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getIncomeTransactions, addIncomeTransaction, deleteIncomeTransaction } from '../../api/client'
 import { useFormatters } from '../useFormatters'
 import { TransactionWorkflowModal } from './TransactionWorkflowModal'
 import { getTransactionModalConfig, buildTransactionSubmitHandler } from '../../utils/transactionHelpers'
 
-export function IncomeTransactionsModal({ periodId, budgetId, incomedesc, budgetamount, actualamount, locked, readOnly = false, onClose, defaultType = 'credit' }) {
+export function IncomeTransactionsModal({ periodId, budgetId, incomedesc, budgetamount, actualamount, locked, readOnly = false, onClose, defaultType = 'credit', periodStartDate, periodEndDate }) {
   const config = getTransactionModalConfig('income')
   const qc = useQueryClient()
   const formatters = useFormatters()
@@ -18,8 +19,21 @@ export function IncomeTransactionsModal({ periodId, budgetId, incomedesc, budget
   const [error, setError] = useState('')
 
   useEffect(() => {
-    setEntrydate(formatters.fmtDateTime(new Date()))
-  }, [formatters])
+    const today = new Date()
+    const start = periodStartDate ? parseISO(periodStartDate) : null
+    const end = periodEndDate ? parseISO(periodEndDate) : null
+    let defaultDate = today
+    if (start && end) {
+      const startOfDay = new Date(start)
+      startOfDay.setHours(0, 0, 0, 0)
+      const endOfDay = new Date(end)
+      endOfDay.setHours(23, 59, 59, 999)
+      if (today < startOfDay || today > endOfDay) {
+        defaultDate = start
+      }
+    }
+    setEntrydate(format(defaultDate, "yyyy-MM-dd'T'HH:mm:ss"))
+  }, [periodStartDate, periodEndDate])
 
   const { data: transactions = [], isLoading } = useQuery({
     queryKey: ['income-transactions', periodId, incomedesc],
@@ -35,7 +49,20 @@ export function IncomeTransactionsModal({ periodId, budgetId, incomedesc, budget
       setAmount('')
       setResolvedAmount({ value: null, state: 'empty' })
       setNote('')
-      setEntrydate(formatters.fmtDateTime(new Date()))
+      const today = new Date()
+      const start = periodStartDate ? parseISO(periodStartDate) : null
+      const end = periodEndDate ? parseISO(periodEndDate) : null
+      let defaultDate = today
+      if (start && end) {
+        const startOfDay = new Date(start)
+        startOfDay.setHours(0, 0, 0, 0)
+        const endOfDay = new Date(end)
+        endOfDay.setHours(23, 59, 59, 999)
+        if (today < startOfDay || today > endOfDay) {
+          defaultDate = start
+        }
+      }
+      setEntrydate(format(defaultDate, "yyyy-MM-dd'T'HH:mm:ss"))
       setError('')
       onClose()
     },
@@ -56,6 +83,9 @@ export function IncomeTransactionsModal({ periodId, budgetId, incomedesc, budget
     mutate: add.mutate,
     type,
     note,
+    entrydate,
+    periodStartDate,
+    periodEndDate,
     toMutationAmount: config.toMutationAmount,
   })
 
@@ -75,9 +105,12 @@ export function IncomeTransactionsModal({ periodId, budgetId, incomedesc, budget
       note={note}
       setNote={setNote}
       entrydate={entrydate}
+      setEntrydate={setEntrydate}
       error={error}
       setError={setError}
       setResolvedAmount={setResolvedAmount}
+      periodStartDate={periodStartDate}
+      periodEndDate={periodEndDate}
       budgetAmount={budgetamount}
       actualAmount={actualamount}
       type={type}
@@ -100,4 +133,6 @@ IncomeTransactionsModal.propTypes = {
   readOnly: PropTypes.bool,
   onClose: PropTypes.func.isRequired,
   defaultType: PropTypes.oneOf(['credit', 'debit']),
+  periodStartDate: PropTypes.string,
+  periodEndDate: PropTypes.string,
 }

@@ -275,6 +275,19 @@ def test_add_transaction_with_entrydate(client, db_session):
     assert response.json()["entrydate"] is not None
 
 
+def test_add_investment_transaction_rejects_malformed_entrydate(client, db_session):
+    setup = _minimum_setup(db_session)
+    budget = setup["budget"]
+    periods = generate_periods(client, budgetid=budget.budgetid, startdate=datetime(2026, 4, 1))
+    period_id = periods[0]["finperiodid"]
+
+    response = client.post(
+        f"/api/budgets/{budget.budgetid}/periods/{period_id}/investments/Emergency%20Fund/transactions",
+        json={"amount": "150.00", "entrydate": "not-a-valid-date"},
+    )
+    assert response.status_code == 422
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

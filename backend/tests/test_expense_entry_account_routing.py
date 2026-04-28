@@ -95,3 +95,28 @@ def test_expense_entry_rejects_unknown_account(client, db_session):
     )
     assert entry.status_code == 404
     assert "account not found" in entry.json()["detail"].lower()
+
+
+def test_add_expense_entry_rejects_malformed_entrydate(client, db_session):
+    budget = create_budget(db_session)
+    create_income_type(db_session, budgetid=budget.budgetid)
+    create_expense_item(db_session, budgetid=budget.budgetid)
+
+    primary = client.post(
+        f"/api/budgets/{budget.budgetid}/balance-types/",
+        json={"balancedesc": "Main", "balance_type": "Transaction", "opening_balance": "1000.00", "active": True, "is_primary": True},
+    )
+    assert primary.status_code == 201
+
+    active_period = generate_periods(
+        client,
+        budgetid=budget.budgetid,
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
+        count=1,
+    )[0]
+
+    response = client.post(
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/expenses/Rent/entries/",
+        json={"amount": "120.00", "entrydate": "not-a-valid-date"},
+    )
+    assert response.status_code == 422

@@ -16,6 +16,7 @@ export function TransactionWorkflowModal({
   note,
   setNote,
   entrydate,
+  setEntrydate,
   error,
   setError,
   setResolvedAmount,
@@ -33,6 +34,8 @@ export function TransactionWorkflowModal({
   setSelectedAccount = () => {},
   sourceAccount = null,
   destinationAccount = null,
+  periodStartDate = null,
+  periodEndDate = null,
 }) {
   const formatters = useFormatters()
   const config = getTransactionModalConfig(kind)
@@ -71,9 +74,12 @@ export function TransactionWorkflowModal({
           note={note}
           setNote={setNote}
           entrydate={entrydate}
+          setEntrydate={setEntrydate}
           error={error}
           setError={setError}
           setResolvedAmount={setResolvedAmount}
+          periodStartDate={periodStartDate}
+          periodEndDate={periodEndDate}
           budgetAmount={budgetAmount}
           type={type}
           setType={setType}
@@ -105,6 +111,7 @@ TransactionWorkflowModal.propTypes = {
   note: PropTypes.string.isRequired,
   setNote: PropTypes.func.isRequired,
   entrydate: PropTypes.string.isRequired,
+  setEntrydate: PropTypes.func.isRequired,
   error: PropTypes.string.isRequired,
   setError: PropTypes.func.isRequired,
   setResolvedAmount: PropTypes.func.isRequired,
@@ -124,4 +131,6 @@ TransactionWorkflowModal.propTypes = {
   setSelectedAccount: PropTypes.func,
   sourceAccount: PropTypes.string,
   destinationAccount: PropTypes.string,
+  periodStartDate: PropTypes.string,
+  periodEndDate: PropTypes.string,
 }

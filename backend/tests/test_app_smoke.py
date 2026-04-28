@@ -18,7 +18,7 @@ def test_info_endpoint_returns_app_version(client):
 
     assert response.status_code == 200
     assert response.json()["app"] == "Dosh"
-    assert response.json()["version"] == "0.8.6-beta"
+    assert response.json()["version"] == "0.9.0-beta"
 
 
 def test_release_notes_endpoint_returns_current_release(client, monkeypatch):
@@ -43,10 +43,10 @@ def test_release_notes_endpoint_returns_current_release(client, monkeypatch):
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["current_version"] == "0.8.6-beta"
+    assert payload["current_version"] == "0.9.0-beta"
     assert payload["update_available"] is False
     assert payload["newer_release_count"] == 0
-    assert payload["current_release"]["version"] == "0.8.6-beta"
+    assert payload["current_release"]["version"] == "0.9.0-beta"
 
 
 def test_generate_period_creates_expected_core_rows(client, db_session):
@@ -129,7 +129,7 @@ def test_localisation_options_are_exposed_before_budget_id_routes(client):
     assert payload["locales"] == ["en-AU", "en-US", "en-GB", "en-NZ", "de-DE"]
     assert "AUD" in payload["currencies"]
     assert "Australia/Sydney" in payload["timezones"]
-    assert payload["date_formats"] == ["compact", "short", "medium", "long", "numeric", "MM-dd-yy", "MMM-dd-yyyy"]
+    assert payload["date_formats"] == ["compact", "short", "medium", "numeric", "MM-dd-yy", "MMM-dd-yyyy"]
 
 
 def test_budget_can_be_created_with_a_custom_day_cycle(client):

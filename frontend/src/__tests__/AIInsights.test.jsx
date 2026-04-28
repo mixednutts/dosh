@@ -33,6 +33,7 @@ describe('BudgetHealthTab AI Insights', () => {
     jest.clearAllMocks()
     client.getBudgetHealthMatrix.mockResolvedValue({ items: [] })
     client.getAIConfigStatus.mockResolvedValue({ encryption_ready: true })
+    client.getAIVendorManifest.mockResolvedValue({ models: [] })
   })
 
   it('shows AI Insights section with enable checkbox', async () => {

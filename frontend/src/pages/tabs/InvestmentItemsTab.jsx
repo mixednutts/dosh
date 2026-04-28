@@ -7,6 +7,7 @@ import { getInvestmentItems, createInvestmentItem, updateInvestmentItem, deleteI
 import Modal from '../../components/Modal'
 import SetupItemHistoryModal from '../../components/SetupItemHistoryModal'
 import LocalizedAmountInput from '../../components/LocalizedAmountInput'
+import DateField from '../../components/DateField'
 import { useLocalisation } from '../../components/LocalisationContext'
 import { getBalanceTypeLabel } from '../../utils/accountNaming'
 
@@ -49,7 +50,12 @@ function InvestmentForm({ initial = emptyForm, isEdit = false, onSubmit, onClose
       </div>
       <div>
         <label htmlFor={`${formIdPrefix}-effective-date`} className="label">Effective Date</label>
-        <input id={`${formIdPrefix}-effective-date`} disabled={structureLocked} type="date" className="input" value={form.effectivedate} onChange={e => set('effectivedate', e.target.value)} />
+        <DateField
+          id={`${formIdPrefix}-effective-date`}
+          disabled={structureLocked}
+          value={form.effectivedate}
+          onChange={value => set('effectivedate', value)}
+        />
       </div>
       <div>
         <label htmlFor={`${formIdPrefix}-source-account`} className="label">Debit Account</label>

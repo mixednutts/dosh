@@ -115,6 +115,7 @@ These areas deserve extra caution whenever product work touches them:
 - transaction-backed income behavior, including dedicated income transaction history rather than inline actual overrides
 - modal-driven budget adjustment behavior across income, expense, and investment, including setup-history readback through the shared transaction model
 - period-detail modal amount-expression behavior, including raw-expression visibility, valid-expression preview, incomplete-expression in-progress summary behavior, and resolved-value submission across income, expense, investment, add-line, and budget-adjustment flows
+- transaction date entry and validation, including manual text parsing, multi-format fallback, period-boundary enforcement, and native validity API behavior across income, expense, and investment modals
 - localisation behavior, including budget-level locale/currency/timezone/date-format preference validation, shared `Intl` display helpers, masked amount input normalization, operator-triggered calculator mode, timezone-aware labels, and date-picker locale behavior
 - setup-revision history behavior, including field-level change capture, revision-number rebasing, and the distinction between setup-affecting future budget adjustments and current-only period adjustments
 - post-paid revise flows and read-only guards on closed cycles
@@ -529,8 +530,8 @@ CI=true npm test -- --watchAll=false --runInBand
 ```
 
 Current test counts:
-- Backend: 298 tests
-- Frontend: 330 tests
+- Backend: 302 tests
+- Frontend: 342 tests
 
 Current end-to-end run command:
 

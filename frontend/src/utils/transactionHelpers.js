@@ -1,3 +1,5 @@
+import { format, parseISO } from 'date-fns'
+
 export const SECONDARY_BUTTON_CLASSES = 'flex items-center justify-center w-7 h-7 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors'
 export const DELETE_BUTTON_CLASSES = 'flex items-center justify-center w-7 h-7 rounded-full text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors'
 export const DISABLED_ICON_BUTTON_CLASSES = 'opacity-30 cursor-not-allowed bg-gray-100 text-gray-400'
@@ -172,15 +174,30 @@ export function getTransactionModalConfig(kind) {
   return configs[kind]
 }
 
-export function buildTransactionSubmitHandler({ resolvedAmount, setError, mutate, type, note, toMutationAmount, extraPayload = {} }) {
-  return event => {
+export function buildTransactionSubmitHandler({ resolvedAmount, setError, mutate, type, note, entrydate, periodStartDate, periodEndDate, toMutationAmount, extraPayload = {} }) {
+  return (event, overrideEntrydate) => {
     event.preventDefault()
     const amountValue = getResolvedAmountValue(resolvedAmount, 0.01)
     if (amountValue == null) {
       setError('Enter a valid amount')
       return
     }
+    const rawEntrydate = overrideEntrydate ?? entrydate
+    const parsedDate = rawEntrydate ? parseISO(rawEntrydate) : null
+    if (!parsedDate || isNaN(parsedDate.getTime())) {
+      setError('Enter a valid transaction date')
+      return
+    }
+    if (periodStartDate && periodEndDate) {
+      const dateStr = format(parsedDate, 'yyyy-MM-dd')
+      const startStr = format(parseISO(periodStartDate), 'yyyy-MM-dd')
+      const endStr = format(parseISO(periodEndDate), 'yyyy-MM-dd')
+      if (dateStr < startStr || dateStr > endStr) {
+        setError('Transaction date must be within the current budget cycle')
+        return
+      }
+    }
     setError('')
-    mutate({ amount: toMutationAmount(type, amountValue), note: note || null, entrydate: new Date().toISOString(), ...extraPayload })
+    mutate({ amount: toMutationAmount(type, amountValue), note: note || null, entrydate: parsedDate.toISOString(), ...extraPayload })
   }
 }

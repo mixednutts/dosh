@@ -4,6 +4,76 @@ This document captures the key product and implementation changes made during re
 
 It is intended to complement [README.md](/home/ubuntu/dosh/README.md), not replace it.
 
+## Latest Session: Editable Transaction Date/Time, Date Validation, and Date Picker Alignment (0.9.0-beta) (2026-04-28)
+
+### What changed
+
+- **Replaced read-only transaction date with editable manual text input.**
+  - All three transaction modals (income, expense, investment) now allow users to type or edit the transaction date/time directly instead of displaying it read-only.
+  - The input supports multiple human-readable formats via `tryParseDateTime()` in `TransactionEntryForm.jsx` — 14 common `date-fns` parse patterns including `dd MMM yyyy, h:mm aa`, `yyyy-MM-dd HH:mm`, `dd/MM/yyyy h:mm aa`, etc.
+  - On blur, the input validates emptiness, parse-ability, and period bounds. Invalid entries trigger a native browser validity tooltip (`setCustomValidity` + `reportValidity`).
+  - On form submit, `handleFormSubmit` re-parses the display string to avoid stale-state issues and passes the ISO result as `overrideEntrydate` to `buildTransactionSubmitHandler`.
+
+- **Added period-aware default dates for modal open.**
+  - `IncomeTransactionsModal`, `ExpenseEntriesModal`, and `InvestmentTxModal` now compute an initial `entrydate`.
+  - If today's date (budget timezone) falls within the period bounds, the default is the current date/time.
+  - If today is outside the period, the default falls back to the period start date at midnight.
+  - This prevents users from opening a modal for a past/future cycle and accidentally recording a transaction with today's date.
+
+- **Aligned Investment setup date picker with Expense scheduling.**
+  - Replaced the native `<input type="date">` in `InvestmentItemsTab.jsx` with the project's shared `DateField` component (react-datepicker).
+  - This gives investment effective dates the same picker UX as expense item scheduling dates.
+
+- **Removed the `"long"` date format option.**
+  - Dropped `"long"` from frontend `DATE_FORMAT_OPTIONS` in `localisation.js` and backend `DATE_FORMAT_OPTIONS` in `schemas.py`.
+  - The backend still uses the `long` preset internally for headings and tooltips where a full sentence-length date is appropriate.
+
+- **Fixed FastAPI startup deprecation.**
+  - Replaced `@app.on_event("startup")` with an `asynccontextmanager` `lifespan` handler in `main.py`.
+  - Eliminates the `DeprecationWarning` emitted by FastAPI 0.115+ on startup.
+
+- **Orphaned code cleanup.**
+  - Reverted `DateField.jsx` to its pre-session state, removing the `inline`, `minDate`, `maxDate`, `showMonthDropdown`, and `showYearDropdown` props and the dead inline-rendering branch.
+  - Removed ~76 lines of unused dropdown-related CSS from `index.css`.
+
+### Testing
+
+- Full backend regression suite: **302 passed**, 0 regressions introduced.
+- Full frontend regression suite: **342 passed**, 0 regressions introduced.
+- New backend tests: 3 tests in `test_income_transactions.py`, `test_expense_entries.py`, and `test_investment_transactions.py` verifying malformed `entrydate` strings return HTTP 422.
+- New frontend tests: 8 tests in `TransactionEntryForm.test.jsx` covering empty date, unparseable format, before-period, after-period, valid submit, form-block-without-blur, native validity set, and native validity clear.
+- Updated `PeriodDetailPage.jsx` frontend tests to mock `startdate`/`enddate` so modals initialise with valid default dates.
+- Mocked `getAIVendorManifest` in `AIInsights.test.jsx` to eliminate undefined-return console noise during test runs.
+
+### Decisions preserved
+
+- Manual text entry was chosen over calendar/inline pickers because calendar modals were considered obtrusive, lacked month/year quick-selectors, had no done button, didn't respect dark mode, and inline variants didn't reliably return values.
+- `DateField` component is preserved for setup/scheduling consumers (`ExpenseItemSchedulingFields.jsx` and `InvestmentItemsTab.jsx`) but all transaction modals bypass it entirely.
+- Backend does NOT enforce period-boundary validation on transaction dates; Pydantic schemas accept any valid ISO datetime. Period bounds are checked only in the frontend (`TransactionEntryForm.jsx` and `buildTransactionSubmitHandler`).
+- Date parsing attempts a wide set of formats in priority order rather than a single strict format, to accommodate copy-paste from other sources and regional variations.
+
+### Files touched
+
+- `frontend/src/components/transaction/TransactionEntryForm.jsx`
+- `frontend/src/utils/transactionHelpers.js`
+- `frontend/src/components/transaction/IncomeTransactionsModal.jsx`
+- `frontend/src/components/transaction/ExpenseEntriesModal.jsx`
+- `frontend/src/components/transaction/InvestmentTxModal.jsx`
+- `frontend/src/pages/tabs/InvestmentItemsTab.jsx`
+- `frontend/src/utils/localisation.js`
+- `frontend/src/components/DateField.jsx`
+- `frontend/src/index.css`
+- `frontend/src/__tests__/TransactionEntryForm.test.jsx`
+- `frontend/src/__tests__/AIInsights.test.jsx`
+- `frontend/src/__tests__/PeriodDetailPage.test.jsx`
+- `backend/app/main.py`
+- `backend/app/schemas.py`
+- `backend/tests/test_income_transactions.py`
+- `backend/tests/test_expense_entries.py`
+- `backend/tests/test_investment_transactions.py`
+
+---
+
 ## Latest Session: Budget Cycles Table Header Restructure, Upcoming Tooltip UX, and Locked Banner Persistence (0.8.6-beta) (2026-04-28)
 
 ### What changed

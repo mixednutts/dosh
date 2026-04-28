@@ -1,7 +1,40 @@
+import { useState, useEffect, useRef } from 'react'
 import PropTypes from 'prop-types'
+import { parseISO, format, parse } from 'date-fns'
 import AmountExpressionInput from '../AmountExpressionInput'
 import { useFormatters } from '../useFormatters'
 import { getTransactionModalConfig } from '../../utils/transactionHelpers'
+
+function tryParseDateTime(value) {
+  if (!value || !value.trim()) return null
+
+  const iso = parseISO(value)
+  if (!isNaN(iso.getTime())) return iso
+
+  const formats = [
+    "dd MMM yyyy, h:mm aa",
+    "dd MMM yyyy, HH:mm",
+    "dd MMM yyyy h:mm aa",
+    "dd MMM yyyy HH:mm",
+    "dd/MM/yyyy HH:mm",
+    "dd/MM/yyyy h:mm aa",
+    "yyyy-MM-dd HH:mm",
+    "yyyy-MM-dd HH:mm:ss",
+    "MMM dd yyyy, h:mm aa",
+    "MMM dd yyyy, HH:mm",
+    "MMM dd yyyy h:mm aa",
+    "MMM dd yyyy HH:mm",
+    "MM/dd/yyyy HH:mm",
+    "MM/dd/yyyy h:mm aa",
+  ]
+
+  for (const fmt of formats) {
+    const attempt = parse(value, fmt, new Date())
+    if (!isNaN(attempt.getTime())) return attempt
+  }
+
+  return null
+}
 
 export function TransactionEntryForm({
   kind,
@@ -11,6 +44,7 @@ export function TransactionEntryForm({
   note,
   setNote,
   entrydate,
+  setEntrydate,
   error,
   setError,
   setResolvedAmount,
@@ -28,8 +62,53 @@ export function TransactionEntryForm({
   setSelectedAccount = () => {},
   sourceAccount = null,
   destinationAccount = null,
+  periodStartDate = null,
+  periodEndDate = null,
 }) {
   const formatters = useFormatters()
+  const [displayDate, setDisplayDate] = useState('')
+  const dateInputRef = useRef(null)
+
+  useEffect(() => {
+    if (entrydate) {
+      const parsed = parseISO(entrydate)
+      if (!isNaN(parsed.getTime())) {
+        setDisplayDate(format(parsed, 'dd MMM yyyy, h:mm aa'))
+      }
+    } else {
+      setDisplayDate('')
+    }
+  }, [entrydate])
+
+  const handleDateBlur = () => {
+    if (!displayDate.trim()) {
+      const msg = 'Enter a transaction date'
+      if (dateInputRef.current) dateInputRef.current.setCustomValidity(msg)
+      setError(msg)
+      return
+    }
+    const parsed = tryParseDateTime(displayDate)
+    if (!parsed || isNaN(parsed.getTime())) {
+      const msg = 'Invalid date. Try: 28 Apr 2026, 3:29 PM or 2026-04-28 15:29'
+      if (dateInputRef.current) dateInputRef.current.setCustomValidity(msg)
+      setError(msg)
+      return
+    }
+    if (periodStartDate && periodEndDate) {
+      const dateStr = format(parsed, 'yyyy-MM-dd')
+      const startStr = format(parseISO(periodStartDate), 'yyyy-MM-dd')
+      const endStr = format(parseISO(periodEndDate), 'yyyy-MM-dd')
+      if (dateStr < startStr || dateStr > endStr) {
+        const msg = `Transaction date must be between ${formatters.fmtDate(periodStartDate)} and ${formatters.fmtDate(periodEndDate)}`
+        if (dateInputRef.current) dateInputRef.current.setCustomValidity(msg)
+        setError(msg)
+        return
+      }
+    }
+    if (dateInputRef.current) dateInputRef.current.setCustomValidity('')
+    setError('')
+    setEntrydate(format(parsed, "yyyy-MM-dd'T'HH:mm:ss"))
+  }
   if (locked) {
     return (
       <div className="flex justify-end">
@@ -71,8 +150,43 @@ export function TransactionEntryForm({
         : numericBudgetAmount)
   const quickFillType = usesRemainingQuickFill ? 'Remaining' : 'Full'
 
+  const handleFormSubmit = event => {
+    const parsed = tryParseDateTime(displayDate)
+    if (!parsed || isNaN(parsed.getTime())) {
+      const msg = 'Invalid date. Try: 28 Apr 2026, 3:29 PM or 2026-04-28 15:29'
+      if (dateInputRef.current) {
+        dateInputRef.current.setCustomValidity(msg)
+        dateInputRef.current.reportValidity()
+      }
+      setError(msg)
+      event.preventDefault()
+      return
+    }
+    if (periodStartDate && periodEndDate) {
+      const dateStr = format(parsed, 'yyyy-MM-dd')
+      const startStr = format(parseISO(periodStartDate), 'yyyy-MM-dd')
+      const endStr = format(parseISO(periodEndDate), 'yyyy-MM-dd')
+      if (dateStr < startStr || dateStr > endStr) {
+        const msg = `Transaction date must be between ${formatters.fmtDate(periodStartDate)} and ${formatters.fmtDate(periodEndDate)}`
+        if (dateInputRef.current) {
+          dateInputRef.current.setCustomValidity(msg)
+          dateInputRef.current.reportValidity()
+        }
+        setError(msg)
+        event.preventDefault()
+        return
+      }
+    }
+    if (dateInputRef.current) {
+      dateInputRef.current.setCustomValidity('')
+    }
+    const iso = format(parsed, "yyyy-MM-dd'T'HH:mm:ss")
+    setEntrydate(iso)
+    onSubmit(event, iso)
+  }
+
   return (
-    <form onSubmit={onSubmit} className="space-y-3 border-t border-gray-200 pt-1 dark:border-gray-700">
+    <form onSubmit={handleFormSubmit} className="space-y-3 border-t border-gray-200 pt-1 dark:border-gray-700">
       <div className="flex overflow-hidden rounded-md border border-gray-200 text-sm dark:border-gray-700">
         {typeOptions.map(option => (
           <button
@@ -169,12 +283,21 @@ export function TransactionEntryForm({
             placeholder="Note (optional)"
             className="input h-12"
           />
-          <div
+          <input
+            ref={dateInputRef}
             id={`transaction-date-${kind}`}
-            className="input h-12 text-sm flex items-center px-3 bg-slate-50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700"
-          >
-            {entrydate}
-          </div>
+            type="text"
+            value={displayDate}
+            onChange={e => {
+              setDisplayDate(e.target.value)
+              setError('')
+              if (dateInputRef.current) dateInputRef.current.setCustomValidity('')
+            }}
+            onBlur={handleDateBlur}
+            placeholder="28 Apr 2026, 3:29 PM"
+            className="input h-12"
+            required
+          />
         </div>
       </div>
       <div className="flex justify-end gap-2">
@@ -196,6 +319,7 @@ TransactionEntryForm.propTypes = {
   note: PropTypes.string.isRequired,
   setNote: PropTypes.func.isRequired,
   entrydate: PropTypes.string.isRequired,
+  setEntrydate: PropTypes.func.isRequired,
   error: PropTypes.string.isRequired,
   setError: PropTypes.func.isRequired,
   setResolvedAmount: PropTypes.func.isRequired,
@@ -219,4 +343,6 @@ TransactionEntryForm.propTypes = {
   setSelectedAccount: PropTypes.func,
   sourceAccount: PropTypes.string,
   destinationAccount: PropTypes.string,
+  periodStartDate: PropTypes.string,
+  periodEndDate: PropTypes.string,
 }

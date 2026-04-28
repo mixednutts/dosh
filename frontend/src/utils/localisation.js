@@ -30,7 +30,6 @@ export const DATE_FORMAT_OPTIONS = [
   { value: 'compact', label: 'Compact', sample: '10 Apr' },
   { value: 'short', label: 'Short', sample: '10 Apr 26' },
   { value: 'medium', label: 'Medium', sample: '10 Apr 2026' },
-  { value: 'long', label: 'Long', sample: 'Friday, 10 April 2026' },
   { value: 'numeric', label: 'Numeric', sample: '10/04/2026' },
   { value: 'MM-dd-yy', label: 'MM-DD-YY', sample: '04-10-26' },
   { value: 'MMM-dd-yyyy', label: 'MMM-DD-YYYY', sample: 'Apr-10-2026' },

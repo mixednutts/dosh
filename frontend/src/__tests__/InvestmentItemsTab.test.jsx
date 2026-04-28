@@ -55,7 +55,7 @@ describe('InvestmentItemsTab', () => {
     fireEvent.change(screen.getAllByPlaceholderText('0.00')[0], {
       target: { value: '500' },
     })
-    fireEvent.change(document.querySelector('input[type="date"]'), {
+    fireEvent.change(screen.getByLabelText(/Effective Date/i), {
       target: { value: '2026-08-01' },
     })
 
@@ -139,7 +139,7 @@ describe('InvestmentItemsTab', () => {
     fireEvent.change(screen.getAllByPlaceholderText('0.00')[0], {
       target: { value: '1500' },
     })
-    fireEvent.change(screen.getByDisplayValue('2026-08-01'), {
+    fireEvent.change(screen.getByLabelText(/Effective Date/i), {
       target: { value: '2026-08-15' },
     })
 

@@ -634,6 +634,8 @@ export default function PeriodDetailPage() {
             readOnly={!!incomeModal.readOnly}
             defaultType={incomeModal.defaultType ?? 'credit'}
             onClose={() => setIncomeModal(null)}
+            periodStartDate={period.startdate}
+            periodEndDate={period.enddate}
           />
         </Modal>
       )}
@@ -649,6 +651,8 @@ export default function PeriodDetailPage() {
             readOnly={!!entriesModal.readOnly}
             defaultType={entriesModal.defaultType ?? 'debit'}
             onClose={() => setEntriesModal(null)}
+            periodStartDate={period.startdate}
+            periodEndDate={period.enddate}
           />
         </Modal>
       )}
@@ -743,6 +747,8 @@ export default function PeriodDetailPage() {
             readOnly={!!investmentModal.readOnly}
             defaultType={investmentModal.defaultType ?? 'increase'}
             onClose={() => setInvestmentModal(null)}
+            periodStartDate={period.startdate}
+            periodEndDate={period.enddate}
           />
         </Modal>
       )}

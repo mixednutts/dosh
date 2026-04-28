@@ -1,5 +1,6 @@
 import logging
 import os
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from starlette.exceptions import HTTPException
@@ -34,31 +35,7 @@ from .routers import (
 configure_logging()
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Dosh API", version=APP_VERSION)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-app.include_router(ai_insights.router, prefix="/api")
-app.include_router(budgets.router, prefix="/api")
-app.include_router(periods.router, prefix="/api")
-app.include_router(income_types.router, prefix="/api")
-app.include_router(expense_items.router, prefix="/api")
-app.include_router(investments.router, prefix="/api")
-app.include_router(expense_entries.router, prefix="/api")
-app.include_router(income_transactions.router, prefix="/api")
-app.include_router(balance_types.router, prefix="/api")
-app.include_router(balance_types.period_router, prefix="/api")
-app.include_router(investment_transactions.router, prefix="/api")
-app.include_router(period_transactions.router, prefix="/api")
-app.include_router(health_matrices.router, prefix="/api")
-
-
-@app.on_event("startup")
 def seed_reference_data():
     from sqlalchemy.orm import Session
     from .database import SessionLocal
@@ -84,6 +61,36 @@ def seed_reference_data():
         "Dosh API started",
         extra={"version": APP_VERSION, "schema_revision": get_schema_revision()},
     )
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    seed_reference_data()
+    yield
+
+
+app = FastAPI(title="Dosh API", version=APP_VERSION, lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(ai_insights.router, prefix="/api")
+app.include_router(budgets.router, prefix="/api")
+app.include_router(periods.router, prefix="/api")
+app.include_router(income_types.router, prefix="/api")
+app.include_router(expense_items.router, prefix="/api")
+app.include_router(investments.router, prefix="/api")
+app.include_router(expense_entries.router, prefix="/api")
+app.include_router(income_transactions.router, prefix="/api")
+app.include_router(balance_types.router, prefix="/api")
+app.include_router(balance_types.period_router, prefix="/api")
+app.include_router(investment_transactions.router, prefix="/api")
+app.include_router(period_transactions.router, prefix="/api")
+app.include_router(health_matrices.router, prefix="/api")
 
 
 @app.get("/api/health")
