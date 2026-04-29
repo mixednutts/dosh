@@ -46,6 +46,7 @@ export function IncomeTransactionsModal({ periodId, budgetId, incomedesc, budget
       qc.invalidateQueries({ queryKey: ['income-transactions', periodId, incomedesc] })
       qc.invalidateQueries({ queryKey: ['period', periodId] })
       qc.invalidateQueries({ queryKey: ['period-balances', periodId] })
+      qc.invalidateQueries({ queryKey: ['balance-transactions', periodId] })
       setAmount('')
       setResolvedAmount({ value: null, state: 'empty' })
       setNote('')
@@ -74,6 +75,7 @@ export function IncomeTransactionsModal({ periodId, budgetId, incomedesc, budget
       qc.invalidateQueries({ queryKey: ['income-transactions', periodId, incomedesc] })
       qc.invalidateQueries({ queryKey: ['period', periodId] })
       qc.invalidateQueries({ queryKey: ['period-balances', periodId] })
+      qc.invalidateQueries({ queryKey: ['balance-transactions', periodId] })
     },
   })
 

@@ -163,6 +163,23 @@ Activities:
 - updated frontend tests for new generic copy
 - version bump: `0.9.0-beta` → `0.9.1-beta`
 
+#### Activity Group: Cash-Only Investment Contra Transactions and Invested Amount Display
+
+Status:
+- `Completed` (2026-04-29)
+
+Activities:
+- fixed cash-only investment transaction balance movement by creating primary+contra transaction pairs when `linked_account_desc` is empty
+- `build_investment_tx` creates a primary movement and a system contra with reversed direction; list endpoint filters out contras; delete cascades to linked contra
+- fixed refund behavior for cash-only investments: negative amounts correctly debit the related account and credit the cash account via reversed contra direction
+- added `invested_amount` to `PeriodBalanceOut` schema and `_invested_amounts_for_period` backend computation for cash-only investment tracking
+- frontend `BalanceSection.jsx` renders invested amount as a blue badge pill next to account type
+- fixed balance transactions stale data by invalidating `balance-transactions` query key across all mutations that invalidate `period-balances`
+- fixed frontend `balanceTransactionDelta` to correctly handle investment source transactions using both affected and related account descriptors
+- added backend regression tests for cash-only investment creation, normal linked-account single transaction, and cash-only decrease/refund
+- added frontend unit tests for investment delta calculations in `transactionHelpers.test.jsx`
+- version bump: `0.9.1-beta` → `0.9.2-beta`
+
 #### Activity Group: Formula Expression Helpers
 
 Status:

@@ -289,6 +289,204 @@ def test_add_investment_transaction_rejects_malformed_entrydate(client, db_sessi
 
 
 # ---------------------------------------------------------------------------
+# Cash-only investment two-transaction behaviour
+# ---------------------------------------------------------------------------
+
+
+def test_cash_only_investment_creates_two_transactions(client, db_session):
+    """When linked_account_desc is empty, an investment creates a primary (+)
+    and a contra (-) transaction so the cash account shows both sides netting zero."""
+    setup = _minimum_setup(db_session)
+    budget = setup["budget"]
+    bt = setup["balance_type"]
+    inv = setup["investment_item"]
+    inv.source_account_desc = bt.balancedesc
+    inv.linked_account_desc = None
+    db_session.commit()
+
+    periods = generate_periods(client, budgetid=budget.budgetid, startdate=datetime(2026, 4, 1))
+    period_id = periods[0]["finperiodid"]
+
+    response = client.post(
+        f"/api/budgets/{budget.budgetid}/periods/{period_id}/investments/Emergency%20Fund/transactions",
+        json={"amount": "500.00"},
+    )
+    assert response.status_code == 201, response.text
+    tx_id = response.json()["id"]
+
+    # List endpoint should return only the primary (no contras)
+    list_resp = client.get(
+        f"/api/budgets/{budget.budgetid}/periods/{period_id}/investments/Emergency%20Fund/transactions"
+    )
+    txs = list_resp.json()
+    assert len(txs) == 1
+    assert Decimal(txs[0]["amount"]) == Decimal("500.00")
+
+    # Balance transactions endpoint should show both sides
+    balance_txs = client.get(
+        f"/api/budgets/{budget.budgetid}/periods/{period_id}/balances/{bt.balancedesc}/transactions"
+    )
+    btxs = balance_txs.json()
+    assert len(btxs) == 2
+    amounts = [t["amount"] for t in btxs]
+    assert "500.00" in amounts
+    # Both transactions have amount 500; the type distinguishes credit vs debit
+    types = [t["type"] for t in btxs]
+    assert "CREDIT" in types
+    assert "DEBIT" in types
+
+    # Period balance movement should be net zero for the investment
+    detail = client.get(f"/api/budgets/{budget.budgetid}/periods/{period_id}")
+    balance = next(b for b in detail.json()["balances"] if b["balancedesc"] == bt.balancedesc)
+    assert Decimal(balance["movement_amount"]) == Decimal("0.00")
+
+    # Investment actual should still be 500
+    investment = next(i for i in detail.json()["investments"] if i["investmentdesc"] == "Emergency Fund")
+    assert Decimal(investment["actualamount"]) == Decimal("500.00")
+
+    # Deleting the primary should also delete the contra
+    del_resp = client.delete(
+        f"/api/budgets/{budget.budgetid}/periods/{period_id}/investments/Emergency%20Fund/transactions/{tx_id}"
+    )
+    assert del_resp.status_code == 204
+
+    balance_txs_after = client.get(
+        f"/api/budgets/{budget.budgetid}/periods/{period_id}/balances/{bt.balancedesc}/transactions"
+    )
+    assert balance_txs_after.json() == []
+
+
+def test_cash_only_investment_decrease_creates_correct_contra(client, db_session):
+    """A cash-only investment decrease (refund) creates a primary debit and a
+    contra credit on the same account, netting zero on the cash balance."""
+    setup = _minimum_setup(db_session)
+    budget = setup["budget"]
+    bt = setup["balance_type"]
+    inv = setup["investment_item"]
+    inv.source_account_desc = bt.balancedesc
+    inv.linked_account_desc = None
+    db_session.commit()
+
+    periods = generate_periods(client, budgetid=budget.budgetid, startdate=datetime(2026, 4, 1))
+    period_id = periods[0]["finperiodid"]
+
+    # First add a $500 investment
+    add_resp = client.post(
+        f"/api/budgets/{budget.budgetid}/periods/{period_id}/investments/Emergency%20Fund/transactions",
+        json={"amount": "500.00"},
+    )
+    assert add_resp.status_code == 201
+
+    # Then refund $200
+    refund_resp = client.post(
+        f"/api/budgets/{budget.budgetid}/periods/{period_id}/investments/Emergency%20Fund/transactions",
+        json={"amount": "-200.00"},
+    )
+    assert refund_resp.status_code == 201, refund_resp.text
+    refund_tx_id = refund_resp.json()["id"]
+
+    # Investment actual should be $300
+    detail = client.get(f"/api/budgets/{budget.budgetid}/periods/{period_id}")
+    investment = next(i for i in detail.json()["investments"] if i["investmentdesc"] == "Emergency Fund")
+    assert Decimal(investment["actualamount"]) == Decimal("300.00")
+
+    # Balance movement should still be net zero
+    balance = next(b for b in detail.json()["balances"] if b["balancedesc"] == bt.balancedesc)
+    assert Decimal(balance["movement_amount"]) == Decimal("0.00")
+
+    # Balance transactions should show 4 rows total (2 for add, 2 for refund)
+    balance_txs = client.get(
+        f"/api/budgets/{budget.budgetid}/periods/{period_id}/balances/{bt.balancedesc}/transactions"
+    )
+    btxs = balance_txs.json()
+    assert len(btxs) == 4
+
+    # Verify contra notes reflect the direction
+    db_txs = (
+        db_session.query(PeriodTransaction)
+        .filter(
+            PeriodTransaction.finperiodid == period_id,
+            PeriodTransaction.source == "investment",
+            PeriodTransaction.source_key == "Emergency Fund",
+        )
+        .order_by(PeriodTransaction.id)
+        .all()
+    )
+    assert len(db_txs) == 4
+    # First contra (from increase) should deduct
+    assert db_txs[1].note == "Deducted from spendable cash"
+    # Second contra (from refund) should return
+    assert db_txs[3].note == "Returned to spendable cash"
+
+    # Deleting the refund primary should also delete its contra
+    del_resp = client.delete(
+        f"/api/budgets/{budget.budgetid}/periods/{period_id}/investments/Emergency%20Fund/transactions/{refund_tx_id}"
+    )
+    assert del_resp.status_code == 204
+
+    balance_txs_after = client.get(
+        f"/api/budgets/{budget.budgetid}/periods/{period_id}/balances/{bt.balancedesc}/transactions"
+    )
+    assert len(balance_txs_after.json()) == 2
+
+
+def test_normal_investment_with_linked_account_creates_single_transaction(client, db_session):
+    """When linked_account_desc is set (normal budget), only one transaction is created."""
+    setup = _minimum_setup(db_session)
+    budget = setup["budget"]
+    bt = setup["balance_type"]
+    savings = create_balance_type(
+        db_session,
+        budgetid=budget.budgetid,
+        balancedesc="Savings",
+        balance_type="Savings",
+        is_primary=False,
+    )
+    inv = setup["investment_item"]
+    inv.source_account_desc = bt.balancedesc
+    inv.linked_account_desc = savings.balancedesc
+    db_session.commit()
+
+    periods = generate_periods(client, budgetid=budget.budgetid, startdate=datetime(2026, 4, 1))
+    period_id = periods[0]["finperiodid"]
+
+    response = client.post(
+        f"/api/budgets/{budget.budgetid}/periods/{period_id}/investments/Emergency%20Fund/transactions",
+        json={"amount": "250.00"},
+    )
+    assert response.status_code == 201, response.text
+    tx_id = response.json()["id"]
+
+    # Only one transaction in the DB for this investment
+    db_txs = (
+        db_session.query(PeriodTransaction)
+        .filter(
+            PeriodTransaction.finperiodid == period_id,
+            PeriodTransaction.source == "investment",
+            PeriodTransaction.source_key == "Emergency Fund",
+        )
+        .all()
+    )
+    assert len(db_txs) == 1
+    assert db_txs[0].affected_account_desc == savings.balancedesc
+    assert db_txs[0].related_account_desc == bt.balancedesc
+
+    # Balance transactions for the source account should show the single deduction
+    balance_txs = client.get(
+        f"/api/budgets/{budget.budgetid}/periods/{period_id}/balances/{bt.balancedesc}/transactions"
+    )
+    assert len(balance_txs.json()) == 1
+    assert balance_txs.json()[0]["id"] == tx_id
+
+    # Savings account should show the single addition
+    savings_txs = client.get(
+        f"/api/budgets/{budget.budgetid}/periods/{period_id}/balances/{savings.balancedesc}/transactions"
+    )
+    assert len(savings_txs.json()) == 1
+    assert savings_txs.json()[0]["id"] == tx_id
+
+
+# ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
@@ -302,4 +500,4 @@ def _minimum_setup(db_session):
     # Link investment to the primary balance account as debit source
     investment.source_account_desc = bt.balancedesc
     db_session.commit()
-    return {"budget": budget, "investment_item": investment}
+    return {"budget": budget, "investment_item": investment, "balance_type": bt}

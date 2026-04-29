@@ -965,6 +965,7 @@ class PeriodBalanceOut(BaseModel):
     opening_amount: Decimal
     closing_amount: Decimal
     movement_amount: Decimal = Decimal("0.00")
+    invested_amount: Optional[Decimal] = None
     model_config = {"from_attributes": True}
 
 

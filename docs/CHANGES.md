@@ -4,6 +4,72 @@ This document captures the key product and implementation changes made during re
 
 It is intended to complement [README.md](/home/ubuntu/dosh/README.md), not replace it.
 
+## Latest Session: Cash-Only Investment Contra Transactions, Invested Amount Display, and Balance Stale-Data Fix (0.9.2-beta) (2026-04-29)
+
+### What changed
+
+- **Fixed cash-only investment transaction balance movement.**
+  - When an investment item has no `linked_account_desc` (cash-only budgets), `build_investment_tx()` in `backend/app/transaction_ledger.py` now creates two distinct transactions: a primary `movement` and a system `contra`.
+  - Positive amount: primary CREDIT `affected_account_desc`, contra DEBIT `related_account_desc`. This moves cash out of the spendable account while tracking the investment value separately.
+  - Negative amount (refund): primary DEBIT `related_account_desc`, contra CREDIT `affected_account_desc`. This returns cash to the spendable account while reducing the investment value.
+  - The investment transaction list endpoint filters out `entry_kind == 'contra'` rows so the investment modal shows only primary transactions.
+  - The delete endpoint cascades to remove the linked contra transaction via `legacy_table='investment_contra'` and `legacy_id=primary.id`.
+
+- **Added invested amount display to account balances.**
+  - Added `invested_amount: Optional[Decimal]` to `PeriodBalanceOut` schema.
+  - Backend `_invested_amounts_for_period()` computes per-account invested totals only for cash-only shapes where `linked_account_desc IS NULL`.
+  - `list_period_balances()` in `balance_types.py` and `_load_period_detail_components()` in `periods.py` attach `invested_amount` to both dynamic and stored balance outputs.
+  - Frontend `BalanceSection.jsx` renders the invested amount as a `badge-blue` pill with text `Allocated to Investment: {fmt(amount)}` next to the account type pill.
+  - Column headers adjusted: "Type" instead of "Account Type", investment column header blank, column widths pushed to align the Details icon to the far right.
+
+- **Fixed balance transactions stale data bug.**
+  - All frontend mutations that invalidate `['period-balances', periodId]` now also invalidate `['balance-transactions', periodId]` (partial key match covers all account-specific sub-queries).
+  - Affected mutations: ExpenseEntriesModal, IncomeTransactionsModal, InvestmentTxModal, AddExpenseLineModal, AddIncomeLineModal, CloseoutModal, and PeriodDetailPage mutations.
+  - This ensures the Balance Transactions drill-down modal shows current data after any transaction change without requiring a page refresh.
+
+- **Fixed frontend `balanceTransactionDelta` for investment transactions.**
+  - `balanceTransactionDelta()` in `frontend/src/utils/transactionHelpers.js` now explicitly handles `tx.source === 'investment'` by checking both `affected_account_desc` (+amount) and `related_account_desc` (-amount).
+  - Previously, investment transactions were only checked against `affected_account_desc`, causing incorrect balance movement for cash-only investments where the cash account is `related_account_desc`.
+
+### Testing
+
+- Full backend regression suite: **308 passed**, 0 regressions introduced.
+- Full frontend regression suite: **352 passed**, 0 regressions introduced.
+- New backend tests in `test_investment_transactions.py`:
+  - `test_cash_only_investment_creates_two_transactions` — verifies primary+contra creation, balance movement net zero, and cascading delete.
+  - `test_normal_investment_with_linked_account_creates_single_transaction` — verifies single transaction for normal budgets with linked accounts.
+  - `test_cash_only_investment_decrease_creates_correct_contra` — verifies refund behavior: contra credits cash back, investment actual decreases correctly.
+- New frontend test in `transactionHelpers.test.jsx` — covers investment delta calculations including cash-only investment scenarios.
+
+### Decisions preserved
+
+- The contra transaction pattern uses `legacy_table='investment_contra'` and `legacy_id=primary.id` to link primary and contra rows, enabling cascade deletion.
+- Entry kind `contra` was added to backend constants; frontend `balanceTransactionDelta` does not need special contra handling because the contra transaction's `affected_account_desc`/`related_account_desc` fields already encode the correct directional semantics.
+- Frontend query invalidation uses partial key invalidation (`['balance-transactions', periodId]`) rather than account-specific keys to ensure broad cache clearing.
+- Invested amount is only computed and displayed for cash-only investment shapes (`linked_account_desc IS NULL`). Normal linked-account investments do not show an invested amount because the value is already represented in the linked account balance.
+
+### Files touched
+
+- `backend/app/transaction_ledger.py`
+- `backend/app/routers/investment_transactions.py`
+- `backend/app/routers/periods.py`
+- `backend/app/routers/balance_types.py`
+- `backend/app/schemas.py`
+- `backend/tests/test_investment_transactions.py`
+- `frontend/src/utils/transactionHelpers.js`
+- `frontend/src/components/period-sections/BalanceSection.jsx`
+- `frontend/src/components/modals/BalanceTransactionsModal.jsx`
+- `frontend/src/components/transaction/ExpenseEntriesModal.jsx`
+- `frontend/src/components/transaction/IncomeTransactionsModal.jsx`
+- `frontend/src/components/transaction/InvestmentTxModal.jsx`
+- `frontend/src/components/period-lines/AddExpenseLineModal.jsx`
+- `frontend/src/components/period-lines/AddIncomeLineModal.jsx`
+- `frontend/src/components/modals/CloseoutModal.jsx`
+- `frontend/src/pages/PeriodDetailPage.jsx`
+- `frontend/src/__tests__/transactionHelpers.test.jsx` (new)
+
+---
+
 ## Latest Session: Cash-Only Budget Shape — Type-Agnostic Primary Account (0.9.1-beta) (2026-04-29)
 
 ### What changed

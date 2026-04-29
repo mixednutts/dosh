@@ -40,7 +40,7 @@ export function AddExpenseLineModal({ periodId, budgetId, existingDescs, onClose
   const createItem = useMutation({ mutationFn: data => createExpenseItem(budgetId, data) })
   const addToperiod = useMutation({
     mutationFn: data => addExpenseToPeriod(budgetId, periodId, data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['period', periodId] }); qc.invalidateQueries({ queryKey: ['period-balances', periodId] }); qc.invalidateQueries({ queryKey: ['expense-items', budgetId] }); onClose() },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['period', periodId] }); qc.invalidateQueries({ queryKey: ['period-balances', periodId] }); qc.invalidateQueries({ queryKey: ['balance-transactions', periodId] }); qc.invalidateQueries({ queryKey: ['expense-items', budgetId] }); onClose() },
     onError: err => setError(err.response?.data?.detail ?? 'Failed'),
   })
 

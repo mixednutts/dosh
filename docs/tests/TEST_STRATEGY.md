@@ -531,8 +531,8 @@ CI=true npm test -- --watchAll=false --runInBand
 ```
 
 Current test counts:
-- Backend: 305 tests
-- Frontend: 342 tests
+- Backend: 308 tests
+- Frontend: 352 tests
 
 Current end-to-end run command:
 

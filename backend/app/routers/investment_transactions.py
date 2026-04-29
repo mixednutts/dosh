@@ -63,6 +63,7 @@ def list_transactions(budgetid: int, finperiodid: int, investmentdesc: str, db: 
             PeriodTransaction.finperiodid == finperiodid,
             PeriodTransaction.source == "investment",
             PeriodTransaction.source_key == investmentdesc,
+            PeriodTransaction.entry_kind != "contra",
         )
         .order_by(PeriodTransaction.entrydate, PeriodTransaction.id)
         .all()
@@ -135,6 +136,18 @@ def delete_transaction(
 
     pi = _get_period_investment(finperiodid, investmentdesc, budgetid, db)
     _assert_investment_not_paid(pi)
+
+    # Also remove the cash-only contra counterpart if one exists
+    contra = (
+        db.query(PeriodTransaction)
+        .filter(
+            PeriodTransaction.legacy_table == "investment_contra",
+            PeriodTransaction.legacy_id == tx_id,
+        )
+        .first()
+    )
+    if contra:
+        db.delete(contra)
 
     db.delete(tx)
     db.flush()

@@ -63,6 +63,7 @@ from ..setup_history import next_supported_revisionnum
 from ..time_utils import app_now_naive
 from ..transaction_ledger import (
     PeriodTransactionContext,
+    _invested_amounts_for_period,
     build_budget_adjustment_tx,
     build_expense_tx,
     build_income_tx,
@@ -485,11 +486,14 @@ def _load_period_detail_components(period: FinancialPeriod, db: Session) -> dict
             balances_limit_exceeded = True
     else:
         balance_rows = db.query(PeriodBalance).filter(PeriodBalance.finperiodid == finperiodid).all()
+        invested_amounts = _invested_amounts_for_period(finperiodid, period.budgetid, db)
         enriched_balances = []
         for pb in balance_rows:
             bt = db.get(BalanceType, (pb.budgetid, pb.balancedesc))
             balance = PeriodBalanceOut.model_validate(pb)
             balance.balance_type = bt.balance_type if bt else None
+            if pb.balancedesc in invested_amounts:
+                balance.invested_amount = invested_amounts[pb.balancedesc]
             enriched_balances.append(balance)
 
     income_out = _enrich_incomes(incomes, db)

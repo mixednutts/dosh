@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+## 0.9.2-beta | released | 2026-04-29
+
+### Fixed
+
+- Investment transactions for cash-only budgets (budgets with no linked investment account) now correctly move money between your cash account and investment tracking. Previously, the balance movement could show incorrect values or net-zero behavior that didn't reflect the actual investment contribution.
+- Recording a refund or decrease against a cash-only investment now correctly returns money to your cash account instead of double-deducting it.
+- The Balance Transactions drill-down modal now stays up to date after adding, editing, or deleting any transaction. Previously, the transaction list could show stale data until the page was refreshed.
+
+### Added
+
+- Account balances now show how much of each account is allocated to investments. On the Budget Cycle Details page, any account with investment allocations displays a blue badge showing the invested amount next to the account type.
+
 ## 0.9.1-beta | released | 2026-04-29
 
 ### Changed

@@ -30,6 +30,11 @@ export function balanceTransactionDelta(tx, balancedesc) {
     if (tx.related_account_desc === balancedesc) return -Number(tx.amount ?? 0)
     return 0
   }
+  if (tx.source === 'investment') {
+    if (tx.affected_account_desc === balancedesc) return Number(tx.amount ?? 0)
+    if (tx.related_account_desc === balancedesc) return -Number(tx.amount ?? 0)
+    return 0
+  }
   if (tx.affected_account_desc !== balancedesc) return 0
   if (tx.source === 'expense') return -Number(tx.amount ?? 0)
   return Number(tx.amount ?? 0)

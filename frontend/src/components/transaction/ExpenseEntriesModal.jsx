@@ -73,6 +73,7 @@ export function ExpenseEntriesModal({ periodId, budgetId, expensedesc, budgetamo
       qc.invalidateQueries({ queryKey: ['expense-entries', periodId, expensedesc] })
       qc.invalidateQueries({ queryKey: ['period', periodId] })
       qc.invalidateQueries({ queryKey: ['period-balances', periodId] })
+      qc.invalidateQueries({ queryKey: ['balance-transactions', periodId] })
       setAmount('')
       setResolvedAmount({ value: null, state: 'empty' })
       setNote('')
@@ -101,6 +102,7 @@ export function ExpenseEntriesModal({ periodId, budgetId, expensedesc, budgetamo
       qc.invalidateQueries({ queryKey: ['expense-entries', periodId, expensedesc] })
       qc.invalidateQueries({ queryKey: ['period', periodId] })
       qc.invalidateQueries({ queryKey: ['period-balances', periodId] })
+      qc.invalidateQueries({ queryKey: ['balance-transactions', periodId] })
     },
   })
 
