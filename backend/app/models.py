@@ -36,7 +36,6 @@ class Budget(Base):
     savings_priority = Column(Integer, nullable=False, default=50)
     period_criticality_bias = Column(Integer, nullable=False, default=50)
     allow_cycle_lock = Column(Boolean, nullable=False, default=True)
-    account_naming_preference = Column(String, nullable=False, default="Transaction")
     locale = Column(String, nullable=False, default="en-AU")
     currency = Column(String, nullable=False, default="AUD")
     timezone = Column(String, nullable=False, default="Australia/Sydney")
@@ -45,6 +44,7 @@ class Budget(Base):
     auto_expense_offset_days = Column(Integer, nullable=False, default=0)
     record_line_status_changes = Column(Boolean, nullable=False, default=False)
     max_forward_balance_cycles = Column(Integer, nullable=False, default=10)
+    allow_overdraft_transactions = Column(Boolean, nullable=False, default=False)
     health_tone = Column(String, nullable=False, default="supportive")
     ai_insights_enabled = Column(Boolean, nullable=False, default=False)
     ai_provider = Column(String, nullable=True)
@@ -200,6 +200,7 @@ class BalanceType(Base):
     opening_balance = Column(Numeric(10, 2), default=0)
     active = Column(Boolean, default=True, nullable=False)
     is_primary = Column(Boolean, default=False, nullable=False)
+    is_savings = Column(Boolean, default=False, nullable=False)
 
     budget = relationship("Budget", back_populates="balance_types")
     period_balances = relationship("PeriodBalance", back_populates="balance_type_rel")

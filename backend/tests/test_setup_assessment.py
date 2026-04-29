@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from datetime import datetime
+from decimal import Decimal
+
 from app.setup_assessment import budget_setup_assessment
 from app.transaction_ledger import get_primary_account_desc
 from app.models import FinancialPeriod, PeriodBalance, PeriodTransaction
@@ -429,14 +432,15 @@ def test_update_demotes_cross_type_primary(client, db_session):
         db_session,
         budgetid=budget.budgetid,
         balancedesc="Everyday",
-        balance_type="Transaction",
+        balance_type="Banking",
         is_primary=True,
     )
     create_balance_type(
         db_session,
         budgetid=budget.budgetid,
         balancedesc="Savings Jar",
-        balance_type="Savings",
+        balance_type="Banking",
+        is_savings=True,
         is_primary=False,
     )
 
@@ -454,3 +458,165 @@ def test_update_demotes_cross_type_primary(client, db_session):
 
     assert balances["Everyday"]["is_primary"] is False
     assert balances["Savings Jar"]["is_primary"] is True
+
+
+# ---------------------------------------------------------------------------
+# Budget Shapes S2–S6
+# ---------------------------------------------------------------------------
+
+
+def test_shape_s2_cash_only_with_savings_can_generate(client, db_session):
+    """S2: Cash-Only with spend + savings accounts."""
+    budget = create_budget(db_session)
+    create_income_type(db_session, budgetid=budget.budgetid)
+    create_expense_item(db_session, budgetid=budget.budgetid)
+    create_balance_type(
+        db_session,
+        budgetid=budget.budgetid,
+        balancedesc="Wallet",
+        balance_type="Cash",
+        is_primary=True,
+        is_savings=False,
+    )
+    create_balance_type(
+        db_session,
+        budgetid=budget.budgetid,
+        balancedesc="Cash Under Mattress",
+        balance_type="Cash",
+        is_primary=False,
+        is_savings=True,
+    )
+
+    response = client.get(f"/api/budgets/{budget.budgetid}/setup-assessment")
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["can_generate"] is True
+
+
+def test_shape_s3_banking_only_no_savings_can_generate(client, db_session):
+    """S3: Banking-Only — all Banking, no savings."""
+    budget = create_budget(db_session)
+    create_income_type(db_session, budgetid=budget.budgetid)
+    create_expense_item(db_session, budgetid=budget.budgetid)
+    create_balance_type(
+        db_session,
+        budgetid=budget.budgetid,
+        balancedesc="Everyday",
+        balance_type="Banking",
+        is_primary=True,
+        is_savings=False,
+    )
+
+    response = client.get(f"/api/budgets/{budget.budgetid}/setup-assessment")
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["can_generate"] is True
+
+
+def test_shape_s4_savings_only_can_generate(client, db_session):
+    """S4: Savings-Only — all accounts are savings."""
+    budget = create_budget(db_session)
+    create_income_type(db_session, budgetid=budget.budgetid)
+    create_balance_type(
+        db_session,
+        budgetid=budget.budgetid,
+        balancedesc="Bank Savings",
+        balance_type="Banking",
+        is_primary=True,
+        is_savings=True,
+    )
+
+    response = client.get(f"/api/budgets/{budget.budgetid}/setup-assessment")
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["can_generate"] is True
+
+
+def test_shape_s5_mixed_banking_and_cash_can_generate(client, db_session):
+    """S5: Mixed Banking + Cash."""
+    budget = create_budget(db_session)
+    create_income_type(db_session, budgetid=budget.budgetid)
+    create_expense_item(db_session, budgetid=budget.budgetid)
+    create_balance_type(
+        db_session,
+        budgetid=budget.budgetid,
+        balancedesc="Bank Account",
+        balance_type="Banking",
+        is_primary=False,
+        is_savings=False,
+    )
+    create_balance_type(
+        db_session,
+        budgetid=budget.budgetid,
+        balancedesc="Petty Cash",
+        balance_type="Cash",
+        is_primary=True,
+        is_savings=False,
+    )
+
+    response = client.get(f"/api/budgets/{budget.budgetid}/setup-assessment")
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["can_generate"] is True
+
+
+def test_shape_s6_no_expense_tracking_can_generate(client, db_session):
+    """S6: No-Expense Tracking — only income and accounts."""
+    budget = create_budget(db_session)
+    create_income_type(db_session, budgetid=budget.budgetid)
+    create_balance_type(
+        db_session,
+        budgetid=budget.budgetid,
+        balancedesc="Main",
+        balance_type="Banking",
+        is_primary=True,
+        is_savings=False,
+    )
+
+    response = client.get(f"/api/budgets/{budget.budgetid}/setup-assessment")
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["can_generate"] is True
+
+
+def test_shape_s2_cash_only_investment_links_to_cash_savings(client, db_session):
+    """S2: Cash-only investment debits Cash spend and credits Cash savings."""
+    budget = create_budget(db_session)
+    create_income_type(db_session, budgetid=budget.budgetid)
+    create_balance_type(
+        db_session,
+        budgetid=budget.budgetid,
+        balancedesc="Wallet",
+        balance_type="Cash",
+        is_primary=True,
+        is_savings=False,
+        opening_balance=Decimal("500.00"),
+    )
+    create_balance_type(
+        db_session,
+        budgetid=budget.budgetid,
+        balancedesc="Cash Under Mattress",
+        balance_type="Cash",
+        is_primary=False,
+        is_savings=True,
+        opening_balance=Decimal("0.00"),
+    )
+    investment = create_investment_item(db_session, budgetid=budget.budgetid)
+    investment.source_account_desc = "Wallet"
+    investment.linked_account_desc = "Cash Under Mattress"
+    db_session.commit()
+
+    periods = generate_periods(client, budgetid=budget.budgetid, startdate=datetime(2026, 4, 1), count=1)
+    period_id = periods[0]["finperiodid"]
+
+    response = client.post(
+        f"/api/budgets/{budget.budgetid}/periods/{period_id}/investments/Emergency%20Fund/transactions",
+        json={"amount": "100.00"},
+    )
+    assert response.status_code == 201, response.text
+
+    balances = client.get(f"/api/budgets/{budget.budgetid}/periods/{period_id}/balances")
+    assert balances.status_code == 200
+    by_name = {b["balancedesc"]: b for b in balances.json()}
+    assert Decimal(by_name["Wallet"]["movement_amount"]) == Decimal("-100.00")
+    assert Decimal(by_name["Cash Under Mattress"]["movement_amount"]) == Decimal("100.00")

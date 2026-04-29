@@ -241,6 +241,7 @@ def list_period_balances(budgetid: int, finperiodid: int, db: DbSession):
         bt = db.get(BalanceType, (pb.budgetid, pb.balancedesc))
         d = PeriodBalanceOut.model_validate(pb)
         d.balance_type = bt.balance_type if bt else None
+        d.is_savings = bt.is_savings if bt else False
         out.append(d)
     return out
 

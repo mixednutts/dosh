@@ -184,19 +184,19 @@ describe('IncomeTypesTab', () => {
     expect(deleteButton.disabled).toBe(true)
   })
 
-  it('shows the preferred transaction naming in linked account options', async () => {
+  it('shows linked account options without type labels', async () => {
     client.getIncomeTypes.mockResolvedValue([])
     client.getBalanceTypes.mockResolvedValue([{ balancedesc: 'Everyday', balance_type: 'Transaction' }])
 
     renderWithProviders(
       <IncomeTypesTab
         budgetId={1}
-        budget={{ account_naming_preference: 'Checking' }}
+        budget={{ allow_overdraft_transactions: true }}
       />
     )
 
     fireEvent.click(await screen.findByText('Add Income Source'))
-    expect(await screen.findByRole('option', { name: 'Everyday (Checking)' })).toBeTruthy()
+    expect(await screen.findByRole('option', { name: 'Everyday' })).toBeTruthy()
   })
 
   it('shows history details for an income source using budget adjustment entries', async () => {

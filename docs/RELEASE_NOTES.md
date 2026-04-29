@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+### Fixed
+
+- Investment transactions now correctly show the actual amount in the Movement Details panel for the debit (source) account. Previously, only the credit (destination) account displayed the transaction amount, while the debit account showed $0.00.
+- Budgets with no expense items can now generate cycles if they have at least one income source and one active primary account. This enables savings-only tracking and no-expense budget workflows.
+
+### Changed
+
+- The Add/Edit Investment modal now prevents saving when the debit account and target account are the same account.
+
+### Engineering
+
+- Collapsed three account types (`Transaction`, `Savings`, `Cash`) into two (`Banking`, `Cash`) with an `is_savings` boolean qualifier.
+- Removed the `account_naming_preference` setting from budgets and all related UI.
+- Added `allow_overdraft_transactions` budget setting (default `false`). When disabled, manual expense and investment transactions are blocked if the debit account has insufficient funds. Auto-expense operates independently of this setting.
+- Added `Add Investment Line` button to the Budget Cycle Details page for adding existing setup investment items to the current cycle with backward carry-forward of closing values.
+
 ## 0.9.3-beta | released | 2026-04-29
 
 ### Reverted

@@ -120,3 +120,54 @@ def test_add_expense_entry_rejects_malformed_entrydate(client, db_session):
         json={"amount": "120.00", "entrydate": "not-a-valid-date"},
     )
     assert response.status_code == 422
+
+
+def test_expense_entry_blocked_when_overdraft_disabled(client, db_session):
+    budget = create_budget(db_session, allow_overdraft_transactions=False)
+    create_income_type(db_session, budgetid=budget.budgetid)
+    create_expense_item(db_session, budgetid=budget.budgetid)
+
+    primary = client.post(
+        f"/api/budgets/{budget.budgetid}/balance-types/",
+        json={"balancedesc": "Main", "balance_type": "Banking", "opening_balance": "50.00", "active": True, "is_primary": True},
+    )
+    assert primary.status_code == 201
+
+    active_period = generate_periods(
+        client,
+        budgetid=budget.budgetid,
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
+        count=1,
+    )[0]
+
+    response = client.post(
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/expenses/Rent/entries/",
+        json={"amount": "100.00"},
+    )
+    assert response.status_code == 422
+    assert "sufficient balance" in response.json()["detail"].lower()
+
+
+def test_expense_entry_allowed_when_overdraft_enabled(client, db_session):
+    budget = create_budget(db_session, allow_overdraft_transactions=True)
+    create_income_type(db_session, budgetid=budget.budgetid)
+    create_expense_item(db_session, budgetid=budget.budgetid)
+
+    primary = client.post(
+        f"/api/budgets/{budget.budgetid}/balance-types/",
+        json={"balancedesc": "Main", "balance_type": "Banking", "opening_balance": "50.00", "active": True, "is_primary": True},
+    )
+    assert primary.status_code == 201
+
+    active_period = generate_periods(
+        client,
+        budgetid=budget.budgetid,
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
+        count=1,
+    )[0]
+
+    response = client.post(
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/expenses/Rent/entries/",
+        json={"amount": "100.00"},
+    )
+    assert response.status_code == 201, response.text

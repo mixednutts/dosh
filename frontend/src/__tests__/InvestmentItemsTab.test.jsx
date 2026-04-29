@@ -39,9 +39,12 @@ describe('InvestmentItemsTab', () => {
     client.getInvestmentItemHistory.mockResolvedValue({ item_desc: 'Emergency Fund', category: 'investment', current_revisionnum: 0, entries: [] })
   })
 
-  it('creates a primary investment line with a source account', async () => {
+  it('creates a primary investment line with a source account and target account', async () => {
     client.getInvestmentItems.mockResolvedValue([])
-    client.getBalanceTypes.mockResolvedValue([{ balancedesc: 'Savings', balance_type: 'Savings' }])
+    client.getBalanceTypes.mockResolvedValue([
+      { balancedesc: 'Daily Spending', balance_type: 'Transaction', is_savings: false },
+      { balancedesc: 'Savings', balance_type: 'Savings', is_savings: true },
+    ])
     client.createInvestmentItem.mockResolvedValue({})
 
     renderWithProviders(<InvestmentItemsTab budgetId={1} />)
@@ -61,6 +64,9 @@ describe('InvestmentItemsTab', () => {
 
     const selects = screen.getAllByRole('combobox')
     fireEvent.change(selects[0], {
+      target: { value: 'Daily Spending' },
+    })
+    fireEvent.change(selects[1], {
       target: { value: 'Savings' },
     })
 
@@ -75,8 +81,8 @@ describe('InvestmentItemsTab', () => {
         effectivedate: '2026-08-01',
         initial_value: 500,
         planned_amount: 0,
-        linked_account_desc: null,
-        source_account_desc: 'Savings',
+        linked_account_desc: 'Savings',
+        source_account_desc: 'Daily Spending',
         is_primary: true,
       })
     })
@@ -122,8 +128,8 @@ describe('InvestmentItemsTab', () => {
       },
     ])
     client.getBalanceTypes.mockResolvedValue([
-      { balancedesc: 'Investments', balance_type: 'Savings' },
-      { balancedesc: 'Broker Cash', balance_type: 'Transaction' },
+      { balancedesc: 'Investments', balance_type: 'Savings', is_savings: true },
+      { balancedesc: 'Broker Cash', balance_type: 'Transaction', is_savings: false },
     ])
     client.updateInvestmentItem.mockResolvedValue({})
 
@@ -271,20 +277,22 @@ describe('InvestmentItemsTab', () => {
     expect(deleteButton.disabled).toBe(true)
   })
 
-  it('shows the preferred transaction naming in source account options', async () => {
+  it('filters target account dropdown to savings accounts only', async () => {
     client.getInvestmentItems.mockResolvedValue([])
-    client.getBalanceTypes.mockResolvedValue([{ balancedesc: 'Daily Spending', balance_type: 'Transaction' }])
+    client.getBalanceTypes.mockResolvedValue([
+      { balancedesc: 'Daily Spending', balance_type: 'Transaction', is_savings: false },
+      { balancedesc: 'Savings', balance_type: 'Savings', is_savings: true },
+      { balancedesc: 'Offset', balance_type: 'Savings', is_savings: true },
+    ])
 
-    renderWithProviders(
-      <InvestmentItemsTab
-        budgetId={1}
-        budget={{ account_naming_preference: 'Everyday' }}
-      />
-    )
+    renderWithProviders(<InvestmentItemsTab budgetId={1} />)
 
     fireEvent.click(await screen.findByText('Add Investment'))
     const selects = screen.getAllByRole('combobox')
-    expect(selects[0].querySelector('option[value="Daily Spending"]')).toBeTruthy()
+    const targetSelect = selects[1]
+    expect(targetSelect.querySelector('option[value="Daily Spending"]')).toBeFalsy()
+    expect(targetSelect.querySelector('option[value="Savings"]')).toBeTruthy()
+    expect(targetSelect.querySelector('option[value="Offset"]')).toBeTruthy()
   })
 
   it('shows history details for an investment line', async () => {

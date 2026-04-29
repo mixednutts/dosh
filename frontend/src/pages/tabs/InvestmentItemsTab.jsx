@@ -9,11 +9,10 @@ import SetupItemHistoryModal from '../../components/SetupItemHistoryModal'
 import LocalizedAmountInput from '../../components/LocalizedAmountInput'
 import DateField from '../../components/DateField'
 import { useLocalisation } from '../../components/LocalisationContext'
-import { getBalanceTypeLabel } from '../../utils/accountNaming'
 
 const emptyForm = { investmentdesc: '', active: true, effectivedate: '', initial_value: '', planned_amount: '', linked_account_desc: '', source_account_desc: '', is_primary: false }
 
-function InvestmentForm({ initial = emptyForm, isEdit = false, onSubmit, onClose, loading, balanceTypes = [], structureLocked = false, lockReasons = [], accountNamingPreference = 'Transaction' }) {
+function InvestmentForm({ initial = emptyForm, isEdit = false, onSubmit, onClose, loading, balanceTypes = [], structureLocked = false, lockReasons = [] }) {
   const [form, setForm] = useState(initial)
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
   const formIdPrefix = isEdit ? 'edit-investment' : 'create-investment'
@@ -62,10 +61,20 @@ function InvestmentForm({ initial = emptyForm, isEdit = false, onSubmit, onClose
         <select id={`${formIdPrefix}-source-account`} disabled={structureLocked} className="input" value={form.source_account_desc} onChange={e => set('source_account_desc', e.target.value)}>
           <option value="">— none —</option>
           {balanceTypes.map(bt => (
-            <option key={bt.balancedesc} value={bt.balancedesc}>{bt.balancedesc}{bt.balance_type ? ` (${getBalanceTypeLabel(bt.balance_type, accountNamingPreference)})` : ''}</option>
+            <option key={bt.balancedesc} value={bt.balancedesc}>{bt.balancedesc}</option>
           ))}
         </select>
         <p className="text-xs text-gray-400 mt-1">Transactions will debit this account by default. You can override it when recording transactions.</p>
+      </div>
+      <div>
+        <label htmlFor={`${formIdPrefix}-target-account`} className="label">Target Account</label>
+        <select id={`${formIdPrefix}-target-account`} disabled={structureLocked} className="input" value={form.linked_account_desc} onChange={e => set('linked_account_desc', e.target.value)}>
+          <option value="">— none —</option>
+          {balanceTypes.filter(bt => bt.is_savings).map(bt => (
+            <option key={bt.balancedesc} value={bt.balancedesc}>{bt.balancedesc}</option>
+          ))}
+        </select>
+        <p className="text-xs text-gray-400 mt-1">Investment value is credited to this savings account.</p>
       </div>
 
       <label htmlFor={`${formIdPrefix}-active`} className="flex items-center gap-2 text-sm cursor-pointer">
@@ -156,7 +165,6 @@ export default function InvestmentItemsTab({ budgetId, budget }) {
   })
 
   const investmentUsageByDesc = Object.fromEntries((setupAssessment?.investment_items || []).map(item => [item.investmentdesc, item]))
-  const accountNamingPreference = budget?.account_naming_preference || 'Transaction'
 
   return (
     <div className="space-y-3">
@@ -243,7 +251,6 @@ export default function InvestmentItemsTab({ budgetId, budget }) {
             balanceTypes={balanceTypes}
             structureLocked={modal.item ? investmentUsageByDesc[modal.item.investmentdesc]?.can_edit_structure === false : false}
             lockReasons={modal.item ? (investmentUsageByDesc[modal.item.investmentdesc]?.reasons || []) : []}
-            accountNamingPreference={accountNamingPreference}
             onSubmit={form => {
               if (modal.mode === 'create') create.mutate(form)
               else update.mutate({ desc: modal.item.investmentdesc, data: form })
@@ -285,12 +292,9 @@ InvestmentForm.propTypes = {
   balanceTypes: PropTypes.arrayOf(PropTypes.object),
   structureLocked: PropTypes.bool,
   lockReasons: PropTypes.arrayOf(PropTypes.string),
-  accountNamingPreference: PropTypes.string,
 }
 
 InvestmentItemsTab.propTypes = {
   budgetId: PropTypes.number.isRequired,
-  budget: PropTypes.shape({
-    account_naming_preference: PropTypes.string,
-  }),
+  budget: PropTypes.object,
 }

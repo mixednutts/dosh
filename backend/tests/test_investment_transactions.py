@@ -289,6 +289,244 @@ def test_add_investment_transaction_rejects_malformed_entrydate(client, db_sessi
 
 
 # ---------------------------------------------------------------------------
+# Add investment to period
+# ---------------------------------------------------------------------------
+
+
+def test_add_investment_to_period_existing_item(client, db_session):
+    setup = _minimum_setup(db_session)
+    budget = setup["budget"]
+    periods = generate_periods(client, budgetid=budget.budgetid, startdate=datetime(2026, 4, 1), count=1)
+    period_id = periods[0]["finperiodid"]
+
+    # Investment exists in setup but not in period (generated before investment created)
+    # Actually _minimum_setup creates investment before generating periods, so it IS in the period.
+    # Create a new investment item after generation.
+    inv = create_investment_item(db_session, budgetid=budget.budgetid, investmentdesc="Holiday Fund")
+    inv.source_account_desc = setup["balance_type"].balancedesc
+    db_session.commit()
+
+    response = client.post(
+        f"/api/budgets/{budget.budgetid}/periods/{period_id}/add-investment",
+        json={
+            "budgetid": budget.budgetid,
+            "investmentdesc": "Holiday Fund",
+            "budgeted_amount": "300.00",
+            "scope": "oneoff",
+        },
+    )
+    assert response.status_code == 201, response.text
+    data = response.json()
+    assert data["investmentdesc"] == "Holiday Fund"
+    assert Decimal(data["budgeted_amount"]) == Decimal("300.00")
+
+
+def test_add_investment_to_period_rejects_duplicate(client, db_session):
+    setup = _minimum_setup(db_session)
+    budget = setup["budget"]
+    periods = generate_periods(client, budgetid=budget.budgetid, startdate=datetime(2026, 4, 1), count=1)
+    period_id = periods[0]["finperiodid"]
+
+    response = client.post(
+        f"/api/budgets/{budget.budgetid}/periods/{period_id}/add-investment",
+        json={
+            "budgetid": budget.budgetid,
+            "investmentdesc": "Emergency Fund",
+            "budgeted_amount": "100.00",
+            "scope": "oneoff",
+        },
+    )
+    assert response.status_code == 409
+    assert "already exists" in response.json()["detail"].lower()
+
+
+def test_add_investment_to_period_computes_opening_from_prior_period(client, db_session):
+    budget = create_budget(db_session)
+    create_income_type(db_session, budgetid=budget.budgetid)
+    bt = create_balance_type(db_session, budgetid=budget.budgetid)
+    create_expense_item(db_session, budgetid=budget.budgetid, expensedesc="Rent")
+
+    periods = generate_periods(client, budgetid=budget.budgetid, startdate=datetime(2026, 4, 1), count=3)
+    p1_id = periods[0]["finperiodid"]
+    p2_id = periods[1]["finperiodid"]
+    p3_id = periods[2]["finperiodid"]
+
+    # Create investment after generation so it's NOT auto-populated
+    inv = create_investment_item(db_session, budgetid=budget.budgetid, investmentdesc="Holiday Fund")
+    inv.source_account_desc = bt.balancedesc
+    db_session.commit()
+
+    # Add to period 1 manually and record a transaction
+    client.post(
+        f"/api/budgets/{budget.budgetid}/periods/{p1_id}/add-investment",
+        json={
+            "budgetid": budget.budgetid,
+            "investmentdesc": "Holiday Fund",
+            "budgeted_amount": "100.00",
+            "scope": "oneoff",
+        },
+    )
+    client.post(
+        f"/api/budgets/{budget.budgetid}/periods/{p1_id}/investments/Holiday%20Fund/transactions",
+        json={"amount": "150.00"},
+    )
+
+    # Add to period 3 — opening should carry from period 1's closing value
+    response = client.post(
+        f"/api/budgets/{budget.budgetid}/periods/{p3_id}/add-investment",
+        json={
+            "budgetid": budget.budgetid,
+            "investmentdesc": "Holiday Fund",
+            "budgeted_amount": "100.00",
+            "scope": "oneoff",
+        },
+    )
+    assert response.status_code == 201, response.text
+    data = response.json()
+    # Period 1 initial_value is 250, plus 150 transaction = 400 closing
+    assert Decimal(data["opening_value"]) == Decimal("400.00")
+
+
+def test_add_investment_to_period_future_backfills_unlocked_periods(client, db_session):
+    budget = create_budget(db_session)
+    create_income_type(db_session, budgetid=budget.budgetid)
+    bt = create_balance_type(db_session, budgetid=budget.budgetid)
+    create_expense_item(db_session, budgetid=budget.budgetid, expensedesc="Rent")
+
+    periods = generate_periods(client, budgetid=budget.budgetid, startdate=datetime(2026, 4, 1), count=3)
+    p1_id = periods[0]["finperiodid"]
+    p2_id = periods[1]["finperiodid"]
+
+    # Create an inactive investment item after generation
+    inactive_inv = create_investment_item(db_session, budgetid=budget.budgetid, investmentdesc="Car Fund")
+    inactive_inv.source_account_desc = bt.balancedesc
+    inactive_inv.active = False
+    db_session.commit()
+
+    # Add to period 1 with scope=future — should backfill period 2
+    response = client.post(
+        f"/api/budgets/{budget.budgetid}/periods/{p1_id}/add-investment",
+        json={
+            "budgetid": budget.budgetid,
+            "investmentdesc": "Car Fund",
+            "budgeted_amount": "200.00",
+            "scope": "future",
+        },
+    )
+    assert response.status_code == 201, response.text
+
+    # Verify period 2 now has the investment
+    detail = client.get(f"/api/budgets/{budget.budgetid}/periods/{p2_id}")
+    invs = [i for i in detail.json()["investments"] if i["investmentdesc"] == "Car Fund"]
+    assert len(invs) == 1
+    assert Decimal(invs[0]["budgeted_amount"]) == Decimal("200.00")
+
+
+def test_add_investment_transaction_blocked_when_overdraft_disabled(client, db_session):
+    budget = create_budget(db_session, allow_overdraft_transactions=False)
+    create_income_type(db_session, budgetid=budget.budgetid)
+    bt = create_balance_type(db_session, budgetid=budget.budgetid, opening_balance=Decimal("50.00"))
+    create_expense_item(db_session, budgetid=budget.budgetid, expensedesc="Rent")
+    investment = create_investment_item(db_session, budgetid=budget.budgetid)
+    investment.source_account_desc = bt.balancedesc
+    db_session.commit()
+
+    periods = generate_periods(client, budgetid=budget.budgetid, startdate=datetime(2026, 4, 1), count=1)
+    period_id = periods[0]["finperiodid"]
+
+    response = client.post(
+        f"/api/budgets/{budget.budgetid}/periods/{period_id}/investments/Emergency%20Fund/transactions",
+        json={"amount": "100.00"},
+    )
+    assert response.status_code == 422
+    assert "sufficient balance" in response.json()["detail"].lower()
+
+
+def test_add_investment_transaction_allowed_when_overdraft_enabled(client, db_session):
+    budget = create_budget(db_session, allow_overdraft_transactions=True)
+    create_income_type(db_session, budgetid=budget.budgetid)
+    bt = create_balance_type(db_session, budgetid=budget.budgetid, opening_balance=Decimal("50.00"))
+    create_expense_item(db_session, budgetid=budget.budgetid, expensedesc="Rent")
+    investment = create_investment_item(db_session, budgetid=budget.budgetid)
+    investment.source_account_desc = bt.balancedesc
+    db_session.commit()
+
+    periods = generate_periods(client, budgetid=budget.budgetid, startdate=datetime(2026, 4, 1), count=1)
+    period_id = periods[0]["finperiodid"]
+
+    response = client.post(
+        f"/api/budgets/{budget.budgetid}/periods/{period_id}/investments/Emergency%20Fund/transactions",
+        json={"amount": "100.00"},
+    )
+    assert response.status_code == 201, response.text
+
+
+# ---------------------------------------------------------------------------
+# Same-account validation
+# ---------------------------------------------------------------------------
+
+
+def test_create_investment_rejects_same_debit_and_credit_account(client, db_session):
+    budget = create_budget(db_session)
+    bt = create_balance_type(db_session, budgetid=budget.budgetid, balancedesc="Savings", is_primary=False)
+
+    response = client.post(
+        f"/api/budgets/{budget.budgetid}/investment-items/",
+        json={
+            "investmentdesc": "Emergency Fund",
+            "initial_value": "250.00",
+            "planned_amount": "50.00",
+            "source_account_desc": bt.balancedesc,
+            "linked_account_desc": bt.balancedesc,
+            "active": True,
+            "is_primary": True,
+        },
+    )
+    assert response.status_code == 422
+    assert "different accounts" in response.json()["detail"].lower()
+
+
+def test_update_investment_rejects_same_debit_and_credit_account(client, db_session):
+    budget = create_budget(db_session)
+    bt = create_balance_type(db_session, budgetid=budget.budgetid, balancedesc="Savings", is_primary=False)
+    bt2 = create_balance_type(db_session, budgetid=budget.budgetid, balancedesc="Checking", is_primary=False)
+    inv = create_investment_item(db_session, budgetid=budget.budgetid, investmentdesc="Emergency Fund")
+    inv.source_account_desc = bt2.balancedesc
+    inv.linked_account_desc = bt.balancedesc
+    db_session.commit()
+
+    response = client.patch(
+        f"/api/budgets/{budget.budgetid}/investment-items/Emergency%20Fund",
+        json={
+            "source_account_desc": bt.balancedesc,
+            "linked_account_desc": bt.balancedesc,
+        },
+    )
+    assert response.status_code == 422
+    assert "different accounts" in response.json()["detail"].lower()
+
+
+def test_create_investment_allows_different_debit_and_credit_account(client, db_session):
+    budget = create_budget(db_session)
+    bt1 = create_balance_type(db_session, budgetid=budget.budgetid, balancedesc="Checking", is_primary=False)
+    bt2 = create_balance_type(db_session, budgetid=budget.budgetid, balancedesc="Savings", is_primary=False)
+
+    response = client.post(
+        f"/api/budgets/{budget.budgetid}/investment-items/",
+        json={
+            "investmentdesc": "Emergency Fund",
+            "initial_value": "250.00",
+            "planned_amount": "50.00",
+            "source_account_desc": bt1.balancedesc,
+            "linked_account_desc": bt2.balancedesc,
+            "active": True,
+            "is_primary": True,
+        },
+    )
+    assert response.status_code == 201, response.text
+
+
+# ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
@@ -302,4 +540,4 @@ def _minimum_setup(db_session):
     # Link investment to the primary balance account as debit source
     investment.source_account_desc = bt.balancedesc
     db_session.commit()
-    return {"budget": budget, "investment_item": investment}
+    return {"budget": budget, "investment_item": investment, "balance_type": bt}

@@ -101,12 +101,12 @@ def test_generate_period_requires_income_and_expense_prerequisites(client):
     assert "income source" in response.json()["detail"]
 
 
-def test_budget_account_naming_preference_can_be_saved(client):
+def test_budget_allow_overdraft_transactions_can_be_saved(client):
     create_budget_response = client.post(
         "/api/budgets/",
         json={
-            "budgetowner": "Naming User",
-            "description": "Naming Budget",
+            "budgetowner": "Overdraft User",
+            "description": "Overdraft Budget",
             "budget_frequency": "Monthly",
         },
     )
@@ -114,11 +114,11 @@ def test_budget_account_naming_preference_can_be_saved(client):
 
     response = client.patch(
         f"/api/budgets/{budgetid}",
-        json={"account_naming_preference": "Checking"},
+        json={"allow_overdraft_transactions": True},
     )
 
     assert response.status_code == 200, response.text
-    assert response.json()["account_naming_preference"] == "Checking"
+    assert response.json()["allow_overdraft_transactions"] is True
 
 
 def test_localisation_options_are_exposed_before_budget_id_routes(client):

@@ -36,7 +36,7 @@ describe('SettingsTab', () => {
       budgetid: 1,
       auto_add_surplus_to_investment: true,
       allow_cycle_lock: true,
-      account_naming_preference: 'Transaction',
+      allow_overdraft_transactions: false,
       locale: 'en-AU',
       currency: 'AUD',
       timezone: 'Australia/Sydney',
@@ -52,7 +52,7 @@ describe('SettingsTab', () => {
           budgetid: 1,
           auto_add_surplus_to_investment: false,
           allow_cycle_lock: true,
-          account_naming_preference: 'Transaction',
+          allow_overdraft_transactions: false,
           locale: 'en-AU',
           currency: 'AUD',
           timezone: 'Australia/Sydney',
@@ -80,7 +80,7 @@ describe('SettingsTab', () => {
       budgetid: 1,
       auto_add_surplus_to_investment: false,
       allow_cycle_lock: false,
-      account_naming_preference: 'Transaction',
+      allow_overdraft_transactions: false,
       locale: 'en-AU',
       currency: 'AUD',
       timezone: 'Australia/Sydney',
@@ -96,7 +96,7 @@ describe('SettingsTab', () => {
           budgetid: 1,
           auto_add_surplus_to_investment: false,
           allow_cycle_lock: true,
-          account_naming_preference: 'Transaction',
+          allow_overdraft_transactions: false,
           locale: 'en-AU',
           currency: 'AUD',
           timezone: 'Australia/Sydney',
@@ -114,12 +114,12 @@ describe('SettingsTab', () => {
     })
   })
 
-  it('saves the preferred primary account naming setting', async () => {
+  it('saves the allow overdraft transactions toggle', async () => {
     client.updateBudget.mockResolvedValue({
       budgetid: 1,
       auto_add_surplus_to_investment: false,
       allow_cycle_lock: true,
-      account_naming_preference: 'Checking',
+      allow_overdraft_transactions: true,
       locale: 'en-AU',
       currency: 'AUD',
       timezone: 'Australia/Sydney',
@@ -135,7 +135,7 @@ describe('SettingsTab', () => {
           budgetid: 1,
           auto_add_surplus_to_investment: false,
           allow_cycle_lock: true,
-          account_naming_preference: 'Transaction',
+          allow_overdraft_transactions: false,
           locale: 'en-AU',
           currency: 'AUD',
           timezone: 'Australia/Sydney',
@@ -146,12 +146,10 @@ describe('SettingsTab', () => {
       />
     )
 
-    fireEvent.change(screen.getByLabelText('Preferred Primary Account Naming'), {
-      target: { value: 'Checking' },
-    })
+    fireEvent.click(screen.getByLabelText('Allow overdraft transactions?'))
 
     await waitFor(() => {
-      expect(client.updateBudget).toHaveBeenCalledWith(1, { account_naming_preference: 'Checking' })
+      expect(client.updateBudget).toHaveBeenCalledWith(1, { allow_overdraft_transactions: true })
     })
   })
 
@@ -160,7 +158,7 @@ describe('SettingsTab', () => {
       budgetid: 1,
       auto_add_surplus_to_investment: false,
       allow_cycle_lock: true,
-      account_naming_preference: 'Transaction',
+      allow_overdraft_transactions: false,
       locale: 'en-US',
       currency: 'USD',
       timezone: 'America/New_York',
@@ -176,7 +174,7 @@ describe('SettingsTab', () => {
           budgetid: 1,
           auto_add_surplus_to_investment: false,
           allow_cycle_lock: true,
-          account_naming_preference: 'Transaction',
+          allow_overdraft_transactions: false,
           locale: 'en-AU',
           currency: 'AUD',
           timezone: 'Australia/Sydney',
@@ -206,7 +204,7 @@ describe('SettingsTab', () => {
       budgetid: 1,
       auto_add_surplus_to_investment: false,
       allow_cycle_lock: true,
-      account_naming_preference: 'Transaction',
+      allow_overdraft_transactions: false,
       locale: 'en-AU',
       currency: 'AUD',
       timezone: 'Australia/Sydney',
@@ -222,7 +220,7 @@ describe('SettingsTab', () => {
           budgetid: 1,
           auto_add_surplus_to_investment: false,
           allow_cycle_lock: true,
-          account_naming_preference: 'Transaction',
+          allow_overdraft_transactions: false,
           locale: 'en-AU',
           currency: 'AUD',
           timezone: 'Australia/Sydney',
@@ -245,7 +243,7 @@ describe('SettingsTab', () => {
       budgetid: 1,
       auto_add_surplus_to_investment: false,
       allow_cycle_lock: true,
-      account_naming_preference: 'Transaction',
+      allow_overdraft_transactions: false,
       locale: 'en-AU',
       currency: 'AUD',
       timezone: 'Australia/Sydney',
@@ -261,7 +259,7 @@ describe('SettingsTab', () => {
           budgetid: 1,
           auto_add_surplus_to_investment: false,
           allow_cycle_lock: true,
-          account_naming_preference: 'Transaction',
+          allow_overdraft_transactions: false,
           auto_expense_enabled: false,
           auto_expense_offset_days: 0,
         }}
@@ -281,5 +279,28 @@ describe('SettingsTab', () => {
     await waitFor(() => {
       expect(client.updateBudget).toHaveBeenCalledWith(1, { auto_expense_offset_days: 3 })
     })
+  })
+
+  it('displays the auto-expense overdraft note', async () => {
+    renderWithProviders(
+      <SettingsTab
+        budgetId={1}
+        budget={{
+          budgetid: 1,
+          auto_add_surplus_to_investment: false,
+          allow_cycle_lock: true,
+          allow_overdraft_transactions: false,
+          locale: 'en-AU',
+          currency: 'AUD',
+          timezone: 'Australia/Sydney',
+          date_format: 'medium',
+          auto_expense_enabled: true,
+          auto_expense_offset_days: 0,
+        }}
+      />
+    )
+
+    expect(await screen.findByText(/Auto Expense will create transactions even if the debit account has insufficient funds/i)).toBeTruthy()
+    expect(screen.getByText(/not restricted by the "Allow overdraft transactions" setting/i)).toBeTruthy()
   })
 })

@@ -311,6 +311,38 @@ Maintenance notes:
 
 - should remain the main design reference for setup assessment and protection
 
+### BUDGET_SHAPES_MATRIX.md
+
+Document:
+
+- [BUDGET_SHAPES_MATRIX.md](/home/ubuntu/dosh/docs/BUDGET_SHAPES_MATRIX.md)
+
+Document type:
+
+- domain or workflow plan
+
+Primary purpose:
+
+- define the canonical budget shapes supported by Dosh and their requirements
+
+Primary source-of-truth scope:
+
+- all supported budget shape definitions (S1–S6)
+- account type model (`Banking`/`Cash` + `is_savings`)
+- validation rules for investments, income, and accounts per shape
+- migration notes from pre-0.10.0 account types
+
+Key relationships:
+
+- informs account-type and setup-assessment behavior in [SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md](/home/ubuntu/dosh/docs/plans/SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md)
+- referenced by [CHANGES.md](/home/ubuntu/dosh/docs/CHANGES.md) and [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) for regression test coverage expectations
+- complements [CASH_MANAGEMENT_WORKFLOW_PLAN.md](/home/ubuntu/dosh/docs/plans/CASH_MANAGEMENT_WORKFLOW_PLAN.md) for account-balance and transfer behavior
+
+Maintenance notes:
+
+- should be updated when new budget shapes are added or existing shape rules change
+- should remain the canonical reference for budget shape definitions
+
 ### CASH_MANAGEMENT_WORKFLOW_PLAN.md
 
 Document:
@@ -876,6 +908,40 @@ Key relationships:
 Maintenance notes:
 
 - should remain focused on the type-agnostic primary account behavior rather than becoming a general account management document
+
+### BUDGET_SETUP_RESTRUCTURING_PLAN.md
+
+Document:
+
+- [BUDGET_SETUP_RESTRUCTURING_PLAN.md](/home/ubuntu/dosh/docs/plans/BUDGET_SETUP_RESTRUCTURING_PLAN.md)
+
+Document type:
+
+- domain or workflow plan
+
+Primary purpose:
+
+- preserve the approved implementation plan for collapsing account types, removing naming preferences, adding overdraft controls, and supporting multi-shape budgets
+
+Primary source-of-truth scope:
+
+- account type collapse (`Transaction`/`Savings`/`Cash` → `Banking`/`Cash` + `is_savings`)
+- removal of `account_naming_preference` from `Budget` model and all UI surfaces
+- `allow_overdraft_transactions` setting and balance sufficiency validation
+- `AddInvestmentLineModal` with backward carry-forward for opening value
+- restoration of `linked_account_desc` to investment setup form
+- budget shapes S1–S6 definitions and validation
+
+Key relationships:
+
+- supersedes account-type decisions in [CASH_ONLY_BUDGET_SHAPE_PLAN.md](/home/ubuntu/dosh/docs/plans/CASH_ONLY_BUDGET_SHAPE_PLAN.md)
+- informs setup-assessment expectations in [SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md](/home/ubuntu/dosh/docs/plans/SETUP_ASSESSMENT_AND_PROTECTION_PLAN.md)
+- referenced by [BUDGET_SHAPES_MATRIX.md](/home/ubuntu/dosh/docs/BUDGET_SHAPES_MATRIX.md) for shape definitions
+
+Maintenance notes:
+
+- should remain focused on the structural setup changes rather than becoming a general investment or account management document
+- update when new shapes are added or shape rules change
 
 ### SPENDABLE_VS_SAVED_BALANCE_DISPLAY_PLAN.md
 

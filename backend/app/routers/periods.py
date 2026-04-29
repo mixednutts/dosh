@@ -49,7 +49,7 @@ from ..schemas import (
     PeriodLockRequest, PeriodIncomeOut, PeriodExpenseOut,
     PeriodIncomeActualUpdate, PeriodExpenseActualUpdate,
     PeriodIncomeAddActual, PeriodExpenseAddActual,
-    AddExpenseToPeriodRequest, AddIncomeToPeriodRequest,
+    AddExpenseToPeriodRequest, AddIncomeToPeriodRequest, AddInvestmentToPeriodRequest,
     AccountTransferRequest,
     PeriodBalanceOut, PeriodExpenseReorderRequest, PeriodInvestmentOut,
     PeriodExpenseStatusUpdate, PeriodIncomeStatusUpdate, PeriodExpenseBudgetUpdate, PeriodLineBudgetAdjustRequest,
@@ -57,7 +57,7 @@ from ..schemas import (
     PeriodInvestmentStatusUpdate, PeriodTransactionOut, PeriodExpensePayTypeUpdate,
     AutoExpenseRunResultOut,
 )
-from ..period_logic import calc_period_end, expense_occurs_in_period, normalize_budget_date, periods_overlap
+from ..period_logic import calc_period_end, expense_occurs_in_period, normalize_budget_date, periods_overlap, _compute_investment_opening_value
 from ..setup_assessment import budget_setup_assessment
 from ..setup_history import next_supported_revisionnum
 from ..time_utils import app_now_naive
@@ -129,6 +129,14 @@ def _assert_investment_not_paid(pi: PeriodInvestment) -> None:
 
 
 def _assert_primary_account_configured(budgetid: int, db: Session, *, action: str) -> None:
+    has_expenses = (
+        db.query(ExpenseItem)
+        .filter(ExpenseItem.budgetid == budgetid, ExpenseItem.active == True)  # noqa: E712
+        .first()
+        is not None
+    )
+    if not has_expenses:
+        return
     assessment = budget_setup_assessment(budgetid, db)
     if assessment and assessment["can_generate"] and get_primary_account_desc(budgetid, db):
         return
@@ -314,6 +322,7 @@ def _enrich_period_balances(finperiodid: int, db: Session) -> list[PeriodBalance
         bt = db.get(BalanceType, (pb.budgetid, pb.balancedesc))
         balance = PeriodBalanceOut.model_validate(pb)
         balance.balance_type = bt.balance_type if bt else None
+        balance.is_savings = bt.is_savings if bt else False
         enriched_balances.append(balance)
     return enriched_balances
 
@@ -490,6 +499,7 @@ def _load_period_detail_components(period: FinancialPeriod, db: Session) -> dict
             bt = db.get(BalanceType, (pb.budgetid, pb.balancedesc))
             balance = PeriodBalanceOut.model_validate(pb)
             balance.balance_type = bt.balance_type if bt else None
+            balance.is_savings = bt.is_savings if bt else False
             enriched_balances.append(balance)
 
     income_out = _enrich_incomes(incomes, db)
@@ -817,12 +827,6 @@ def generate_period(budgetid: int, payload: PeriodGenerateRequest, db: DbSession
     if income_count == 0:
         raise HTTPException(422, "Budget must have at least one income source before generating a period")
 
-    expense_count = db.query(ExpenseItem).filter(
-        ExpenseItem.budgetid == budgetid,
-        ExpenseItem.active == True,  # noqa: E712
-    ).count()
-    if expense_count == 0:
-        raise HTTPException(422, "Budget must have at least one active expense item before generating a period")
     _assert_primary_account_configured(budgetid, db, action="generating budget cycles")
 
     # Load items once for all iterations
@@ -1043,6 +1047,7 @@ def list_period_summaries_for_budget(budgetid: int, db: DbSession):
                 bt = db.get(BalanceType, (pb.budgetid, pb.balancedesc))
                 balance = PeriodBalanceOut.model_validate(pb)
                 balance.balance_type = bt.balance_type if bt else None
+                balance.is_savings = bt.is_savings if bt else False
                 balance_out.append(balance)
             projected_investment = _projected_investment_for_period(period_status, enriched_investments, balance_out)
             running_projected = None
@@ -1064,6 +1069,7 @@ def list_period_summaries_for_budget(budgetid: int, db: DbSession):
                     bt = db.get(BalanceType, (pb.budgetid, pb.balancedesc))
                     balance = PeriodBalanceOut.model_validate(pb)
                     balance.balance_type = bt.balance_type if bt else None
+                    balance.is_savings = bt.is_savings if bt else False
                     balance_out.append(balance)
             projected_investment = _projected_investment_for_period(period_status, enriched_investments, balance_out)
             running_projected = projected_investment
@@ -1534,6 +1540,106 @@ def add_income_to_period(budgetid: int,
     db.refresh(pi)
     logger.info("add_income_to_period completed")
     return pi
+
+
+# ── Add investment to period ──────────────────────────────────────────────────
+
+@router.post("/{finperiodid}/add-investment", response_model=PeriodInvestmentOut, status_code=201, responses=error_responses(404, 409, 423))
+def add_investment_to_period(budgetid: int,
+    finperiodid: int,
+    payload: AddInvestmentToPeriodRequest,
+    db: DbSession,
+):
+    period = _get_period_or_404(finperiodid, budgetid, db)
+    budget = db.get(Budget, period.budgetid)
+    _assert_budget_editable(period, budget)
+
+    item = db.get(InvestmentItem, (payload.budgetid, payload.investmentdesc))
+    if not item:
+        raise HTTPException(404, "Investment item not found")
+
+    existing = db.get(PeriodInvestment, (finperiodid, payload.investmentdesc))
+    if existing:
+        raise HTTPException(409, "Investment already exists in this period")
+
+    is_oneoff = payload.scope == "oneoff"
+
+    # Compute opening value by looking backward across all periods
+    opening = _compute_investment_opening_value(
+        payload.budgetid,
+        payload.investmentdesc,
+        finperiodid,
+        db,
+    )
+
+    pi = PeriodInvestment(
+        finperiodid=finperiodid,
+        budgetid=payload.budgetid,
+        investmentdesc=payload.investmentdesc,
+        opening_value=opening,
+        closing_value=opening,
+        budgeted_amount=payload.budgeted_amount,
+        actualamount=Decimal("0.00"),
+        status=WORKING,
+        revision_snapshot=item.revisionnum,
+    )
+    db.add(pi)
+
+    if not is_oneoff:
+        item.active = True
+        future_periods = (
+            db.query(FinancialPeriod)
+            .filter(
+                FinancialPeriod.budgetid == payload.budgetid,
+                FinancialPeriod.startdate > period.startdate,
+                FinancialPeriod.finperiodid != period.finperiodid,
+                FinancialPeriod.islocked == False,  # noqa: E712
+                FinancialPeriod.cycle_status != CLOSED,
+            )
+            .order_by(FinancialPeriod.startdate)
+            .all()
+        )
+        prev_closing = opening
+        for fp in future_periods:
+            already = db.get(PeriodInvestment, (fp.finperiodid, payload.investmentdesc))
+            if already:
+                prev_closing = Decimal(str(already.closing_value or 0))
+                continue
+
+            # Carry forward closing value
+            next_opening = prev_closing
+            next_pi = PeriodInvestment(
+                finperiodid=fp.finperiodid,
+                budgetid=payload.budgetid,
+                investmentdesc=payload.investmentdesc,
+                opening_value=next_opening,
+                closing_value=next_opening,
+                budgeted_amount=payload.budgeted_amount,
+                actualamount=Decimal("0.00"),
+                status=WORKING,
+            )
+            db.add(next_pi)
+            prev_closing = next_opening
+
+    if payload.note:
+        _record_budget_adjustment(
+            finperiodid=finperiodid,
+            budgetid=payload.budgetid,
+            source="investment",
+            source_key=payload.investmentdesc,
+            note=payload.note.strip(),
+            scope="future" if payload.scope == "future" else "current",
+            before_amount=Decimal("0.00"),
+            after_amount=Decimal(str(payload.budgeted_amount)),
+            line_status=WORKING,
+            revisionnum=item.revisionnum if payload.scope == "future" else None,
+            db=db,
+        )
+
+    db.commit()
+    db.refresh(pi)
+    logger.info("add_investment_to_period completed")
+    return _enrich_investments([pi], db)[0]
 
 
 # ── Savings transfer ──────────────────────────────────────────────────────────

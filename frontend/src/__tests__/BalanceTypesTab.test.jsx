@@ -33,7 +33,7 @@ describe('BalanceTypesTab', () => {
     })
   })
 
-  it('defaults the first transaction account to primary', async () => {
+  it('defaults the first banking account to primary', async () => {
     client.getBalanceTypes.mockResolvedValue([])
     client.createBalanceType.mockResolvedValue({})
 
@@ -46,7 +46,7 @@ describe('BalanceTypesTab', () => {
       target: { value: 'Everyday Account' },
     })
     fireEvent.change(screen.getByRole('combobox'), {
-      target: { value: 'Transaction' },
+      target: { value: 'Banking' },
     })
     fireEvent.change(screen.getByLabelText('Opening Balance'), {
       target: { value: '1250' },
@@ -58,10 +58,11 @@ describe('BalanceTypesTab', () => {
     await waitFor(() => {
       expect(client.createBalanceType).toHaveBeenCalledWith(1, {
         balancedesc: 'Everyday Account',
-        balance_type: 'Transaction',
+        balance_type: 'Banking',
         opening_balance: 1250,
         active: true,
         is_primary: true,
+        is_savings: false,
       })
     })
   })
@@ -70,17 +71,19 @@ describe('BalanceTypesTab', () => {
     client.getBalanceTypes.mockResolvedValue([
       {
         balancedesc: 'Savings Jar',
-        balance_type: 'Savings',
+        balance_type: 'Banking',
         opening_balance: '250.00',
         active: true,
         is_primary: true,
+        is_savings: true,
       },
       {
         balancedesc: 'Holiday Fund',
-        balance_type: 'Savings',
+        balance_type: 'Banking',
         opening_balance: '100.00',
         active: true,
         is_primary: false,
+        is_savings: true,
       },
     ])
     client.updateBalanceType.mockResolvedValue({})
@@ -106,29 +109,32 @@ describe('BalanceTypesTab', () => {
     await waitFor(() => {
       expect(client.updateBalanceType).toHaveBeenCalledWith(1, 'Holiday Fund', {
         balancedesc: 'Holiday Reserve',
-        balance_type: 'Savings',
+        balance_type: 'Banking',
         opening_balance: 500,
         active: true,
         is_primary: true,
+        is_savings: true,
       })
     })
   })
 
-  it('uses account-type-specific primary wording for savings accounts', async () => {
+  it('shows primary account wording for banking accounts', async () => {
     client.getBalanceTypes.mockResolvedValue([
       {
         balancedesc: 'Main Account',
-        balance_type: 'Transaction',
+        balance_type: 'Banking',
         opening_balance: '1000.00',
         active: true,
         is_primary: true,
+        is_savings: false,
       },
       {
         balancedesc: 'Savings Jar',
-        balance_type: 'Savings',
+        balance_type: 'Banking',
         opening_balance: '250.00',
         active: true,
         is_primary: false,
+        is_savings: true,
       },
     ])
 
@@ -145,10 +151,11 @@ describe('BalanceTypesTab', () => {
     client.getBalanceTypes.mockResolvedValue([
       {
         balancedesc: 'Main Account',
-        balance_type: 'Transaction',
+        balance_type: 'Banking',
         opening_balance: '1000.00',
         active: true,
         is_primary: true,
+        is_savings: false,
       },
     ])
 
@@ -172,6 +179,7 @@ describe('BalanceTypesTab', () => {
         opening_balance: '80.00',
         active: true,
         is_primary: false,
+        is_savings: false,
       },
     ])
     client.updateBalanceType.mockResolvedValue({})
@@ -191,6 +199,7 @@ describe('BalanceTypesTab', () => {
         opening_balance: 80,
         active: false,
         is_primary: false,
+        is_savings: false,
       })
     })
   })
@@ -200,10 +209,11 @@ describe('BalanceTypesTab', () => {
     client.getBalanceTypes.mockResolvedValue([
       {
         balancedesc: 'Old Savings',
-        balance_type: 'Savings',
+        balance_type: 'Banking',
         opening_balance: '0.00',
         active: false,
         is_primary: false,
+        is_savings: true,
       },
     ])
     client.deleteBalanceType.mockResolvedValue({})
@@ -225,10 +235,11 @@ describe('BalanceTypesTab', () => {
     client.getBalanceTypes.mockResolvedValue([
       {
         balancedesc: 'Main Account',
-        balance_type: 'Transaction',
+        balance_type: 'Banking',
         opening_balance: '1000.00',
         active: true,
         is_primary: true,
+        is_savings: false,
       },
     ])
     client.getBudgetSetupAssessment.mockResolvedValue({
@@ -265,17 +276,19 @@ describe('BalanceTypesTab', () => {
     client.getBalanceTypes.mockResolvedValue([
       {
         balancedesc: 'Main Account',
-        balance_type: 'Transaction',
+        balance_type: 'Banking',
         opening_balance: '1000.00',
         active: true,
         is_primary: true,
+        is_savings: false,
       },
       {
         balancedesc: 'Backup Account',
-        balance_type: 'Transaction',
+        balance_type: 'Banking',
         opening_balance: '250.00',
         active: true,
         is_primary: false,
+        is_savings: false,
       },
     ])
 
@@ -287,29 +300,96 @@ describe('BalanceTypesTab', () => {
     expect(deleteButtons[0].title).toContain('Choose another primary account before deleting this one.')
   })
 
-  it('uses the preferred transaction naming in the account type UI', async () => {
+  it('renders banking and cash type options', async () => {
     client.getBalanceTypes.mockResolvedValue([
       {
         balancedesc: 'Main Account',
-        balance_type: 'Transaction',
+        balance_type: 'Banking',
         opening_balance: '1000.00',
         active: true,
         is_primary: true,
+        is_savings: false,
       },
     ])
 
-    renderWithProviders(
-      <BalanceTypesTab
-        budgetId={1}
-        budget={{ account_naming_preference: 'Checking' }}
-      />
-    )
+    renderWithProviders(<BalanceTypesTab budgetId={1} />)
 
-    expect(await screen.findByText('Checking')).toBeTruthy()
+    expect(await screen.findByText('Banking')).toBeTruthy()
     fireEvent.click(screen.getAllByRole('button')[1])
     expect(await screen.findByRole('heading', { name: 'Edit Account' })).toBeTruthy()
-    expect(screen.getByRole('option', { name: 'Checking' })).toBeTruthy()
+    expect(screen.getByRole('option', { name: 'Banking' })).toBeTruthy()
+    expect(screen.getByRole('option', { name: 'Cash' })).toBeTruthy()
     expect(screen.getByText(/Primary account/i)).toBeTruthy()
     expect(screen.getByText(/Expenses are deducted from this account by default/i)).toBeTruthy()
+  })
+
+  it('includes is_savings in create submission when checked', async () => {
+    client.getBalanceTypes.mockResolvedValue([])
+    client.createBalanceType.mockResolvedValue({})
+
+    renderWithProviders(<BalanceTypesTab budgetId={1} />)
+
+    fireEvent.click(await screen.findByText('Add Account'))
+    expect(await screen.findByRole('heading', { name: 'Add Account' })).toBeTruthy()
+
+    fireEvent.change(screen.getByPlaceholderText('e.g. Everyday Account'), {
+      target: { value: 'Holiday Fund' },
+    })
+    fireEvent.change(screen.getByRole('combobox'), {
+      target: { value: 'Banking' },
+    })
+    fireEvent.change(screen.getByLabelText('Opening Balance'), {
+      target: { value: '5000' },
+    })
+    fireEvent.click(screen.getByLabelText(/Savings account/i))
+
+    expect(screen.getByLabelText(/Savings account/i).checked).toBe(true)
+    fireEvent.click(screen.getByText('Save'))
+
+    await waitFor(() => {
+      expect(client.createBalanceType).toHaveBeenCalledWith(1, {
+        balancedesc: 'Holiday Fund',
+        balance_type: 'Banking',
+        opening_balance: 5000,
+        active: true,
+        is_primary: true,
+        is_savings: true,
+      })
+    })
+  })
+
+  it('includes is_savings in update submission when toggled', async () => {
+    client.getBalanceTypes.mockResolvedValue([
+      {
+        balancedesc: 'Everyday Account',
+        balance_type: 'Banking',
+        opening_balance: '1000.00',
+        active: true,
+        is_primary: true,
+        is_savings: false,
+      },
+    ])
+    client.updateBalanceType.mockResolvedValue({})
+
+    renderWithProviders(<BalanceTypesTab budgetId={1} />)
+
+    expect(await screen.findByText('Everyday Account')).toBeTruthy()
+    fireEvent.click(screen.getAllByRole('button')[1])
+    expect(await screen.findByRole('heading', { name: 'Edit Account' })).toBeTruthy()
+
+    fireEvent.click(screen.getByLabelText(/Savings account/i))
+    expect(screen.getByLabelText(/Savings account/i).checked).toBe(true)
+    fireEvent.click(screen.getByText('Save'))
+
+    await waitFor(() => {
+      expect(client.updateBalanceType).toHaveBeenCalledWith(1, 'Everyday Account', {
+        balancedesc: 'Everyday Account',
+        balance_type: 'Banking',
+        opening_balance: 1000,
+        active: true,
+        is_primary: true,
+        is_savings: true,
+      })
+    })
   })
 })

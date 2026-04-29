@@ -264,9 +264,6 @@ def budget_setup_assessment(budgetid: int, db: Session) -> dict | None:
     if not income_types:
         blocking_issues.append("Add at least one income source so your budget cycle has income to plan with.")
 
-    if not active_expense_items:
-        blocking_issues.append("Add at least one active expense item so your budget cycle has spending to plan for.")
-
     if not active_accounts:
         blocking_issues.append("Add at least one active account so Dosh has a place to track this budget's balances.")
     elif not primary_account and active_expense_items:

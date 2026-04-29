@@ -137,6 +137,8 @@ export const addExpenseToPeriod = (budgetId, periodId, data) =>
   api.post(`/budgets/${budgetId}/periods/${periodId}/add-expense`, data).then(r => r.data)
 export const addIncomeToPeriod = (budgetId, periodId, data) =>
   api.post(`/budgets/${budgetId}/periods/${periodId}/add-income`, data).then(r => r.data)
+export const addInvestmentToPeriod = (budgetId, periodId, data) =>
+  api.post(`/budgets/${budgetId}/periods/${periodId}/add-investment`, data).then(r => r.data)
 export const accountTransfer = (budgetId, periodId, data) =>
   api.post(`/budgets/${budgetId}/periods/${periodId}/account-transfer`, data).then(r => r.data)
 export const deletePeriodForce = (budgetId, periodId, force = false) =>

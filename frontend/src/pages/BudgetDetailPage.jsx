@@ -11,7 +11,7 @@ import InvestmentItemsTab from './tabs/InvestmentItemsTab'
 import BalanceTypesTab from './tabs/BalanceTypesTab'
 import BudgetHealthTab from './tabs/BudgetHealthTab'
 import SettingsTab from './tabs/SettingsTab'
-import { getPreferredTransactionLabel } from '../utils/accountNaming'
+
 
 const SECTIONS = [
   { id: 'budget-info', label: 'Budget Info' },
@@ -81,9 +81,6 @@ function sortBlockingIssues(issues = []) {
   })
 }
 
-function localizeSetupIssue(issue, preferredTransactionLabel) {
-  return issue.replaceAll('transaction account', `${preferredTransactionLabel.toLowerCase()} account`)
-}
 
 function SectionShell({ id, title, summary, helper, children, badge, statusBadge, collapsible = false, collapsed = false, onToggle }) {
   return (
@@ -302,15 +299,13 @@ export default function BudgetDetailPage() {
   const activeExpenseItems = expenseItems.filter(item => item.active)
   const hasAccounts = accounts.length > 0
   const primaryAccount = accounts.find(account => account.is_primary)
-  const preferredTransactionLabel = getPreferredTransactionLabel(budget.account_naming_preference)
   const accountsHelper = primaryAccount
     ? null
-    : `Choose one account as the primary account, so expenses know which account to deduct from by default.`
+    : 'Choose one account as the primary account, so expenses know which account to deduct from by default.'
   const incomeHelper = hasAccounts ? null : 'Add an account first if you want income to flow into a tracked account.'
   const expenseHelper = hasAccounts ? null : 'Add an account first so future expense entries can be connected to one when you need that.'
   const investmentHelper = hasAccounts ? null : 'Add an account first if you want investment contributions linked to a tracked account.'
   const orderedBlockingIssues = sortBlockingIssues(setupAssessment?.blocking_issues)
-    .map(issue => localizeSetupIssue(issue, preferredTransactionLabel))
 
   const jumpToSection = sectionId => {
     setActiveSection(sectionId)

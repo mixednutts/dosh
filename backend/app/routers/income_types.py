@@ -2,7 +2,7 @@ import logging
 from fastapi import APIRouter, HTTPException
 from sqlalchemy.orm import Session
 from ..api_docs import DbSession, error_responses
-from ..models import Budget, IncomeType
+from ..models import BalanceType, Budget, IncomeType
 from ..schemas import IncomeTypeCreate, IncomeTypeOut, IncomeTypeUpdate, SetupHistoryOut
 from ..setup_assessment import income_assessment
 from ..setup_history import (
@@ -44,6 +44,18 @@ def _assert_income_delete_allowed(budgetid: int, incomedesc: str, db: Session) -
         raise HTTPException(422, f'Income type "{incomedesc}" is in use and cannot be deleted. {"; ".join(assessment["reasons"])}.')
 
 
+def _assert_savings_account_valid(budgetid: int, linked_account: str | None, issavings: bool, db: Session) -> None:
+    if not issavings or not linked_account:
+        return
+    bt = db.get(BalanceType, (budgetid, linked_account))
+    if not bt:
+        raise HTTPException(422, f'Linked account "{linked_account}" does not exist')
+    if not bt.active:
+        raise HTTPException(422, f'Linked account "{linked_account}" is inactive')
+    if not bt.is_savings:
+        raise HTTPException(422, f'Linked account "{linked_account}" must be a savings account when income is marked as savings')
+
+
 @router.get("/", response_model=list[IncomeTypeOut], responses=error_responses(404))
 def list_income_types(budgetid: int, db: DbSession):
     _get_budget_or_404(budgetid, db)
@@ -60,6 +72,7 @@ def create_income_type(budgetid: int, payload: IncomeTypeCreate, db: DbSession):
     existing = db.get(IncomeType, (budgetid, payload.incomedesc))
     if existing:
         raise HTTPException(409, "Income type with this description already exists")
+    _assert_savings_account_valid(budgetid, payload.linked_account, payload.issavings, db)
     data = payload.model_dump()
     it = IncomeType(budgetid=budgetid, revisionnum=0, **data)
     db.add(it)
@@ -81,6 +94,9 @@ def update_income_type(
         existing = db.get(IncomeType, (budgetid, new_desc))
         if existing:
             raise HTTPException(409, "Income type with this description already exists")
+    next_issavings = data.get("issavings", it.issavings)
+    next_linked = data.get("linked_account", it.linked_account)
+    _assert_savings_account_valid(budgetid, next_linked, next_issavings, db)
     revision_fields = {"amount"}
     changed_fields = build_changed_fields(it, data, revision_fields)
     is_revision = bool(changed_fields)

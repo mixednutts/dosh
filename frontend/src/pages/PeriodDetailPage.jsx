@@ -38,6 +38,7 @@ import {
 import {
   AddIncomeLineModal,
   AddExpenseLineModal,
+  AddInvestmentLineModal,
 } from '../components/period-lines'
 import {
   BalanceTransactionsModal,
@@ -63,6 +64,7 @@ export default function PeriodDetailPage() {
   const qc = useQueryClient()
   const [showAddExpense, setShowAddExpense] = useState(false)
   const [showAddIncome, setShowAddIncome] = useState(false)
+  const [showAddInvestment, setShowAddInvestment] = useState(false)
   const [incomeModal, setIncomeModal] = useState(null)
   const [entriesModal, setEntriesModal] = useState(null)
   const [budgetAdjustModal, setBudgetAdjustModal] = useState(null)
@@ -612,6 +614,7 @@ export default function PeriodDetailPage() {
         onViewTransactions={() => {}}
         setInvestmentStatus={setInvestmentStatus}
         setInvestmentModal={setInvestmentModal}
+        onAddInvestment={() => setShowAddInvestment(true)}
       />
 
       <BalanceSection
@@ -664,6 +667,11 @@ export default function PeriodDetailPage() {
       {showAddIncome && (
         <Modal title="Add Income to Budget Cycle" onClose={() => setShowAddIncome(false)}>
           <AddIncomeLineModal periodId={id} budgetId={period.budgetid} existingDescs={incomes.map(i => i.incomedesc)} onClose={() => setShowAddIncome(false)} />
+        </Modal>
+      )}
+      {showAddInvestment && (
+        <Modal title="Add Investment to Budget Cycle" onClose={() => setShowAddInvestment(false)}>
+          <AddInvestmentLineModal periodId={id} budgetId={period.budgetid} existingDescs={investments.map(inv => inv.investmentdesc)} onClose={() => setShowAddInvestment(false)} />
         </Modal>
       )}
       {budgetAdjustModal && (

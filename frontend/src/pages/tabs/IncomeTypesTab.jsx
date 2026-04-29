@@ -8,11 +8,11 @@ import SetupItemHistoryModal from '../../components/SetupItemHistoryModal'
 import LocalizedAmountInput from '../../components/LocalizedAmountInput'
 import MobileTableCards from '../../components/MobileTableCards'
 import { useLocalisation } from '../../components/LocalisationContext'
-import { getBalanceTypeLabel } from '../../utils/accountNaming'
+
 
 const emptyForm = { incomedesc: '', issavings: false, autoinclude: true, amount: '', linked_account: '' }
 
-function IncomeTypeForm({ initial = emptyForm, onSubmit, onClose, loading, budgetId, structureLocked = false, lockReasons = [], accountNamingPreference = 'Transaction' }) {
+function IncomeTypeForm({ initial = emptyForm, onSubmit, onClose, loading, budgetId, structureLocked = false, lockReasons = [] }) {
   const [form, setForm] = useState({ ...initial, amount: initial.amount ?? '', linked_account: initial.linked_account ?? '' })
   const formIdPrefix = initial.incomedesc ? 'edit-income-type' : 'create-income-type'
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
@@ -41,7 +41,7 @@ function IncomeTypeForm({ initial = emptyForm, onSubmit, onClose, loading, budge
         <label htmlFor={`${formIdPrefix}-linked-account`} className="label">Paid into Account</label>
         <select id={`${formIdPrefix}-linked-account`} disabled={structureLocked} className="input" value={form.linked_account} onChange={e => set('linked_account', e.target.value)}>
           <option value="">— none —</option>
-          {accounts.map(a => <option key={a.balancedesc} value={a.balancedesc}>{a.balancedesc}{a.balance_type ? ` (${getBalanceTypeLabel(a.balance_type, accountNamingPreference)})` : ''}</option>)}
+          {accounts.map(a => <option key={a.balancedesc} value={a.balancedesc}>{a.balancedesc}</option>)}
         </select>
       </div>
       <div className="space-y-3">
@@ -136,7 +136,6 @@ export default function IncomeTypesTab({ budgetId, budget }) {
   }
 
   const incomeUsageByDesc = Object.fromEntries((setupAssessment?.income_types || []).map(item => [item.incomedesc, item]))
-  const accountNamingPreference = budget?.account_naming_preference || 'Transaction'
 
   const mobileColumns = [
     { key: 'incomedesc', label: 'Description', render: v => <span className="font-medium">{v}</span> },
@@ -254,7 +253,6 @@ export default function IncomeTypesTab({ budgetId, budget }) {
             onClose={() => setModal(null)}
             loading={create.isPending || update.isPending}
             budgetId={budgetId}
-            accountNamingPreference={accountNamingPreference}
           />
         </Modal>
       )}
@@ -286,12 +284,9 @@ IncomeTypeForm.propTypes = {
   budgetId: PropTypes.number.isRequired,
   structureLocked: PropTypes.bool,
   lockReasons: PropTypes.arrayOf(PropTypes.string),
-  accountNamingPreference: PropTypes.string,
 }
 
 IncomeTypesTab.propTypes = {
   budgetId: PropTypes.number.isRequired,
-  budget: PropTypes.shape({
-    account_naming_preference: PropTypes.string,
-  }),
+  budget: PropTypes.shape({}),
 }

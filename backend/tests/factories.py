@@ -25,11 +25,13 @@ def create_budget(
     budgetowner: str = "Test User",
     description: str = "Test budget",
     budget_frequency: str = "Monthly",
+    allow_overdraft_transactions: bool = True,
 ) -> Budget:
     budget = Budget(
         budgetowner=budgetowner,
         description=description,
         budget_frequency=budget_frequency,
+        allow_overdraft_transactions=allow_overdraft_transactions,
     )
     db.add(budget)
     db.commit()
@@ -99,8 +101,9 @@ def create_balance_type(
     budgetid: int,
     balancedesc: str = "Main Account",
     opening_balance: Decimal = Decimal("1000.00"),
-    balance_type: str = "Transaction",
+    balance_type: str = "Banking",
     is_primary: bool = True,
+    is_savings: bool = False,
 ) -> BalanceType:
     balance = BalanceType(
         budgetid=budgetid,
@@ -108,6 +111,7 @@ def create_balance_type(
         opening_balance=opening_balance,
         balance_type=balance_type,
         is_primary=is_primary,
+        is_savings=is_savings,
     )
     db.add(balance)
     db.commit()

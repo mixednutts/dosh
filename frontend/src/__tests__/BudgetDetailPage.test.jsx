@@ -241,7 +241,7 @@ describe('BudgetDetailPage', () => {
       budgetowner: 'Alex',
       description: 'Home Budget',
       budget_frequency: 'Monthly',
-      account_naming_preference: 'Transaction',
+      allow_overdraft_transactions: false,
     })
     client.getBalanceTypes.mockResolvedValue([])
     client.getIncomeTypes.mockResolvedValue([])
@@ -252,6 +252,7 @@ describe('BudgetDetailPage', () => {
       budgetowner: 'Jordan',
       description: 'Renamed Budget',
       budget_frequency: 'Monthly',
+      allow_overdraft_transactions: false,
     })
     mockSetupAssessment()
     mockNoPeriods()
@@ -294,7 +295,7 @@ describe('BudgetDetailPage', () => {
       budgetowner: 'Alex',
       description: 'Home Budget',
       budget_frequency: 'Monthly',
-      account_naming_preference: 'Checking',
+      allow_overdraft_transactions: false,
     })
     client.getBalanceTypes.mockResolvedValue([
       { balancedesc: 'Everyday', balance_type: 'Transaction', active: true, is_primary: true },

@@ -20,6 +20,7 @@ export function InvestmentSection({
   onViewTransactions,
   setInvestmentStatus,
   setInvestmentModal,
+  onAddInvestment,
 }) {
   const fmt = formatters.fmt
 
@@ -123,7 +124,20 @@ export function InvestmentSection({
 
   return (
     <div className="card">
-      <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 font-semibold text-gray-700 dark:text-gray-200 text-sm md:text-sm text-base border-l-4 border-purple-500 pl-2.5 md:border-0 md:pl-4">Investments</div>
+      <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+        <span className="font-semibold text-gray-700 dark:text-gray-200 text-sm md:text-sm text-base border-l-4 border-purple-500 pl-2.5 md:border-0 md:pl-0">Investments</span>
+        {onAddInvestment && (
+          <button
+            type="button"
+            className="btn-secondary text-xs px-2 py-1"
+            onClick={onAddInvestment}
+            disabled={locked || closed}
+            title={locked || closed ? 'Cycle is locked or closed' : 'Add an investment line to this cycle'}
+          >
+            + Add Investment Line
+          </button>
+        )}
+      </div>
       <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-sm period-detail-table">
           <colgroup>
@@ -253,4 +267,5 @@ InvestmentSection.propTypes = {
   onViewTransactions: PropTypes.func.isRequired,
   setInvestmentStatus: PropTypes.object.isRequired,
   setInvestmentModal: PropTypes.func.isRequired,
+  onAddInvestment: PropTypes.func,
 }

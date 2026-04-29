@@ -4,7 +4,111 @@ This document captures the key product and implementation changes made during re
 
 It is intended to complement [README.md](/home/ubuntu/dosh/README.md), not replace it.
 
-## Latest Session: Cash-Only Budget Shape — Type-Agnostic Primary Account (0.9.1-beta) (2026-04-29)
+## Latest Session: Investment Delta Fix and Same-Account Validation (0.9.3-beta) (2026-04-29)
+
+### What changed
+
+- **Fixed investment transactions showing $0.00 in banking account movement details.**
+  - `frontend/src/utils/transactionHelpers.js`: `balanceTransactionDelta()` now correctly handles investment source transactions by checking both the credit account (`affected_account_desc`) and the debit account (`related_account_desc`). Previously, only the credit account received the delta, so debit accounts showed $0.00.
+  - This aligns frontend balance display with backend `_delta_from_account_pair()` logic.
+
+- **Added validation to prevent identical debit and credit accounts on investment lines.**
+  - `backend/app/routers/investments.py`: Added `_assert_accounts_are_distinct()` helper. Returns HTTP 422 with "Debit account and target account must be different accounts" when `source_account_desc == linked_account_desc`.
+  - Enforced on both `POST /budgets/{budgetid}/investment-items/` (create) and `PATCH /budgets/{budgetid}/investment-items/{investmentdesc}` (update).
+
+- **Relaxed budget generation requirements to support savings-only and no-expense shapes.**
+  - `backend/app/setup_assessment.py`: Removed the hard requirement for at least one active expense item. Generation readiness now only requires income sources and an active primary account.
+  - `backend/app/routers/periods.py`: `_assert_primary_account_configured()` now returns early when the budget has no active expense items, preventing the primary-account error for savings-only budgets.
+
+### Testing
+
+- Full backend regression suite: **323 passed**, 0 regressions introduced.
+- Full frontend regression suite: **357 passed**, 0 regressions introduced.
+- New frontend tests: `transactionHelpers.test.jsx` — 8 tests covering investment debit/credit delta, same-account zero, expense, income, and transfer.
+- New backend tests: `test_investment_transactions.py` — 3 tests for same-account rejection on create, same-account rejection on update, and different-account success.
+
+### Files touched
+
+- `frontend/src/utils/transactionHelpers.js`
+- `backend/app/routers/investments.py`
+- `backend/app/setup_assessment.py`
+- `backend/app/routers/periods.py`
+- `frontend/src/__tests__/transactionHelpers.test.jsx`
+- `backend/tests/test_investment_transactions.py`
+
+---
+
+## Session: Budget Setup Restructuring for Multi-Shape Support (0.9.3-beta) (2026-04-29)
+
+### What changed
+
+- **Collapsed three account types into two with an `is_savings` boolean.**
+  - `backend/app/models.py`: `BalanceType.balance_type` now accepts `Banking` or `Cash` (backfilled from `Transaction`/`Savings`/`Cash` via Alembic migration `d91762a97794`). Added `is_savings` column.
+  - `backend/app/demo_budget.py`, `backend/app/routers/balance_types.py`: Updated to use `Banking`/`Cash` + `is_savings`.
+  - Frontend `BalanceTypesTab.jsx`: Create/edit forms now use `Banking`/`Cash` dropdown and an `is_savings` checkbox.
+
+- **Removed `account_naming_preference` from `Budget`.**
+  - `backend/app/models.py`, `backend/app/schemas.py`: Dropped the column and all schema references.
+  - Frontend `SettingsTab.jsx`, `BudgetDetailPage.jsx`, `IncomeTypesTab.jsx`, `InvestmentItemsTab.jsx`: Removed naming-preference dropdowns and related copy.
+  - Deleted `frontend/src/utils/accountNaming.js`.
+
+- **Added `allow_overdraft_transactions` budget setting (default `false`).**
+  - `backend/app/transaction_ledger.py`: Added `validate_account_has_sufficient_balance()` — checks period balance before allowing non-system expense or investment transactions.
+  - `backend/app/routers/periods.py`: Applied validation in `build_expense_tx` and `build_investment_tx` for manual transactions. System transactions (auto-expense, actual updates) bypass the check.
+  - Frontend `SettingsTab.jsx`: Added toggle with persistent note explaining that auto-expense operates independently.
+
+- **Created `AddInvestmentLineModal` for adding existing investments to a period.**
+  - `frontend/src/components/period-lines/AddInvestmentLineModal.jsx`: Modal for selecting an existing setup investment item, entering a budget amount, and adding it to the current cycle.
+  - `backend/app/routers/periods.py`: Added `POST /{finperiodid}/add-investment` endpoint. Computes opening value via `_compute_investment_opening_value()` — searches backward across all periods for the most recent closing value. Supports `oneoff` and `future` scopes.
+  - `frontend/src/pages/PeriodDetailPage.jsx`: Integrated modal into the Investment section.
+
+- **Restored `linked_account_desc` (target account) to investment setup.**
+  - `frontend/src/pages/tabs/InvestmentItemsTab.jsx`: Re-added "Target Account" dropdown.
+  - `frontend/src/components/transaction/InvestmentTxModal.jsx`: Displays target account in transaction form.
+
+- **Created `docs/BUDGET_SHAPES_MATRIX.md`.**
+  - Documents six supported budget shapes (S1–S6): Full Banking, Cash-Only with Savings, Banking-Only, Savings-Only, Mixed Banking + Cash, No-Expense Tracking.
+
+- **Relaxed setup assessment and generation for new shapes.**
+  - `backend/app/setup_assessment.py`: Removed hard expense-item requirement. Generation now only needs income sources + active primary account.
+  - Enables S4 (Savings-Only) and S6 (No-Expense Tracking) shapes.
+
+### Testing
+
+- Full backend regression suite: **323 passed**, 0 regressions introduced.
+- Full frontend regression suite: **357 passed**, 0 regressions introduced.
+- New backend tests: `test_add_investment_to_period_existing_item`, `test_add_investment_to_period_computes_opening_from_prior_period`, `test_add_investment_to_period_future_backfills_unlocked_periods`, `test_add_investment_transaction_blocked_when_overdraft_disabled`, `test_add_investment_transaction_allowed_when_overdraft_enabled`, `test_shape_s2_cash_only_with_savings_can_generate`, `test_shape_s3_banking_only_no_savings_can_generate`, `test_shape_s4_savings_only_can_generate`, `test_shape_s5_mixed_banking_and_cash_can_generate`, `test_shape_s6_no_expense_tracking_can_generate`.
+- New frontend tests: `AddInvestmentLineModal.test.jsx` (4 tests), Settings auto-expense overdraft note, `TransactionEntryForm` destination account display.
+
+### Files touched
+
+- `backend/app/models.py`
+- `backend/app/schemas.py`
+- `backend/app/demo_budget.py`
+- `backend/app/transaction_ledger.py`
+- `backend/app/period_logic.py`
+- `backend/app/routers/periods.py`
+- `backend/app/routers/balance_types.py`
+- `backend/app/routers/income_types.py`
+- `backend/app/routers/budgets.py`
+- `backend/alembic/versions/d91762a97794_restructure_account_types_add_is_.py`
+- `frontend/src/utils/accountNaming.js` (deleted)
+- `frontend/src/utils/transactionHelpers.js`
+- `frontend/src/api/client.js`
+- `frontend/src/pages/tabs/BalanceTypesTab.jsx`
+- `frontend/src/pages/tabs/InvestmentItemsTab.jsx`
+- `frontend/src/pages/tabs/SettingsTab.jsx`
+- `frontend/src/pages/tabs/IncomeTypesTab.jsx`
+- `frontend/src/pages/BudgetDetailPage.jsx`
+- `frontend/src/pages/PeriodDetailPage.jsx`
+- `frontend/src/components/period-lines/AddInvestmentLineModal.jsx`
+- `frontend/src/components/period-lines/index.js`
+- `frontend/src/components/period-sections/InvestmentSection.jsx`
+- `docs/BUDGET_SHAPES_MATRIX.md`
+
+---
+
+## Session: Cash-Only Budget Shape — Type-Agnostic Primary Account (0.9.1-beta) (2026-04-29)
 
 ### What changed
 

@@ -7,14 +7,9 @@ import Modal from '../../components/Modal'
 import LocalizedAmountInput from '../../components/LocalizedAmountInput'
 import MobileTableCards from '../../components/MobileTableCards'
 import { useLocalisation } from '../../components/LocalisationContext'
-import { getBalanceTypeLabel, getPreferredTransactionLabel } from '../../utils/accountNaming'
 
-const BALANCE_TYPE_OPTIONS = ['Transaction', 'Savings', 'Cash']
-const emptyForm = { balancedesc: '', balance_type: 'Transaction', opening_balance: '', active: true, is_primary: false }
-
-function getPrimaryAccountTypeLabel(balanceType, accountNamingPreference) {
-  return getBalanceTypeLabel(balanceType, accountNamingPreference).toLowerCase()
-}
+const BALANCE_TYPE_OPTIONS = ['Banking', 'Cash']
+const emptyForm = { balancedesc: '', balance_type: 'Banking', opening_balance: '', active: true, is_primary: false, is_savings: false }
 
 function getPrimaryAccountName(accounts, currentDesc = null) {
   return accounts.find(
@@ -99,7 +94,6 @@ function BalanceTypeForm({
   loading,
   structureLocked = false,
   lockReasons = [],
-  accountNamingPreference = 'Transaction',
   existingAccounts = [],
   mode = 'create',
 }) {
@@ -109,8 +103,6 @@ function BalanceTypeForm({
   const formIdPrefix = initial.balancedesc ? 'edit-balance-type' : 'create-balance-type'
   const currentDesc = initial.balancedesc ?? null
   const openingBalanceLocked = structureLocked && currentDesc != null
-  const primaryAccountLabel = getPrimaryAccountTypeLabel(form.balance_type, accountNamingPreference)
-  const transactionAccountLabel = getPreferredTransactionLabel(accountNamingPreference).toLowerCase()
 
   const submitForm = nextForm => {
     onSubmit({ ...nextForm, opening_balance: Number.parseFloat(nextForm.opening_balance) || 0 })
@@ -152,7 +144,7 @@ function BalanceTypeForm({
         <div>
         <label htmlFor={`${formIdPrefix}-type`} className="label">Account Type</label>
         <select id={`${formIdPrefix}-type`} disabled={structureLocked} className="input" value={form.balance_type} onChange={e => set('balance_type', e.target.value)}>
-          {BALANCE_TYPE_OPTIONS.map(o => <option key={o} value={o}>{getBalanceTypeLabel(o, accountNamingPreference)}</option>)}
+          {BALANCE_TYPE_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
         </select>
         </div>
         <div>
@@ -171,6 +163,14 @@ function BalanceTypeForm({
             <span className="space-y-0.5">
               <span className="block font-medium text-gray-800 dark:text-gray-100">Active</span>
               <span className="block text-xs text-gray-500 dark:text-gray-400">Include in new budget cycles.</span>
+            </span>
+          </label>
+          <label htmlFor={`${formIdPrefix}-savings`} className="flex items-start gap-3 text-sm cursor-pointer">
+            <input id={`${formIdPrefix}-savings`} type="checkbox" checked={!!form.is_savings} onChange={e => set('is_savings', e.target.checked)}
+            className="rounded border-gray-300 text-dosh-600 focus:ring-dosh-500" />
+            <span className="space-y-0.5">
+              <span className="block font-medium text-gray-800 dark:text-gray-100">Savings account</span>
+              <span className="block text-xs text-gray-500 dark:text-gray-400">Mark this account as a savings or investment-holding account.</span>
             </span>
           </label>
           <label htmlFor={`${formIdPrefix}-primary`} className="flex items-start gap-3 text-sm cursor-pointer">
@@ -235,9 +235,7 @@ function BalanceTypeForm({
 }
 
 const TYPE_BADGE = {
-  Transaction: 'badge-blue',
-  Bank: 'badge-blue',
-  Savings: 'badge-green',
+  Banking: 'badge-blue',
   Cash: 'badge-amber',
 }
 
@@ -301,7 +299,6 @@ export default function BalanceTypesTab({ budgetId, budget }) {
   }
 
   const accountUsageByDesc = Object.fromEntries((setupAssessment?.accounts || []).map(account => [account.balancedesc, account]))
-  const accountNamingPreference = budget?.account_naming_preference || 'Transaction'
   const hasActivePrimary = types.some(type => type.active && type.is_primary)
 
   const mobileColumns = [
@@ -313,7 +310,7 @@ export default function BalanceTypesTab({ budgetId, budget }) {
     {
       key: 'balance_type',
       label: 'Type',
-      render: v => <span className={TYPE_BADGE[v] ?? 'badge-gray'}>{getBalanceTypeLabel(v, accountNamingPreference)}</span>,
+      render: v => <span className={TYPE_BADGE[v] ?? 'badge-gray'}>{v}</span>,
     },
     { key: 'opening_balance', label: 'Opening Balance', render: v => formatCurrency(v) },
     {
@@ -367,7 +364,7 @@ export default function BalanceTypesTab({ budgetId, budget }) {
 
       {types.length === 0 ? (
         <div className="card p-8 text-center text-gray-500 dark:text-gray-400">
-          No accounts defined yet. Add a {getPreferredTransactionLabel(accountNamingPreference).toLowerCase()}, savings, or cash account to track balances.
+          No accounts defined yet. Add a banking or cash account to track balances.
         </div>
       ) : (
         <div className="card overflow-hidden">
@@ -395,7 +392,7 @@ export default function BalanceTypesTab({ budgetId, budget }) {
                         {usage?.in_use ? <span className="ml-2 badge-amber">In Use</span> : null}
                       </td>
                       <td className="table-cell">
-                        <span className={TYPE_BADGE[t.balance_type] ?? 'badge-gray'}>{getBalanceTypeLabel(t.balance_type, accountNamingPreference)}</span>
+                        <span className={TYPE_BADGE[t.balance_type] ?? 'badge-gray'}>{t.balance_type}</span>
                       </td>
                       <td className="table-cell text-right text-gray-600 dark:text-gray-300">{formatCurrency(t.opening_balance)}</td>
                       <td className="table-cell text-center">{t.is_primary ? <span className="badge-green">Yes</span> : <span className="badge-gray">—</span>}</td>
@@ -435,13 +432,14 @@ export default function BalanceTypesTab({ budgetId, budget }) {
               opening_balance: modal.item.opening_balance,
               active: modal.item.active,
               is_primary: modal.item.is_primary ?? false,
+              is_savings: modal.item.is_savings ?? false,
             } : {
               ...emptyForm,
               is_primary: !hasActivePrimary,
+              is_savings: false,
             }}
             structureLocked={modal.item ? accountUsageByDesc[modal.item.balancedesc]?.can_edit_structure === false : false}
             lockReasons={modal.item ? (accountUsageByDesc[modal.item.balancedesc]?.reasons || []) : []}
-            accountNamingPreference={accountNamingPreference}
             existingAccounts={types}
             mode={modal.mode}
             onSubmit={handleSubmit}
@@ -461,13 +459,13 @@ BalanceTypeForm.propTypes = {
     opening_balance: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
     active: PropTypes.bool,
     is_primary: PropTypes.bool,
+    is_savings: PropTypes.bool,
   }),
   onSubmit: PropTypes.func.isRequired,
   onClose: PropTypes.func.isRequired,
   loading: PropTypes.bool.isRequired,
   structureLocked: PropTypes.bool,
   lockReasons: PropTypes.arrayOf(PropTypes.string),
-  accountNamingPreference: PropTypes.string,
   existingAccounts: PropTypes.arrayOf(PropTypes.shape({
     balancedesc: PropTypes.string.isRequired,
     balance_type: PropTypes.string,
@@ -479,7 +477,5 @@ BalanceTypeForm.propTypes = {
 
 BalanceTypesTab.propTypes = {
   budgetId: PropTypes.number.isRequired,
-  budget: PropTypes.shape({
-    account_naming_preference: PropTypes.string,
-  }),
+  budget: PropTypes.shape({}),
 }

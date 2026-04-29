@@ -112,7 +112,6 @@ class BudgetBase(BaseModel):
     budgetowner: str
     description: Optional[str] = None
     budget_frequency: str  # Weekly | Fortnightly | Monthly | Every N Days
-    account_naming_preference: str = "Transaction"
     locale: str = "en-AU"
     currency: str = "AUD"
     timezone: str = "Australia/Sydney"
@@ -155,14 +154,6 @@ class BudgetBase(BaseModel):
             raise ValueError("Custom day cycles must be between 2 and 365 days")
         return v
 
-    @field_validator("account_naming_preference")
-    @classmethod
-    def validate_account_naming_preference(cls, v: str) -> str:
-        allowed = {"Transaction", "Everyday", "Checking"}
-        if v not in allowed:
-            raise ValueError(f"account_naming_preference must be one of {allowed}")
-        return v
-
     @field_validator("locale")
     @classmethod
     def validate_locale(cls, v: str) -> str:
@@ -201,7 +192,7 @@ class BudgetUpdate(BaseModel):
     savings_priority: Optional[int] = None
     period_criticality_bias: Optional[int] = None
     allow_cycle_lock: Optional[bool] = None
-    account_naming_preference: Optional[str] = None
+    allow_overdraft_transactions: Optional[bool] = None
     locale: Optional[str] = None
     currency: Optional[str] = None
     timezone: Optional[str] = None
@@ -278,16 +269,6 @@ class BudgetUpdate(BaseModel):
             raise ValueError("Maximum deficit amount must be 0 or more")
         return v.quantize(Decimal("0.01"))
 
-    @field_validator("account_naming_preference")
-    @classmethod
-    def validate_optional_account_naming_preference(cls, v: Optional[str]) -> Optional[str]:
-        if v is None:
-            return v
-        allowed = {"Transaction", "Everyday", "Checking"}
-        if v not in allowed:
-            raise ValueError(f"account_naming_preference must be one of {allowed}")
-        return v
-
     @field_validator("locale")
     @classmethod
     def validate_optional_locale(cls, v: Optional[str]) -> Optional[str]:
@@ -341,7 +322,7 @@ class BudgetOut(BudgetBase):
     savings_priority: int = 50
     period_criticality_bias: int = 50
     allow_cycle_lock: bool = True
-    account_naming_preference: str = "Transaction"
+    allow_overdraft_transactions: bool = False
     locale: str = "en-AU"
     currency: str = "AUD"
     timezone: str = "Australia/Sydney"
@@ -711,6 +692,21 @@ class AddIncomeToPeriodRequest(BaseModel):
         return v
 
 
+class AddInvestmentToPeriodRequest(BaseModel):
+    budgetid: int
+    investmentdesc: str
+    budgeted_amount: Decimal
+    scope: str
+    note: Optional[str] = None
+
+    @field_validator("scope")
+    @classmethod
+    def validate_scope(cls, v: str) -> str:
+        if v not in {"oneoff", "future"}:
+            raise ValueError("scope must be 'oneoff' or 'future'")
+        return v
+
+
 class AccountTransferRequest(BaseModel):
     budgetid: int
     source_account: str
@@ -937,6 +933,7 @@ class BalanceTypeBase(BaseModel):
     opening_balance: Decimal = Decimal("0.00")
     active: bool = True
     is_primary: bool = False
+    is_savings: bool = False
 
 
 class BalanceTypeCreate(BalanceTypeBase):
@@ -948,6 +945,7 @@ class BalanceTypeUpdate(BaseModel):
     opening_balance: Optional[Decimal] = None
     active: Optional[bool] = None
     is_primary: Optional[bool] = None
+    is_savings: Optional[bool] = None
 
 
 class BalanceTypeOut(BalanceTypeBase):
@@ -962,6 +960,7 @@ class PeriodBalanceOut(BaseModel):
     budgetid: int
     balancedesc: str
     balance_type: Optional[str] = None
+    is_savings: bool = False
     opening_amount: Decimal
     closing_amount: Decimal
     movement_amount: Decimal = Decimal("0.00")

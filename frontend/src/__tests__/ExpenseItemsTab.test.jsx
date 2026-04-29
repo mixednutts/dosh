@@ -42,7 +42,7 @@ describe('ExpenseItemsTab', () => {
     client.getBalanceTypes.mockResolvedValue([
       { balancedesc: 'Main Account', balance_type: 'Transaction', is_primary: true, active: true },
     ])
-    client.getBudget.mockResolvedValue({ account_naming_preference: 'Transaction' })
+    client.getBudget.mockResolvedValue({ allow_overdraft_transactions: false })
   })
 
   afterEach(() => {
@@ -473,7 +473,7 @@ describe('ExpenseItemsTab', () => {
       { balancedesc: 'Main Account', balance_type: 'Transaction', is_primary: true, active: true },
       { balancedesc: 'Joint Account', balance_type: 'Transaction', is_primary: false, active: true },
     ])
-    client.getBudget.mockResolvedValue({ account_naming_preference: 'Transaction' })
+    client.getBudget.mockResolvedValue({ allow_overdraft_transactions: false })
 
     renderWithProviders(<ExpenseItemsTab budgetId={1} />)
 
@@ -508,7 +508,7 @@ describe('ExpenseItemsTab', () => {
       { balancedesc: 'Main Account', balance_type: 'Transaction', is_primary: true, active: true },
       { balancedesc: 'Joint Account', balance_type: 'Transaction', is_primary: false, active: true },
     ])
-    client.getBudget.mockResolvedValue({ account_naming_preference: 'Transaction' })
+    client.getBudget.mockResolvedValue({ allow_overdraft_transactions: false })
 
     renderWithProviders(<ExpenseItemsTab budgetId={1} />)
 
@@ -543,7 +543,7 @@ describe('ExpenseItemsTab', () => {
       { balancedesc: 'Savings Account', balance_type: 'Savings', is_primary: false, active: true },
       { balancedesc: 'Cash Wallet', balance_type: 'Cash', is_primary: false, active: true },
     ])
-    client.getBudget.mockResolvedValue({ account_naming_preference: 'Transaction' })
+    client.getBudget.mockResolvedValue({ allow_overdraft_transactions: false })
 
     renderWithProviders(<ExpenseItemsTab budgetId={1} />)
 

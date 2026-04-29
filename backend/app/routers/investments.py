@@ -60,6 +60,11 @@ def _assert_account_exists(budgetid: int, balancedesc: str | None, db: Session, 
         raise HTTPException(422, f'{field_name} "{balancedesc}" is inactive')
 
 
+def _assert_accounts_are_distinct(source_account_desc: str | None, linked_account_desc: str | None) -> None:
+    if source_account_desc and linked_account_desc and source_account_desc == linked_account_desc:
+        raise HTTPException(422, "Debit account and target account must be different accounts")
+
+
 @router.get("/", response_model=list[InvestmentItemOut], responses=error_responses(404))
 def list_investment_items(budgetid: int, db: DbSession):
     _get_budget_or_404(budgetid, db)
@@ -80,6 +85,7 @@ def create_investment_item(budgetid: int, payload: InvestmentItemCreate, db: DbS
         raise HTTPException(422, "Primary investment items must be active")
     _assert_account_exists(budgetid, payload.linked_account_desc, db, "Linked account")
     _assert_account_exists(budgetid, payload.source_account_desc, db, "Source account")
+    _assert_accounts_are_distinct(payload.source_account_desc, payload.linked_account_desc)
     data = payload.model_dump()
     if data.get("effectivedate") is not None:
         data["effectivedate"] = normalize_budget_date(data["effectivedate"], budget.timezone)
@@ -118,6 +124,10 @@ def update_investment_item(
         _assert_account_exists(budgetid, updates["linked_account_desc"], db, "Linked account")
     if "source_account_desc" in updates:
         _assert_account_exists(budgetid, updates["source_account_desc"], db, "Source account")
+    _assert_accounts_are_distinct(
+        updates.get("source_account_desc", item.source_account_desc),
+        updates.get("linked_account_desc", item.linked_account_desc),
+    )
     for field, value in updates.items():
         setattr(item, field, value)
     if is_revision:

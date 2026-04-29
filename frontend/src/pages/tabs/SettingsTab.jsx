@@ -3,7 +3,6 @@ import PropTypes from 'prop-types'
 import { QuestionMarkCircleIcon } from '@heroicons/react/24/outline'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { getLocalisationOptions, updateBudget } from '../../api/client'
-import { ACCOUNT_NAMING_OPTIONS } from '../../utils/accountNaming'
 import { CURRENCY_OPTIONS, DATE_FORMAT_OPTIONS, LOCALE_OPTIONS, TIMEZONE_OPTIONS } from '../../utils/localisation'
 
 function formatApiError(error, fallback) {
@@ -161,6 +160,25 @@ export default function SettingsTab({ budgetId, budget }) {
           </span>
         </div>
 
+        <div className="mt-4 flex items-start gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-800/50">
+          <input
+            id="allow-overdraft-transactions"
+            type="checkbox"
+            checked={!!budget?.allow_overdraft_transactions}
+            disabled={saveSettings.isPending}
+            onChange={e => handleToggle('allow_overdraft_transactions', e.target.checked)}
+            className="mt-0.5 rounded border-gray-300 text-dosh-600 focus:ring-dosh-500 dark:border-gray-600"
+          />
+          <span className="space-y-1">
+            <label htmlFor="allow-overdraft-transactions" className="block cursor-pointer font-medium text-gray-900 dark:text-gray-100">
+              Allow overdraft transactions?
+            </label>
+            <span className="block text-gray-600 dark:text-gray-400">
+              When enabled, manual transactions that would overdraw an account are allowed. When disabled, transactions are blocked if the debit account does not have sufficient balance.
+            </span>
+          </span>
+        </div>
+
         <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-800/50">
           <div className="flex items-start gap-3">
             <input
@@ -191,6 +209,9 @@ export default function SettingsTab({ budgetId, budget }) {
                 />
                 <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
                   Use `0` to create the transaction on the due date. Dosh will not push a last-day due expense past the end of the budget cycle.
+                </p>
+                <p className="mt-2 text-xs text-amber-700 dark:text-amber-400">
+                  Auto Expense will create transactions even if the debit account has insufficient funds. This feature is not restricted by the &quot;Allow overdraft transactions&quot; setting above.
                 </p>
               </div>
             </span>
@@ -289,24 +310,6 @@ export default function SettingsTab({ budgetId, budget }) {
           </p>
         </div>
 
-        <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-800/50">
-          <label htmlFor="account-naming-preference" className="label">Preferred Primary Account Naming</label>
-          <select
-            id="account-naming-preference"
-            className="input"
-            value={budget?.account_naming_preference || 'Transaction'}
-            disabled={saveSettings.isPending}
-            onChange={e => handleSelectChange('account_naming_preference', e.target.value)}
-          >
-            {ACCOUNT_NAMING_OPTIONS.map(option => (
-              <option key={option} value={option}>{option}</option>
-            ))}
-          </select>
-          <p className="mt-2 text-gray-600 dark:text-gray-400">
-            Choose the label Dosh should use when talking about your main spending account in setup and account-related screens.
-          </p>
-        </div>
-
         {saveSettings.isError && (
           <div className="mt-3 rounded-xl border border-red-200/70 bg-red-50/60 px-3 py-2.5 text-sm font-bold text-red-700 dark:border-red-800/30 dark:bg-red-950/10 dark:text-red-300">
             {formatApiError(saveSettings.error, 'Unable to save this setting right now.')}
@@ -322,7 +325,7 @@ SettingsTab.propTypes = {
   budget: PropTypes.shape({
     auto_add_surplus_to_investment: PropTypes.bool,
     allow_cycle_lock: PropTypes.bool,
-    account_naming_preference: PropTypes.string,
+    allow_overdraft_transactions: PropTypes.bool,
     locale: PropTypes.string,
     currency: PropTypes.string,
     timezone: PropTypes.string,

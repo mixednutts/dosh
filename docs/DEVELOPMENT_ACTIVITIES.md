@@ -436,6 +436,42 @@ Activities:
 - changed locked-cycle banner dismiss persistence from `sessionStorage` to `localStorage` so the dismiss state survives browser reloads and hard refreshes
 - deliverable: `BudgetPeriodsPage.jsx` (table headers, mobile/desktop badge tooltips), `PeriodDetailPage.jsx` (badge tooltip, localStorage dismiss)
 
+#### Activity Group: Budget Setup Restructuring for Multi-Shape Support
+
+Status:
+- `Completed` (2026-04-29)
+
+Activities:
+- collapsed three account types (`Transaction`/`Savings`/`Cash`) into two (`Banking`/`Cash`) with an `is_savings` boolean qualifier on all accounts
+- created destructive Alembic migration `d91762a97794` to backfill `balance_type` values and drop `account_naming_preference` from `Budget`
+- removed `account_naming_preference` from `Budget` model, settings UI, and all frontend components
+- added `allow_overdraft_transactions` budget setting (default `false`) with balance sufficiency validation for manual expense and investment transactions
+- extracted reusable `validate_account_has_sufficient_balance()` in `transaction_ledger.py`; applied to `build_expense_tx` and `build_investment_tx` for non-system transactions
+- auto-expense operates independently of the overdraft setting; added persistent visible note in Settings explaining this behaviour
+- created `AddInvestmentLineModal` in Period Detail (existing-item mode, one-off scope) with backward carry-forward for opening value
+- implemented `_compute_investment_opening_value()` in `period_logic.py` to search across all periods for the most recent closing value
+- restored `linked_account_desc` (target account) to the investment setup form and transaction modal display
+- created `docs/BUDGET_SHAPES_MATRIX.md` documenting all six supported shapes (S1–S6)
+- relaxed setup assessment and generation endpoints to not require expense items, enabling S4 (Savings-Only) and S6 (No-Expense Tracking) shapes
+- added backend tests: add-investment endpoint, backward carry-forward, balance sufficiency gate, overdraft toggle, S2–S6 shape validation
+- added frontend tests: `AddInvestmentLineModal`, Settings auto-expense overdraft note, `TransactionEntryForm` destination account display
+- deliverable: `models.py`, `schemas.py`, `balance_types.py`, `transaction_ledger.py`, `period_logic.py`, `periods.py`, `setup_assessment.py`, `demo_budget.py`, 10+ frontend files, new migration, `BUDGET_SHAPES_MATRIX.md`
+
+#### Activity Group: Investment Movement Delta Fix and Same-Account Validation
+
+Status:
+- `Completed` (2026-04-29)
+
+Activities:
+- fixed `balanceTransactionDelta` in `transactionHelpers.js` to correctly compute delta for investment debit accounts (`related_account_desc`), not just credit accounts (`affected_account_desc`)
+- the fix aligns frontend balance display with backend `_delta_from_account_pair` logic used by `account_delta_for_transaction`
+- added `_assert_accounts_are_distinct()` in `investments.py` to reject investment create/update when `source_account_desc == linked_account_desc`
+- relaxed `_assert_primary_account_configured()` in `periods.py` to skip the primary check when the budget has no active expense items
+- removed hard expense-item requirement from `budget_setup_assessment()`, enabling S4 (Savings-Only) and S6 (No-Expense Tracking) shapes to generate
+- added frontend regression tests: `transactionHelpers.test.jsx` (8 tests)
+- added backend regression tests: `test_investment_transactions.py` (3 tests for same-account create/update rejection and different-account success)
+- deliverable: `transactionHelpers.js`, `investments.py`, `setup_assessment.py`, `periods.py`
+
 ## Post-beta note
 
 - Reconciliation is intentionally post-beta because it depends on bank integration / statement ingestion (import/OCR). See [ROADMAP.md](/home/ubuntu/dosh/docs/ROADMAP.md).

@@ -178,6 +178,7 @@ def _build_balance_outputs(
                 budgetid=budgetid,
                 balancedesc=balancedesc,
                 balance_type=bt.balance_type if bt else None,
+                is_savings=bt.is_savings if bt else False,
                 opening_amount=computed_openings.get(balancedesc, closing),
                 closing_amount=closing,
                 movement_amount=computed_movements.get(balancedesc, Decimal("0.00")),
@@ -361,6 +362,47 @@ def add_period_transaction(
     return tx
 
 
+def validate_account_has_sufficient_balance(
+    finperiodid: int,
+    budgetid: int,
+    account_desc: str,
+    required_amount: Decimal,
+    db: Session,
+) -> None:
+    """Validate that an account has sufficient committed balance for a transaction.
+
+    Uses dynamically computed closing balance when available, falling back to stored value.
+    """
+    if required_amount <= Decimal("0.00"):
+        return
+
+    budget_row = db.get(Budget, budgetid)
+    if budget_row and budget_row.allow_overdraft_transactions:
+        return
+
+    pb = db.get(PeriodBalance, (finperiodid, account_desc))
+    if not pb:
+        raise HTTPException(422, f'Account "{account_desc}" has no balance record for this period')
+
+    stored_closing = Decimal(str(pb.closing_amount or 0))
+
+    max_cycles = budget_row.max_forward_balance_cycles if budget_row else 10
+    dynamic_balances = compute_dynamic_period_balances(finperiodid, db, max_forward_cycles=max_cycles)
+    true_closing = stored_closing
+    if dynamic_balances is not None:
+        for bal in dynamic_balances:
+            if bal.balancedesc == account_desc:
+                true_closing = bal.closing_amount
+                break
+
+    if true_closing < required_amount:
+        raise HTTPException(
+            422,
+            f"Account '{account_desc}' does not have sufficient balance for this transaction. "
+            f"Available: {true_closing}, Required: {required_amount}."
+        )
+
+
 def build_expense_tx(
     finperiodid: int,
     budgetid: int,
@@ -378,6 +420,10 @@ def build_expense_tx(
     account_desc: str | None = None,
 ):
     amount = _rounded(_as_decimal(amount))
+    if not is_system:
+        debit_account = account_desc or get_primary_account_desc(budgetid, db)
+        if debit_account and amount > Decimal("0.00"):
+            validate_account_has_sufficient_balance(finperiodid, budgetid, debit_account, amount, db)
     expense = (
         db.query(PeriodExpense)
         .filter(
@@ -572,6 +618,10 @@ def build_investment_tx(
     amount = _rounded(_as_decimal(amount))
     item = db.get(InvestmentItem, (budgetid, investmentdesc))
     investment = db.get(PeriodInvestment, (finperiodid, investmentdesc))
+    if not is_system:
+        debit_account = account_desc or (item.source_account_desc if item else None)
+        if debit_account and amount > Decimal("0.00"):
+            validate_account_has_sufficient_balance(finperiodid, budgetid, debit_account, amount, db)
     tx_type = TX_TYPE_ADJUST
     if not is_system:
         tx_type = TX_TYPE_CREDIT if amount >= 0 else TX_TYPE_DEBIT

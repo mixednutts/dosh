@@ -156,3 +156,44 @@ def fixed_day_occurrence_for_month(month_start: datetime, day: int) -> datetime:
     if day <= last_day:
         return month_start.replace(day=day)
     return month_start.replace(day=last_day) + timedelta(days=1)
+
+
+def _compute_investment_opening_value(
+    budgetid: int,
+    investmentdesc: str,
+    current_period_id: int,
+    db,
+) -> Decimal:
+    """Compute opening value for an investment by looking backward across all periods.
+
+    Finds the most recent period (before current_period_id) that contains this
+    investment and returns its closing_value. Falls back to InvestmentItem.initial_value
+    if no prior period has the investment.
+    """
+    from sqlalchemy.orm import Session
+    from .models import FinancialPeriod, PeriodInvestment, InvestmentItem
+
+    session: Session = db
+
+    # Find the most recent period before current that has this investment
+    prior_pi = (
+        session.query(PeriodInvestment)
+        .join(FinancialPeriod, PeriodInvestment.finperiodid == FinancialPeriod.finperiodid)
+        .filter(
+            FinancialPeriod.budgetid == budgetid,
+            PeriodInvestment.investmentdesc == investmentdesc,
+            FinancialPeriod.finperiodid != current_period_id,
+        )
+        .order_by(FinancialPeriod.startdate.desc(), FinancialPeriod.finperiodid.desc())
+        .first()
+    )
+
+    if prior_pi is not None:
+        return Decimal(str(prior_pi.closing_value or 0))
+
+    # Fallback to initial value
+    item = session.get(InvestmentItem, (budgetid, investmentdesc))
+    if item is not None:
+        return Decimal(str(item.initial_value or 0))
+
+    return Decimal("0.00")

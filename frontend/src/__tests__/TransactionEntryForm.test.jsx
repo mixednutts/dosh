@@ -134,4 +134,15 @@ describe('TransactionEntryForm date validation', () => {
     fireEvent.change(dateInput, { target: { value: '15 Apr 2026, 3:00 PM' } })
     expect(dateInput.validationMessage).toBe('')
   })
+
+  it('displays destination account when provided', () => {
+    renderForm({
+      kind: 'investment',
+      destinationAccount: 'Rainy Day Savings',
+      accounts: [{ balancedesc: 'Main Account' }],
+      selectedAccount: 'Main Account',
+      setSelectedAccount: jest.fn(),
+    })
+    expect(screen.getByText('Credit Account: Rainy Day Savings')).toBeTruthy()
+  })
 })
