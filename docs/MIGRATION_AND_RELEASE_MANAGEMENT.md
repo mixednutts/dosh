@@ -12,14 +12,23 @@ Use it when:
 
 ## Current Baseline
 
-- current canonical app version: `0.9.2-beta`
-- current UI display format: `v0.9.0-beta`
+- current canonical app version: `0.9.3-beta`
+- current UI display format: `v0.9.3-beta`
 - current app state classification: `beta`
 - current schema management authority: Alembic
 - current deployment path: Docker Compose
 - current backend runtime baseline: Python 3.12
 
 The current repository state and deployed state are treated as aligned for this migration baseline.
+
+## Release History
+
+| Version | Date | Note |
+|---|---|---|
+| 0.9.3-beta | 2026-04-29 | Revert release — restores v0.9.1-beta baseline, stripping v0.9.2-beta cash-only investment changes |
+| 0.9.2-beta | 2026-04-29 | Withdrawn — introduced cash-only investment contra transactions and `invested_amount` display (reverted by 0.9.3-beta) |
+| 0.9.1-beta | 2026-04-29 | Type-agnostic primary account; cash-only budgets can generate cycles |
+| 0.9.0-beta | 2026-04-28 | Editable transaction dates; date validation; react-datepicker alignment |
 
 ## Versioning Rules
 

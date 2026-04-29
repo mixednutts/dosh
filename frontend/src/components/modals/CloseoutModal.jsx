@@ -47,7 +47,6 @@ export function CloseoutModal({ periodId, budgetId, budget, onClose }) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['period', periodId] })
       qc.invalidateQueries({ queryKey: ['period-balances', periodId] })
-      qc.invalidateQueries({ queryKey: ['balance-transactions', periodId] })
       qc.invalidateQueries({ queryKey: ['periods'] })
       qc.invalidateQueries({ queryKey: ['period-summaries'] })
       qc.invalidateQueries({ queryKey: ['budgets'] })

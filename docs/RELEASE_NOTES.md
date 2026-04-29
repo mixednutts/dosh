@@ -2,17 +2,32 @@
 
 ## Unreleased
 
+## 0.9.3-beta | released | 2026-04-29
+
+### Reverted
+
+- Reverted v0.9.2-beta cash-only investment changes. Investment transactions now always move funds between two distinct accounts — a source (debit) account and a destination (linked) account — matching the behavior from v0.9.1-beta.
+- The "Allocated to Investment" balance badge and the underlying contra-transaction logic have been removed.
+
+### Changed
+
+- The Add/Edit Investment modal in Budget Setup now shows the "Destination Account" field again.
+
+### Engineering
+
+- Added backend validation to prevent creating or updating an investment line when the source and destination accounts are the same account.
+
 ## 0.9.2-beta | released | 2026-04-29
-
-### Fixed
-
-- Investment transactions for cash-only budgets (budgets with no linked investment account) now correctly move money between your cash account and investment tracking. Previously, the balance movement could show incorrect values or net-zero behavior that didn't reflect the actual investment contribution.
-- Recording a refund or decrease against a cash-only investment now correctly returns money to your cash account instead of double-deducting it.
-- The Balance Transactions drill-down modal now stays up to date after adding, editing, or deleting any transaction. Previously, the transaction list could show stale data until the page was refreshed.
 
 ### Added
 
-- Account balances now show how much of each account is allocated to investments. On the Budget Cycle Details page, any account with investment allocations displays a blue badge showing the invested amount next to the account type.
+- Cash-only budgets can now record investment transactions against a single account. When an investment line has no separate destination account, the app creates a matching contra transaction so the cash account balance nets to zero while the investment value is still tracked.
+- An "Allocated to Investment" badge now appears next to cash account balances on the Budget Cycle Details page when a cash-only investment has a non-zero actual amount.
+
+### Fixed
+
+- Fixed stale balance transaction data after recording income, expense, or investment transactions by invalidating the balance-transactions query cache across all period-balance mutations.
+- Fixed cash-only investment refunds incorrectly double-deducting from the cash account.
 
 ## 0.9.1-beta | released | 2026-04-29
 

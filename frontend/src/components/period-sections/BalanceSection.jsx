@@ -63,20 +63,8 @@ export function BalanceSection({
     },
     {
       key: 'balance_type',
-      label: 'Type',
-      render: v => (v ? <span className="badge-gray">{v}</span> : <span className="text-gray-400">—</span>),
-    },
-    {
-      key: 'invested_amount',
-      label: '',
-      render: (_v, row) =>
-        row.invested_amount ? (
-          <span className="badge-blue whitespace-nowrap">
-            Allocated to Investment: {fmt(row.invested_amount)}
-          </span>
-        ) : (
-          <span className="text-gray-400">—</span>
-        ),
+      label: 'Account Type',
+      render: v => v || <span className="text-gray-400">—</span>,
     },
   ]
 
@@ -110,13 +98,12 @@ export function BalanceSection({
         <table className="w-full text-sm period-detail-table">
           <colgroup>
             <col className="w-10" />
-            <col className="w-[28%]" />
-            <col className="w-[11%]" />
-            <col className="w-[11%]" />
-            <col className="w-[11%]" />
-            <col className="w-[10%]" />
-            <col className="w-[22%]" />
+            <col className="w-[26%]" />
             <col className="w-[12%]" />
+            <col className="w-[12%]" />
+            <col className="w-[12%]" />
+            <col className="w-[25%]" />
+            <col className="w-[21%]" />
           </colgroup>
           <thead>
             <tr className="border-b border-gray-100 dark:border-gray-800">
@@ -126,8 +113,7 @@ export function BalanceSection({
                 <span title="Calculated from account-linked transactions and transfers">Movement</span>
               </th>
               <th className="table-header-cell text-right">Closing</th>
-              <th className="table-header-cell text-center">Type</th>
-              <th className="table-header-cell text-left" />
+              <th className="table-header-cell text-center">Account Type</th>
               <th className="table-header-cell text-center">Details</th>
             </tr>
           </thead>
@@ -146,18 +132,7 @@ export function BalanceSection({
                   <td className="table-cell text-right">
                     <span className={`font-medium ${closing >= 0 ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'}`}>{fmt(closing)}</span>
                   </td>
-                  <td className="table-cell-muted text-center">
-                    {b.balance_type ? <span className="badge-gray">{b.balance_type}</span> : <span className="text-gray-400">—</span>}
-                  </td>
-                  <td className="table-cell-muted text-left">
-                    {b.invested_amount ? (
-                      <span className="badge-blue whitespace-nowrap">
-                        Allocated to Investment: {fmt(b.invested_amount)}
-                      </span>
-                    ) : (
-                      <span className="text-gray-400">—</span>
-                    )}
-                  </td>
+                  <td className="table-cell-muted">{b.balance_type || '—'}</td>
                   <td className="px-3 py-2">
                     <div className="flex items-center justify-center">
                       <button
@@ -181,7 +156,7 @@ export function BalanceSection({
               <td className="px-4 py-2 text-right text-sm">
                 <span className={`font-medium ${totalBalanceClosing >= 0 ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'}`}>{fmt(totalBalanceClosing)}</span>
               </td>
-              <td colSpan={3} />
+              <td colSpan={2} />
             </tr>
           </tfoot>
         </table>

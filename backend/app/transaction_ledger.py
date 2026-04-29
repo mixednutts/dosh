@@ -30,7 +30,6 @@ TX_TYPE_BUDGET_ADJ = "BUDGETADJ"
 TX_TYPE_STATUS_CHANGE = "STATUS"
 TRANSFER_PREFIX = "Transfer from "
 ENTRY_KIND_MOVEMENT = "movement"
-ENTRY_KIND_CONTRA = "contra"
 ENTRY_KIND_BUDGET_ADJUSTMENT = "budget_adjustment"
 ENTRY_KIND_STATUS_CHANGE = "status_change"
 
@@ -136,7 +135,7 @@ def _walk_forward_balances(
             db.query(PeriodTransaction)
             .filter(
                 PeriodTransaction.finperiodid == period.finperiodid,
-                PeriodTransaction.entry_kind.in_((ENTRY_KIND_MOVEMENT, ENTRY_KIND_CONTRA)),
+                PeriodTransaction.entry_kind == ENTRY_KIND_MOVEMENT,
             )
             .all()
         )
@@ -187,34 +186,6 @@ def _build_balance_outputs(
     return result
 
 
-def _invested_amounts_for_period(finperiodid: int, budgetid: int, db: Session) -> dict[str, Decimal]:
-    """Return a mapping of balancedesc -> total invested amount for the period.
-
-    Only includes cash-only investments (no separate linked account) where the
-    source account contains both spendable and invested amounts.
-    """
-    result: dict[str, Decimal] = {}
-    rows = (
-        db.query(PeriodInvestment, InvestmentItem)
-        .join(
-            InvestmentItem,
-            (PeriodInvestment.budgetid == InvestmentItem.budgetid)
-            & (PeriodInvestment.investmentdesc == InvestmentItem.investmentdesc),
-        )
-        .filter(PeriodInvestment.finperiodid == finperiodid)
-        .all()
-    )
-    for pi, item in rows:
-        amount = _as_decimal(pi.actualamount)
-        if amount == Decimal("0.00"):
-            continue
-        # Only cash-only budgets: no separate linked account, so the source
-        # account holds both spendable and invested amounts.
-        if not item.linked_account_desc and item.source_account_desc:
-            result[item.source_account_desc] = result.get(item.source_account_desc, Decimal("0.00")) + amount
-    return result
-
-
 def compute_dynamic_period_balances(
     finperiodid: int, db: Session, max_forward_cycles: int = 10
 ) -> list[PeriodBalanceOut] | None:
@@ -254,15 +225,10 @@ def compute_dynamic_period_balances(
         periods, anchor_index, target_index, base_balances, balance_types, db
     )
 
-    balances = _build_balance_outputs(
+    return _build_balance_outputs(
         finperiodid, target_period.budgetid, base_balances,
         computed_openings, computed_movements, balance_types
     )
-    invested_amounts = _invested_amounts_for_period(finperiodid, target_period.budgetid, db)
-    for b in balances:
-        if b.balancedesc in invested_amounts:
-            b.invested_amount = invested_amounts[b.balancedesc]
-    return balances
 
 
 def propagate_balance_changes_from_period(
@@ -609,71 +575,6 @@ def build_investment_tx(
     tx_type = TX_TYPE_ADJUST
     if not is_system:
         tx_type = TX_TYPE_CREDIT if amount >= 0 else TX_TYPE_DEBIT
-    effective_account_desc = account_desc or (item.source_account_desc if item else None)
-
-    # Cash-only budgets have no separate linked account. Record the movement
-    # as two distinct transactions so the balance detail shows both the
-    # investment allocation (+) and the spendable deduction (-), netting zero
-    # on the cash account while still tracking the investment value.
-    if item and not item.linked_account_desc and effective_account_desc:
-        primary = add_period_transaction(
-            db,
-            PeriodTransactionContext(
-                finperiodid=finperiodid,
-                budgetid=budgetid,
-                source="investment",
-                tx_type=tx_type,
-                source_key=investmentdesc,
-                source_label=investmentdesc,
-                affected_account_desc=effective_account_desc,
-                related_account_desc=None,
-                linked_incomedesc=linked_incomedesc,
-                line_status=getattr(investment, "status", None),
-            ),
-            amount=amount,
-            note=note,
-            entrydate=entrydate,
-            is_system=is_system,
-            system_reason=system_reason,
-            dedupe_key=dedupe_key,
-        )
-        if amount >= 0:
-            # Increase: contra debits the related account (subtracts from cash)
-            contra_affected = None
-            contra_related = effective_account_desc
-            contra_note = "Deducted from spendable cash"
-            contra_type = TX_TYPE_DEBIT
-        else:
-            # Decrease/refund: contra credits the affected account (adds back to cash)
-            contra_affected = effective_account_desc
-            contra_related = None
-            contra_note = "Returned to spendable cash"
-            contra_type = TX_TYPE_CREDIT
-        add_period_transaction(
-            db,
-            PeriodTransactionContext(
-                finperiodid=finperiodid,
-                budgetid=budgetid,
-                source="investment",
-                tx_type=contra_type,
-                source_key=investmentdesc,
-                source_label=investmentdesc,
-                affected_account_desc=contra_affected,
-                related_account_desc=contra_related,
-                linked_incomedesc=linked_incomedesc,
-                line_status=getattr(investment, "status", None),
-            ),
-            amount=abs(amount),
-            note=contra_note,
-            entrydate=entrydate,
-            is_system=True,
-            system_reason="Cash-only investment contra",
-            legacy_table="investment_contra",
-            legacy_id=primary.id if primary else None,
-            entry_kind="contra",
-        )
-        return primary
-
     return add_period_transaction(
         db,
         PeriodTransactionContext(
@@ -684,7 +585,7 @@ def build_investment_tx(
             source_key=investmentdesc,
             source_label=investmentdesc,
             affected_account_desc=item.linked_account_desc if item else None,
-            related_account_desc=effective_account_desc,
+            related_account_desc=account_desc or (item.source_account_desc if item else None),
             linked_incomedesc=linked_incomedesc,
             line_status=getattr(investment, "status", None),
         ),
@@ -871,7 +772,7 @@ def _delta_from_account_pair(tx: PeriodTransaction, balancedesc: str, amount: De
 
 
 def account_delta_for_transaction(tx: PeriodTransaction, balancedesc: str) -> Decimal:
-    if getattr(tx, "entry_kind", ENTRY_KIND_MOVEMENT) not in (ENTRY_KIND_MOVEMENT, ENTRY_KIND_CONTRA):
+    if getattr(tx, "entry_kind", ENTRY_KIND_MOVEMENT) != ENTRY_KIND_MOVEMENT:
         return Decimal("0.00")
     amount = _as_decimal(tx.amount)
     if tx.source == "expense":
@@ -905,7 +806,6 @@ def sync_period_state(finperiodid: int, db: Session) -> None:
     txs = _transactions_for_period(finperiodid, db)
     for pb in db.query(PeriodBalance).filter(PeriodBalance.finperiodid == finperiodid).all():
         movement = _rounded(sum((account_delta_for_transaction(tx, pb.balancedesc) for tx in txs), Decimal("0.00")))
-        print(f"SYNC_DEBUG {pb.balancedesc} movement={movement} txs={[(t.id, t.source, t.type, t.amount, t.affected_account_desc, t.related_account_desc, t.entry_kind) for t in txs]}")
         pb.movement_amount = movement
         pb.closing_amount = _rounded(_as_decimal(pb.opening_amount) + movement)
 

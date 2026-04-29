@@ -163,23 +163,6 @@ Activities:
 - updated frontend tests for new generic copy
 - version bump: `0.9.0-beta` → `0.9.1-beta`
 
-#### Activity Group: Cash-Only Investment Contra Transactions and Invested Amount Display
-
-Status:
-- `Completed` (2026-04-29)
-
-Activities:
-- fixed cash-only investment transaction balance movement by creating primary+contra transaction pairs when `linked_account_desc` is empty
-- `build_investment_tx` creates a primary movement and a system contra with reversed direction; list endpoint filters out contras; delete cascades to linked contra
-- fixed refund behavior for cash-only investments: negative amounts correctly debit the related account and credit the cash account via reversed contra direction
-- added `invested_amount` to `PeriodBalanceOut` schema and `_invested_amounts_for_period` backend computation for cash-only investment tracking
-- frontend `BalanceSection.jsx` renders invested amount as a blue badge pill next to account type
-- fixed balance transactions stale data by invalidating `balance-transactions` query key across all mutations that invalidate `period-balances`
-- fixed frontend `balanceTransactionDelta` to correctly handle investment source transactions using both affected and related account descriptors
-- added backend regression tests for cash-only investment creation, normal linked-account single transaction, and cash-only decrease/refund
-- added frontend unit tests for investment delta calculations in `transactionHelpers.test.jsx`
-- version bump: `0.9.1-beta` → `0.9.2-beta`
-
 #### Activity Group: Formula Expression Helpers
 
 Status:
@@ -281,6 +264,39 @@ Activities:
 - renamed metric to "In Cycle Expense Revisions" to better reflect what it measures
 - updated `system_metrics.py` name/description, frontend tests, and `BUDGET_HEALTH_METRIC_LIBRARY.md`
 - deliverable: `budgets.py` backup router, `metric_executors.py`, `system_metrics.py`, `test_backup_restore.py`, `test_health_engine.py`
+
+#### Activity Group: Cash-Only Investment Contra Transactions, Invested Amount Display, and Balance Stale-Data Fix
+
+Status:
+- `Completed` (2026-04-29)
+- `Withdrawn` (2026-04-29) — superseded by v0.9.3-beta revert
+
+Activities:
+- `build_investment_tx` creates primary+contra transaction pairs for cash-only investments (no `linked_account_desc`)
+- investment transaction list endpoint filters out contras; delete endpoint cascades to linked contra
+- fixed refund direction for negative cash-only investment amounts (contra credits instead of debits)
+- added `invested_amount` to `PeriodBalanceOut` schema; `BalanceSection` renders as blue badge pill
+- fixed `balanceTransactionDelta` to check both affected and related accounts for investment source
+- fixed stale balance-transactions data by invalidating `balance-transactions` query key across all period-balance mutations
+- added backend and frontend regression tests for cash-only investment behavior
+- version bump: `0.9.1-beta` → `0.9.2-beta`
+
+#### Activity Group: Revert Cash-Only Investment Contra Transactions (v0.9.2-beta → v0.9.3-beta)
+
+Status:
+- `Completed` (2026-04-29)
+
+Activities:
+- reverted v0.9.2-beta cash-only investment changes: contra transaction logic, `invested_amount` display, and balance stale-data fixes
+- removed `ENTRY_KIND_CONTRA`, `_invested_amounts_for_period`, and two-transaction cash-only investment logic from `transaction_ledger.py`
+- removed `invested_amount` from `PeriodBalanceOut` schema and all backend/frontend balance enrichment paths
+- removed contra filtering from investment transaction list endpoint and contra cascade deletion from delete endpoint
+- restored `build_investment_tx` to single-transaction behavior (affected = linked account, related = source account)
+- re-added the "Destination Account" field to the Add/Edit Investment modal in Budget Setup
+- added backend validation to require `linked_account_desc` and disallow `linked_account_desc == source_account_desc`
+- updated tests: removed cash-only investment tests, added validation tests for same-account rejection
+- all backend tests pass (305), all frontend tests pass (342)
+- version bump: `0.9.2-beta` → `0.9.3-beta`
 
 #### Activity Group: SonarQube Coverage Gate Remediation
 

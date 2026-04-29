@@ -12,7 +12,7 @@ from ..schemas import (
     PeriodBalanceOut, PeriodBalanceUpdate,
 )
 from ..setup_assessment import account_assessment
-from ..transaction_ledger import compute_dynamic_period_balances, _invested_amounts_for_period
+from ..transaction_ledger import compute_dynamic_period_balances
 
 logger = logging.getLogger(__name__)
 
@@ -235,15 +235,12 @@ def list_period_balances(budgetid: int, finperiodid: int, db: DbSession):
         return dynamic_balances
 
     rows = db.query(PeriodBalance).filter(PeriodBalance.finperiodid == finperiodid).all()
-    # Enrich with balance_type label and invested amount
-    invested_amounts = _invested_amounts_for_period(finperiodid, period.budgetid, db)
+    # Enrich with balance_type label
     out = []
     for pb in rows:
         bt = db.get(BalanceType, (pb.budgetid, pb.balancedesc))
         d = PeriodBalanceOut.model_validate(pb)
         d.balance_type = bt.balance_type if bt else None
-        if pb.balancedesc in invested_amounts:
-            d.invested_amount = invested_amounts[pb.balancedesc]
         out.append(d)
     return out
 
