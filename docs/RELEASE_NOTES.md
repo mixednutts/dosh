@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Changed
+
+- The Setup Assessment panel in Budget Setup now uses a cleaner, calmer visual design. Guidance messages appear in a neutral info style with an icon instead of the previous amber warning treatment, making first-time setup feel less alarming.
+
 ### Fixed
 
 - Investment transactions now correctly show the actual amount in the Movement Details panel for the debit (source) account. Previously, only the credit (destination) account displayed the transaction amount, while the debit account showed $0.00.

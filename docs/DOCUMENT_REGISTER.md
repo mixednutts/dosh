@@ -1279,6 +1279,41 @@ Maintenance notes:
 
 ## Framework and Governance Documents
 
+### LOOK_AND_FEEL.md
+
+Document:
+
+- [LOOK_AND_FEEL.md](/home/ubuntu/dosh/docs/LOOK_AND_FEEL.md)
+
+Document type:
+
+- framework and governance document
+
+Primary purpose:
+
+- define canonical visual design standards for the Dosh frontend
+- establish semantic colour usage and prevent ad-hoc colour drift
+- specify AlertBanner component behaviour and dark-mode palette constraints
+
+Primary source-of-truth scope:
+
+- semantic colour meanings (green, red, amber, blue/slate, dosh)
+- alert and notification surface design
+- badge usage rules
+- dark-mode colour constraints
+- icon pairing conventions
+
+Key relationships:
+
+- informs all frontend component and page design decisions
+- referenced by [FRONTEND_MODULARISATION_PLAN.md](/home/ubuntu/dosh/docs/plans/FRONTEND_MODULARISATION_PLAN.md) for component organisation
+- enforced during code review and agent session UI work
+
+Maintenance notes:
+
+- update when new semantic tones are introduced or existing tones are redefined
+- should remain the single source of truth for frontend visual design standards
+
 ### DOCUMENTATION_FRAMEWORK.md
 
 Document:

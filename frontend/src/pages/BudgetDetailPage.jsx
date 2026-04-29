@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronDownIcon, ChevronRightIcon, ArrowUpIcon } from '@heroicons/react/24/outline'
 import { getBudget, getIncomeTypes, getExpenseItems, getInvestmentItems, getBalanceTypes, getBudgetSetupAssessment, updateBudget, getPeriodSummariesForBudget } from '../api/client'
 import Spinner from '../components/Spinner'
+import AlertBanner from '../components/AlertBanner'
 import IncomeTypesTab from './tabs/IncomeTypesTab'
 import ExpenseItemsTab from './tabs/ExpenseItemsTab'
 import InvestmentItemsTab from './tabs/InvestmentItemsTab'
@@ -109,7 +110,7 @@ function SectionShell({ id, title, summary, helper, children, badge, statusBadge
               <p className="text-sm text-gray-600 dark:text-gray-400">{summary}</p>
             </div>
             {helper && (
-              <p className="inline-flex rounded-md bg-amber-50 px-2.5 py-1 text-xs text-amber-700 dark:bg-amber-900/20 dark:text-amber-400">
+              <p className="inline-flex rounded-md bg-slate-50 px-2.5 py-1 text-xs text-slate-700 dark:bg-slate-900/30 dark:text-slate-400">
                 {helper}
               </p>
             )}
@@ -223,15 +224,17 @@ function BudgetInfoForm({ budgetId, budget }) {
       </div>
 
       {saveBudget.isError ? (
-        <div className="rounded-xl border border-red-200/70 bg-red-50/60 px-3 py-2.5 text-sm font-bold text-red-700 dark:border-red-800/30 dark:bg-red-950/10 dark:text-red-300">
-          {saveBudget.error?.response?.data?.detail || 'Unable to save budget details right now.'}
-        </div>
+        <AlertBanner
+          tone="error"
+          description={saveBudget.error?.response?.data?.detail || 'Unable to save budget details right now.'}
+        />
       ) : null}
 
       {!form.budgetowner.trim() ? (
-        <div className="rounded-xl border border-amber-200/70 bg-amber-50/60 px-3 py-2.5 text-sm font-bold text-amber-800 dark:border-amber-800/30 dark:bg-amber-950/10 dark:text-amber-300">
-          Budget Owner can&apos;t be blank, so that change won&apos;t be saved until a name is entered.
-        </div>
+        <AlertBanner
+          tone="warning"
+          description="Budget Owner can't be blank, so that change won't be saved until a name is entered."
+        />
       ) : null}
     </div>
   )
@@ -376,38 +379,42 @@ export default function BudgetDetailPage() {
             </p>
           </div>
           {setupAssessment && periodSummaries.length === 0 ? (
-            <div className={`rounded-xl px-4 py-3 ${
-              setupAssessment.can_generate
-                ? 'border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/20'
-                : 'border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20'
-            }`}>
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Setup Assessment</p>
-              <p className="mt-1 text-sm font-medium text-gray-900 dark:text-gray-100">
-                {setupAssessment.can_generate ? 'This setup is ready for your first budget cycle.' : 'A few setup details still need attention before the first budget cycle can be created.'}
-              </p>
+            <AlertBanner
+              tone={setupAssessment.can_generate ? 'success' : 'info'}
+              title="Setup Assessment"
+              description={
+                setupAssessment.can_generate
+                  ? 'This setup is ready for your first budget cycle.'
+                  : 'A few setup details still need attention before the first budget cycle can be created.'
+              }
+            >
               {setupAssessment.can_generate ? (
                 <Link
                   to={`/budgets/${id}`}
-                  className="mt-2 inline-flex text-sm font-medium text-dosh-700 hover:underline dark:text-dosh-400"
+                  className="inline-flex text-sm font-medium text-dosh-700 hover:underline dark:text-dosh-400"
                 >
                   Review budget cycles
                 </Link>
               ) : null}
               {orderedBlockingIssues.length ? (
-                <div className="mt-2 space-y-1">
+                <ul className="mt-2 list-disc space-y-1 pl-4">
                   {orderedBlockingIssues.map(issue => (
-                    <p key={issue} className="text-sm text-amber-800 dark:text-amber-300">{issue}</p>
+                    <li key={issue} className="text-sm text-slate-700 dark:text-slate-300">
+                      {issue}
+                    </li>
                   ))}
-                </div>
+                </ul>
               ) : null}
               {setupAssessment.warnings?.length ? (
                 <div className="mt-2 space-y-1">
                   {setupAssessment.warnings.map(warning => (
-                    <p key={warning} className="text-sm text-gray-700 dark:text-gray-300">{warning}</p>
+                    <p key={warning} className="text-sm text-slate-600 dark:text-slate-400">
+                      {warning}
+                    </p>
                   ))}
                 </div>
               ) : null}
-            </div>
+            </AlertBanner>
           ) : null}
         </div>
       </SectionShell>

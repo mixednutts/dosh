@@ -172,6 +172,22 @@ Activities:
 - improve discoverability and guidance for expression entry where it exists (without weakening numeric-only normal entry)
 - consolidate "what operators are supported" into a single user-facing help surface
 
+#### Activity Group: Setup Assessment Design Standardisation and AlertBanner Component
+
+Status:
+- `Completed` (2026-04-30)
+
+Activities:
+- created `docs/LOOK_AND_FEEL.md` as the canonical design standard for semantic colour usage, alert surfaces, badge rules, and dark-mode constraints
+- created reusable `AlertBanner` component (`frontend/src/components/AlertBanner.jsx`) with `info`, `success`, `warning`, and `error` tones, each paired with the correct Heroicon
+- refactored Setup Assessment panel in `BudgetDetailPage.jsx` from muddy amber warning styling to clean slate `info` tone (or `success` when ready)
+- refactored BudgetInfoForm save-error and blank-owner validation messages to use `AlertBanner`
+- changed section helper pills in `SectionShell` from amber to slate for neutral guidance
+- changed "No active accounts" helper text in `ExpenseItemsTab.jsx` and `AddExpenseLineModal.jsx` from amber to slate
+- added `AlertBanner.test.jsx` with 7 component tests
+- all frontend tests pass (364 tests); deployed to local Docker and verified
+- no version bump — design standardisation and component extraction
+
 #### Activity Group: Mid-Cycle Expense Provisioning
 
 Status:

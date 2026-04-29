@@ -132,7 +132,7 @@ function ExpenseItemForm({ initial = emptyForm, isEdit = false, onSubmit, onClos
           ))}
         </select>
         {activeAccounts.length === 0 && (
-          <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">No active accounts available.</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">No active accounts available.</p>
         )}
       </div>
       <label htmlFor={`${formIdPrefix}-active`} className="flex items-start gap-3 text-sm cursor-pointer">
