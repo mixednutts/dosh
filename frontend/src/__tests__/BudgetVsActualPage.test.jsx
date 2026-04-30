@@ -76,11 +76,11 @@ describe('BudgetVsActualPage', () => {
       { budgetid: 1, description: 'Home Budget', budgetowner: 'Alex', budget_frequency: 'Monthly' },
     ])
     client.getPeriodsForBudget.mockResolvedValue([
-      { finperiodid: 10, startdate: '2026-01-01', enddate: '2026-01-31' },
+      { finperiodid: 10, startdate: '2026-01-01', enddate: '2026-01-31', cycle_stage: 'CURRENT' },
     ])
     client.getBudgetVsActualTrends.mockResolvedValue({
       periods: [
-        { label: 'Jan 2026', income_budget: 3000, income_actual: 3100, expense_budget: 1500, expense_actual: 1400, investment_budget: 500, investment_actual: 450 },
+        { label: 'Jan 2026', income_budget: 3000, income_actual: 3100, expense_budget: 1500, expense_actual: 1400, investment_budget: 500, investment_actual: 450, cycle_stage: 'CURRENT' },
       ],
     })
 
@@ -101,7 +101,7 @@ describe('BudgetVsActualPage', () => {
       { budgetid: 1, description: 'Home Budget', budgetowner: 'Alex', budget_frequency: 'Monthly' },
     ])
     client.getPeriodsForBudget.mockResolvedValue([
-      { finperiodid: 10, startdate: '2026-01-01', enddate: '2026-01-31' },
+      { finperiodid: 10, startdate: '2026-01-01', enddate: '2026-01-31', cycle_stage: 'CURRENT' },
     ])
     client.getBudgetVsActualTrends.mockImplementation(() => new Promise(() => {}))
 
@@ -119,7 +119,7 @@ describe('BudgetVsActualPage', () => {
       { budgetid: 1, description: 'Home Budget', budgetowner: 'Alex', budget_frequency: 'Monthly' },
     ])
     client.getPeriodsForBudget.mockResolvedValue([
-      { finperiodid: 10, startdate: '2026-01-01', enddate: '2026-01-31' },
+      { finperiodid: 10, startdate: '2026-01-01', enddate: '2026-01-31', cycle_stage: 'CURRENT' },
     ])
     client.getBudgetVsActualTrends.mockResolvedValue({ periods: [] })
 
@@ -137,11 +137,11 @@ describe('BudgetVsActualPage', () => {
       { budgetid: 1, description: 'Home Budget', budgetowner: 'Alex', budget_frequency: 'Monthly' },
     ])
     client.getPeriodsForBudget.mockResolvedValue([
-      { finperiodid: 10, startdate: '2026-01-01', enddate: '2026-01-31' },
+      { finperiodid: 10, startdate: '2026-01-01', enddate: '2026-01-31', cycle_stage: 'CURRENT' },
     ])
     client.getBudgetVsActualTrends.mockResolvedValue({
       periods: [
-        { label: 'Jan 2026', income_budget: 3000, income_actual: 3100, expense_budget: 1500, expense_actual: 1400, investment_budget: 500, investment_actual: 450 },
+        { label: 'Jan 2026', income_budget: 3000, income_actual: 3100, expense_budget: 1500, expense_actual: 1400, investment_budget: 500, investment_actual: 450, cycle_stage: 'CURRENT' },
       ],
     })
 
@@ -153,16 +153,16 @@ describe('BudgetVsActualPage', () => {
     expect(await screen.findByTestId('line-chart')).toBeTruthy()
   })
 
-  it('toggles surplus lines via checkbox', async () => {
+  it('toggles category visibility via pills', async () => {
     client.getBudgets.mockResolvedValue([
       { budgetid: 1, description: 'Home Budget', budgetowner: 'Alex', budget_frequency: 'Monthly' },
     ])
     client.getPeriodsForBudget.mockResolvedValue([
-      { finperiodid: 10, startdate: '2026-01-01', enddate: '2026-01-31' },
+      { finperiodid: 10, startdate: '2026-01-01', enddate: '2026-01-31', cycle_stage: 'CURRENT' },
     ])
     client.getBudgetVsActualTrends.mockResolvedValue({
       periods: [
-        { label: 'Jan 2026', income_budget: 3000, income_actual: 3100, expense_budget: 1500, expense_actual: 1400, investment_budget: 500, investment_actual: 450, surplus_budget: 1000, surplus_actual: 1250 },
+        { label: 'Jan 2026', income_budget: 3000, income_actual: 3100, expense_budget: 1500, expense_actual: 1400, investment_budget: 500, investment_actual: 450, cycle_stage: 'CURRENT' },
       ],
     })
 
@@ -173,30 +173,58 @@ describe('BudgetVsActualPage', () => {
 
     expect(await screen.findByTestId('line-chart')).toBeTruthy()
 
-    const checkbox = screen.getByRole('checkbox', { name: 'Show surplus' })
-    expect(checkbox.checked).toBe(true)
-
-    fireEvent.click(checkbox)
-    expect(checkbox.checked).toBe(false)
+    const expensePill = screen.getByRole('button', { name: 'Expenses' })
+    fireEvent.click(expensePill)
 
     await waitFor(() => {
-      expect(client.getBudgetVsActualTrends).toHaveBeenLastCalledWith(
-        1,
-        expect.objectContaining({ include_surplus: false })
-      )
+      expect(screen.queryByTestId('line-expense_budget')).toBeNull()
+      expect(screen.queryByTestId('line-expense_actual')).toBeNull()
     })
   })
 
-  it('calls trends API with query params including surplus', async () => {
+  it('excludes current period when Exclude current pill is clicked', async () => {
     client.getBudgets.mockResolvedValue([
       { budgetid: 1, description: 'Home Budget', budgetowner: 'Alex', budget_frequency: 'Monthly' },
     ])
     client.getPeriodsForBudget.mockResolvedValue([
-      { finperiodid: 10, startdate: '2026-01-01', enddate: '2026-01-31' },
+      { finperiodid: 10, startdate: '2026-01-01', enddate: '2026-01-31', cycle_stage: 'CURRENT' },
+      { finperiodid: 11, startdate: '2025-12-01', enddate: '2025-12-31', cycle_stage: 'CLOSED' },
     ])
     client.getBudgetVsActualTrends.mockResolvedValue({
       periods: [
-        { label: 'Jan 2026', income_budget: 3000, income_actual: 3100, expense_budget: 1500, expense_actual: 1400, investment_budget: 500, investment_actual: 450 },
+        { label: 'Jan 2026', income_budget: 3000, income_actual: 3100, expense_budget: 1500, expense_actual: 1400, investment_budget: 500, investment_actual: 450, cycle_stage: 'CURRENT' },
+        { label: 'Dec 2025', income_budget: 3000, income_actual: 3100, expense_budget: 1500, expense_actual: 1400, investment_budget: 500, investment_actual: 450, cycle_stage: 'CLOSED' },
+      ],
+    })
+
+    renderWithProviders(<BudgetVsActualPage />, {
+      route: '/reports/budget-vs-actual?budgetId=1',
+      path: '/reports/budget-vs-actual',
+    })
+
+    const chart = await screen.findByTestId('line-chart')
+    expect(chart).toBeTruthy()
+    expect(chart.getAttribute('data-data-count')).toBe('2')
+
+    const excludePill = screen.getByRole('button', { name: 'Exclude current' })
+    fireEvent.click(excludePill)
+
+    await waitFor(() => {
+      const updatedChart = screen.getByTestId('line-chart')
+      expect(updatedChart.getAttribute('data-data-count')).toBe('1')
+    })
+  })
+
+  it('calls trends API without surplus param', async () => {
+    client.getBudgets.mockResolvedValue([
+      { budgetid: 1, description: 'Home Budget', budgetowner: 'Alex', budget_frequency: 'Monthly' },
+    ])
+    client.getPeriodsForBudget.mockResolvedValue([
+      { finperiodid: 10, startdate: '2026-01-01', enddate: '2026-01-31', cycle_stage: 'CURRENT' },
+    ])
+    client.getBudgetVsActualTrends.mockResolvedValue({
+      periods: [
+        { label: 'Jan 2026', income_budget: 3000, income_actual: 3100, expense_budget: 1500, expense_actual: 1400, investment_budget: 500, investment_actual: 450, cycle_stage: 'CURRENT' },
       ],
     })
 
@@ -210,8 +238,34 @@ describe('BudgetVsActualPage', () => {
     await waitFor(() => {
       expect(client.getBudgetVsActualTrends).toHaveBeenCalledWith(
         1,
-        expect.objectContaining({ include_surplus: true })
+        expect.not.objectContaining({ include_surplus: expect.anything() })
       )
+    })
+  })
+
+  it('filters out planned periods from CycleFilter', async () => {
+    client.getBudgets.mockResolvedValue([
+      { budgetid: 1, description: 'Home Budget', budgetowner: 'Alex', budget_frequency: 'Monthly' },
+    ])
+    client.getPeriodsForBudget.mockResolvedValue([
+      { finperiodid: 10, startdate: '2026-01-01', enddate: '2026-01-31', cycle_stage: 'CURRENT' },
+      { finperiodid: 11, startdate: '2026-02-01', enddate: '2026-02-28', cycle_stage: 'PLANNED' },
+    ])
+    client.getBudgetVsActualTrends.mockResolvedValue({
+      periods: [
+        { label: 'Jan 2026', income_budget: 3000, income_actual: 3100, expense_budget: 1500, expense_actual: 1400, investment_budget: 500, investment_actual: 450, cycle_stage: 'CURRENT' },
+      ],
+    })
+
+    renderWithProviders(<BudgetVsActualPage />, {
+      route: '/reports/budget-vs-actual?budgetId=1',
+      path: '/reports/budget-vs-actual',
+    })
+
+    expect(await screen.findByTestId('line-chart')).toBeTruthy()
+
+    await waitFor(() => {
+      expect(client.getBudgetVsActualTrends).toHaveBeenCalled()
     })
   })
 })

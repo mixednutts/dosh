@@ -48,22 +48,29 @@ CustomTooltip.propTypes = {
   label: PropTypes.string,
 }
 
-export default function BudgetVsActualChart({ data, showSurplus }) {
+export default function BudgetVsActualChart({ data, showExpenses, showInvestments, showIncome }) {
   const theme = useChartTheme()
 
-  const lines = [
-    { key: 'income_budget', name: 'Income Budget', color: theme.line1, strokeDasharray: '4 4' },
-    { key: 'income_actual', name: 'Income Actual', color: theme.line2 },
-    { key: 'expense_budget', name: 'Expense Budget', color: theme.line3, strokeDasharray: '4 4' },
-    { key: 'expense_actual', name: 'Expense Actual', color: theme.line4 },
-    { key: 'investment_budget', name: 'Investment Budget', color: theme.line5, strokeDasharray: '4 4' },
-    { key: 'investment_actual', name: 'Investment Actual', color: theme.line6 },
-  ]
+  const lines = []
 
-  if (showSurplus) {
+  if (showIncome) {
     lines.push(
-      { key: 'surplus_budget', name: 'Surplus Budget', color: theme.line7, strokeDasharray: '4 4' },
-      { key: 'surplus_actual', name: 'Surplus Actual', color: theme.line8 },
+      { key: 'income_budget', name: 'Income Budget', color: theme.line1, strokeDasharray: '4 4' },
+      { key: 'income_actual', name: 'Income Actual', color: theme.line2 },
+    )
+  }
+
+  if (showExpenses) {
+    lines.push(
+      { key: 'expense_budget', name: 'Expense Budget', color: theme.line3, strokeDasharray: '4 4' },
+      { key: 'expense_actual', name: 'Expense Actual', color: theme.line4 },
+    )
+  }
+
+  if (showInvestments) {
+    lines.push(
+      { key: 'investment_budget', name: 'Investment Budget', color: theme.line5, strokeDasharray: '4 4' },
+      { key: 'investment_actual', name: 'Investment Actual', color: theme.line6 },
     )
   }
 
@@ -111,9 +118,13 @@ export default function BudgetVsActualChart({ data, showSurplus }) {
 
 BudgetVsActualChart.propTypes = {
   data: PropTypes.arrayOf(PropTypes.object).isRequired,
-  showSurplus: PropTypes.bool,
+  showExpenses: PropTypes.bool,
+  showInvestments: PropTypes.bool,
+  showIncome: PropTypes.bool,
 }
 
 BudgetVsActualChart.defaultProps = {
-  showSurplus: true,
+  showExpenses: true,
+  showInvestments: true,
+  showIncome: true,
 }

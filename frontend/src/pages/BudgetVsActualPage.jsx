@@ -9,10 +9,31 @@ import BudgetVsActualChart from '../components/reports/BudgetVsActualChart'
 import CycleFilter from '../components/reports/CycleFilter'
 import Spinner from '../components/Spinner'
 
+function TogglePill({ label, checked, onChange }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!checked)}
+      className={clsx(
+        'flex items-center gap-2 rounded-xl border px-3 py-1.5 text-xs font-medium transition-colors',
+        checked
+          ? 'border-dosh-400 bg-dosh-600 text-white'
+          : 'border-gray-200 bg-white text-gray-600 hover:border-dosh-300 hover:bg-dosh-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 dark:hover:border-dosh-700 dark:hover:bg-slate-800'
+      )}
+    >
+      <span className={clsx('h-2 w-2 rounded-full', checked ? 'bg-white' : 'bg-gray-300 dark:bg-slate-600')} />
+      {label}
+    </button>
+  )
+}
+
 export default function BudgetVsActualPage() {
   const [searchParams] = useSearchParams()
   const budgetId = Number.parseInt(searchParams.get('budgetId') || '', 10) || null
-  const [showSurplus, setShowSurplus] = useState(true)
+  const [showExpenses, setShowExpenses] = useState(true)
+  const [showInvestments, setShowInvestments] = useState(true)
+  const [showIncome, setShowIncome] = useState(true)
+  const [excludeCurrentPeriod, setExcludeCurrentPeriod] = useState(false)
 
   const { data: budgets = [] } = useQuery({
     queryKey: ['budgets'],
@@ -29,6 +50,10 @@ export default function BudgetVsActualPage() {
 
   const [filterParams, setFilterParams] = useState({ fromDate: null, toDate: null })
 
+  const nonPlannedPeriods = useMemo(() =>
+    periods.filter(p => p.cycle_stage !== 'PLANNED'),
+  [periods])
+
   const queryParams = useMemo(() => {
     const params = {}
     if (filterParams.fromDate) {
@@ -37,9 +62,8 @@ export default function BudgetVsActualPage() {
     if (filterParams.toDate) {
       params.to_date = format(filterParams.toDate, 'yyyy-MM-dd')
     }
-    params.include_surplus = showSurplus
     return params
-  }, [filterParams, showSurplus])
+  }, [filterParams])
 
   const { data: trendsData, isLoading: trendsLoading } = useQuery({
     queryKey: ['budget-vs-actual-trends', budgetId, queryParams],
@@ -49,7 +73,12 @@ export default function BudgetVsActualPage() {
   })
 
   const currentBudget = budgets.find(b => b.budgetid === budgetId) || null
-  const trendPeriods = trendsData?.periods || []
+  const rawTrendPeriods = trendsData?.periods || []
+
+  const trendPeriods = useMemo(() => {
+    if (!excludeCurrentPeriod) return rawTrendPeriods
+    return rawTrendPeriods.filter(p => p.cycle_stage !== 'CURRENT')
+  }, [rawTrendPeriods, excludeCurrentPeriod])
 
   const handleBudgetChange = (event) => {
     const newId = event.target.value
@@ -120,20 +149,17 @@ export default function BudgetVsActualPage() {
         <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex-1">
             <CycleFilter
-              budgetPeriods={periods}
+              budgetPeriods={nonPlannedPeriods}
               onChange={setFilterParams}
               defaultPreset="last12"
             />
           </div>
-          <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-slate-300">
-            <input
-              type="checkbox"
-              checked={showSurplus}
-              onChange={(e) => setShowSurplus(e.target.checked)}
-              className="h-4 w-4 rounded border-gray-300 text-dosh-600 focus:ring-dosh-500 dark:border-slate-700 dark:bg-slate-900"
-            />
-            Show surplus
-          </label>
+          <div className="flex flex-wrap items-center gap-2">
+            <TogglePill label="Expenses" checked={showExpenses} onChange={setShowExpenses} />
+            <TogglePill label="Investments" checked={showInvestments} onChange={setShowInvestments} />
+            <TogglePill label="Income" checked={showIncome} onChange={setShowIncome} />
+            <TogglePill label="Exclude current" checked={excludeCurrentPeriod} onChange={setExcludeCurrentPeriod} />
+          </div>
         </div>
 
         {trendsLoading ? (
@@ -146,7 +172,12 @@ export default function BudgetVsActualPage() {
             <p className="text-xs text-gray-500 dark:text-slate-400">Try adjusting the filter to include more budget cycles.</p>
           </div>
         ) : (
-          <BudgetVsActualChart data={trendPeriods} showSurplus={showSurplus} />
+          <BudgetVsActualChart
+            data={trendPeriods}
+            showExpenses={showExpenses}
+            showInvestments={showInvestments}
+            showIncome={showIncome}
+          />
         )}
       </div>
     </div>

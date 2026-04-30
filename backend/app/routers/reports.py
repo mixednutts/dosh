@@ -7,7 +7,8 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from ..api_docs import DbSession, error_responses
-from ..cycle_management import current_period_totals, ordered_budget_periods
+from ..cycle_constants import PLANNED
+from ..cycle_management import current_period_totals, cycle_stage, ordered_budget_periods
 from ..models import Budget
 from ..schemas import PeriodOut
 
@@ -41,8 +42,6 @@ class BudgetVsActualTrendOut(PeriodOut):
     expense_actual: Decimal = Decimal("0")
     investment_budget: Decimal = Decimal("0")
     investment_actual: Decimal = Decimal("0")
-    surplus_budget: Decimal = Decimal("0")
-    surplus_actual: Decimal = Decimal("0")
 
 
 class BudgetVsActualTrendsResponseOut(BaseModel):
@@ -60,7 +59,6 @@ def get_budget_vs_actual_trends(
     db: DbSession,
     from_date: Annotated[Optional[date], Query()] = None,
     to_date: Annotated[Optional[date], Query()] = None,
-    include_surplus: Annotated[bool, Query()] = True,
 ):
     budget = db.get(Budget, budget_id)
     if not budget:
@@ -70,7 +68,12 @@ def get_budget_vs_actual_trends(
     if not periods:
         return BudgetVsActualTrendsResponseOut(periods=[])
 
-    latest_period = periods[-1]
+    # Exclude upcoming/planned periods; anchor default range to the latest non-planned period
+    non_planned = [p for p in periods if cycle_stage(p) != PLANNED]
+    if not non_planned:
+        return BudgetVsActualTrendsResponseOut(periods=[])
+
+    latest_period = non_planned[-1]
     default_from = (latest_period.enddate - timedelta(days=365)).date()
     default_to = latest_period.enddate.date()
 
@@ -78,7 +81,7 @@ def get_budget_vs_actual_trends(
     effective_to = to_date or default_to
 
     result = []
-    for period in periods:
+    for period in non_planned:
         period_start = period.startdate.date() if isinstance(period.startdate, datetime) else period.startdate
         period_end = period.enddate.date() if isinstance(period.enddate, datetime) else period.enddate
         if period_start < effective_from or period_end > effective_to:
@@ -104,8 +107,6 @@ def get_budget_vs_actual_trends(
             expense_actual=totals["expense_actual"],
             investment_budget=totals["investment_budget"],
             investment_actual=totals["investment_actual"],
-            surplus_budget=totals["surplus_budget"] if include_surplus else Decimal("0"),
-            surplus_actual=totals["surplus_actual"] if include_surplus else Decimal("0"),
         )
         result.append(trend)
 

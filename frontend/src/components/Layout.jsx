@@ -321,12 +321,20 @@ function LayoutNav({ budgets, currentBudgetId, activePeriodId, budgetsExpanded, 
   const reportsLinkRef = useRef(null)
 
   const handleBudgetsToggle = () => {
-    setBudgetsExpanded(value => !value)
+    setBudgetsExpanded(prev => {
+      const next = !prev
+      if (next) setReportsExpanded(false)
+      return next
+    })
     requestAnimationFrame(() => budgetsLinkRef.current?.focus())
   }
 
   const handleReportsToggle = () => {
-    setReportsExpanded(value => !value)
+    setReportsExpanded(prev => {
+      const next = !prev
+      if (next) setBudgetsExpanded(false)
+      return next
+    })
     requestAnimationFrame(() => reportsLinkRef.current?.focus())
   }
 
@@ -490,6 +498,18 @@ export default function Layout() {
   useEffect(() => {
     if (!currentBudgetId && !onReports) setBudgetsExpanded(true)
   }, [currentBudgetId, onReports])
+
+  useEffect(() => {
+    if (onBudgetOrPeriod) {
+      setBudgetsExpanded(true)
+      setReportsExpanded(false)
+    } else if (onReports) {
+      setBudgetsExpanded(false)
+      setReportsExpanded(true)
+    } else {
+      setReportsExpanded(false)
+    }
+  }, [onBudgetOrPeriod, onReports])
 
   useEffect(() => {
     localStorage.setItem('dosh-sidebar-collapsed', String(sidebarCollapsed))

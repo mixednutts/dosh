@@ -77,16 +77,25 @@ describe('BudgetVsActualChart', () => {
     expect(screen.getByTestId('line-expense_actual').getAttribute('data-dash')).toBe('')
   })
 
-  it('includes surplus lines when showSurplus is true', () => {
-    renderChart({ showSurplus: true })
-    expect(screen.getByTestId('line-surplus_budget').textContent).toBe('Surplus Budget')
-    expect(screen.getByTestId('line-surplus_actual').textContent).toBe('Surplus Actual')
+  it('hides income lines when showIncome is false', () => {
+    renderChart({ showIncome: false })
+    expect(screen.queryByTestId('line-income_budget')).toBeNull()
+    expect(screen.queryByTestId('line-income_actual')).toBeNull()
+    expect(screen.getByTestId('line-expense_budget')).toBeTruthy()
   })
 
-  it('excludes surplus lines when showSurplus is false', () => {
-    renderChart({ showSurplus: false })
-    expect(screen.queryByTestId('line-surplus_budget')).toBeNull()
-    expect(screen.queryByTestId('line-surplus_actual')).toBeNull()
+  it('hides expense lines when showExpenses is false', () => {
+    renderChart({ showExpenses: false })
+    expect(screen.queryByTestId('line-expense_budget')).toBeNull()
+    expect(screen.queryByTestId('line-expense_actual')).toBeNull()
+    expect(screen.getByTestId('line-income_budget')).toBeTruthy()
+  })
+
+  it('hides investment lines when showInvestments is false', () => {
+    renderChart({ showInvestments: false })
+    expect(screen.queryByTestId('line-investment_budget')).toBeNull()
+    expect(screen.queryByTestId('line-investment_actual')).toBeNull()
+    expect(screen.getByTestId('line-income_budget')).toBeTruthy()
   })
 
   it('renders YAxis with currency formatter', () => {

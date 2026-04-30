@@ -7,7 +7,7 @@ from decimal import Decimal
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from .cycle_constants import ACTIVE, CLOSED, PLANNED
+from .cycle_constants import CLOSED
 from .cycle_management import assign_period_lifecycle_states, close_cycle, ordered_budget_periods
 from .health_engine_seed import create_default_matrix_for_budget
 from .models import BalanceType, Budget, BudgetHealthMatrixItem, ExpenseItem, IncomeType, InvestmentItem, PeriodIncome
@@ -242,16 +242,6 @@ def _seed_period_activity(period, *, salary_amount: Decimal, side_hustle_amount:
     sync_period_state(period.finperiodid, db)
 
 
-def _prepare_closeout_target(periods, target_index: int) -> None:
-    for index, period in enumerate(periods):
-        if index < target_index:
-            period.cycle_status = CLOSED
-        elif index == target_index:
-            period.cycle_status = ACTIVE
-        else:
-            period.cycle_status = PLANNED
-
-
 def _apply_current_period_health_pressure(period) -> None:
     expenses_by_desc = {expense.expensedesc: expense for expense in period.period_expenses}
 
@@ -445,7 +435,7 @@ def create_standard_demo_budget(db: Session) -> Budget:
 
     now = app_now_naive()
     startdate = _month_start(now).replace(month=_month_start(now).month, year=_month_start(now).year)
-    for _ in range(3):
+    for _ in range(15):
         startdate = (startdate.replace(day=1) - timedelta(days=1)).replace(day=1)
 
     generate_period(
@@ -453,74 +443,246 @@ def create_standard_demo_budget(db: Session) -> Budget:
         PeriodGenerateRequest(
             budgetid=budget.budgetid,
             startdate=startdate,
-            count=7,
+            count=18,
         ),
         db,
     )
 
     periods = ordered_budget_periods(budget.budgetid, db)
-    closed_pattern = {
-        "salary_amount": Decimal("4200.00"),
-        "side_hustle_amount": Decimal("320.00"),
-        "interest_amount": Decimal("23.00"),
-        "rent_amount": Decimal("1850.00"),
-        "groceries_amount": Decimal("720.00"),
-        "utilities_amount": Decimal("295.00"),
-        "transport_amount": Decimal("245.00"),
-        "subscriptions_amount": Decimal("85.00"),
-        "phone_internet_amount": Decimal("75.00"),
-        "investment_amount": Decimal("540.00"),
-        "comments": "A pressured close-out. Groceries, utilities, and transport all ran high, which squeezed the month more than expected.",
-        "goals": "Rebuild discipline on day-to-day spending and reduce avoidable cost drift next cycle.",
-    }
-    pending_patterns = [
+
+    historical_patterns = [
         {
             "salary_amount": Decimal("4200.00"),
-            "side_hustle_amount": Decimal("510.00"),
-            "interest_amount": Decimal("24.00"),
+            "side_hustle_amount": Decimal("200.00"),
+            "interest_amount": Decimal("18.00"),
             "rent_amount": Decimal("1850.00"),
-            "groceries_amount": Decimal("680.00"),
-            "utilities_amount": Decimal("265.00"),
-            "transport_amount": Decimal("225.00"),
+            "groceries_amount": Decimal("650.00"),
+            "utilities_amount": Decimal("260.00"),
+            "transport_amount": Decimal("230.00"),
             "subscriptions_amount": Decimal("85.00"),
             "phone_internet_amount": Decimal("75.00"),
-            "investment_amount": Decimal("610.00"),
-            "comments": "Still a little untidy, but better than the prior month. Extra side income helped absorb some of the overrun.",
-            "goals": "Keep tightening grocery and utility spend while protecting savings momentum.",
+            "investment_amount": Decimal("350.00"),
+            "comments": "First month tracking everything closely. A few surprises but manageable.",
+            "goals": "Build awareness of actual spending patterns and establish baseline discipline.",
         },
         {
             "salary_amount": Decimal("4200.00"),
-            "side_hustle_amount": Decimal("380.00"),
-            "interest_amount": Decimal("25.00"),
+            "side_hustle_amount": Decimal("150.00"),
+            "interest_amount": Decimal("20.00"),
+            "rent_amount": Decimal("1850.00"),
+            "groceries_amount": Decimal("780.00"),
+            "utilities_amount": Decimal("310.00"),
+            "transport_amount": Decimal("265.00"),
+            "subscriptions_amount": Decimal("85.00"),
+            "phone_internet_amount": Decimal("75.00"),
+            "investment_amount": Decimal("200.00"),
+            "comments": "Groceries and utilities ran high. Side income was lower than hoped.",
+            "goals": "Tighten grocery planning and review utility usage heading into next month.",
+        },
+        {
+            "salary_amount": Decimal("4200.00"),
+            "side_hustle_amount": Decimal("350.00"),
+            "interest_amount": Decimal("22.00"),
             "rent_amount": Decimal("1850.00"),
             "groceries_amount": Decimal("620.00"),
+            "utilities_amount": Decimal("245.00"),
+            "transport_amount": Decimal("210.00"),
+            "subscriptions_amount": Decimal("85.00"),
+            "phone_internet_amount": Decimal("75.00"),
+            "investment_amount": Decimal("420.00"),
+            "comments": "Better discipline on variable expenses. Side hustle picked up again.",
+            "goals": "Maintain momentum on grocery and transport control.",
+        },
+        {
+            "salary_amount": Decimal("4200.00"),
+            "side_hustle_amount": Decimal("580.00"),
+            "interest_amount": Decimal("24.00"),
+            "rent_amount": Decimal("1850.00"),
+            "groceries_amount": Decimal("590.00"),
             "utilities_amount": Decimal("235.00"),
             "transport_amount": Decimal("195.00"),
             "subscriptions_amount": Decimal("85.00"),
             "phone_internet_amount": Decimal("75.00"),
-            "investment_amount": Decimal("565.00"),
-            "comments": "The month closed in a steadier place, with spending much closer to plan and healthier carry-through into the next cycle.",
-            "goals": "Hold the line on everyday costs and keep recovery momentum visible.",
+            "investment_amount": Decimal("550.00"),
+            "comments": "Strong side hustle month with disciplined everyday spending.",
+            "goals": "Protect the surplus and channel it consistently into savings.",
+        },
+        {
+            "salary_amount": Decimal("4200.00"),
+            "side_hustle_amount": Decimal("400.00"),
+            "interest_amount": Decimal("23.00"),
+            "rent_amount": Decimal("1850.00"),
+            "groceries_amount": Decimal("610.00"),
+            "utilities_amount": Decimal("250.00"),
+            "transport_amount": Decimal("205.00"),
+            "subscriptions_amount": Decimal("85.00"),
+            "phone_internet_amount": Decimal("75.00"),
+            "investment_amount": Decimal("480.00"),
+            "comments": "Steady month with spending close to plan and reliable side income.",
+            "goals": "Keep everyday costs predictable and look for small optimisation wins.",
+        },
+        {
+            "salary_amount": Decimal("4200.00"),
+            "side_hustle_amount": Decimal("320.00"),
+            "interest_amount": Decimal("21.00"),
+            "rent_amount": Decimal("1850.00"),
+            "groceries_amount": Decimal("640.00"),
+            "utilities_amount": Decimal("335.00"),
+            "transport_amount": Decimal("220.00"),
+            "subscriptions_amount": Decimal("85.00"),
+            "phone_internet_amount": Decimal("75.00"),
+            "investment_amount": Decimal("380.00"),
+            "comments": "Unexpected utility spike offset by otherwise reasonable spending.",
+            "goals": "Investigate utility spike cause and build a small buffer for anomalies.",
+        },
+        {
+            "salary_amount": Decimal("4200.00"),
+            "side_hustle_amount": Decimal("450.00"),
+            "interest_amount": Decimal("25.00"),
+            "rent_amount": Decimal("1850.00"),
+            "groceries_amount": Decimal("580.00"),
+            "utilities_amount": Decimal("230.00"),
+            "transport_amount": Decimal("190.00"),
+            "subscriptions_amount": Decimal("85.00"),
+            "phone_internet_amount": Decimal("75.00"),
+            "investment_amount": Decimal("520.00"),
+            "comments": "Clean recovery month. All categories under control and healthy surplus.",
+            "goals": "Hold this level of discipline and start increasing regular investment.",
+        },
+        {
+            "salary_amount": Decimal("4200.00"),
+            "side_hustle_amount": Decimal("620.00"),
+            "interest_amount": Decimal("28.00"),
+            "rent_amount": Decimal("1850.00"),
+            "groceries_amount": Decimal("560.00"),
+            "utilities_amount": Decimal("225.00"),
+            "transport_amount": Decimal("175.00"),
+            "subscriptions_amount": Decimal("85.00"),
+            "phone_internet_amount": Decimal("75.00"),
+            "investment_amount": Decimal("650.00"),
+            "comments": "Best month so far. Low variable costs and strong supplementary income.",
+            "goals": "Lock in the habits that produced this result and avoid complacency.",
+        },
+        {
+            "salary_amount": Decimal("4200.00"),
+            "side_hustle_amount": Decimal("180.00"),
+            "interest_amount": Decimal("26.00"),
+            "rent_amount": Decimal("1850.00"),
+            "groceries_amount": Decimal("720.00"),
+            "utilities_amount": Decimal("265.00"),
+            "transport_amount": Decimal("260.00"),
+            "subscriptions_amount": Decimal("85.00"),
+            "phone_internet_amount": Decimal("75.00"),
+            "investment_amount": Decimal("300.00"),
+            "comments": "Holiday travel and lower side income made this a tighter month.",
+            "goals": "Rebuild cushion quickly and plan holiday spending in advance next time.",
+        },
+        {
+            "salary_amount": Decimal("4200.00"),
+            "side_hustle_amount": Decimal("520.00"),
+            "interest_amount": Decimal("27.00"),
+            "rent_amount": Decimal("1850.00"),
+            "groceries_amount": Decimal("570.00"),
+            "utilities_amount": Decimal("240.00"),
+            "transport_amount": Decimal("185.00"),
+            "subscriptions_amount": Decimal("85.00"),
+            "phone_internet_amount": Decimal("75.00"),
+            "investment_amount": Decimal("580.00"),
+            "comments": "Strong rebound with disciplined spending and solid side hustle return.",
+            "goals": "Sustain the rebound and avoid the holiday-cycle dip next year.",
+        },
+        {
+            "salary_amount": Decimal("4200.00"),
+            "side_hustle_amount": Decimal("480.00"),
+            "interest_amount": Decimal("29.00"),
+            "rent_amount": Decimal("1850.00"),
+            "groceries_amount": Decimal("595.00"),
+            "utilities_amount": Decimal("248.00"),
+            "transport_amount": Decimal("200.00"),
+            "subscriptions_amount": Decimal("85.00"),
+            "phone_internet_amount": Decimal("75.00"),
+            "investment_amount": Decimal("600.00"),
+            "comments": "Another solid month. Spending variance is narrowing consistently.",
+            "goals": "Push for even tighter grocery and transport discipline.",
+        },
+        {
+            "salary_amount": Decimal("4200.00"),
+            "side_hustle_amount": Decimal("550.00"),
+            "interest_amount": Decimal("30.00"),
+            "rent_amount": Decimal("1850.00"),
+            "groceries_amount": Decimal("575.00"),
+            "utilities_amount": Decimal("238.00"),
+            "transport_amount": Decimal("188.00"),
+            "subscriptions_amount": Decimal("85.00"),
+            "phone_internet_amount": Decimal("75.00"),
+            "investment_amount": Decimal("620.00"),
+            "comments": "Closing the year on a high note with great savings momentum.",
+            "goals": "Carry this positive momentum into the new year without lifestyle creep.",
+        },
+        {
+            "salary_amount": Decimal("4200.00"),
+            "side_hustle_amount": Decimal("500.00"),
+            "interest_amount": Decimal("31.00"),
+            "rent_amount": Decimal("1850.00"),
+            "groceries_amount": Decimal("585.00"),
+            "utilities_amount": Decimal("242.00"),
+            "transport_amount": Decimal("192.00"),
+            "subscriptions_amount": Decimal("85.00"),
+            "phone_internet_amount": Decimal("75.00"),
+            "investment_amount": Decimal("610.00"),
+            "comments": "New year started strong. Consistent habits are paying off.",
+            "goals": "Maintain automation and review investment allocation quarterly.",
+        },
+        {
+            "salary_amount": Decimal("4200.00"),
+            "side_hustle_amount": Decimal("600.00"),
+            "interest_amount": Decimal("32.00"),
+            "rent_amount": Decimal("1850.00"),
+            "groceries_amount": Decimal("555.00"),
+            "utilities_amount": Decimal("228.00"),
+            "transport_amount": Decimal("178.00"),
+            "subscriptions_amount": Decimal("85.00"),
+            "phone_internet_amount": Decimal("75.00"),
+            "investment_amount": Decimal("680.00"),
+            "comments": "Highest savings rate yet. Every category performing at target or better.",
+            "goals": "Protect this trajectory and consider increasing investment target.",
+        },
+        {
+            "salary_amount": Decimal("4200.00"),
+            "side_hustle_amount": Decimal("470.00"),
+            "interest_amount": Decimal("33.00"),
+            "rent_amount": Decimal("1850.00"),
+            "groceries_amount": Decimal("590.00"),
+            "utilities_amount": Decimal("245.00"),
+            "transport_amount": Decimal("195.00"),
+            "subscriptions_amount": Decimal("85.00"),
+            "phone_internet_amount": Decimal("75.00"),
+            "investment_amount": Decimal("590.00"),
+            "comments": "Solid and predictable month. Good foundation heading into the current cycle.",
+            "goals": "Stay consistent and prepare for any upcoming expense changes.",
         },
     ]
+
     current_pattern = {
         "salary_amount": Decimal("4200.00"),
-        "side_hustle_amount": Decimal("140.00"),
+        "side_hustle_amount": Decimal("300.00"),
         "interest_amount": Decimal("0.00"),
         "rent_amount": Decimal("1850.00"),
-        "groceries_amount": Decimal("580.00"),
+        "groceries_amount": Decimal("480.00"),
         "utilities_amount": Decimal("240.00"),
-        "transport_amount": Decimal("180.00"),
+        "transport_amount": Decimal("160.00"),
         "subscriptions_amount": Decimal("85.00"),
         "phone_internet_amount": Decimal("75.00"),
-        "investment_amount": Decimal("1200.00"),
+        "investment_amount": Decimal("950.00"),
     }
 
-    _seed_period_activity(periods[0], db=db, **{k: v for k, v in closed_pattern.items() if k not in {"comments", "goals"}})
-    for period, pattern in zip(periods[1:3], pending_patterns):
-        _seed_period_activity(period, db=db, **{k: v for k, v in pattern.items() if k not in {"comments", "goals"}})
-    _seed_period_activity(periods[3], db=db, **current_pattern)
+    # Seed all historical periods
+    for i, pattern in enumerate(historical_patterns):
+        _seed_period_activity(periods[i], db=db, **{k: v for k, v in pattern.items() if k not in {"comments", "goals"}})
+    # Seed current period
+    _seed_period_activity(periods[15], db=db, **current_pattern)
 
+    # Demo features on selected historical periods
     _add_demo_transfer_line(
         periods[1],
         db,
@@ -533,56 +695,58 @@ def create_standard_demo_budget(db: Session) -> Budget:
     sync_period_state(periods[1].finperiodid, db)
 
     _add_demo_transfer_line(
-        periods[2],
+        periods[5],
         db,
         amount=Decimal("180.00"),
-        note="Short-term transfer while close-out is still outstanding.",
+        note="Short-term transfer to cover the utility spike.",
         day_offset=6,
     )
-    _add_demo_transaction_edge_cases(periods[2], db)
-    sync_period_state(periods[2].finperiodid, db)
+    _add_demo_transaction_edge_cases(periods[5], db)
+    sync_period_state(periods[5].finperiodid, db)
 
-    _apply_current_period_health_pressure(periods[3])
-    _add_demo_budget_adjustments(periods[3], db)
     _add_demo_transfer_line(
-        periods[3],
+        periods[8],
+        db,
+        amount=Decimal("200.00"),
+        note="Transfer from savings to smooth holiday spending.",
+        day_offset=4,
+    )
+    sync_period_state(periods[8].finperiodid, db)
+
+    _add_demo_transfer_line(
+        periods[14],
+        db,
+        amount=Decimal("150.00"),
+        note="Top-up transfer to keep the current cycle well-funded.",
+        day_offset=7,
+    )
+    sync_period_state(periods[14].finperiodid, db)
+
+    # Current period demo features
+    _apply_current_period_health_pressure(periods[15])
+    _add_demo_budget_adjustments(periods[15], db)
+    _add_demo_transfer_line(
+        periods[15],
         db,
         amount=Decimal("120.00"),
         note="Transfer from savings to smooth a high-spend week.",
         day_offset=9,
     )
-    _add_demo_transaction_edge_cases(periods[3], db)
-    sync_period_state(periods[3].finperiodid, db)
+    _add_demo_transaction_edge_cases(periods[15], db)
+    sync_period_state(periods[15].finperiodid, db)
 
-    _prepare_closeout_target(periods, 0)
-    close_cycle(
-        periods[0],
-        budget,
-        closed_pattern["comments"],
-        closed_pattern["goals"],
-        False,
-        True,
-        db,
-    )
-    # Close out pending cycles so overall health shows green
-    close_cycle(
-        periods[1],
-        budget,
-        pending_patterns[0]["comments"],
-        pending_patterns[0]["goals"],
-        False,
-        True,
-        db,
-    )
-    close_cycle(
-        periods[2],
-        budget,
-        pending_patterns[1]["comments"],
-        pending_patterns[1]["goals"],
-        False,
-        True,
-        db,
-    )
+    # Close all 15 historical periods
+    for i in range(15):
+        close_cycle(
+            periods[i],
+            budget,
+            historical_patterns[i]["comments"],
+            historical_patterns[i]["goals"],
+            False,
+            True,
+            db,
+        )
+
     db.flush()
     _configure_demo_health_matrix(budget, db)
     assign_period_lifecycle_states(budget.budgetid, db)

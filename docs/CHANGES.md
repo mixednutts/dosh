@@ -4,6 +4,46 @@ This document captures the key product and implementation changes made during re
 
 It is intended to complement [README.md](/home/ubuntu/dosh/README.md), not replace it.
 
+## Session: Demo Budget Expansion and Cycle Filter Period-Based Filtering (patch) (2026-04-30)
+
+### What changed
+
+- **Expanded demo budget seed data from 3 historical periods to 15 (18 total).**
+  - `backend/app/demo_budget.py`: `create_standard_demo_budget` now generates 18 periods (15 historical closed + 1 current + 2 planned). Start date shifted back 15 months instead of 3.
+  - Added 15 varied historical spending patterns with realistic progression: early learning months, high-spend squeeze months, recovery months, best-ever low-cost months, holiday travel dip months, and steady improvement toward the current cycle.
+  - Each historical period has unique close-out comments and goals reflecting the month's character.
+  - Demo features remapped across selected periods: transfers at indices 1, 5, 8, 14; edge cases and budget adjustments at indices 1, 5, 15; pending closure adjustments at index 1.
+  - Close-out loop closes all 15 historical periods automatically.
+  - Removed unused `_prepare_closeout_target` helper and stale `ACTIVE`/`PLANNED` imports.
+
+- **Changed Budget vs Actual `CycleFilter` from month-based to period-based filtering.**
+  - `frontend/src/components/reports/CycleFilter.jsx`: Presets renamed from "Last 12 Months", "Last 6 Months", "All Time" to "Last 12 Periods", "Last 6 Periods", "All Periods".
+  - `computePresetRange` now derives date bounds by slicing the last N entries from `budgetPeriods` (sorted by start date) instead of using `date-fns/subMonths` on calendar months. This ensures the filter aligns with actual budget cycles rather than calendar months.
+  - `useEffect` dependency changed from `latestDate?.getTime?.()` to `budgetPeriods.length` so presets re-apply correctly when the budget changes.
+  - Added custom "Last # periods" number input alongside the preset buttons. Typing a positive integer dynamically filters the trend chart to that many most-recent periods. The input is capped to the available period count.
+  - Custom input receives active styling (filled brand-color pill) when in use, matching the preset button active state.
+
+- **Updated tests.**
+  - `backend/tests/test_app_smoke.py`: Updated assertions — 18 periods total, 15 CLOSED, 1 ACTIVE, 2 PLANNED, 15 close-out snapshots.
+  - `frontend/src/__tests__/CycleFilter.test.jsx`: Expanded mock dataset from 3 to 8 periods. Added tests for custom period count (3 periods → correct date slice) and over-limit capping (99 → all periods). Fixed timezone-flaky date assertions by using `format(date, 'yyyy-MM-dd')` instead of `toISOString().startsWith()`.
+
+### Testing
+
+- Full backend regression suite: **349 passed**, 0 regressions introduced.
+- Full frontend regression suite: **400 passed** (+7 updated CycleFilter tests, +2 new custom-count tests), 0 regressions introduced.
+
+### Files touched
+
+- `backend/app/demo_budget.py`
+- `backend/tests/test_app_smoke.py`
+- `frontend/src/components/reports/CycleFilter.jsx`
+- `frontend/src/__tests__/CycleFilter.test.jsx`
+- `docs/DEVELOPMENT_ACTIVITIES.md`
+- `docs/RELEASE_NOTES.md`
+- `AGENTS.md`
+
+---
+
 ## Session: SonarQube Coverage Gate Remediation — Reporting Framework Tests (patch) (2026-04-30)
 
 ### What changed

@@ -37,6 +37,8 @@ function renderLayout(route) {
             <Route path="budgets/:budgetId" element={<div>Budget Cycles Page</div>} />
             <Route path="budgets/:budgetId/setup" element={<div>Budget Setup Page</div>} />
             <Route path="budgets/:budgetId/periods/:periodId" element={<div>Period Detail Page</div>} />
+            <Route path="reports" element={<div>Reports Page</div>} />
+            <Route path="reports/:budgetId" element={<div>Budget Reports Page</div>} />
           </Route>
         </Routes>
       </MemoryRouter>
@@ -366,5 +368,47 @@ describe('Layout navigation', () => {
 
     const historicalMore = screen.getByRole('link', { name: 'View all 5 historic cycles (1 more)' })
     expect(historicalMore.getAttribute('href')).toBe('/budgets/1#historical')
+  })
+
+  it('only allows one workspace section to be expanded at a time', async () => {
+    renderLayout('/budgets')
+
+    await screen.findByText('Budget List')
+
+    // Budgets section is expanded by default — budget link targets /budgets/1
+    const budgetsLink = screen.getAllByText('Home Budget').find(el => el.closest('a').getAttribute('href') === '/budgets/1')
+    expect(budgetsLink).toBeTruthy()
+
+    // Click the Reporting chevron to expand it
+    const reportingLink = screen.getByRole('link', { name: 'Reporting' })
+    const reportingChevron = reportingLink.parentElement.querySelector('button')
+    fireEvent.click(reportingChevron)
+
+    // Reporting budget list should appear with /reports/1 link
+    const reportsLink = await screen.findAllByText('Home Budget').then(els => els.find(el => el.closest('a').getAttribute('href') === '/reports/1'))
+    expect(reportsLink).toBeTruthy()
+
+    // Budgets budget list should be gone (mutual exclusivity)
+    const goneBudgetsLink = screen.queryAllByText('Home Budget').find(el => el.closest('a').getAttribute('href') === '/budgets/1')
+    expect(goneBudgetsLink).toBeUndefined()
+  })
+
+  it('auto-expands Budgets and collapses Reporting when navigating to a budget page', async () => {
+    renderLayout('/reports')
+
+    // On /reports, Reporting auto-expands via useEffect
+    const reportsLink = await screen.findAllByText('Home Budget').then(els => els.find(el => el.closest('a').getAttribute('href') === '/reports/1'))
+    expect(reportsLink).toBeTruthy()
+
+    // Navigate to a budget page by clicking Budgets link
+    fireEvent.click(screen.getByRole('link', { name: 'Budgets' }))
+
+    // Budgets should now be expanded with /budgets/1 link
+    const budgetsLink = await screen.findAllByText('Home Budget').then(els => els.find(el => el.closest('a').getAttribute('href') === '/budgets/1'))
+    expect(budgetsLink).toBeTruthy()
+
+    // Reporting should be collapsed
+    const goneReportsLink = screen.queryAllByText('Home Budget').find(el => el.closest('a').getAttribute('href') === '/reports/1')
+    expect(goneReportsLink).toBeUndefined()
   })
 })

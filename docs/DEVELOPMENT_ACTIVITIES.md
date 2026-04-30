@@ -255,6 +255,26 @@ Activities:
 - investment trend graphs — deferred, shown as "Coming soon" on landing page
 - income allocation breakdown — deferred, shown as "Coming soon" on landing page
 
+#### Activity Group: Demo Budget Expansion and Cycle Filter Period-Based Filtering
+
+Status:
+- `Completed` (2026-04-30)
+
+Activities:
+- expanded demo budget seed data from 3 historical periods to 15 (18 total: 15 historical closed + 1 current + 2 planned)
+- start date shifted back 15 months; close-out loop closes all 15 historical periods with varied spending patterns
+- added 15 realistic historical patterns showing spending progression, side-hustle variance, utility spikes, and recovery months
+- remapped demo features (transfers, edge cases, budget adjustments) across selected historical periods
+- updated `test_app_smoke.py` assertions for new period counts (18 periods, 15 closed, 2 planned, 15 snapshots)
+- removed unused `_prepare_closeout_target` helper and stale `ACTIVE`/`PLANNED` imports from `demo_budget.py`
+- changed Budget vs Actual `CycleFilter` from month-based to period-based filtering
+- presets renamed: "Last 12 Months" → "Last 12 Periods", "Last 6 Months" → "Last 6 Periods", "All Time" → "All Periods"
+- added custom "Last # periods" number input alongside presets; typing a value dynamically filters to that many most-recent periods
+- `computePresetRange` now derives date bounds by slicing the last N entries from `budgetPeriods` instead of using `subMonths`
+- `useEffect` dependency updated from `latestDate` to `budgetPeriods.length` so presets re-apply when the budget changes
+- updated `CycleFilter.test.jsx` with 8-period mock dataset, tests for custom period count and over-limit capping
+- all backend tests pass (349), all frontend tests pass (400)
+
 ### 4) Scheduled Income
 
 Reference plan:
