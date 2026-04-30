@@ -4,6 +4,36 @@ This document captures the key product and implementation changes made during re
 
 It is intended to complement [README.md](/home/ubuntu/dosh/README.md), not replace it.
 
+## Session: SonarQube Coverage Gate Remediation — Reporting Framework Tests (patch) (2026-04-30)
+
+### What changed
+
+- **Added 27 frontend tests to close the SonarQube `new_coverage` quality gate gap.**
+  - `frontend/src/__tests__/BudgetVsActualPage.test.jsx` (8 tests): budget selector empty state, breadcrumb rendering, loading spinner, empty data state, chart display, surplus checkbox toggle, API query params with surplus flag
+  - `frontend/src/__tests__/CycleFilter.test.jsx` (7 tests): preset buttons (last12/last6/all), custom date range inputs, validation error when from > to, error clearing when dates become valid
+  - `frontend/src/__tests__/BudgetVsActualChart.test.jsx` (6 tests): chart container render, all six base lines, dashed vs solid stroke styles, surplus lines toggle, Y-axis currency formatter, tooltip presence
+  - `frontend/src/__tests__/useChartTheme.test.js` (4 tests): light palette default, dark palette when html has `dark` class, reaction to class addition/removal via MutationObserver
+- Recharts and DateField components were mocked in page tests to enable reliable rendering without external dependency noise.
+- Window location navigation was avoided in assertions (jsdom limitation); instead, tests verify select state and checkbox behavior directly.
+
+### Testing
+
+- Full backend regression suite: **349 passed**, 0 regressions introduced.
+- Full frontend regression suite: **393 passed** (+27 new reporting tests), 0 regressions introduced.
+- Local coverage on previously 0% files:
+  - `BudgetVsActualPage.jsx`: 0% → 89.65% lines
+  - `CycleFilter.jsx`: 0% → 95.83% lines
+  - `BudgetVsActualChart.jsx`: 0% → 75% lines
+  - `useChartTheme.js`: 0% → 100% lines
+
+### Files touched
+
+- `frontend/src/__tests__/BudgetVsActualPage.test.jsx` (new)
+- `frontend/src/__tests__/CycleFilter.test.jsx` (new)
+- `frontend/src/__tests__/BudgetVsActualChart.test.jsx` (new)
+- `frontend/src/__tests__/useChartTheme.test.js` (new)
+
+---
 ## Session: Reporting Framework — Budget vs Actual (0.9.4-beta) (2026-04-30)
 
 ### What changed

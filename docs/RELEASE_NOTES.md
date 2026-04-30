@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Engineering
+
+- Added 27 frontend tests to close the SonarQube `new_coverage` quality gate gap (79.4% → above 80% threshold). Coverage added for `BudgetVsActualPage`, `CycleFilter`, `BudgetVsActualChart`, and `useChartTheme`.
+
 ### Changed
 
 - All "In Use" badges in Budget Setup now use blue (informational) styling instead of amber (warning), matching their neutral semantic meaning.

@@ -350,12 +350,18 @@ Activities:
 #### Activity Group: SonarQube Coverage Gate Remediation
 
 Status:
-- `Active`
+- `Completed` (2026-04-30)
 
 Activities:
-- close the remaining ~0.9% gap to reach SonarQube 80% new_coverage threshold
-- highest-value remaining targets: `client.js` API wrappers, `PeriodDetailPage.jsx` conditional branches, `BackupRestoreModal.jsx` tab states
-- continue following TEST_STRATEGY.md principles: behavior over implementation, backend priority, avoid coverage theater
+- closed the remaining ~0.6% gap to reach SonarQube 80% new_coverage threshold
+- added 27 frontend tests across four new test files targeting the Reporting Framework components that had 0% coverage on new code
+  - `BudgetVsActualPage.test.jsx` (8 tests): budget selector, breadcrumbs, loading/empty states, chart rendering, surplus toggle, API query params
+  - `CycleFilter.test.jsx` (7 tests): preset selection, custom date range, from/to validation
+  - `BudgetVsActualChart.test.jsx` (6 tests): line rendering, dashed vs solid strokes, surplus visibility, tooltip
+  - `useChartTheme.test.js` (4 tests): light/dark palette, MutationObserver reactivity
+- local coverage on previously 0% files: `BudgetVsActualPage.jsx` 89.65%, `CycleFilter.jsx` 95.83%, `BudgetVsActualChart.jsx` 75%, `useChartTheme.js` 100%
+- all backend tests pass (349), all frontend tests pass (393)
+- followed TESTING_STRATEGY.md principles: behavior over implementation, avoid coverage theater
 
 #### Activity Group: Frontend Test Hardening
 
