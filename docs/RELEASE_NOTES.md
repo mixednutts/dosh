@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+### Changed
+
+- All "In Use" badges in Budget Setup now use blue (informational) styling instead of amber (warning), matching their neutral semantic meaning.
+- Delete buttons in Budget Setup are now visually greyed out when deletion is blocked because the item is in use.
+- The setup guidance banner on the Budget Cycles page now uses the same clean info-styling as other helper surfaces instead of amber.
+- The budget card edit icon on the Budgets page now uses a cog instead of a pencil, consistent with the Budget Setup link on the Budget Cycle Details page.
+- The Budget Cycle Details page header now has a cog icon that jumps directly to Budget Setup.
+
+### Added
+
+- Click-to-reveal question mark hints on the Surplus (Budget) and Surplus (Actual) summary cards, explaining what each value represents in plain language.
+- When entering Budget Setup from a Budget Cycle Details page, the breadcrumb now preserves context: `Budgets > Budget Name > Cycle Details > Setup`, with a link back to the cycle you came from.
+
 ## 0.9.4-beta | released | 2026-04-30
 
 ### Added

@@ -445,7 +445,7 @@ export default function BalanceTypesTab({ budgetId, budget }) {
 
   const mobileStatus = row => {
     const usage = accountUsageByDesc[row.balancedesc]
-    return usage?.in_use ? <span className="badge-amber">In Use</span> : null
+    return usage?.in_use ? <span className="badge-blue">In Use</span> : null
   }
 
   if (isLoading) return null
@@ -491,7 +491,7 @@ export default function BalanceTypesTab({ budgetId, budget }) {
                     <tr key={t.balancedesc} className="table-row">
                       <td className="table-cell font-medium text-gray-800 dark:text-gray-100">
                         {t.balancedesc}
-                        {usage?.in_use ? <span className="ml-2 badge-amber">In Use</span> : null}
+                        {usage?.in_use ? <span className="ml-2 badge-blue">In Use</span> : null}
                       </td>
                       <td className="table-cell">
                         <span className={TYPE_BADGE[t.balance_type] ?? 'badge-gray'}>{t.balance_type}</span>

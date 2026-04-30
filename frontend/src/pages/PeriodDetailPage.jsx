@@ -3,7 +3,8 @@ import { useParams, Link, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   LockClosedIcon, LockOpenIcon, ChevronRightIcon, ChevronLeftIcon,
-  ArrowDownTrayIcon, ArrowUpIcon, SparklesIcon,
+  ArrowDownTrayIcon, ArrowUpIcon, SparklesIcon, QuestionMarkCircleIcon,
+  Cog6ToothIcon,
 } from '@heroicons/react/24/outline'
 import {
   getPeriodDetail, getBudget, setPeriodLock, getPeriodsForBudget, getPeriodBalances,
@@ -74,6 +75,7 @@ export default function PeriodDetailPage() {
   const [balanceModal, setBalanceModal] = useState(null)
   const [showCloseout, setShowCloseout] = useState(false)
   const [showExport, setShowExport] = useState(false)
+  const [showSurplusHint, setShowSurplusHint] = useState(null)
   const [aiInsightModal, setAiInsightModal] = useState(null)
   const [aiInsightData, setAiInsightData] = useState(null)
   const [aiInsightLoading, setAiInsightLoading] = useState(false)
@@ -422,6 +424,9 @@ export default function PeriodDetailPage() {
               Close Out
             </button>
           )}
+          <Link to={`/budgets/${budgetId}/setup`} state={{ fromPeriodId: id }} className="btn-secondary" title="Budget Setup">
+            <Cog6ToothIcon className="w-4 h-4" />
+          </Link>
           {budgetLockEnabled && !closed && (
             <button className="btn-secondary" onClick={() => lock.mutate(!locked)} title={locked ? 'Unlock' : 'Lock'}>
               {locked ? <><LockClosedIcon className="w-4 h-4 text-amber-500" /> Locked</> : <><LockOpenIcon className="w-4 h-4" /> Unlocked</>}
@@ -506,11 +511,30 @@ export default function PeriodDetailPage() {
           { label: 'Expense Actual', value: totalExpenseActual, cls: totalExpenseActual <= effectiveExpenseBudget ? 'text-success-700 dark:text-success-400' : 'text-red-700 dark:text-red-400' },
           { label: 'Remaining Expenses', value: totalExpenseRemaining, cls: totalExpenseRemaining >= 0 ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400' },
           { label: 'Projected Investment', value: projectedInvestment },
-          { label: 'Surplus (Budget)', value: surplusBudget },
-          { label: 'Surplus (Actual)', value: surplusActual },
-        ].map(({ label, value, cls }) => (
+          { label: 'Surplus (Budget)', value: surplusBudget, hint: 'How much money you planned to have left over after all budgeted expenses and investments.' },
+          { label: 'Surplus (Actual)', value: surplusActual, hint: 'How much money you actually have left over after all paid expenses and investments.' },
+        ].map(({ label, value, cls, hint }) => (
           <div key={label} className="card px-4 py-3">
-            <p className="text-xs text-gray-500 dark:text-gray-400">{label}</p>
+            <p className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+              {label}
+              {hint && (
+                <span className="relative inline-flex">
+                  <button
+                    type="button"
+                    aria-label={`More information about ${label.toLowerCase()}`}
+                    className="text-gray-400 transition-colors hover:text-dosh-600 dark:text-gray-500 dark:hover:text-dosh-300"
+                    onClick={() => setShowSurplusHint(showSurplusHint === label ? null : label)}
+                  >
+                    <QuestionMarkCircleIcon className="h-3.5 w-3.5" />
+                  </button>
+                  {showSurplusHint === label && (
+                    <span className="absolute left-1/2 top-5 z-10 w-48 -translate-x-1/2 rounded-lg bg-gray-900 px-3 py-2 text-xs font-normal text-white shadow-lg dark:bg-gray-700">
+                      {hint}
+                    </span>
+                  )}
+                </span>
+              )}
+            </p>
             <p className={`text-lg font-bold ${cls || (value >= 0 ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400')}`}>{fmt(value)}</p>
           </div>
         ))}

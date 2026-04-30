@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import PropTypes from 'prop-types'
 import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
-import { ArchiveBoxArrowDownIcon, ArrowLeftIcon, ArrowRightIcon, ArrowTrendingDownIcon, ArrowTrendingUpIcon, CalendarDaysIcon, MinusIcon, PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline'
+import { ArchiveBoxArrowDownIcon, ArrowLeftIcon, ArrowRightIcon, ArrowTrendingDownIcon, ArrowTrendingUpIcon, CalendarDaysIcon, MinusIcon, PlusIcon, TrashIcon, Cog6ToothIcon } from '@heroicons/react/24/outline'
 import { addMonths, differenceInCalendarDays, endOfMonth, endOfWeek, isSameDay, isSameMonth, parseISO, startOfMonth, startOfWeek, subMonths } from 'date-fns'
 import { getBudgets, createBudget, createDemoBudget, deleteBudget, getPeriodsForBudget, getBudgetHealth, getPeriodDetail, generateAIInsight, getCurrentPeriodDetail } from '../api/client'
 import Modal from '../components/Modal'
@@ -1410,7 +1410,7 @@ export default function BudgetsPage() {
                 </div>
                 <div className="flex gap-2">
                   <button className="btn-secondary" onClick={() => navigate(`/budgets/${b.budgetid}/setup`)}>
-                    <PencilIcon className="w-3.5 h-3.5" />
+                    <Cog6ToothIcon className="w-3.5 h-3.5" />
                   </button>
                   <button className="btn-danger" onClick={() => { if (globalThis.confirm(`Delete "${b.description}"?`)) remove.mutate(b.budgetid) }}>
                     <TrashIcon className="w-3.5 h-3.5" />

@@ -72,6 +72,58 @@ Every alert surface should lead with a 20×20px icon from `@heroicons/react/24/o
 
 Icons provide instant semantic recognition and improve scanability.
 
+## Hover Hints
+
+Hover hints provide supplementary context for labels, controls, or data without cluttering the default view. They must use the **Question Mark** icon pattern defined below.
+
+### Question Mark Click-to-Reveal Hint
+
+Use this pattern when a label or control needs a brief explanation that would otherwise clutter the interface.
+
+**Purpose:** Provides more information on the relevant data or control.
+
+**Visual format:**
+- Icon: `QuestionMarkCircleIcon` from `@heroicons/react/24/outline`
+- Size: `h-4 w-4`
+- Trigger: `<button>` (not a `<span>`) with `type="button"`
+- Default colour: `text-gray-400 dark:text-gray-500`
+- Hover colour: `hover:text-dosh-600 dark:hover:text-dosh-300`
+- Tooltip: Conditionally rendered `<span>` positioned absolutely below the icon
+- Tooltip surface: `bg-gray-900` (light) / `dark:bg-gray-700` (dark), `text-white`, `text-xs`, `rounded-lg`, `shadow-lg`
+
+**Implementation pattern:**
+```jsx
+import { useState } from 'react'
+import { QuestionMarkCircleIcon } from '@heroicons/react/24/outline'
+
+const [showHelp, setShowHelp] = useState(false)
+
+<span className="relative inline-flex">
+  <button
+    type="button"
+    aria-label="More information about [subject]"
+    className="text-gray-400 transition-colors hover:text-dosh-600 dark:text-gray-500 dark:hover:text-dosh-300"
+    onClick={() => setShowHelp(v => !v)}
+  >
+    <QuestionMarkCircleIcon className="h-4 w-4" />
+  </button>
+  {showHelp && (
+    <span className="absolute left-1/2 top-6 z-10 w-56 -translate-x-1/2 rounded-lg bg-gray-900 px-3 py-2 text-xs font-normal text-white shadow-lg dark:bg-gray-700">
+      Concise explanatory text (1–2 sentences).
+    </span>
+  )}
+</span>
+```
+
+**Placement rules:**
+- Position the icon immediately after the label or control it describes.
+- Do not use click-to-reveal hints for critical information that the user must see to proceed; use an `AlertBanner` or inline helper text instead.
+- Keep tooltip text to two sentences maximum.
+
+**Future invocation:** "Add hover hint question mark to [element name] explaining [brief description]."
+
+---
+
 ## Badge Usage
 
 Badges are compact status indicators. The existing CSS badge classes in `frontend/src/index.css` are the canonical source:

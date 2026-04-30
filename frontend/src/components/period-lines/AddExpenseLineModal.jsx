@@ -127,17 +127,13 @@ export function AddExpenseLineModal({ periodId, budgetId, existingDescs, onClose
                   type="button"
                   aria-label="More information about debit account"
                   className="text-gray-400 transition-colors hover:text-dosh-600 dark:text-gray-500 dark:hover:text-dosh-300"
-                  onMouseEnter={() => setShowDebitHelp(true)}
-                  onMouseLeave={() => setShowDebitHelp(false)}
-                  onFocus={() => setShowDebitHelp(true)}
-                  onBlur={() => setShowDebitHelp(false)}
                   onClick={() => setShowDebitHelp(v => !v)}
                 >
                   <QuestionMarkCircleIcon className="h-4 w-4" />
                 </button>
                 {showDebitHelp && (
                   <span className="absolute left-1/2 top-6 z-10 w-56 -translate-x-1/2 rounded-lg bg-gray-900 px-3 py-2 text-xs font-normal text-white shadow-lg dark:bg-gray-700">
-                    The account where the expense amount will be deducted from.  Defaults to the Primary Banking Account.
+                    The account where the expense amount will be deducted from. Defaults to the Primary Banking Account.
                   </span>
                 )}
               </span>

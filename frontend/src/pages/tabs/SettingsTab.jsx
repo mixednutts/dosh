@@ -21,6 +21,7 @@ function resolveLabelledOptions(serverValues, fallbackOptions) {
 export default function SettingsTab({ budgetId, budget }) {
   const qc = useQueryClient()
   const [showPrimaryHelp, setShowPrimaryHelp] = useState(false)
+  const [showStatusChangesHelp, setShowStatusChangesHelp] = useState(false)
   const { data: localisationOptions } = useQuery({
     queryKey: ['localisation-options'],
     queryFn: getLocalisationOptions,
@@ -90,10 +91,6 @@ export default function SettingsTab({ budgetId, budget }) {
                   type="button"
                   aria-label="More information about primary investment allocation"
                   className="text-gray-400 transition-colors hover:text-dosh-600 dark:text-gray-500 dark:hover:text-dosh-300"
-                  onMouseEnter={() => setShowPrimaryHelp(true)}
-                  onMouseLeave={() => setShowPrimaryHelp(false)}
-                  onFocus={() => setShowPrimaryHelp(true)}
-                  onBlur={() => setShowPrimaryHelp(false)}
                   onClick={() => setShowPrimaryHelp(v => !v)}
                 >
                   <QuestionMarkCircleIcon className="h-4 w-4" />
@@ -147,11 +144,20 @@ export default function SettingsTab({ budgetId, budget }) {
               <label htmlFor="record-line-status-changes" className="cursor-pointer">
                 Record budget line Paid/Revised status changes as non-financial transactions?
               </label>
-              <span
-                className="text-gray-400 hover:text-gray-600 cursor-help dark:text-gray-500 dark:hover:text-gray-300"
-                title="When enabled, marking items as Paid or Revised will create a history record visible in the transaction details. This helps track planning changes over time and feeds into budget health analysis."
-              >
-                <QuestionMarkCircleIcon className="h-4 w-4" />
+              <span className="relative inline-flex">
+                <button
+                  type="button"
+                  aria-label="More information about recording status changes"
+                  className="text-gray-400 transition-colors hover:text-dosh-600 dark:text-gray-500 dark:hover:text-dosh-300"
+                  onClick={() => setShowStatusChangesHelp(v => !v)}
+                >
+                  <QuestionMarkCircleIcon className="h-4 w-4" />
+                </button>
+                {showStatusChangesHelp && (
+                  <span className="absolute left-1/2 top-6 z-10 w-56 -translate-x-1/2 rounded-lg bg-gray-900 px-3 py-2 text-xs font-normal text-white shadow-lg dark:bg-gray-700">
+                    When enabled, marking items as Paid or Revised will create a history record visible in the transaction details. This helps track planning changes over time and feeds into budget health analysis.
+                  </span>
+                )}
               </span>
             </span>
             <span className="block text-gray-600 dark:text-gray-400">

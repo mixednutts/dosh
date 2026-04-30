@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import PropTypes from 'prop-types'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useLocation } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronDownIcon, ChevronRightIcon, ArrowUpIcon } from '@heroicons/react/24/outline'
 import { getBudget, getIncomeTypes, getExpenseItems, getInvestmentItems, getBalanceTypes, getBudgetSetupAssessment, updateBudget, getPeriodSummariesForBudget } from '../api/client'
@@ -268,6 +268,8 @@ BudgetInfoForm.propTypes = {
 export default function BudgetDetailPage() {
   const { budgetId } = useParams()
   const id = Number.parseInt(budgetId, 10)
+  const location = useLocation()
+  const fromPeriodId = location.state?.fromPeriodId
   const [activeSection, setActiveSection] = useState('budget-info')
   const [showReturnTop, setShowReturnTop] = useState(false)
   const [collapsedSections, setCollapsedSections] = useState(() => {
@@ -340,6 +342,12 @@ export default function BudgetDetailPage() {
             <ChevronRightIcon className="h-3 w-3" />
             <Link to={`/budgets/${id}`} className="hover:underline">{budget.description || 'Untitled'}</Link>
             <ChevronRightIcon className="h-3 w-3" />
+            {fromPeriodId && (
+              <>
+                <Link to={`/budgets/${id}/periods/${fromPeriodId}`} className="hover:underline">Cycle Details</Link>
+                <ChevronRightIcon className="h-3 w-3" />
+              </>
+            )}
             <span className="font-medium text-gray-800 dark:text-gray-200">Setup</span>
           </div>
           <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">{budget.description || 'Untitled Budget'}</h1>

@@ -189,7 +189,7 @@ export default function IncomeTypesTab({ budgetId, budget }) {
         <button className="btn-secondary min-h-11 min-w-11 justify-center" onClick={() => setModal({ mode: 'edit', item: row })}>
           <PencilIcon className="w-3 h-3" />
         </button>
-        <button className="btn-danger min-h-11 min-w-11 justify-center" disabled={usage ? usage.can_delete === false : false} title={usage?.can_delete === false ? usage.reasons.join('. ') : undefined} onClick={() => { if (globalThis.confirm(`Delete "${row.incomedesc}"?`)) remove.mutate(row.incomedesc) }}>
+        <button className="btn-danger min-h-11 min-w-11 justify-center disabled:opacity-50 disabled:cursor-not-allowed" disabled={usage ? usage.can_delete === false : false} title={usage?.can_delete === false ? usage.reasons.join('. ') : undefined} onClick={() => { if (globalThis.confirm(`Delete "${row.incomedesc}"?`)) remove.mutate(row.incomedesc) }}>
           <TrashIcon className="w-3 h-3" />
         </button>
       </>
@@ -198,7 +198,7 @@ export default function IncomeTypesTab({ budgetId, budget }) {
 
   const mobileStatus = row => {
     const usage = incomeUsageByDesc[row.incomedesc]
-    return usage?.in_use ? <span className="badge-amber">In Use</span> : null
+    return usage?.in_use ? <span className="badge-blue">In Use</span> : null
   }
 
   if (isLoading) return null
@@ -234,7 +234,7 @@ export default function IncomeTypesTab({ budgetId, budget }) {
                   <tr key={t.incomedesc} className="table-row">
                     <td className="table-cell font-medium text-gray-800 dark:text-gray-100">
                       {t.incomedesc}
-                      {usage?.in_use ? <span className="ml-2 badge-amber">In Use</span> : null}
+                      {usage?.in_use ? <span className="ml-2 badge-blue">In Use</span> : null}
                     </td>
                     <td className="table-cell text-right text-gray-600 dark:text-gray-300">{formatCurrency(t.amount)}</td>
                     <td className="table-cell text-gray-600 dark:text-gray-300">{t.linked_account ?? <span className="text-gray-400 italic">—</span>}</td>
@@ -248,7 +248,7 @@ export default function IncomeTypesTab({ budgetId, budget }) {
                       <button className="btn-secondary" onClick={() => setModal({ mode: 'edit', item: t })}>
                         <PencilIcon className="w-3 h-3" />
                       </button>
-                      <button className="btn-danger" disabled={usage ? usage.can_delete === false : false} title={usage?.can_delete === false ? usage.reasons.join('. ') : undefined} onClick={() => { if (globalThis.confirm(`Delete "${t.incomedesc}"?`)) remove.mutate(t.incomedesc) }}>
+                      <button className="btn-danger disabled:opacity-50 disabled:cursor-not-allowed" disabled={usage ? usage.can_delete === false : false} title={usage?.can_delete === false ? usage.reasons.join('. ') : undefined} onClick={() => { if (globalThis.confirm(`Delete "${t.incomedesc}"?`)) remove.mutate(t.incomedesc) }}>
                         <TrashIcon className="w-3 h-3" />
                       </button>
                       </div>

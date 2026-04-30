@@ -105,17 +105,13 @@ function ExpenseItemForm({ initial = emptyForm, isEdit = false, onSubmit, onClos
               type="button"
               aria-label="More information about debit account"
               className="text-gray-400 transition-colors hover:text-dosh-600 dark:text-gray-500 dark:hover:text-dosh-300"
-              onMouseEnter={() => setShowDebitHelp(true)}
-              onMouseLeave={() => setShowDebitHelp(false)}
-              onFocus={() => setShowDebitHelp(true)}
-              onBlur={() => setShowDebitHelp(false)}
               onClick={() => setShowDebitHelp(v => !v)}
             >
               <QuestionMarkCircleIcon className="h-4 w-4" />
             </button>
             {showDebitHelp && (
               <span className="absolute left-1/2 top-6 z-10 w-56 -translate-x-1/2 rounded-lg bg-gray-900 px-3 py-2 text-xs font-normal text-white shadow-lg dark:bg-gray-700">
-                The account where the expense amount will be deducted from.  Defaults to the Primary Banking Account.
+                The account where the expense amount will be deducted from. Defaults to the Primary Banking Account.
               </span>
             )}
           </span>
@@ -304,7 +300,7 @@ export default function ExpenseItemsTab({ budgetId }) {
         <button className="btn-secondary min-h-11 min-w-11 justify-center" onClick={() => setModal({ mode: 'edit', item: row })}>
           <PencilIcon className="w-3 h-3" />
         </button>
-        <button className="btn-danger min-h-11 min-w-11 justify-center" disabled={usage ? usage.can_delete === false : false} title={usage?.can_delete === false ? usage.reasons.join('. ') : undefined} onClick={() => { if (globalThis.confirm(`Delete "${row.expensedesc}"?`)) remove.mutate(row.expensedesc) }}>
+        <button className="btn-danger min-h-11 min-w-11 justify-center disabled:opacity-50 disabled:cursor-not-allowed" disabled={usage ? usage.can_delete === false : false} title={usage?.can_delete === false ? usage.reasons.join('. ') : undefined} onClick={() => { if (globalThis.confirm(`Delete "${row.expensedesc}"?`)) remove.mutate(row.expensedesc) }}>
           <TrashIcon className="w-3 h-3" />
         </button>
       </>
@@ -374,7 +370,7 @@ export default function ExpenseItemsTab({ budgetId }) {
                       </td>
                       <td className="px-4 py-2 font-medium text-gray-800 dark:text-gray-100">
                         {item.expensedesc}
-                        {usage?.in_use ? <span className="ml-2 badge-amber">In Use</span> : null}
+                        {usage?.in_use ? <span className="ml-2 badge-blue">In Use</span> : null}
                       </td>
                       <td className="px-3 py-2">
                         <FreqBadge freqtype={item.freqtype} frequencyValue={item.frequency_value} />
@@ -401,7 +397,7 @@ export default function ExpenseItemsTab({ budgetId }) {
                         <button className="btn-secondary" onClick={() => setModal({ mode: 'edit', item })}>
                           <PencilIcon className="w-3 h-3" />
                         </button>
-                        <button className="btn-danger" disabled={usage ? usage.can_delete === false : false} title={usage?.can_delete === false ? usage.reasons.join('. ') : undefined} onClick={() => { if (globalThis.confirm(`Delete "${item.expensedesc}"?`)) remove.mutate(item.expensedesc) }}>
+                        <button className="btn-danger disabled:opacity-50 disabled:cursor-not-allowed" disabled={usage ? usage.can_delete === false : false} title={usage?.can_delete === false ? usage.reasons.join('. ') : undefined} onClick={() => { if (globalThis.confirm(`Delete "${item.expensedesc}"?`)) remove.mutate(item.expensedesc) }}>
                           <TrashIcon className="w-3 h-3" />
                         </button>
                         </div>

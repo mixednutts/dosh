@@ -188,6 +188,21 @@ Activities:
 - all frontend tests pass (364 tests); deployed to local Docker and verified
 - no version bump — design standardisation and component extraction
 
+#### Activity Group: UI/UX Consistency and Hover Hint Polish
+
+Status:
+- `Completed` (2026-04-30)
+
+Activities:
+- defined canonical **Question Mark Click-to-Reveal Hint** pattern in `LOOK_AND_FEEL.md` and applied it consistently across all 4 question-mark helpers (Settings, Expense modal, Income modal, Budget Setup)
+- changed all **"In Use" badges** from `badge-amber` (warning tone) to `badge-blue` (informational tone) in `BalanceTypesTab`, `ExpenseItemsTab`, `IncomeTypesTab`, and `InvestmentItemsTab` for both mobile and desktop views
+- added **disabled opacity styling** (`disabled:opacity-50 disabled:cursor-not-allowed`) to delete buttons when `can_delete === false` across all setup tabs
+- changed **Budget Setup banner** on `BudgetPeriodsPage` from inline amber `div` to `AlertBanner tone="info"`
+- added **click-to-reveal question mark hints** to Surplus (Budget) and Surplus (Actual) summary cards on `PeriodDetailPage`
+- added **cog icon button** to `PeriodDetailPage` header linking to Budget Setup; changed budget-card edit icon on `BudgetsPage` from pencil to cog for consistency
+- maintained **breadcrumb context** when entering Budget Setup from a cycle details page by passing `fromPeriodId` via React Router `location.state`
+- no version bump — pure UI/UX polish and design-standard compliance
+
 #### Activity Group: Close Account
 
 Status:

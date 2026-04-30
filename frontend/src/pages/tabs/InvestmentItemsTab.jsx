@@ -191,7 +191,7 @@ export default function InvestmentItemsTab({ budgetId, budget }) {
               <div>
                 <span className="font-medium text-gray-800 dark:text-gray-100">
                   {item.investmentdesc}
-                  {usage?.in_use ? <span className="ml-2 badge-amber">In Use</span> : null}
+                  {usage?.in_use ? <span className="ml-2 badge-blue">In Use</span> : null}
                 </span>
                 {item.effectivedate && (
                   <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
@@ -225,7 +225,7 @@ export default function InvestmentItemsTab({ budgetId, budget }) {
                 <button className="btn-secondary" onClick={() => setModal({ mode: 'edit', item })}>
                   <PencilIcon className="w-3 h-3" />
                 </button>
-                <button className="btn-danger" disabled={usage ? usage.can_delete === false : false} title={usage?.can_delete === false ? usage.reasons.join('. ') : undefined} onClick={() => { if (globalThis.confirm(`Delete "${item.investmentdesc}"?`)) remove.mutate(item.investmentdesc) }}>
+                <button className="btn-danger disabled:opacity-50 disabled:cursor-not-allowed" disabled={usage ? usage.can_delete === false : false} title={usage?.can_delete === false ? usage.reasons.join('. ') : undefined} onClick={() => { if (globalThis.confirm(`Delete "${item.investmentdesc}"?`)) remove.mutate(item.investmentdesc) }}>
                   <TrashIcon className="w-3 h-3" />
                 </button>
               </div>

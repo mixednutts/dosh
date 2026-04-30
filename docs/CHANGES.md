@@ -4,6 +4,60 @@ This document captures the key product and implementation changes made during re
 
 It is intended to complement [README.md](/home/ubuntu/dosh/README.md), not replace it.
 
+## Session: UI/UX Consistency, Hover Hint Standardisation, and Breadcrumb Context (patch) (2026-04-30)
+
+### What changed
+
+- **Standardised hover hint pattern across the app.**
+  - Added `Question Mark Click-to-Reveal Hint` section to `docs/LOOK_AND_FEEL.md` with canonical JSX snippet, colour rules, and placement guidance.
+  - Converted all 4 existing question-mark helpers (Settings surplus auto-allocation, Settings status-changes recording, Expense modal debit account, Income modal debit account) to the consistent click-to-reveal pattern using `useState`, `<button>`, and a conditionally rendered dark tooltip.
+
+- **Fixed incorrect badge semantics for "In Use" indicators.**
+  - Changed `badge-amber` → `badge-blue` in `BalanceTypesTab.jsx`, `ExpenseItemsTab.jsx`, `IncomeTypesTab.jsx`, and `InvestmentItemsTab.jsx` for both mobile and desktop views.
+  - Per `LOOK_AND_FEEL.md`, `badge-blue` = "In use, active, informational count"; `badge-amber` = "Needs attention, caution". An item being referenced by budget cycles is purely informational.
+
+- **Added disabled visual treatment to blocked delete actions.**
+  - All setup-tab delete buttons now render with `disabled:opacity-50 disabled:cursor-not-allowed` when `usage.can_delete === false`.
+  - Affected files: `IncomeTypesTab.jsx`, `ExpenseItemsTab.jsx`, `InvestmentItemsTab.jsx`.
+
+- **Added explanatory hints to surplus summary cards.**
+  - `PeriodDetailPage.jsx` Surplus (Budget) and Surplus (Actual) cards now have a click-to-reveal question mark explaining the calculation in plain language.
+  - Surplus (Budget): "How much money you planned to have left over after all budgeted expenses and investments."
+  - Surplus (Actual): "How much money you actually have left over after all paid expenses and investments."
+
+- **Replaced inline amber banner with AlertBanner on Budget Cycles page.**
+  - `BudgetPeriodsPage.jsx` now uses `<AlertBanner tone="info" />` instead of a hardcoded amber `div` for the "complete setup first" message when `can_generate` is false.
+
+- **Added Budget Setup cog icon to Period Detail header.**
+  - `PeriodDetailPage.jsx` header action row now includes a `Cog6ToothIcon` button linking to `/budgets/:budgetId/setup`.
+  - Changed budget-card edit icon on `BudgetsPage.jsx` from `PencilIcon` to `Cog6ToothIcon` for cross-page consistency.
+
+- **Maintained breadcrumb navigation context when entering Setup from a cycle.**
+  - Clicking the cog from `PeriodDetailPage` passes `fromPeriodId` via React Router `Link state`.
+  - `BudgetDetailPage` reads `location.state?.fromPeriodId` and conditionally renders a "Cycle Details" breadcrumb step before "Setup", with a link back to the originating period.
+
+### Testing
+
+- Full frontend regression suite: **364 passed**, 0 regressions introduced.
+- No backend changes; no backend tests affected.
+
+### Files touched
+
+- `docs/LOOK_AND_FEEL.md`
+- `frontend/src/pages/PeriodDetailPage.jsx`
+- `frontend/src/pages/BudgetDetailPage.jsx`
+- `frontend/src/pages/BudgetPeriodsPage.jsx`
+- `frontend/src/pages/BudgetsPage.jsx`
+- `frontend/src/pages/tabs/BalanceTypesTab.jsx`
+- `frontend/src/pages/tabs/ExpenseItemsTab.jsx`
+- `frontend/src/pages/tabs/IncomeTypesTab.jsx`
+- `frontend/src/pages/tabs/InvestmentItemsTab.jsx`
+- `frontend/src/pages/tabs/SettingsTab.jsx`
+- `frontend/src/components/period-lines/AddExpenseLineModal.jsx`
+- `frontend/src/__tests__/SettingsTab.test.jsx`
+
+---
+
 ## Latest Session: Close Account, Income Deletion Relaxation, and UX Polish (0.9.4-beta) (2026-04-30)
 
 ### What changed

@@ -6,6 +6,7 @@ import { ChevronDownIcon, ChevronRightIcon, PlusIcon, Cog6ToothIcon, TrashIcon, 
 import { addDays, differenceInCalendarDays, format, parseISO } from 'date-fns'
 import { deleteBudget, deletePeriod, getBudget, getBudgetSetupAssessment, getPeriodDeleteOptions, getPeriodSummariesForBudget, generatePeriod } from '../api/client'
 import clsx from 'clsx'
+import AlertBanner from '../components/AlertBanner'
 import Modal from '../components/Modal'
 import Spinner from '../components/Spinner'
 import { useLocalisation } from '../components/LocalisationContext'
@@ -524,9 +525,7 @@ export default function BudgetPeriodsPage() {
       </div>
 
       {!canGenerate && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-300">
-          {missingSetupMessage}
-        </div>
+        <AlertBanner tone="info" description={missingSetupMessage} />
       )}
 
       {periods.length === 0 ? (
