@@ -8,6 +8,7 @@ from ..setup_assessment import income_assessment
 from ..setup_history import (
     build_changed_fields,
     build_setup_history_entries,
+    delete_setup_revision_events_for_item,
     next_supported_revisionnum,
     rebase_item_revisionnum,
     record_setup_revision_event,
@@ -44,15 +45,15 @@ def _assert_income_delete_allowed(budgetid: int, incomedesc: str, db: Session) -
         raise HTTPException(422, f'Income type "{incomedesc}" is in use and cannot be deleted. {"; ".join(assessment["reasons"])}.')
 
 
-def _assert_savings_account_valid(budgetid: int, linked_account: str | None, issavings: bool, db: Session) -> None:
-    if not issavings or not linked_account:
-        return
+def _assert_linked_account_valid(budgetid: int, linked_account: str | None, issavings: bool, db: Session) -> None:
+    if not linked_account:
+        raise HTTPException(422, "Paid into account is required")
     bt = db.get(BalanceType, (budgetid, linked_account))
     if not bt:
         raise HTTPException(422, f'Linked account "{linked_account}" does not exist')
     if not bt.active:
         raise HTTPException(422, f'Linked account "{linked_account}" is inactive')
-    if not bt.is_savings:
+    if issavings and not bt.is_savings:
         raise HTTPException(422, f'Linked account "{linked_account}" must be a savings account when income is marked as savings')
 
 
@@ -72,7 +73,7 @@ def create_income_type(budgetid: int, payload: IncomeTypeCreate, db: DbSession):
     existing = db.get(IncomeType, (budgetid, payload.incomedesc))
     if existing:
         raise HTTPException(409, "Income type with this description already exists")
-    _assert_savings_account_valid(budgetid, payload.linked_account, payload.issavings, db)
+    _assert_linked_account_valid(budgetid, payload.linked_account, payload.issavings, db)
     data = payload.model_dump()
     it = IncomeType(budgetid=budgetid, revisionnum=0, **data)
     db.add(it)
@@ -82,22 +83,28 @@ def create_income_type(budgetid: int, payload: IncomeTypeCreate, db: DbSession):
     return it
 
 
+STRUCTURAL_INCOME_FIELDS = {"incomedesc", "issavings"}
+
+
 @router.patch("/{incomedesc}", response_model=IncomeTypeOut, responses=error_responses(404, 422))
 def update_income_type(
     budgetid: int, incomedesc: str, payload: IncomeTypeUpdate, db: DbSession
 ):
     it = _get_income_type_or_404(budgetid, incomedesc, db)
-    _assert_income_edit_allowed(budgetid, incomedesc, db)
     data = payload.model_dump(exclude_none=True)
+    if STRUCTURAL_INCOME_FIELDS & data.keys():
+        _assert_income_edit_allowed(budgetid, incomedesc, db)
     new_desc = data.get("incomedesc")
     if new_desc and new_desc != incomedesc:
         existing = db.get(IncomeType, (budgetid, new_desc))
         if existing:
             raise HTTPException(409, "Income type with this description already exists")
     next_issavings = data.get("issavings", it.issavings)
-    next_linked = data.get("linked_account", it.linked_account)
-    _assert_savings_account_valid(budgetid, next_linked, next_issavings, db)
-    revision_fields = {"amount"}
+    if "linked_account" in data:
+        _assert_linked_account_valid(budgetid, data["linked_account"], next_issavings, db)
+    elif it.linked_account:
+        _assert_linked_account_valid(budgetid, it.linked_account, next_issavings, db)
+    revision_fields = {"amount", "linked_account"}
     changed_fields = build_changed_fields(it, data, revision_fields)
     is_revision = bool(changed_fields)
     for field, value in data.items():
@@ -140,5 +147,6 @@ def get_income_type_history(budgetid: int, incomedesc: str, db: DbSession):
 def delete_income_type(budgetid: int, incomedesc: str, db: DbSession):
     it = _get_income_type_or_404(budgetid, incomedesc, db)
     _assert_income_delete_allowed(budgetid, incomedesc, db)
+    delete_setup_revision_events_for_item(db, budgetid=budgetid, category="income", item_desc=incomedesc)
     db.delete(it)
     db.commit()

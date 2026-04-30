@@ -129,6 +129,14 @@ def _parse_changed_fields(raw_json: str | None) -> list[dict[str, Any]]:
     return parsed if isinstance(parsed, list) else []
 
 
+def delete_setup_revision_events_for_item(db: Session, *, budgetid: int, category: str, item_desc: str) -> None:
+    db.query(SetupRevisionEvent).filter(
+        SetupRevisionEvent.budgetid == budgetid,
+        SetupRevisionEvent.category == category,
+        SetupRevisionEvent.item_desc == item_desc,
+    ).delete(synchronize_session=False)
+
+
 def build_setup_history_entries(db: Session, *, budgetid: int, category: str, item_desc: str) -> list[SetupHistoryEntryOut]:
     transaction_rows = (
         db.query(PeriodTransaction, FinancialPeriod)

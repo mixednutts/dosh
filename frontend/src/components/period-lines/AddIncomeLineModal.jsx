@@ -42,7 +42,20 @@ export function AddIncomeLineModal({ periodId, budgetId, existingDescs, onClose 
     }
   }, [mode, primaryAccount, destinationAccount])
 
+  useEffect(() => {
+    if (mode === 'new' && balanceTypes.length > 0 && !newLinkedAccount) {
+      setNewLinkedAccount(balanceTypes[0].balancedesc)
+    }
+  }, [mode, balanceTypes, newLinkedAccount])
+
   const createItem = useMutation({ mutationFn: data => createIncomeType(budgetId, data) })
+
+  const formatApiError = (error, fallback) => {
+    const detail = error?.response?.data?.detail
+    if (typeof detail === 'string') return detail
+    if (Array.isArray(detail)) return detail.map(d => d.msg).filter(Boolean).join('. ') || fallback
+    return fallback
+  }
 
   const add = useMutation({
     mutationFn: data => addIncomeToPeriod(budgetId, periodId, data),
@@ -52,13 +65,13 @@ export function AddIncomeLineModal({ periodId, budgetId, existingDescs, onClose 
       qc.invalidateQueries({ queryKey: ['income-types', budgetId] })
       onClose()
     },
-    onError: err => setError(err.response?.data?.detail ?? 'Failed to add income'),
+    onError: err => setError(formatApiError(err, 'Failed to add income')),
   })
 
   const addTransfer = useMutation({
     mutationFn: data => accountTransfer(budgetId, periodId, data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['period', periodId] }); qc.invalidateQueries({ queryKey: ['period-balances', periodId] }); onClose() },
-    onError: err => setError(err.response?.data?.detail ?? 'Failed to record transfer'),
+    onError: err => setError(formatApiError(err, 'Failed to record transfer')),
   })
 
   const isPending = createItem.isPending || add.isPending || addTransfer.isPending
@@ -87,12 +100,13 @@ export function AddIncomeLineModal({ periodId, budgetId, existingDescs, onClose 
       if (mode === 'new') {
         const trimmedDesc = newDesc.trim()
         if (!trimmedDesc) { setError('Enter a description'); return }
+        if (!newLinkedAccount) { setError('Select a paid-into account'); return }
         await createItem.mutateAsync({
           incomedesc: trimmedDesc,
           issavings: false,
           autoinclude: newAutoInclude,
           amount: resolvedValue,
-          linked_account: newLinkedAccount || null,
+          linked_account: newLinkedAccount,
         })
         add.mutate({ budgetid: budgetId, incomedesc: trimmedDesc, budgetamount: resolvedValue, scope, note: note || null })
         return
@@ -101,7 +115,7 @@ export function AddIncomeLineModal({ periodId, budgetId, existingDescs, onClose 
       if (!selected) { setError('Select an income source'); return }
       add.mutate({ budgetid: budgetId, incomedesc: selected, budgetamount: resolvedValue, scope, note: note || null })
     } catch (err) {
-      setError(err.response?.data?.detail ?? 'Failed to add income')
+      setError(formatApiError(err, 'Failed to add income'))
     }
   }
 
@@ -129,9 +143,8 @@ export function AddIncomeLineModal({ periodId, budgetId, existingDescs, onClose 
             <input id="add-income-new-desc" required className="input" value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="e.g. Bonus" />
           </div>
           <div>
-            <label className="label" htmlFor="add-income-linked-account">Paid into Account</label>
-            <select id="add-income-linked-account" className="input" value={newLinkedAccount} onChange={e => setNewLinkedAccount(e.target.value)}>
-              <option value="">— none —</option>
+            <label className="label" htmlFor="add-income-linked-account">Paid into Account <span className="text-red-500">*</span></label>
+            <select id="add-income-linked-account" required className="input" value={newLinkedAccount} onChange={e => setNewLinkedAccount(e.target.value)}>
               {balanceTypes.map(bt => (
                 <option key={bt.balancedesc} value={bt.balancedesc}>{bt.balancedesc}</option>
               ))}
@@ -221,7 +234,7 @@ export function AddIncomeLineModal({ periodId, budgetId, existingDescs, onClose 
       </div>
       {mode !== 'transfer' && (
         <div>
-          <label className="label" htmlFor="add-income-note">Comment / Note</label>
+          <label className="label" htmlFor="add-income-note">Comment / Note <span className="text-gray-400 text-xs font-normal">(optional)</span></label>
           <textarea id="add-income-note" className="input w-full resize-none" rows={3} value={note} onChange={e => setNote(e.target.value)} placeholder="Why are you adding this line?" />
         </div>
       )}

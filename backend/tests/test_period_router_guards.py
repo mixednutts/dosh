@@ -54,6 +54,35 @@ def test_cannot_remove_income_line_with_recorded_transactions(client, db_session
     assert "cannot remove income with recorded transactions" in remove_response.json()["detail"].lower()
 
 
+def test_can_remove_income_line_with_zero_actual_and_transactions(client, db_session):
+    setup = create_minimum_budget_setup(db_session)
+    budget = setup["budget"]
+    active_period = generate_periods(
+        client,
+        budgetid=budget.budgetid,
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
+        count=1,
+    )[0]
+
+    client.post(
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/income/Salary/transactions/",
+        json={"amount": "100.00", "note": "Deposit"},
+    )
+    client.post(
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/income/Salary/transactions/",
+        json={"amount": "-100.00", "note": "Reversal"},
+    )
+
+    remove_response = client.delete(
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/income/Salary"
+    )
+    assert remove_response.status_code == 204
+
+    period_after = client.get(f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}")
+    income_names = [i["incomedesc"] for i in period_after.json()["incomes"]]
+    assert "Salary" not in income_names
+
+
 def test_cannot_remove_expense_line_with_recorded_actuals(client, db_session):
     setup = create_minimum_budget_setup(db_session)
     budget = setup["budget"]

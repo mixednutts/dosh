@@ -10,6 +10,7 @@ from .factories import create_balance_type, create_budget, create_expense_item, 
 
 def test_income_source_defaults_to_autoinclude_on_create_and_can_be_switched_off(client, db_session):
     budget = create_budget(db_session)
+    create_balance_type(db_session, budgetid=budget.budgetid, balancedesc="Everyday", is_primary=True)
 
     create_response = client.post(
         f"/api/budgets/{budget.budgetid}/income-types/",
@@ -17,7 +18,7 @@ def test_income_source_defaults_to_autoinclude_on_create_and_can_be_switched_off
             "incomedesc": "Salary",
             "issavings": False,
             "amount": "2500.00",
-            "linked_account": None,
+            "linked_account": "Everyday",
         },
     )
     assert create_response.status_code == 201, create_response.text

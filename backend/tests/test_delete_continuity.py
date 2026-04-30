@@ -96,9 +96,7 @@ def test_delete_and_regenerate_trailing_cycle_recomputes_carried_forward(client,
         json={
             "budgetid": budget.budgetid,
             "startdate": iso_date(
-                (
-                    db_session.get(FinancialPeriod, active_period["finperiodid"]).enddate + timedelta(days=1)
-                ).replace(hour=0, minute=0, second=0, microsecond=0)
+                db_session.get(FinancialPeriod, active_period["finperiodid"]).enddate + timedelta(days=2)
             ),
             "count": 1,
         },

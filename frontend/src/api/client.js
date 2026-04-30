@@ -163,6 +163,10 @@ export const updateBalanceType = (budgetId, desc, data) =>
   api.patch(`/budgets/${budgetId}/balance-types/${encodeURIComponent(desc)}`, data).then(r => r.data)
 export const deleteBalanceType = (budgetId, desc) =>
   api.delete(`/budgets/${budgetId}/balance-types/${encodeURIComponent(desc)}`)
+export const getCloseAccountPreview = (budgetId, desc) =>
+  api.get(`/budgets/${budgetId}/balance-types/${encodeURIComponent(desc)}/close-preview`).then(r => r.data)
+export const closeAccount = (budgetId, desc, data) =>
+  api.post(`/budgets/${budgetId}/balance-types/${encodeURIComponent(desc)}/close`, data).then(r => r.data)
 
 // ── Period Balances ───────────────────────────────────────────────────────────
 export const getPeriodBalances = (budgetId, periodId) =>

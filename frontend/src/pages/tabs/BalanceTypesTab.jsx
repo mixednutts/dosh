@@ -1,11 +1,15 @@
 import { useState } from 'react'
 import PropTypes from 'prop-types'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline'
-import { getBalanceTypes, createBalanceType, updateBalanceType, deleteBalanceType, getBudgetSetupAssessment } from '../../api/client'
+import { PlusIcon, PencilIcon, XCircleIcon } from '@heroicons/react/24/outline'
+import {
+  getBalanceTypes, createBalanceType, updateBalanceType, deleteBalanceType,
+  getBudgetSetupAssessment, getCloseAccountPreview, closeAccount,
+} from '../../api/client'
 import Modal from '../../components/Modal'
 import LocalizedAmountInput from '../../components/LocalizedAmountInput'
 import MobileTableCards from '../../components/MobileTableCards'
+import AlertBanner from '../../components/AlertBanner'
 import { useLocalisation } from '../../components/LocalisationContext'
 
 const BALANCE_TYPE_OPTIONS = ['Banking', 'Cash']
@@ -50,41 +54,8 @@ function hasAnyActiveAccount(accounts, currentDesc = null, nextForm = null) {
     .some(account => account.active)
 }
 
-function canDeleteAccount(accounts, account, usage) {
-  if (usage ? usage.can_delete === false : false) {
-    return false
-  }
-
-  if (!(account.active && account.is_primary)) {
-    return true
-  }
-
-  const otherActiveAccounts = accounts.filter(candidate =>
-    candidate.balancedesc !== account.balancedesc &&
-    candidate.active
-  )
-
-  if (otherActiveAccounts.length === 0) {
-    return true
-  }
-
-  return accounts.some(candidate =>
-    candidate.balancedesc !== account.balancedesc &&
-    candidate.active &&
-    candidate.is_primary
-  )
-}
-
-function getDeleteDisabledReason(account, usage) {
-  if (usage?.can_delete === false) {
-    return usage.reasons.join('. ')
-  }
-
-  if (account.active && account.is_primary) {
-    return 'Choose another primary account before deleting this one.'
-  }
-
-  return undefined
+function canCloseAccount(account) {
+  return account.active
 }
 
 function BalanceTypeForm({
@@ -102,7 +73,6 @@ function BalanceTypeForm({
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
   const formIdPrefix = initial.balancedesc ? 'edit-balance-type' : 'create-balance-type'
   const currentDesc = initial.balancedesc ?? null
-  const openingBalanceLocked = structureLocked && currentDesc != null
 
   const submitForm = nextForm => {
     onSubmit({ ...nextForm, opening_balance: Number.parseFloat(nextForm.opening_balance) || 0 })
@@ -134,6 +104,8 @@ function BalanceTypeForm({
     submitForm(nextForm)
   }
 
+  const isClosed = mode === 'edit' && initial.active === false
+
   return (
     <>
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -150,21 +122,13 @@ function BalanceTypeForm({
         <div>
         <label htmlFor={`${formIdPrefix}-opening-balance`} className="label">Opening Balance</label>
         <LocalizedAmountInput id={`${formIdPrefix}-opening-balance`} disabled={structureLocked} className="input" value={form.opening_balance} onChange={value => set('opening_balance', value)} placeholder="0.00" />
-        {openingBalanceLocked && (
-          <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
-            Opening balance can only be changed before this account is used in a generated budget cycle or recorded movement.
-          </p>
-        )}
         </div>
+        {isClosed && (
+          <AlertBanner tone="info">
+            This account is closed and cannot be edited.
+          </AlertBanner>
+        )}
         <div className="space-y-3">
-          <label htmlFor={`${formIdPrefix}-active`} className="flex items-start gap-3 text-sm cursor-pointer">
-            <input id={`${formIdPrefix}-active`} disabled={structureLocked} type="checkbox" checked={!!form.active} onChange={e => set('active', e.target.checked)}
-            className="rounded border-gray-300 text-dosh-600 focus:ring-dosh-500" />
-            <span className="space-y-0.5">
-              <span className="block font-medium text-gray-800 dark:text-gray-100">Active</span>
-              <span className="block text-xs text-gray-500 dark:text-gray-400">Include in new budget cycles.</span>
-            </span>
-          </label>
           <label htmlFor={`${formIdPrefix}-savings`} className="flex items-start gap-3 text-sm cursor-pointer">
             <input id={`${formIdPrefix}-savings`} type="checkbox" checked={!!form.is_savings} onChange={e => set('is_savings', e.target.checked)}
             className="rounded border-gray-300 text-dosh-600 focus:ring-dosh-500" />
@@ -183,14 +147,13 @@ function BalanceTypeForm({
           </label>
         </div>
         {structureLocked && (
-          <div className="rounded-xl border border-amber-200/70 bg-amber-50/60 px-3 py-2.5 text-sm font-bold text-amber-800 dark:border-amber-800/30 dark:bg-amber-950/10 dark:text-amber-300">
-            This account is already in use. Structural changes are locked while it is referenced downstream.
-            {lockReasons.length > 0 ? ` ${lockReasons.join('. ')}.` : ''}
-          </div>
+          <AlertBanner tone="info">
+            Account is currently in use so some fields are locked.
+          </AlertBanner>
         )}
         <div className="flex justify-end gap-2 pt-2">
           <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
-          <button type="submit" className="btn-primary" disabled={loading}>
+          <button type="submit" className="btn-primary" disabled={loading || isClosed}>
           {loading ? 'Saving…' : 'Save'}
           </button>
         </div>
@@ -239,10 +202,137 @@ const TYPE_BADGE = {
   Cash: 'badge-amber',
 }
 
+function CloseAccountModal({ budgetId, account, onClose, onSuccess }) {
+  const { formatCurrency } = useLocalisation()
+  const qc = useQueryClient()
+  const [transferTo, setTransferTo] = useState('')
+  const [newPrimary, setNewPrimary] = useState('')
+  const [error, setError] = useState('')
+
+  const { data: preview, isLoading } = useQuery({
+    queryKey: ['close-account-preview', budgetId, account.balancedesc],
+    queryFn: () => getCloseAccountPreview(budgetId, account.balancedesc),
+  })
+
+  const closeMutation = useMutation({
+    mutationFn: data => closeAccount(budgetId, account.balancedesc, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['balance-types', budgetId] })
+      qc.invalidateQueries({ queryKey: ['budget-setup-assessment', budgetId] })
+      qc.invalidateQueries({ queryKey: ['period-summaries', budgetId] })
+      qc.invalidateQueries({ queryKey: ['period-detail'] })
+      setError('')
+      onSuccess()
+    },
+    onError: error => {
+      const detail = error?.response?.data?.detail
+      setError(typeof detail === 'string' ? detail : 'Unable to close this account right now.')
+    },
+  })
+
+  if (isLoading) {
+    return (
+      <Modal title={`Close ${account.balancedesc}`} onClose={onClose} size="md">
+        <div className="py-8 text-center text-gray-500 dark:text-gray-400">Loading…</div>
+      </Modal>
+    )
+  }
+
+  const balance = preview?.current_balance ?? 0
+  const hasBalance = Number(balance) !== 0
+  const isPrimary = preview?.is_primary ?? false
+  const otherAccounts = preview?.other_active_accounts ?? []
+
+  const canSubmit = () => {
+    if (hasBalance && !transferTo) return false
+    if (isPrimary && !newPrimary) return false
+    return true
+  }
+
+  const handleSubmit = e => {
+    e.preventDefault()
+    const payload = {}
+    if (hasBalance && transferTo) payload.transfer_to_account = transferTo
+    if (isPrimary && newPrimary) payload.new_primary_account = newPrimary
+    closeMutation.mutate(payload)
+  }
+
+  return (
+    <Modal title={`Close ${account.balancedesc}`} onClose={onClose} size="md">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800">
+          <div className="text-sm text-gray-600 dark:text-gray-400">Current balance</div>
+          <div className="text-lg font-semibold text-gray-800 dark:text-gray-100">{formatCurrency(balance)}</div>
+        </div>
+
+        {hasBalance && otherAccounts.length > 0 && (
+          <div>
+            <label className="label">Transfer balance to</label>
+            <select
+              className="input"
+              value={transferTo}
+              onChange={e => setTransferTo(e.target.value)}
+              required
+            >
+              <option value="">Select an account</option>
+              {otherAccounts.map(desc => (
+                <option key={desc} value={desc}>{desc}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {hasBalance && otherAccounts.length === 0 && (
+          <AlertBanner tone="warning">
+            This account has a non-zero balance but there are no other active accounts to transfer to. Add another account first.
+          </AlertBanner>
+        )}
+
+        {isPrimary && otherAccounts.length > 0 && (
+          <div>
+            <label className="label">New primary account</label>
+            <select
+              className="input"
+              value={newPrimary}
+              onChange={e => setNewPrimary(e.target.value)}
+              required
+            >
+              <option value="">Select an account</option>
+              {otherAccounts.map(desc => (
+                <option key={desc} value={desc}>{desc}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {isPrimary && (
+          <AlertBanner tone="info">
+            Any expense items that debit this account will be moved to the new primary account.
+          </AlertBanner>
+        )}
+
+        {error && (
+          <div className="rounded-xl border border-red-200/70 bg-red-50/60 px-3 py-2.5 text-sm font-bold text-red-700 dark:border-red-800/30 dark:bg-red-950/10 dark:text-red-300">
+            {error}
+          </div>
+        )}
+
+        <div className="flex justify-end gap-2 pt-2">
+          <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
+          <button type="submit" className="btn-danger" disabled={!canSubmit() || closeMutation.isPending}>
+            {closeMutation.isPending ? 'Closing…' : 'Close Account'}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  )
+}
+
 export default function BalanceTypesTab({ budgetId, budget }) {
   const { formatCurrency } = useLocalisation()
   const qc = useQueryClient()
   const [modal, setModal] = useState(null)
+  const [closeModalAccount, setCloseModalAccount] = useState(null)
   const [actionError, setActionError] = useState('')
 
   const { data: types = [], isLoading } = useQuery({
@@ -320,23 +410,35 @@ export default function BalanceTypesTab({ budgetId, budget }) {
     },
     {
       key: 'active',
-      label: 'Active',
-      render: v => v ? <span className="badge-green">Active</span> : <span className="badge-gray">Inactive</span>,
+      label: 'Status',
+      render: v => v ? <span className="badge-green">Active</span> : <span className="badge-gray">Closed</span>,
     },
   ]
 
   const mobileActions = row => {
     const usage = accountUsageByDesc[row.balancedesc]
-    const deleteAllowed = canDeleteAccount(types, row, usage)
-    const deleteDisabledReason = !deleteAllowed ? getDeleteDisabledReason(row, usage) : undefined
+    const closeAllowed = canCloseAccount(row)
+    const isClosed = !row.active
     return (
       <>
-        <button className="btn-secondary min-h-11 min-w-11 justify-center" onClick={() => setModal({ mode: 'edit', item: row })}>
-          <PencilIcon className="w-3 h-3" />
-        </button>
-        <button className="btn-danger min-h-11 min-w-11 justify-center" disabled={!deleteAllowed} title={deleteDisabledReason} onClick={() => { if (globalThis.confirm(`Delete "${row.balancedesc}"?`)) remove.mutate(row.balancedesc) }}>
-          <TrashIcon className="w-3 h-3" />
-        </button>
+        {isClosed ? (
+          <button className="btn-secondary min-h-11 min-w-11 justify-center opacity-50 cursor-not-allowed" disabled title="Account is closed">
+            <PencilIcon className="w-3 h-3" />
+          </button>
+        ) : (
+          <button className="btn-secondary min-h-11 min-w-11 justify-center" onClick={() => setModal({ mode: 'edit', item: row })}>
+            <PencilIcon className="w-3 h-3" />
+          </button>
+        )}
+        {closeAllowed ? (
+          <button className="btn-danger min-h-11 min-w-11 justify-center" onClick={() => setCloseModalAccount(row)}>
+            <XCircleIcon className="w-3 h-3" />
+          </button>
+        ) : (
+          <button className="btn-secondary min-h-11 min-w-11 justify-center opacity-50 cursor-not-allowed" disabled title="Account is already closed">
+            <XCircleIcon className="w-3 h-3" />
+          </button>
+        )}
       </>
     )
   }
@@ -376,15 +478,15 @@ export default function BalanceTypesTab({ budgetId, budget }) {
                   <th className="table-header-cell text-left">Type</th>
                   <th className="table-header-cell text-right">Opening Balance</th>
                   <th className="table-header-cell text-center">Primary</th>
-                  <th className="table-header-cell text-center">Active</th>
+                  <th className="table-header-cell text-center">Status</th>
                   <th className="table-header-cell" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                 {types.map(t => {
                   const usage = accountUsageByDesc[t.balancedesc]
-                  const deleteAllowed = canDeleteAccount(types, t, usage)
-                  const deleteDisabledReason = !deleteAllowed ? getDeleteDisabledReason(t, usage) : undefined
+                  const closeAllowed = canCloseAccount(t)
+                  const isClosed = !t.active
                   return (
                     <tr key={t.balancedesc} className="table-row">
                       <td className="table-cell font-medium text-gray-800 dark:text-gray-100">
@@ -396,15 +498,27 @@ export default function BalanceTypesTab({ budgetId, budget }) {
                       </td>
                       <td className="table-cell text-right text-gray-600 dark:text-gray-300">{formatCurrency(t.opening_balance)}</td>
                       <td className="table-cell text-center">{t.is_primary ? <span className="badge-green">Yes</span> : <span className="badge-gray">—</span>}</td>
-                      <td className="table-cell text-center">{t.active ? <span className="badge-green">Active</span> : <span className="badge-gray">Inactive</span>}</td>
+                      <td className="table-cell text-center">{t.active ? <span className="badge-green">Active</span> : <span className="badge-gray">Closed</span>}</td>
                       <td className="table-cell">
                         <div className="flex justify-end gap-1">
-                        <button className="btn-secondary" onClick={() => setModal({ mode: 'edit', item: t })}>
-                          <PencilIcon className="w-3 h-3" />
-                        </button>
-                        <button className="btn-danger" disabled={!deleteAllowed} title={deleteDisabledReason} onClick={() => { if (globalThis.confirm(`Delete "${t.balancedesc}"?`)) remove.mutate(t.balancedesc) }}>
-                          <TrashIcon className="w-3 h-3" />
-                        </button>
+                        {isClosed ? (
+                          <button className="btn-secondary opacity-50 cursor-not-allowed" disabled title="Account is closed">
+                            <PencilIcon className="w-3 h-3" />
+                          </button>
+                        ) : (
+                          <button className="btn-secondary" onClick={() => setModal({ mode: 'edit', item: t })}>
+                            <PencilIcon className="w-3 h-3" />
+                          </button>
+                        )}
+                        {closeAllowed ? (
+                          <button className="btn-danger" title="Close account" onClick={() => setCloseModalAccount(t)}>
+                            <XCircleIcon className="w-3 h-3" />
+                          </button>
+                        ) : (
+                          <button className="btn-secondary opacity-50 cursor-not-allowed" disabled title="Account is already closed">
+                            <XCircleIcon className="w-3 h-3" />
+                          </button>
+                        )}
                         </div>
                       </td>
                     </tr>
@@ -448,6 +562,15 @@ export default function BalanceTypesTab({ budgetId, budget }) {
           />
         </Modal>
       )}
+
+      {closeModalAccount && (
+        <CloseAccountModal
+          budgetId={budgetId}
+          account={closeModalAccount}
+          onClose={() => setCloseModalAccount(null)}
+          onSuccess={() => setCloseModalAccount(null)}
+        />
+      )}
     </div>
   )
 }
@@ -473,6 +596,15 @@ BalanceTypeForm.propTypes = {
     is_primary: PropTypes.bool,
   })),
   mode: PropTypes.oneOf(['create', 'edit']),
+}
+
+CloseAccountModal.propTypes = {
+  budgetId: PropTypes.number.isRequired,
+  account: PropTypes.shape({
+    balancedesc: PropTypes.string.isRequired,
+  }).isRequired,
+  onClose: PropTypes.func.isRequired,
+  onSuccess: PropTypes.func.isRequired,
 }
 
 BalanceTypesTab.propTypes = {

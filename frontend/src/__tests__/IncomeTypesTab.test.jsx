@@ -77,9 +77,9 @@ describe('IncomeTypesTab', () => {
     })
   })
 
-  it('still allows an income source to be created when no linked account exists', async () => {
+  it('blocks creating an income source without a linked account', async () => {
     client.getIncomeTypes.mockResolvedValue([])
-    client.getBalanceTypes.mockResolvedValue([])
+    client.getBalanceTypes.mockResolvedValue([{ balancedesc: 'Everyday', balance_type: 'Transaction' }])
     client.createIncomeType.mockResolvedValue({})
 
     renderWithProviders(<IncomeTypesTab budgetId={1} />)
@@ -92,20 +92,15 @@ describe('IncomeTypesTab', () => {
     fireEvent.change(screen.getByLabelText('Default Amount'), {
       target: { value: '300' },
     })
+    // Do not select a linked account
     fireEvent.click(screen.getByText('Save'))
 
     await waitFor(() => {
-      expect(client.createIncomeType).toHaveBeenCalledWith(1, {
-        incomedesc: 'Casual Work',
-        issavings: false,
-        autoinclude: true,
-        amount: 300,
-        linked_account: null,
-      })
+      expect(client.createIncomeType).not.toHaveBeenCalled()
     })
   })
 
-  it('updates an existing income source, including renaming it and removing its linked account', async () => {
+  it('updates an existing income source, including renaming it and changing its linked account', async () => {
     client.getIncomeTypes.mockResolvedValue([
       {
         incomedesc: 'Salary',
@@ -115,7 +110,10 @@ describe('IncomeTypesTab', () => {
         linked_account: 'Everyday',
       },
     ])
-    client.getBalanceTypes.mockResolvedValue([{ balancedesc: 'Everyday', balance_type: 'Transaction' }])
+    client.getBalanceTypes.mockResolvedValue([
+      { balancedesc: 'Everyday', balance_type: 'Transaction' },
+      { balancedesc: 'Savings', balance_type: 'Savings' },
+    ])
     client.updateIncomeType.mockResolvedValue({})
 
     renderWithProviders(<IncomeTypesTab budgetId={1} />)
@@ -131,18 +129,16 @@ describe('IncomeTypesTab', () => {
       target: { value: '2600' },
     })
     fireEvent.change(screen.getByRole('combobox'), {
-      target: { value: '' },
+      target: { value: 'Savings' },
     })
     fireEvent.click(screen.getByText('Save'))
 
     await waitFor(() => {
-      expect(client.updateIncomeType).toHaveBeenCalledWith(1, 'Salary', {
+      expect(client.updateIncomeType).toHaveBeenCalledWith(1, 'Salary', expect.objectContaining({
         incomedesc: 'Main Salary',
-        issavings: false,
-        autoinclude: true,
         amount: 2600,
-        linked_account: null,
-      })
+        linked_account: 'Savings',
+      }))
     })
   })
 

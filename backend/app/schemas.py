@@ -401,7 +401,14 @@ class IncomeTypeBase(BaseModel):
 
 
 class IncomeTypeCreate(IncomeTypeBase):
-    pass
+    linked_account: str
+
+    @field_validator("linked_account")
+    @classmethod
+    def _linked_account_not_empty(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("Paid into account is required")
+        return v.strip()
 
 
 class IncomeTypeUpdate(BaseModel):
@@ -410,6 +417,13 @@ class IncomeTypeUpdate(BaseModel):
     autoinclude: Optional[bool] = None
     amount: Optional[Decimal] = None
     linked_account: Optional[str] = None
+
+    @field_validator("linked_account")
+    @classmethod
+    def _linked_account_not_empty(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and (not v or not v.strip()):
+            raise ValueError("Paid into account cannot be empty")
+        return v.strip() if v else v
 
 
 class IncomeTypeOut(IncomeTypeBase):
@@ -951,6 +965,17 @@ class BalanceTypeUpdate(BaseModel):
 class BalanceTypeOut(BalanceTypeBase):
     budgetid: int
     model_config = {"from_attributes": True}
+
+
+class CloseAccountPreviewOut(BaseModel):
+    current_balance: Decimal
+    is_primary: bool
+    other_active_accounts: list[str]
+
+
+class CloseAccountRequest(BaseModel):
+    transfer_to_account: Optional[str] = None
+    new_primary_account: Optional[str] = None
 
 
 # ── PeriodBalance ─────────────────────────────────────────────────────────────

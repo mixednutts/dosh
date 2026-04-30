@@ -188,6 +188,23 @@ Activities:
 - all frontend tests pass (364 tests); deployed to local Docker and verified
 - no version bump — design standardisation and component extraction
 
+#### Activity Group: Close Account
+
+Status:
+- `Completed` (2026-04-30)
+
+Activities:
+- replaced account deletion with a formal Close Account workflow in Budget Setup
+- created `POST /budgets/{budgetid}/balance-types/{balancedesc}/close` endpoint that handles balance transfer to another active account, primary account reassignment, and automatic re-linking of expense items to the new primary
+- created `GET /budgets/{budgetid}/balance-types/{balancedesc}/close-preview` endpoint returning current balance, primary status, and candidate accounts for transfer/nomination
+- closed accounts are removed from all planned (future) budget periods by deleting their `PeriodBalance` rows; `list_period_balances` filters inactive accounts from non-current period dynamic balances
+- new `CloseAccountModal` in frontend shows current balance, transfer destination selector (when non-zero), new primary selector (when closing the primary account), and an info banner explaining expense item re-linking
+- removed the "Active" checkbox from the Add/Edit Account modal; new accounts are implicitly active and closing is the only way to deactivate
+- disabled the edit icon for closed accounts in both desktop and mobile table views
+- added backend tests: `test_close_account.py` (7 tests covering preview, zero-balance close, primary requirement, balance transfer, same-account rejection, already-closed rejection, and future-period cleanup)
+- updated frontend tests: `BalanceTypesTab.test.jsx` — replaced delete tests with close-modal tests, added edit-disabled assertion for closed accounts
+- version bump: `0.9.3-beta` → `0.9.4-beta`
+
 #### Activity Group: Mid-Cycle Expense Provisioning
 
 Status:

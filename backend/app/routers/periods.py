@@ -2099,6 +2099,7 @@ def remove_income_from_period(budgetid: int,
         raise HTTPException(404, "Period income entry not found")
     if pi.system_key == CARRIED_FORWARD_SYSTEM_KEY:
         raise HTTPException(409, "System-managed carried forward income cannot be removed")
+    actual = Decimal(str(pi.actualamount or 0))
     has_transactions = (
         db.query(PeriodTransaction)
         .filter(
@@ -2110,18 +2111,20 @@ def remove_income_from_period(budgetid: int,
         .first()
         is not None
     )
-    if has_transactions:
+    if has_transactions and actual != Decimal("0"):
         raise HTTPException(409, "Cannot remove income with recorded transactions")
+    # Delete all related transactions (movement + budget adjustments)
     (
         db.query(PeriodTransaction)
         .filter(
             PeriodTransaction.finperiodid == finperiodid,
             PeriodTransaction.source_key == incomedesc,
-            PeriodTransaction.entry_kind == "budget_adjustment",
         )
         .delete(synchronize_session=False)
     )
     db.delete(pi)
+    db.flush()
+    sync_period_state(finperiodid, db)
     db.commit()
 
 

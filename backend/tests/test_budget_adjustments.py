@@ -346,3 +346,178 @@ def test_history_endpoint_rebases_stale_stored_revisionnum_to_supported_history(
 
     db_session.refresh(expense_item)
     assert expense_item.revisionnum == 0
+
+
+def test_delete_income_type_cascades_to_setup_revision_history(client, db_session):
+    setup = create_minimum_budget_setup(db_session)
+    budget = setup["budget"]
+
+    client.patch(
+        f"/api/budgets/{budget.budgetid}/income-types/Salary",
+        json={"amount": "2600.00"},
+    )
+
+    history_before = client.get(f"/api/budgets/{budget.budgetid}/income-types/Salary/history")
+    assert history_before.json()["current_revisionnum"] == 1
+
+    delete_response = client.delete(f"/api/budgets/{budget.budgetid}/income-types/Salary")
+    assert delete_response.status_code == 204
+
+    history_after = client.get(f"/api/budgets/{budget.budgetid}/income-types/Salary/history")
+    assert history_after.status_code == 404
+
+
+def test_delete_expense_item_cascades_to_setup_revision_history(client, db_session):
+    setup = create_minimum_budget_setup(db_session)
+    budget = setup["budget"]
+
+    client.patch(
+        f"/api/budgets/{budget.budgetid}/expense-items/Rent",
+        json={"expenseamount": "1250.00"},
+    )
+
+    history_before = client.get(f"/api/budgets/{budget.budgetid}/expense-items/Rent/history")
+    assert history_before.json()["current_revisionnum"] == 1
+
+    delete_response = client.delete(f"/api/budgets/{budget.budgetid}/expense-items/Rent")
+    assert delete_response.status_code == 204
+
+    history_after = client.get(f"/api/budgets/{budget.budgetid}/expense-items/Rent/history")
+    assert history_after.status_code == 404
+
+
+def test_delete_investment_item_cascades_to_setup_revision_history(client, db_session):
+    setup = create_minimum_budget_setup(db_session)
+    budget = setup["budget"]
+
+    client.patch(
+        f"/api/budgets/{budget.budgetid}/investment-items/Emergency%20Fund",
+        json={"planned_amount": "90.00"},
+    )
+
+    history_before = client.get(f"/api/budgets/{budget.budgetid}/investment-items/Emergency%20Fund/history")
+    assert history_before.json()["current_revisionnum"] == 1
+
+    delete_response = client.delete(f"/api/budgets/{budget.budgetid}/investment-items/Emergency%20Fund")
+    assert delete_response.status_code == 204
+
+    history_after = client.get(f"/api/budgets/{budget.budgetid}/investment-items/Emergency%20Fund/history")
+    assert history_after.status_code == 404
+
+
+def test_income_type_amount_can_be_edited_when_in_use(client, db_session):
+    setup = create_minimum_budget_setup(db_session)
+    budget = setup["budget"]
+
+    generate_periods(
+        client,
+        budgetid=budget.budgetid,
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
+        count=1,
+    )
+
+    update_response = client.patch(
+        f"/api/budgets/{budget.budgetid}/income-types/Salary",
+        json={"amount": "3000.00"},
+    )
+    assert update_response.status_code == 200, update_response.text
+    assert update_response.json()["amount"] == "3000.00"
+
+    history_response = client.get(f"/api/budgets/{budget.budgetid}/income-types/Salary/history")
+    assert history_response.status_code == 200, history_response.text
+    payload = history_response.json()
+    assert payload["current_revisionnum"] == 1
+    assert len(payload["entries"]) == 1
+
+
+def test_income_type_autoinclude_can_be_edited_when_in_use(client, db_session):
+    setup = create_minimum_budget_setup(db_session)
+    budget = setup["budget"]
+
+    generate_periods(
+        client,
+        budgetid=budget.budgetid,
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
+        count=1,
+    )
+
+    update_response = client.patch(
+        f"/api/budgets/{budget.budgetid}/income-types/Salary",
+        json={"autoinclude": False},
+    )
+    assert update_response.status_code == 200, update_response.text
+    assert update_response.json()["autoinclude"] is False
+
+
+def test_income_type_structural_edit_blocked_when_in_use(client, db_session):
+    setup = create_minimum_budget_setup(db_session)
+    budget = setup["budget"]
+
+    generate_periods(
+        client,
+        budgetid=budget.budgetid,
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
+        count=1,
+    )
+
+    update_response = client.patch(
+        f"/api/budgets/{budget.budgetid}/income-types/Salary",
+        json={"incomedesc": "Main Salary"},
+    )
+    assert update_response.status_code == 422, update_response.text
+    assert "in use" in update_response.json()["detail"].lower()
+
+
+def test_income_type_linked_account_can_be_edited_when_in_use(client, db_session):
+    setup = create_minimum_budget_setup(db_session)
+    budget = setup["budget"]
+
+    generate_periods(
+        client,
+        budgetid=budget.budgetid,
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
+        count=1,
+    )
+
+    update_response = client.patch(
+        f"/api/budgets/{budget.budgetid}/income-types/Salary",
+        json={"linked_account": "Main Account"},
+    )
+    assert update_response.status_code == 200, update_response.text
+    assert update_response.json()["linked_account"] == "Main Account"
+
+    history_response = client.get(f"/api/budgets/{budget.budgetid}/income-types/Salary/history")
+    assert history_response.status_code == 200, history_response.text
+    payload = history_response.json()
+    assert payload["current_revisionnum"] == 1
+    assert len(payload["entries"]) == 1
+    assert payload["entries"][0]["change_details"][0]["field"] == "linked_account"
+
+
+def test_add_income_to_period_without_note_succeeds(client, db_session):
+    from .factories import create_income_type
+    setup = create_minimum_budget_setup(db_session)
+    budget = setup["budget"]
+    create_income_type(db_session, budgetid=budget.budgetid, incomedesc="Bonus", amount=Decimal("500.00"), autoinclude=False)
+
+    periods = generate_periods(
+        client,
+        budgetid=budget.budgetid,
+        startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0),
+        count=1,
+    )
+    active_period = periods[0]
+
+    response = client.post(
+        f"/api/budgets/{budget.budgetid}/periods/{active_period['finperiodid']}/add-income",
+        json={
+            "budgetid": budget.budgetid,
+            "incomedesc": "Bonus",
+            "budgetamount": "100.00",
+            "scope": "oneoff",
+        },
+    )
+    assert response.status_code == 201, response.text
+    payload = response.json()
+    assert payload["incomedesc"] == "Bonus"
+    assert payload["budgetamount"] == "100.00"

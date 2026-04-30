@@ -12,6 +12,7 @@ from ..setup_assessment import expense_assessment
 from ..setup_history import (
     build_changed_fields,
     build_setup_history_entries,
+    delete_setup_revision_events_for_item,
     next_supported_revisionnum,
     rebase_item_revisionnum,
     record_setup_revision_event,
@@ -277,5 +278,6 @@ def get_expense_item_history(budgetid: int, expensedesc: str, db: DbSession):
 def delete_expense_item(budgetid: int, expensedesc: str, db: DbSession):
     ei = _get_expense_or_404(budgetid, expensedesc, db)
     _assert_expense_delete_allowed(budgetid, expensedesc, db)
+    delete_setup_revision_events_for_item(db, budgetid=budgetid, category="expense", item_desc=expensedesc)
     db.delete(ei)
     db.commit()

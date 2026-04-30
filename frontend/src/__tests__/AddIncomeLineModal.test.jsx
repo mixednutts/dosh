@@ -56,11 +56,14 @@ describe('AddIncomeLineModal', () => {
     fireEvent.click(await screen.findByText('New income'))
     const inputs = screen.getAllByRole('textbox')
     fireEvent.change(inputs[0], { target: { value: 'Side Gig' } })
+    await screen.findByRole('option', { name: 'Main' })
+    const selects = screen.getAllByRole('combobox')
+    fireEvent.change(selects[0], { target: { value: 'Main' } })
     fireEvent.change(screen.getByTestId('amount-input'), { target: { value: '300' } })
     fireEvent.click(screen.getByText('Add'))
 
     await waitFor(() => {
-      expect(client.createIncomeType).toHaveBeenCalledWith(1, expect.objectContaining({ incomedesc: 'Side Gig', amount: 300 }))
+      expect(client.createIncomeType).toHaveBeenCalledWith(1, expect.objectContaining({ incomedesc: 'Side Gig', amount: 300, linked_account: 'Main' }))
     })
   })
 

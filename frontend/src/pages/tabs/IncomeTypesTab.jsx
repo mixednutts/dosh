@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import PropTypes from 'prop-types'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { PlusIcon, PencilIcon, TrashIcon, ClockIcon } from '@heroicons/react/24/outline'
@@ -7,12 +7,13 @@ import Modal from '../../components/Modal'
 import SetupItemHistoryModal from '../../components/SetupItemHistoryModal'
 import LocalizedAmountInput from '../../components/LocalizedAmountInput'
 import MobileTableCards from '../../components/MobileTableCards'
+import AlertBanner from '../../components/AlertBanner'
 import { useLocalisation } from '../../components/LocalisationContext'
 
 
 const emptyForm = { incomedesc: '', issavings: false, autoinclude: true, amount: '', linked_account: '' }
 
-function IncomeTypeForm({ initial = emptyForm, onSubmit, onClose, loading, budgetId, structureLocked = false, lockReasons = [] }) {
+function IncomeTypeForm({ initial = emptyForm, onSubmit, onClose, loading, budgetId, structureLocked = false, error = '' }) {
   const [form, setForm] = useState({ ...initial, amount: initial.amount ?? '', linked_account: initial.linked_account ?? '' })
   const formIdPrefix = initial.incomedesc ? 'edit-income-type' : 'create-income-type'
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
@@ -22,35 +23,50 @@ function IncomeTypeForm({ initial = emptyForm, onSubmit, onClose, loading, budge
     queryFn: () => getBalanceTypes(budgetId),
   })
 
+  useEffect(() => {
+    if (!initial.incomedesc && !form.linked_account && accounts.length > 0) {
+      setForm(f => ({ ...f, linked_account: accounts[0].balancedesc }))
+    }
+  }, [accounts, initial.incomedesc, form.linked_account])
+
   const handleSubmit = e => {
     e.preventDefault()
-    onSubmit({ ...form, amount: Number.parseFloat(form.amount) || 0, linked_account: form.linked_account || null })
+    onSubmit({ ...form, amount: Number.parseFloat(form.amount) || 0, linked_account: form.linked_account })
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {error && (
+        <div className="rounded-xl border border-red-200/70 bg-red-50/60 px-3 py-2.5 text-sm font-bold text-red-700 dark:border-red-800/30 dark:bg-red-950/10 dark:text-red-300">
+          {error}
+        </div>
+      )}
       <div>
         <label htmlFor={`${formIdPrefix}-description`} className="label">Description <span className="text-red-500">*</span></label>
         <input id={`${formIdPrefix}-description`} required disabled={structureLocked} className="input" value={form.incomedesc} onChange={e => set('incomedesc', e.target.value)} placeholder="e.g. Salary" />
       </div>
       <div>
         <label htmlFor={`${formIdPrefix}-amount`} className="label">Default Amount</label>
-        <LocalizedAmountInput id={`${formIdPrefix}-amount`} disabled={structureLocked} min="0" className="input" value={form.amount} onChange={value => set('amount', value)} />
+        <LocalizedAmountInput id={`${formIdPrefix}-amount`} min="0" className="input" value={form.amount} onChange={value => set('amount', value)} />
       </div>
       <div>
-        <label htmlFor={`${formIdPrefix}-linked-account`} className="label">Paid into Account</label>
-        <select id={`${formIdPrefix}-linked-account`} disabled={structureLocked} className="input" value={form.linked_account} onChange={e => set('linked_account', e.target.value)}>
-          <option value="">— none —</option>
+        <label htmlFor={`${formIdPrefix}-linked-account`} className="label">Paid into Account <span className="text-red-500">*</span></label>
+        <select id={`${formIdPrefix}-linked-account`} required className="input" value={form.linked_account} onChange={e => set('linked_account', e.target.value)}>
           {accounts.map(a => <option key={a.balancedesc} value={a.balancedesc}>{a.balancedesc}</option>)}
         </select>
       </div>
+      {structureLocked && (
+        <AlertBanner
+          tone="info"
+          description="Edits to this income source only apply to new budget cycles. Existing cycles can be updated from the budget cycle details page."
+        />
+      )}
       <div className="space-y-3">
         <label htmlFor={`${formIdPrefix}-autoinclude`} className="flex items-start gap-3 text-sm cursor-pointer">
           <input
             id={`${formIdPrefix}-autoinclude`}
             type="checkbox"
             checked={!!form.autoinclude}
-            disabled={structureLocked}
             onChange={e => set('autoinclude', e.target.checked)}
             className="rounded border-gray-300 text-dosh-600 focus:ring-dosh-500"
           />
@@ -60,12 +76,6 @@ function IncomeTypeForm({ initial = emptyForm, onSubmit, onClose, loading, budge
           </span>
         </label>
       </div>
-      {structureLocked && (
-        <div className="rounded-xl border border-amber-200/70 bg-amber-50/60 px-3 py-2.5 text-sm font-bold text-amber-800 dark:border-amber-800/30 dark:bg-amber-950/10 dark:text-amber-300">
-          This income source is already in use. Structural changes are locked while it is referenced by generated or recorded budget activity.
-          {lockReasons.length > 0 ? ` ${lockReasons.join('. ')}.` : ''}
-        </div>
-      )}
       <div className="flex justify-end gap-2 pt-2">
         <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
         <button type="submit" className="btn-primary" disabled={loading}>
@@ -97,6 +107,13 @@ export default function IncomeTypesTab({ budgetId, budget }) {
     enabled: !!historyItem,
   })
 
+  const formatApiError = (error, fallback) => {
+    const detail = error?.response?.data?.detail
+    if (typeof detail === 'string') return detail
+    if (Array.isArray(detail)) return detail.map(d => d.msg).filter(Boolean).join('. ') || fallback
+    return fallback
+  }
+
   const create = useMutation({
     mutationFn: data => createIncomeType(budgetId, data),
     onSuccess: () => {
@@ -105,7 +122,7 @@ export default function IncomeTypesTab({ budgetId, budget }) {
       setActionError('')
       setModal(null)
     },
-    onError: error => setActionError(error?.response?.data?.detail || 'Unable to save this income source right now.'),
+    onError: error => setActionError(formatApiError(error, 'Unable to save this income source right now.')),
   })
 
   const update = useMutation({
@@ -113,10 +130,11 @@ export default function IncomeTypesTab({ budgetId, budget }) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['income-types', budgetId] })
       qc.invalidateQueries({ queryKey: ['budget-setup-assessment', budgetId] })
+      qc.invalidateQueries({ queryKey: ['income-type-history', budgetId] })
       setActionError('')
       setModal(null)
     },
-    onError: error => setActionError(error?.response?.data?.detail || 'Unable to update this income source right now.'),
+    onError: error => setActionError(formatApiError(error, 'Unable to update this income source right now.')),
   })
 
   const remove = useMutation({
@@ -124,15 +142,31 @@ export default function IncomeTypesTab({ budgetId, budget }) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['income-types', budgetId] })
       qc.invalidateQueries({ queryKey: ['budget-setup-assessment', budgetId] })
+      qc.invalidateQueries({ queryKey: ['income-type-history', budgetId] })
       setActionError('')
     },
-    onError: error => setActionError(error?.response?.data?.detail || 'Unable to delete this income source right now.'),
+    onError: error => setActionError(formatApiError(error, 'Unable to delete this income source right now.')),
   })
 
   const handleSubmit = form => {
     setActionError('')
-    if (modal.mode === 'create') create.mutate(form)
-    else update.mutate({ desc: modal.item.incomedesc, data: form })
+    if (modal.mode === 'create') {
+      create.mutate(form)
+      return
+    }
+    const original = modal.item
+    const data = {}
+    const formAmount = Number.parseFloat(form.amount) || 0
+    const originalAmount = Number.parseFloat(original.amount) || 0
+    if (form.incomedesc !== original.incomedesc) data.incomedesc = form.incomedesc
+    if (formAmount !== originalAmount) data.amount = formAmount
+    if (form.linked_account !== original.linked_account) data.linked_account = form.linked_account
+    if (form.autoinclude !== original.autoinclude) data.autoinclude = form.autoinclude
+    if (Object.keys(data).length === 0) {
+      setModal(null)
+      return
+    }
+    update.mutate({ desc: original.incomedesc, data })
   }
 
   const incomeUsageByDesc = Object.fromEntries((setupAssessment?.income_types || []).map(item => [item.incomedesc, item]))
@@ -142,6 +176,7 @@ export default function IncomeTypesTab({ budgetId, budget }) {
     { key: 'amount', label: 'Amount', render: v => formatCurrency(v) },
     { key: 'linked_account', label: 'Paid into Account', render: v => v ?? <span className="text-gray-400 italic">—</span> },
     { key: 'autoinclude', label: 'Auto', render: v => v ? <span className="badge-green">Yes</span> : <span className="badge-gray">No</span> },
+    { key: 'revisionnum', label: 'Rev', render: v => v },
   ]
 
   const mobileActions = row => {
@@ -176,12 +211,6 @@ export default function IncomeTypesTab({ budgetId, budget }) {
         </button>
       </div>
 
-      {actionError && (
-        <div className="rounded-xl border border-red-200/70 bg-red-50/60 px-3 py-2.5 text-sm font-bold text-red-700 dark:border-red-800/30 dark:bg-red-950/10 dark:text-red-300">
-          {actionError}
-        </div>
-      )}
-
       {types.length === 0 ? (
         <div className="card p-8 text-center text-gray-500 dark:text-gray-400">No income sources defined yet.</div>
       ) : (
@@ -194,6 +223,7 @@ export default function IncomeTypesTab({ budgetId, budget }) {
                   <th className="table-header-cell text-right">Amount</th>
                   <th className="table-header-cell text-left">Paid into Account</th>
                   <th className="table-header-cell text-center">Auto</th>
+                  <th className="table-header-cell text-left">Rev</th>
                   <th className="table-header-cell"></th>
                 </tr>
               </thead>
@@ -209,6 +239,7 @@ export default function IncomeTypesTab({ budgetId, budget }) {
                     <td className="table-cell text-right text-gray-600 dark:text-gray-300">{formatCurrency(t.amount)}</td>
                     <td className="table-cell text-gray-600 dark:text-gray-300">{t.linked_account ?? <span className="text-gray-400 italic">—</span>}</td>
                     <td className="table-cell text-center">{t.autoinclude ? <span className="badge-green">Yes</span> : <span className="badge-gray">No</span>}</td>
+                    <td className="table-cell text-gray-500 dark:text-gray-400">{t.revisionnum}</td>
                     <td className="table-cell">
                       <div className="flex gap-1 justify-end">
                       <button className="btn-secondary" title="View history details" onClick={() => setHistoryItem(t)}>
@@ -248,7 +279,7 @@ export default function IncomeTypesTab({ budgetId, budget }) {
               linked_account: modal.item.linked_account ?? '',
             } : emptyForm}
             structureLocked={modal.item ? incomeUsageByDesc[modal.item.incomedesc]?.can_edit_structure === false : false}
-            lockReasons={modal.item ? (incomeUsageByDesc[modal.item.incomedesc]?.reasons || []) : []}
+            error={actionError}
             onSubmit={handleSubmit}
             onClose={() => setModal(null)}
             loading={create.isPending || update.isPending}
@@ -283,7 +314,7 @@ IncomeTypeForm.propTypes = {
   loading: PropTypes.bool.isRequired,
   budgetId: PropTypes.number.isRequired,
   structureLocked: PropTypes.bool,
-  lockReasons: PropTypes.arrayOf(PropTypes.string),
+  error: PropTypes.string,
 }
 
 IncomeTypesTab.propTypes = {

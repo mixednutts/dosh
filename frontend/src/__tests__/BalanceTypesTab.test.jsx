@@ -10,6 +10,8 @@ jest.mock('../api/client', () => ({
   createBalanceType: jest.fn(),
   updateBalanceType: jest.fn(),
   deleteBalanceType: jest.fn(),
+  getCloseAccountPreview: jest.fn(),
+  closeAccount: jest.fn(),
 }))
 
 jest.mock('../components/Modal', () => ({ title, children }) => (
@@ -171,14 +173,14 @@ describe('BalanceTypesTab', () => {
     expect(client.updateBalanceType).not.toHaveBeenCalled()
   })
 
-  it('allows an existing non-primary account to be deactivated through setup edit', async () => {
+  it('edit modal does not show an active checkbox', async () => {
     client.getBalanceTypes.mockResolvedValue([
       {
         balancedesc: 'Travel Cash',
         balance_type: 'Cash',
         opening_balance: '80.00',
         active: true,
-        is_primary: false,
+        is_primary: true,
         is_savings: false,
       },
     ])
@@ -189,7 +191,7 @@ describe('BalanceTypesTab', () => {
     expect(await screen.findByText('Travel Cash')).toBeTruthy()
     fireEvent.click(screen.getAllByRole('button')[1])
 
-    fireEvent.click(screen.getByLabelText(/Active/i))
+    expect(screen.queryByLabelText(/Active/i)).toBeNull()
     fireEvent.click(screen.getByText('Save'))
 
     await waitFor(() => {
@@ -197,41 +199,43 @@ describe('BalanceTypesTab', () => {
         balancedesc: 'Travel Cash',
         balance_type: 'Cash',
         opening_balance: 80,
-        active: false,
-        is_primary: false,
+        active: true,
+        is_primary: true,
         is_savings: false,
       })
     })
   })
 
-  it('deletes an account only after confirmation', async () => {
-    const confirmSpy = jest.spyOn(window, 'confirm').mockReturnValue(true)
+  it('opens close modal when close button is clicked', async () => {
     client.getBalanceTypes.mockResolvedValue([
       {
         balancedesc: 'Old Savings',
         balance_type: 'Banking',
         opening_balance: '0.00',
-        active: false,
+        active: true,
         is_primary: false,
         is_savings: true,
       },
     ])
-    client.deleteBalanceType.mockResolvedValue({})
+    client.getCloseAccountPreview.mockResolvedValue({
+      current_balance: '0.00',
+      is_primary: false,
+      other_active_accounts: [],
+    })
 
     renderWithProviders(<BalanceTypesTab budgetId={1} />)
 
     expect(await screen.findByText('Old Savings')).toBeTruthy()
-    fireEvent.click(screen.getAllByRole('button')[2])
+    const closeButtons = screen.getAllByRole('button').filter(b => b.className.includes('btn-danger'))
+    expect(closeButtons.length).toBe(1)
+    fireEvent.click(closeButtons[0])
 
     await waitFor(() => {
-      expect(confirmSpy).toHaveBeenCalledWith('Delete "Old Savings"?')
-      expect(client.deleteBalanceType).toHaveBeenCalledWith(1, 'Old Savings')
+      expect(screen.getByText('Close Old Savings')).toBeTruthy()
     })
-
-    confirmSpy.mockRestore()
   })
 
-  it('disables delete and opening balance edits for an account already in use', async () => {
+  it('shows close button for active in-use accounts and locks opening balance in edit modal', async () => {
     client.getBalanceTypes.mockResolvedValue([
       {
         balancedesc: 'Main Account',
@@ -263,16 +267,17 @@ describe('BalanceTypesTab', () => {
 
     expect(await screen.findByText('Main Account')).toBeTruthy()
     expect(screen.getByText('In Use')).toBeTruthy()
-    const deleteButton = screen.getAllByRole('button')[2]
-    expect(deleteButton.disabled).toBe(true)
+    const closeButtons = screen.getAllByRole('button').filter(b => b.className.includes('btn-danger'))
+    expect(closeButtons.length).toBe(1)
+    expect(closeButtons[0].disabled).toBe(false)
 
     fireEvent.click(screen.getAllByRole('button')[1])
     const openingBalanceInput = screen.getByLabelText('Opening Balance')
     expect(openingBalanceInput.disabled).toBe(true)
-    expect(screen.getByText(/Opening balance can only be changed before this account is used/i)).toBeTruthy()
+    expect(screen.getByText(/Account is currently in use so some fields are locked/i)).toBeTruthy()
   })
 
-  it('disables deleting the active primary account when that would leave no primary', async () => {
+  it('disables edit and close buttons for already closed accounts', async () => {
     client.getBalanceTypes.mockResolvedValue([
       {
         balancedesc: 'Main Account',
@@ -283,10 +288,10 @@ describe('BalanceTypesTab', () => {
         is_savings: false,
       },
       {
-        balancedesc: 'Backup Account',
+        balancedesc: 'Closed Account',
         balance_type: 'Banking',
         opening_balance: '250.00',
-        active: true,
+        active: false,
         is_primary: false,
         is_savings: false,
       },
@@ -295,9 +300,11 @@ describe('BalanceTypesTab', () => {
     renderWithProviders(<BalanceTypesTab budgetId={1} />)
 
     expect(await screen.findByText('Main Account')).toBeTruthy()
-    const deleteButtons = screen.getAllByRole('button').filter(button => button.className.includes('btn-danger'))
-    expect(deleteButtons[0].disabled).toBe(true)
-    expect(deleteButtons[0].title).toContain('Choose another primary account before deleting this one.')
+    expect(await screen.findByText('Closed Account')).toBeTruthy()
+    const disabledEditButtons = screen.getAllByRole('button').filter(b => b.disabled && b.title === 'Account is closed')
+    expect(disabledEditButtons.length).toBe(1)
+    const disabledCloseButtons = screen.getAllByRole('button').filter(b => b.disabled && b.title === 'Account is already closed')
+    expect(disabledCloseButtons.length).toBe(1)
   })
 
   it('renders banking and cash type options', async () => {

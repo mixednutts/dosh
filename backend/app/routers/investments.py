@@ -9,6 +9,7 @@ from ..setup_assessment import investment_assessment
 from ..setup_history import (
     build_changed_fields,
     build_setup_history_entries,
+    delete_setup_revision_events_for_item,
     next_supported_revisionnum,
     rebase_item_revisionnum,
     record_setup_revision_event,
@@ -176,5 +177,6 @@ def delete_investment_item(budgetid: int, investmentdesc: str, db: DbSession):
     if not item:
         raise HTTPException(404, "Investment item not found")
     _assert_investment_delete_allowed(budgetid, investmentdesc, db)
+    delete_setup_revision_events_for_item(db, budgetid=budgetid, category="investment", item_desc=investmentdesc)
     db.delete(item)
     db.commit()

@@ -171,9 +171,23 @@ def test_income_transactions_respect_locked_active_and_closed_cycle_rules_and_bl
     unlock_response = client.patch(f"/api/budgets/{budget.budgetid}/periods/{finperiodid}/lock", json={"islocked": False})
     assert unlock_response.status_code == 200, unlock_response.text
 
+    # Actual is $0 because +100 and -100 offset; deletion should succeed and cascade delete transactions
     remove_line = client.delete(f"/api/budgets/{budget.budgetid}/periods/{finperiodid}/income/Salary")
-    assert remove_line.status_code == 409
-    assert "recorded transactions" in remove_line.json()["detail"].lower()
+    assert remove_line.status_code == 204, remove_line.text
+
+    period_after = client.get(f"/api/budgets/{budget.budgetid}/periods/{finperiodid}")
+    assert period_after.status_code == 200, period_after.text
+    income_names = [i["incomedesc"] for i in period_after.json()["incomes"]]
+    assert "Salary" not in income_names
+
+    txs_after = client.get(f"/api/budgets/{budget.budgetid}/periods/{finperiodid}/income/Salary/transactions/")
+    assert txs_after.status_code == 404  # income line gone
+
+    # Add a fresh income line to test closed-cycle guards
+    client.post(
+        f"/api/budgets/{budget.budgetid}/periods/{finperiodid}/income/",
+        json={"budgetid": budget.budgetid, "incomedesc": "Side Gig", "amount": "500.00", "linked_account": setup["balance_type"].balancedesc},
+    )
 
     closeout = client.post(
         f"/api/budgets/{budget.budgetid}/periods/{finperiodid}/closeout",
@@ -182,15 +196,10 @@ def test_income_transactions_respect_locked_active_and_closed_cycle_rules_and_bl
     assert closeout.status_code == 200, closeout.text
 
     add_closed = client.post(
-        f"/api/budgets/{budget.budgetid}/periods/{finperiodid}/income/Salary/transactions/",
+        f"/api/budgets/{budget.budgetid}/periods/{finperiodid}/income/Side%20Gig/transactions/",
         json={"amount": "25.00", "note": "Late deposit"},
     )
     assert add_closed.status_code == 423
-
-    delete_closed = client.delete(
-        f"/api/budgets/{budget.budgetid}/periods/{finperiodid}/income/Salary/transactions/{add_while_locked.json()['id']}"
-    )
-    assert delete_closed.status_code == 423
 
     db_rows = (
         db_session.query(PeriodTransaction)
@@ -198,12 +207,10 @@ def test_income_transactions_respect_locked_active_and_closed_cycle_rules_and_bl
         .order_by(PeriodTransaction.id)
         .all()
     )
-    assert len(db_rows) == 2
-    assert all(row.source == "income" for row in db_rows)
+    assert len(db_rows) == 0  # cascaded deleted when zero-actual line was removed
 
     salary_row = db_session.get(PeriodIncome, (finperiodid, "Salary"))
-    assert salary_row is not None
-    assert Decimal(str(salary_row.actualamount)) == Decimal("0.00")
+    assert salary_row is None  # cascaded deleted
 
 
 def test_add_income_transaction_rejects_malformed_entrydate(client, db_session):

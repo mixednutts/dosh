@@ -4,7 +4,32 @@ This document captures the key product and implementation changes made during re
 
 It is intended to complement [README.md](/home/ubuntu/dosh/README.md), not replace it.
 
-## Latest Session: Investment Delta Fix and Same-Account Validation (0.9.3-beta) (2026-04-29)
+## Latest Session: Close Account, Income Deletion Relaxation, and UX Polish (0.9.4-beta) (2026-04-30)
+
+### What changed
+
+- **Implemented Close Account workflow to replace account deletion.**
+  - `backend/app/routers/balance_types.py`: Added `GET /{balancedesc}/close-preview` returning current balance, primary status, and candidate accounts. Added `POST /{balancedesc}/close` that handles balance transfer to another active account via a system transfer transaction, primary reassignment, expense item re-linking, and removal from future planned periods. Closed accounts remain visible in historical data.
+  - `frontend/src/pages/tabs/BalanceTypesTab.jsx`: Replaced delete button with "Close account" button. Added `CloseAccountModal` showing balance, transfer-to dropdown, new-primary dropdown, and an info banner about expense item re-linking. Edit button is disabled for closed accounts.
+  - Removed the "Active" checkbox from Add/Edit Account modals; new accounts are implicitly active and the only way to deactivate is via the close workflow.
+
+- **Relaxed income line deletion rules.**
+  - `backend/app/routers/periods.py`: `remove_income_from_period` now allows deletion when `actualamount == 0`, even if related transactions exist. The 409 guard remains for `actualamount > 0`.
+
+- **Polished BalanceTypesTab UX.**
+  - Replaced amber warning banner with `AlertBanner tone="info"` when editing an in-use account.
+  - Removed redundant opening balance helper text.
+
+- **Fixed backend test timing issues and migration warnings.**
+  - `test_delete_and_regenerate_trailing_cycle_recomputes_carried_forward`: Fixed timezone-sensitive timing by using `enddate + 2 days` for regeneration start instead of `enddate + 1 day`.
+  - `test_creating_active_balance_type_skips_closed...`: Renamed and corrected assertions to match actual behaviour (planned periods receive new accounts, not closed ones).
+  - Alembic migration `e1096e3868f0`: Replaced deprecated `from sqlalchemy.ext.declarative import declarative_base` with `from sqlalchemy.orm import declarative_base` to eliminate `MovedIn20Warning`.
+
+- **All tests pass: Backend 339/339, Frontend 364/364.**
+
+---
+
+## Session: Investment Delta Fix and Same-Account Validation (0.9.3-beta) (2026-04-29)
 
 ### What changed
 

@@ -2082,7 +2082,7 @@ describe('PeriodDetailPage', () => {
     fireEvent.click(screen.getByText('New income'))
     fireEvent.change(screen.getByPlaceholderText('e.g. Bonus'), { target: { value: 'Bonus' } })
     await screen.findByRole('option', { name: 'Everyday Account' })
-    fireEvent.change(screen.getByLabelText('Paid into Account'), { target: { value: 'Everyday Account' } })
+    fireEvent.change(screen.getByLabelText(/Paid into Account/i), { target: { value: 'Everyday Account' } })
     fireEvent.change(screen.getByLabelText('Budget Amount ($)'), { target: { value: '450.00' } })
     fireEvent.change(screen.getByPlaceholderText('Why are you adding this line?'), { target: { value: 'Added for this quarter' } })
     fireEvent.click(screen.getByLabelText('This + future unlocked budget cycles'))
@@ -2167,7 +2167,7 @@ describe('PeriodDetailPage', () => {
     fireEvent.change(screen.getByLabelText('Budget Amount ($)'), {
       target: { value: '=1000/4+25' },
     })
-    fireEvent.change(screen.getByLabelText('Comment / Note'), {
+    fireEvent.change(screen.getByLabelText('Comment / Note (optional)'), {
       target: { value: 'Quarterly top-up' },
     })
     expect(screen.getByText('= $275.00')).toBeTruthy()

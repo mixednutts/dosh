@@ -26,8 +26,7 @@ def _backfill_simplified_health(db: Session) -> None:
     because the model classes may change in later revisions.
     """
     from sqlalchemy import Column, Integer, String, Text, Boolean, Numeric, DateTime, ForeignKey
-    from sqlalchemy.ext.declarative import declarative_base
-    from sqlalchemy.orm import relationship
+    from sqlalchemy.orm import declarative_base, relationship
 
     Base = declarative_base()
 

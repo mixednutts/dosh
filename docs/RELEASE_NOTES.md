@@ -2,18 +2,23 @@
 
 ## Unreleased
 
+## 0.9.4-beta | released | 2026-04-30
+
+### Added
+
+- **Close Account**. You can now close an active account from Budget Setup instead of deleting it. Closing an account shows a dedicated modal that displays the account's current balance, lets you transfer any remaining balance to another active account, and — if the account is primary — lets you nominate a new primary account. Any expense items that debit the closed account are automatically moved to the new primary account. Closed accounts are removed from all future budget cycles and will not appear in newly generated periods.
+
 ### Changed
 
+- The comment/note field is now optional when adding income to a budget cycle. Previously, a blank note would still record a budget adjustment revision event; now the adjustment is only recorded when a note is actually provided.
 - The Setup Assessment panel in Budget Setup now uses a cleaner, calmer visual design. Guidance messages appear in a neutral info style with an icon instead of the previous amber warning treatment, making first-time setup feel less alarming.
+- The Edit Account modal no longer shows an "Active" checkbox. Account status (Active or Closed) is now managed entirely through the Close Account action.
 
 ### Fixed
 
+- You can now delete an income line from a budget cycle even if it has recorded transactions, provided the total actual amount is zero. The transactions are automatically removed as part of the deletion.
 - Investment transactions now correctly show the actual amount in the Movement Details panel for the debit (source) account. Previously, only the credit (destination) account displayed the transaction amount, while the debit account showed $0.00.
 - Budgets with no expense items can now generate cycles if they have at least one income source and one active primary account. This enables savings-only tracking and no-expense budget workflows.
-
-### Changed
-
-- The Add/Edit Investment modal now prevents saving when the debit account and target account are the same account.
 
 ### Engineering
 
@@ -21,6 +26,7 @@
 - Removed the `account_naming_preference` setting from budgets and all related UI.
 - Added `allow_overdraft_transactions` budget setting (default `false`). When disabled, manual expense and investment transactions are blocked if the debit account has insufficient funds. Auto-expense operates independently of this setting.
 - Added `Add Investment Line` button to the Budget Cycle Details page for adding existing setup investment items to the current cycle with backward carry-forward of closing values.
+- Fixed two timing-dependent backend test failures and a SQLAlchemy 2.0 deprecation warning in an Alembic migration.
 
 ## 0.9.3-beta | released | 2026-04-29
 
