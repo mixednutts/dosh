@@ -4,6 +4,61 @@ This document captures the key product and implementation changes made during re
 
 It is intended to complement [README.md](/home/ubuntu/dosh/README.md), not replace it.
 
+## Session: Reporting Framework — Budget vs Actual (0.9.4-beta) (2026-04-30)
+
+### What changed
+
+- **Implemented the Reporting Framework with Budget vs Actual trend chart.**
+  - `backend/app/routers/reports.py`: New reporting router with `GET /api/reports/budgets/{id}/summary` (budget metadata + period count/date range) and `GET /api/reports/budgets/{id}/trends/budget-vs-actual` (time-series data). Reuses existing `current_period_totals` and `ordered_budget_periods` for DRY aggregation. Supports `from_date`, `to_date`, and `include_surplus` query params. Defaults to last 12 months when no date range is provided.
+  - Wired reports router into `backend/app/main.py`.
+
+- **Added Recharts-based Budget vs Actual trend chart.**
+  - `frontend/src/components/reports/BudgetVsActualChart.jsx`: Multi-line `LineChart` with 6 lines (income/expense/investment × budget/actual) plus optional surplus lines. Dark-mode-aware via `useChartTheme` hook. Custom tooltip with currency formatting. Responsive via `ResponsiveContainer`.
+  - `frontend/src/hooks/useChartTheme.js`: Reads `html.dark` class via `MutationObserver`, returns light/dark palette for Recharts components.
+  - `frontend/src/components/reports/CycleFilter.jsx`: Preset filters (Last 12 Months / Last 6 Months / All Time) plus custom date range inputs using the existing `DateField` component. Emits `{ fromDate, toDate }` to parent.
+
+- **Created report pages with sub-navigation pattern.**
+  - `frontend/src/pages/ReportsLandingPage.jsx`: Budget selector when no budget is active; report cards grid (Budget vs Actual active, Income Allocation and Investment Trends as "Coming soon") when a budget is selected. Breadcrumb navigation. Summary line showing period count and date range.
+  - `frontend/src/pages/BudgetVsActualPage.jsx`: Full report page with breadcrumb, budget switcher dropdown, cycle filter, chart card, loading state, and empty state ("No periods in selected date range"). Surplus toggle checkbox.
+
+- **Added Reporting navigation to the sidebar.**
+  - `frontend/src/components/Layout.jsx`: Added "Reporting" `NavLink` with `PresentationChartBarIcon` below the Budgets section. Supports both expanded and collapsed sidebar modes. Active state follows `/reports/*` routes. Includes expand/collapse chevron that reveals a budget list (links to `/reports/{budgetId}`) when expanded. Visual active state is route-based only (not expansion-state-based) to avoid dual-button highlighting.
+
+- **Added frontend routes for reporting.**
+  - `frontend/src/App.jsx`: Added `/reports`, `/reports/:budgetId`, and `/reports/budget-vs-actual` routes via lazy-loaded components.
+
+- **Added API client wrappers.**
+  - `frontend/src/api/client.js`: Added `getBudgetReportSummary` and `getBudgetVsActualTrends`.
+
+- **Added `recharts` dependency.**
+  - `frontend/package.json`: Added `recharts@^2.15.0`. Tree-shakeable imports used throughout.
+
+### Testing
+
+- Full backend regression suite: **349 passed** (+10 new reporting tests), 0 regressions introduced.
+- Full frontend regression suite: **366 passed** (+2 new reporting page tests), 0 regressions introduced.
+- New backend tests: `test_reports.py` — 10 tests covering summary 404, empty budget, date range, default 12-month filter, custom range, correct totals, surplus exclusion, all-time filter.
+- New frontend tests: `ReportsLandingPage.test.jsx` — 2 tests covering budget selector rendering and report cards rendering with "Coming soon" badges.
+
+### Files touched
+
+- `backend/app/routers/reports.py` (new)
+- `backend/app/main.py`
+- `backend/tests/test_reports.py` (new)
+- `frontend/src/hooks/useChartTheme.js` (new)
+- `frontend/src/components/reports/BudgetVsActualChart.jsx` (new)
+- `frontend/src/components/reports/CycleFilter.jsx` (new)
+- `frontend/src/pages/ReportsLandingPage.jsx` (new)
+- `frontend/src/pages/BudgetVsActualPage.jsx` (new)
+- `frontend/src/__tests__/ReportsLandingPage.test.jsx` (new)
+- `frontend/src/components/Layout.jsx`
+- `frontend/src/App.jsx`
+- `frontend/src/api/client.js`
+- `frontend/package.json`
+- `frontend/package-lock.json`
+
+---
+
 ## Session: UI/UX Consistency, Hover Hint Standardisation, and Breadcrumb Context (patch) (2026-04-30)
 
 ### What changed

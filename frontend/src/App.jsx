@@ -8,6 +8,8 @@ const BudgetDetailPage = lazy(() => import('./pages/BudgetDetailPage'))
 const BudgetPeriodsPage = lazy(() => import('./pages/BudgetPeriodsPage'))
 const PeriodDetailPage = lazy(() => import('./pages/PeriodDetailPage'))
 const CurrentPeriodRedirect = lazy(() => import('./pages/CurrentPeriodRedirect'))
+const ReportsLandingPage = lazy(() => import('./pages/ReportsLandingPage'))
+const BudgetVsActualPage = lazy(() => import('./pages/BudgetVsActualPage'))
 
 function PageLoadingFallback() {
   return (
@@ -30,6 +32,9 @@ export default function App() {
             <Route path="budgets/:budgetId/setup" element={<BudgetDetailPage />} />
             <Route path="budgets/:budgetId/periods/current" element={<CurrentPeriodRedirect />} />
             <Route path="budgets/:budgetId/periods/:periodId" element={<PeriodDetailPage />} />
+            <Route path="reports" element={<ReportsLandingPage />} />
+            <Route path="reports/:budgetId" element={<ReportsLandingPage />} />
+            <Route path="reports/budget-vs-actual" element={<BudgetVsActualPage />} />
           </Route>
         </Routes>
       </Suspense>

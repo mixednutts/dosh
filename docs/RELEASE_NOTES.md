@@ -12,6 +12,7 @@
 
 ### Added
 
+- **Reporting framework — Budget vs Actual trends.** A new "Reporting" section is available from the sidebar. Choose a budget to see the Reports landing page, then open "Budget vs Actual" to view a multi-line trend chart comparing budgeted and actual values for income, expenses, and investments over time. The chart supports preset date ranges (Last 12 Months, Last 6 Months, All Time) and custom date ranges. A "Show surplus" toggle optionally adds surplus budget and actual lines. The chart is fully responsive and respects dark mode.
 - Click-to-reveal question mark hints on the Surplus (Budget) and Surplus (Actual) summary cards, explaining what each value represents in plain language.
 - When entering Budget Setup from a Budget Cycle Details page, the breadcrumb now preserves context: `Budgets > Budget Name > Cycle Details > Setup`, with a link back to the cycle you came from.
 

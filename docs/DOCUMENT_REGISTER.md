@@ -972,6 +972,37 @@ Maintenance notes:
 - should be updated if the balance display grouping approach is implemented or revised
 - should remain focused on the spendable/saved distinction rather than becoming a general balance design document
 
+### REPORTS_BUDGET_VS_ACTUAL_PLAN.md
+
+Document:
+
+- [REPORTS_BUDGET_VS_ACTUAL_PLAN.md](/home/ubuntu/dosh/docs/plans/REPORTS_BUDGET_VS_ACTUAL_PLAN.md)
+
+Document type:
+
+- domain or workflow plan
+
+Primary purpose:
+
+- define the initial reporting framework implementation, including the Budget vs Actual trend chart, sidebar navigation, cycle-based filtering, and deferred reports
+
+Primary source-of-truth scope:
+
+- reporting endpoint design and payload shapes
+- Recharts integration approach and dark-mode strategy
+- CycleFilter preset behaviour and default date-range logic
+- deferred report scope (Income Allocation, Investment Trends)
+
+Key relationships:
+
+- informs roadmap items in [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md)
+- aligns with [TEST_STRATEGY.md](/home/ubuntu/dosh/docs/tests/TEST_STRATEGY.md) for reporting test coverage expectations
+
+Maintenance notes:
+
+- should be updated when deferred reports are implemented or when the reporting framework expands
+- should remain focused on the initial reporting phase rather than becoming a general analytics design document
+
 ### GITHUB_RELEASE_RUNBOOK.md
 
 Document:

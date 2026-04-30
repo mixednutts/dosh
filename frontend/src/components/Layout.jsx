@@ -3,8 +3,9 @@ import PropTypes from 'prop-types'
 import {
   WalletIcon, Bars3Icon, XMarkIcon, MoonIcon, SunIcon,
   ChevronRightIcon, ChevronDownIcon, ChevronLeftIcon,
+  PresentationChartBarIcon,
 } from '@heroicons/react/24/outline'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import clsx from 'clsx'
 import { parseISO } from 'date-fns'
@@ -280,8 +281,54 @@ function CurrentBudgetPanel({ budget, activePeriodId, onNav, shortcutsExpanded =
   )
 }
 
-function LayoutNav({ budgets, currentBudgetId, activePeriodId, budgetsExpanded, setBudgetsExpanded, onBudgetOrPeriod, onNav }) {
+function ReportsBudgetList({ budgets, currentBudgetId, onNav }) {
+  if (budgets.length === 0) return null
+
+  return (
+    <div className="mt-2 space-y-1.5 rounded-2xl border border-dosh-200 bg-dosh-50/60 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.4)] dark:border-dosh-700/75 dark:bg-slate-950 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-dosh-700 dark:text-dosh-300">Budget List</span>
+        <span className="text-[11px] text-dosh-600 dark:text-dosh-400">{budgets.length}</span>
+      </div>
+      <div className="space-y-1.5">
+        {budgets.map(budget => (
+          <Link
+            key={budget.budgetid}
+            to={`/reports/${budget.budgetid}`}
+            onClick={onNav}
+            className={clsx(
+              'block rounded-xl border px-3 py-2 text-sm transition-colors',
+              budget.budgetid === currentBudgetId
+                ? 'border-dosh-400 bg-dosh-600 text-white'
+                : 'border-gray-200 bg-white text-gray-700 hover:border-dosh-400 hover:bg-dosh-50 hover:text-dosh-900 dark:border-slate-800 dark:bg-slate-950/85 dark:text-slate-200 dark:hover:border-dosh-700 dark:hover:bg-slate-900 dark:hover:text-white'
+            )}
+          >
+            <span className="block font-medium break-words">{budget.description || 'Untitled'}</span>
+            <span className={clsx('mt-0.5 block text-xs', budget.budgetid === currentBudgetId ? 'text-dosh-100' : 'text-dosh-600 dark:text-dosh-400')}>
+              {budget.budgetowner} · {budget.budget_frequency}
+            </span>
+          </Link>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function LayoutNav({ budgets, currentBudgetId, activePeriodId, budgetsExpanded, setBudgetsExpanded, reportsExpanded, setReportsExpanded, onBudgetOrPeriod, onReports, onNav }) {
   const currentBudget = budgets.find(budget => budget.budgetid === currentBudgetId)
+  const reportsTarget = currentBudget ? `/reports/${currentBudget.budgetid}` : '/reports'
+  const budgetsLinkRef = useRef(null)
+  const reportsLinkRef = useRef(null)
+
+  const handleBudgetsToggle = () => {
+    setBudgetsExpanded(value => !value)
+    requestAnimationFrame(() => budgetsLinkRef.current?.focus())
+  }
+
+  const handleReportsToggle = () => {
+    setReportsExpanded(value => !value)
+    requestAnimationFrame(() => reportsLinkRef.current?.focus())
+  }
 
   return (
     <div className="space-y-3">
@@ -289,6 +336,7 @@ function LayoutNav({ budgets, currentBudgetId, activePeriodId, budgetsExpanded, 
         <span className="block px-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-slate-400">Workspace</span>
         <div className="flex items-center gap-2">
           <NavLink
+            ref={budgetsLinkRef}
             to="/budgets"
             onClick={onNav}
             end
@@ -305,7 +353,7 @@ function LayoutNav({ budgets, currentBudgetId, activePeriodId, budgetsExpanded, 
             Budgets
           </NavLink>
           <button
-            onClick={() => setBudgetsExpanded(value => !value)}
+            onClick={handleBudgetsToggle}
             title={budgetsExpanded ? 'Hide budget list' : 'Show budget list'}
             className={clsx(
               'rounded-2xl border p-3 transition-colors',
@@ -335,6 +383,47 @@ function LayoutNav({ budgets, currentBudgetId, activePeriodId, budgetsExpanded, 
           shortcutsExpanded={budgetsExpanded}
         />
       ) : null}
+
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <NavLink
+            ref={reportsLinkRef}
+            to={reportsTarget}
+            onClick={onNav}
+            className={({ isActive }) =>
+              clsx(
+                'flex flex-1 items-center gap-2.5 rounded-2xl border px-3 py-3 text-sm font-medium transition-colors',
+                (isActive || onReports)
+                  ? 'border-dosh-300 bg-dosh-600 text-white'
+                  : 'border-dosh-200 bg-dosh-50 text-dosh-900 hover:border-dosh-400 hover:bg-dosh-100 hover:text-dosh-950 dark:border-dosh-700/75 dark:bg-dosh-950/55 dark:text-dosh-100 dark:hover:border-dosh-500 dark:hover:bg-dosh-900/70 dark:hover:text-white'
+              )
+            }
+          >
+            <PresentationChartBarIcon className="h-4 w-4 shrink-0" />
+            Reporting
+          </NavLink>
+          <button
+            onClick={handleReportsToggle}
+            title={reportsExpanded ? 'Hide budget list' : 'Show budget list'}
+            className={clsx(
+              'rounded-2xl border p-3 transition-colors',
+              reportsExpanded
+                ? 'border-dosh-300 bg-dosh-600 text-white hover:bg-dosh-500'
+                : 'border-dosh-200 bg-dosh-50 text-dosh-700 hover:border-dosh-400 hover:bg-dosh-100 hover:text-dosh-950 dark:border-dosh-700/75 dark:bg-dosh-950/55 dark:text-dosh-200 dark:hover:border-dosh-500 dark:hover:bg-dosh-900/70 dark:hover:text-white'
+            )}
+          >
+            {reportsExpanded ? <ChevronDownIcon className="h-4 w-4" /> : <ChevronRightIcon className="h-4 w-4" />}
+          </button>
+        </div>
+      </div>
+
+      {reportsExpanded ? (
+        <ReportsBudgetList
+          budgets={budgets}
+          currentBudgetId={currentBudgetId}
+          onNav={onNav}
+        />
+      ) : null}
     </div>
   )
 }
@@ -343,6 +432,7 @@ export default function Layout() {
   const [open, setOpen] = useState(false)
   const [dark, setDark] = useDarkMode()
   const [budgetsExpanded, setBudgetsExpanded] = useState(true)
+  const [reportsExpanded, setReportsExpanded] = useState(false)
   const [releaseNotesOpen, setReleaseNotesOpen] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     if (typeof window === 'undefined') return false
@@ -352,6 +442,8 @@ export default function Layout() {
   const budgetMatch = useMatch('/budgets/:budgetId')
   const budgetSetupMatch = useMatch('/budgets/:budgetId/setup')
   const periodMatch = useMatch('/budgets/:budgetId/periods/:periodId')
+  const reportsMatch = useMatch('/reports/*')
+  const reportsBudgetMatch = useMatch('/reports/:budgetId')
 
   let activeBudgetId = null
   if (budgetMatch) {
@@ -360,6 +452,8 @@ export default function Layout() {
     activeBudgetId = Number.parseInt(budgetSetupMatch.params.budgetId, 10)
   } else if (periodMatch) {
     activeBudgetId = Number.parseInt(periodMatch.params.budgetId, 10)
+  } else if (reportsBudgetMatch) {
+    activeBudgetId = Number.parseInt(reportsBudgetMatch.params.budgetId, 10)
   }
   const activePeriodId = periodMatch ? Number.parseInt(periodMatch.params.periodId, 10) : null
 
@@ -389,12 +483,13 @@ export default function Layout() {
   const currentBudgetId = activeBudgetId ?? periodData?.period?.budgetid ?? null
   const currentBudget = budgets.find(budget => budget.budgetid === currentBudgetId) ?? null
   const onBudgetOrPeriod = !!(budgetMatch || budgetSetupMatch || periodMatch)
+  const onReports = !!reportsMatch
   const versionLabel = displayVersion(appInfo?.version)
   const updateAvailable = releaseNotes?.update_available ?? false
 
   useEffect(() => {
-    if (!currentBudgetId) setBudgetsExpanded(true)
-  }, [currentBudgetId])
+    if (!currentBudgetId && !onReports) setBudgetsExpanded(true)
+  }, [currentBudgetId, onReports])
 
   useEffect(() => {
     localStorage.setItem('dosh-sidebar-collapsed', String(sidebarCollapsed))
@@ -530,6 +625,21 @@ export default function Layout() {
               >
                 <ChevronRightIcon className="h-5 w-5" />
               </button>
+              <NavLink
+                to={currentBudget ? `/reports/${currentBudget.budgetid}` : '/reports'}
+                onClick={() => setOpen(false)}
+                title="Reporting"
+                className={({ isActive }) =>
+                  clsx(
+                    'flex items-center justify-center rounded-2xl border px-3 py-3 transition-colors',
+                    (isActive || onReports)
+                      ? 'border-dosh-400 bg-dosh-700 text-white'
+                      : 'border-dosh-200 bg-dosh-50 text-dosh-800 hover:border-dosh-400 hover:bg-dosh-100 hover:text-dosh-950 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-dosh-700 dark:hover:bg-slate-900 dark:hover:text-white'
+                  )
+                }
+              >
+                <PresentationChartBarIcon className="h-5 w-5 shrink-0" />
+              </NavLink>
             </div>
           </nav>
         ) : (
@@ -540,7 +650,10 @@ export default function Layout() {
               activePeriodId={activePeriodId}
               budgetsExpanded={budgetsExpanded}
               setBudgetsExpanded={setBudgetsExpanded}
+              reportsExpanded={reportsExpanded}
+              setReportsExpanded={setReportsExpanded}
               onBudgetOrPeriod={onBudgetOrPeriod}
+              onReports={onReports}
               onNav={() => setOpen(false)}
             />
           </nav>
@@ -625,12 +738,21 @@ CurrentBudgetPanel.propTypes = {
   shortcutsExpanded: PropTypes.bool,
 }
 
+ReportsBudgetList.propTypes = {
+  budgets: PropTypes.arrayOf(PropTypes.object).isRequired,
+  currentBudgetId: PropTypes.number,
+  onNav: PropTypes.func.isRequired,
+}
+
 LayoutNav.propTypes = {
   budgets: PropTypes.arrayOf(PropTypes.object).isRequired,
   currentBudgetId: PropTypes.number,
   activePeriodId: PropTypes.number,
   budgetsExpanded: PropTypes.bool.isRequired,
   setBudgetsExpanded: PropTypes.func.isRequired,
+  reportsExpanded: PropTypes.bool.isRequired,
+  setReportsExpanded: PropTypes.func.isRequired,
   onBudgetOrPeriod: PropTypes.bool.isRequired,
+  onReports: PropTypes.bool.isRequired,
   onNav: PropTypes.func.isRequired,
 }

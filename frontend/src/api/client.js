@@ -243,3 +243,10 @@ export const applyRestore = (file, selectedIndices = [], allowOverwrite = false)
     headers: { 'Content-Type': 'multipart/form-data' },
   }).then(r => r.data)
 }
+
+// ── Reports ──────────────────────────────────────────────────────────────────
+export const getBudgetReportSummary = budgetId =>
+  api.get(`/reports/budgets/${budgetId}/summary`).then(r => r.data)
+
+export const getBudgetVsActualTrends = (budgetId, params = {}) =>
+  api.get(`/reports/budgets/${budgetId}/trends/budget-vs-actual`, { params }).then(r => r.data)

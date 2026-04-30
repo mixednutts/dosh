@@ -30,6 +30,7 @@ from .routers import (
     investment_transactions,
     period_transactions,
     health_matrices,
+    reports,
 )
 
 configure_logging()
@@ -91,6 +92,7 @@ app.include_router(balance_types.period_router, prefix="/api")
 app.include_router(investment_transactions.router, prefix="/api")
 app.include_router(period_transactions.router, prefix="/api")
 app.include_router(health_matrices.router, prefix="/api")
+app.include_router(reports.router, prefix="/api")
 
 
 @app.get("/api/health")

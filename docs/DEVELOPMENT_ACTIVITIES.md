@@ -237,22 +237,23 @@ Activities:
 #### Activity Group: Reporting Foundations
 
 Status:
-- `Active`
+- `Completed` (2026-04-30)
 
 Activities:
-- define the canonical report payload shapes (backend-owned calculations)
-- ship the first reporting card set on budget summary
-- add the first drilldown slice (budget -> line -> transactions) where it materially helps trust
+- defined canonical report payload shapes (`GET /api/reports/budgets/{id}/summary`, `GET /api/reports/budgets/{id}/trends/budget-vs-actual`)
+- shipped the first reporting card set on the Reports landing page (Budget vs Actual active, Income Allocation and Investment Trends as "Coming soon")
+- added sidebar Reporting navigation with expand/collapse budget list
+- delivered: `backend/app/routers/reports.py`, `frontend/src/pages/ReportsLandingPage.jsx`, `frontend/src/components/Layout.jsx`
 
 #### Activity Group: Starter Reports / Graphs
 
 Status:
-- `Next`
+- `Active`
 
 Activities:
-- budget vs actual trend graphs
-- investment trend graphs
-- income allocation breakdown (expenses vs investments vs transfers)
+- budget vs actual trend graphs — **shipped** in `frontend/src/components/reports/BudgetVsActualChart.jsx` with Recharts, dark mode support, cycle-based filtering, and surplus toggle
+- investment trend graphs — deferred, shown as "Coming soon" on landing page
+- income allocation breakdown — deferred, shown as "Coming soon" on landing page
 
 ### 4) Scheduled Income
 
