@@ -42,12 +42,14 @@ describe('ReportsLandingPage', () => {
   it('redirects to first budget when no budgetId', async () => {
     renderWithRouter('/reports')
     expect(await screen.findByText('Budget vs Actual')).toBeTruthy()
-    expect((await screen.findAllByText('Coming soon')).length).toBe(2)
+    expect(await screen.findByText('Income Allocation')).toBeTruthy()
+    expect(await screen.findByText('Investment Trends')).toBeTruthy()
   })
 
   it('renders report cards when budgetId is present', async () => {
     renderWithRouter('/reports/1')
     expect(await screen.findByText('Budget vs Actual')).toBeTruthy()
-    expect((await screen.findAllByText('Coming soon')).length).toBe(2)
+    expect(await screen.findByText('Income Allocation')).toBeTruthy()
+    expect(await screen.findByText('Investment Trends')).toBeTruthy()
   })
 })

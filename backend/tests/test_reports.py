@@ -137,3 +137,165 @@ def test_budget_vs_actual_trends_all_time_filter(client, db_session):
     # Should return all non-planned periods
     planned_count = sum(1 for p in periods if p["cycle_stage"] == "PLANNED")
     assert len(data["periods"]) == len(periods) - planned_count
+
+
+# ── Income Allocation Trends ──────────────────────────────────────────────────
+
+
+def test_income_allocation_trends_404_for_missing_budget(client):
+    response = client.get("/api/reports/budgets/99999/trends/income-allocation")
+    assert response.status_code == 404
+
+
+def test_income_allocation_trends_empty_budget(client, db_session):
+    budget = create_budget(db_session)
+    response = client.get(f"/api/reports/budgets/{budget.budgetid}/trends/income-allocation")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["periods"] == []
+
+
+def test_income_allocation_trends_returns_correct_totals(client, db_session):
+    setup = create_minimum_budget_setup(db_session)
+    budget = setup["budget"]
+    start = utc_now().replace(hour=0, minute=0, second=0, microsecond=0)
+    periods = generate_periods(client, budgetid=budget.budgetid, startdate=start, count=1)
+
+    response = client.get(f"/api/reports/budgets/{budget.budgetid}/trends/income-allocation")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["periods"]) == 1
+    period = data["periods"][0]
+    assert period["income_budget"] == "2500.00"
+    assert Decimal(period["income_actual"]) == Decimal("0")
+    assert period["expense_budget"] == "1200.00"
+    assert Decimal(period["expense_actual"]) == Decimal("0")
+    assert Decimal(period["investment_budget"]) == Decimal("0")
+    assert Decimal(period["investment_actual"]) == Decimal("0")
+    assert "surplus_budget" not in period
+    assert "surplus_actual" not in period
+    assert "label" in period
+
+
+def test_income_allocation_trends_excludes_planned_periods(client, db_session):
+    setup = create_minimum_budget_setup(db_session)
+    budget = setup["budget"]
+    start = utc_now().replace(hour=0, minute=0, second=0, microsecond=0)
+    periods = generate_periods(client, budgetid=budget.budgetid, startdate=start, count=3)
+
+    response = client.get(
+        f"/api/reports/budgets/{budget.budgetid}/trends/income-allocation",
+        params={"from_date": "1900-01-01", "to_date": "2100-12-31"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    returned_ids = {p["finperiodid"] for p in data["periods"]}
+    planned_ids = {p["finperiodid"] for p in periods if p["cycle_stage"] == "PLANNED"}
+    assert not returned_ids & planned_ids
+
+
+def test_income_allocation_trends_custom_date_range(client, db_session):
+    setup = create_minimum_budget_setup(db_session)
+    budget = setup["budget"]
+    start = utc_now().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=120)
+    periods = generate_periods(client, budgetid=budget.budgetid, startdate=start, count=5)
+
+    from_date = (start + timedelta(days=30)).date().isoformat()
+    to_date = (start + timedelta(days=90)).date().isoformat()
+
+    response = client.get(
+        f"/api/reports/budgets/{budget.budgetid}/trends/income-allocation",
+        params={"from_date": from_date, "to_date": to_date},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["periods"]) >= 1
+
+
+# ── Investment Trends ─────────────────────────────────────────────────────────
+
+
+def test_investment_trends_404_for_missing_budget(client):
+    response = client.get("/api/reports/budgets/99999/trends/investment-trends")
+    assert response.status_code == 404
+
+
+def test_investment_trends_empty_budget(client, db_session):
+    budget = create_budget(db_session)
+    response = client.get(f"/api/reports/budgets/{budget.budgetid}/trends/investment-trends")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["periods"] == []
+
+
+def test_investment_trends_returns_correct_totals(client, db_session):
+    setup = create_minimum_budget_setup(db_session)
+    budget = setup["budget"]
+    start = utc_now().replace(hour=0, minute=0, second=0, microsecond=0)
+    periods = generate_periods(client, budgetid=budget.budgetid, startdate=start, count=1)
+
+    response = client.get(f"/api/reports/budgets/{budget.budgetid}/trends/investment-trends")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["periods"]) == 1
+    period = data["periods"][0]
+    assert "cumulative_contributed" in period
+    assert "cumulative_projected" in period
+    assert "investment_budget" not in period
+    assert "investment_actual" not in period
+    assert "opening_value" not in period
+    assert "closing_value" not in period
+    assert "label" in period
+
+
+def test_investment_trends_includes_planned_periods(client, db_session):
+    setup = create_minimum_budget_setup(db_session)
+    budget = setup["budget"]
+    start = utc_now().replace(hour=0, minute=0, second=0, microsecond=0)
+    periods = generate_periods(client, budgetid=budget.budgetid, startdate=start, count=3)
+
+    response = client.get(f"/api/reports/budgets/{budget.budgetid}/trends/investment-trends")
+    assert response.status_code == 200
+    data = response.json()
+    # Should include all periods including planned
+    assert len(data["periods"]) == len(periods)
+    planned_in_response = [p for p in data["periods"] if p["cycle_stage"] == "PLANNED"]
+    assert len(planned_in_response) >= 1
+    # Planned periods should have null contributed
+    for p in planned_in_response:
+        assert p["cumulative_contributed"] is None
+
+
+def test_investment_trends_cumulative_non_decreasing(client, db_session):
+    setup = create_minimum_budget_setup(db_session)
+    budget = setup["budget"]
+    start = utc_now().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=120)
+    periods = generate_periods(client, budgetid=budget.budgetid, startdate=start, count=5)
+
+    response = client.get(f"/api/reports/budgets/{budget.budgetid}/trends/investment-trends")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["periods"]) >= 1
+    contributed = [Decimal(p["cumulative_contributed"]) for p in data["periods"] if p["cumulative_contributed"] is not None]
+    projected = [Decimal(p["cumulative_projected"]) for p in data["periods"]]
+    for i in range(1, len(contributed)):
+        assert contributed[i] >= contributed[i - 1]
+    for i in range(1, len(projected)):
+        assert projected[i] >= projected[i - 1]
+
+
+def test_investment_trends_projected_exceeds_contributed_for_planned(client, db_session):
+    setup = create_minimum_budget_setup(db_session)
+    budget = setup["budget"]
+    start = utc_now().replace(hour=0, minute=0, second=0, microsecond=0)
+    periods = generate_periods(client, budgetid=budget.budgetid, startdate=start, count=3)
+
+    response = client.get(f"/api/reports/budgets/{budget.budgetid}/trends/investment-trends")
+    assert response.status_code == 200
+    data = response.json()
+    # For planned periods, contributed should be null while projected grows
+    planned_periods = [p for p in data["periods"] if p["cycle_stage"] == "PLANNED"]
+    if planned_periods:
+        for p in planned_periods:
+            assert p["cumulative_contributed"] is None
+            assert Decimal(p["cumulative_projected"]) >= Decimal("0")

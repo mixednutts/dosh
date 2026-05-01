@@ -4,6 +4,68 @@ This document captures the key product and implementation changes made during re
 
 It is intended to complement [README.md](/home/ubuntu/dosh/README.md), not replace it.
 
+## Session: Income Allocation and Investment Trends Reports (0.9.6-beta) (2026-05-02)
+
+### What changed
+
+- **Income Allocation Report — shipped.**
+  - Backend endpoint `GET /api/reports/budgets/{id}/trends/income-allocation` returns per-period income, expense, and investment actuals.
+  - Frontend `IncomeAllocationChart.jsx`: stacked area chart with absolute currency mode and percentage mode toggle.
+  - Percentage mode computes `expense_pct` and `investment_pct` as proportions of income actual. Y-axis domain locked to `[0, 100]` so the stack fills the full vertical space with no gap.
+  - Tooltip in percentage mode shows raw dollar amounts in parentheses and a "Total Income" footer.
+  - Tooltip in absolute mode shows an "Income" row at the bottom for visibility against the stacked areas.
+  - Income line in absolute mode uses dashed stroke (`strokeDasharray: '5 5'`) for visual distinction from solid area fills.
+  - `IncomeAllocationPage.jsx` with CycleFilter integration, toggle pills (Expenses, Investments, Percentages, Current Cycle), and breadcrumb navigation.
+
+- **Investment Trends Report — shipped.**
+  - Backend endpoint `GET /api/reports/budgets/{id}/trends/investment-trends` returns cumulative projected vs actual growth across all periods.
+  - Cumulative logic: CLOSED periods use raw `actualamount`; CURRENT/PENDING_CLOSURE use committed `max(actual, budget)`; PLANNED periods return `null` for actual growth (line stops at boundary).
+  - Projected growth uses `budgeted_amount` for all periods.
+  - Frontend `InvestmentTrendsChart.jsx`: line chart with Actual Growth (solid) vs Projected Growth (dashed). `connectNulls={false}` creates the break between historical and future.
+  - `InvestmentTrendsPage.jsx` with dual range selectors (Historical + Upcoming) and All/3/6/12/N presets.
+
+- **Sidebar Reporting Navigation Expansion.**
+  - Added `CurrentReportsPanel` to `Layout.jsx` that renders inside the expanded Reporting section.
+  - Shows three report links with icons and active state: Budget vs Actual, Income Allocation, Investment Trends.
+  - Each link includes the current `budgetId` as a query parameter.
+  - Fixed `Layout` to read `budgetId` from query params (`useSearchParams`) when on report sub-pages, so the Available Reports panel remains visible after navigating to a report.
+  - Fixed route match bug where `useMatch('/reports/:budgetId')` matched `/reports/budget-vs-actual` as a budget ID. Added `Number.isNaN` validation and separated query param check into independent `if` block.
+
+- **Sidebar Historic Cycles Limit.**
+  - Reduced historical period shortcuts from 4 to 2 most recent cycles, matching upcoming cycles behaviour.
+
+- **README Preview Update.**
+  - Added `images/dosh_reports_preview.gif` under a new Reports preview subsection.
+
+### Testing
+
+- Full backend regression suite: **349 passed** (+11 new report endpoint tests), 0 regressions introduced.
+- Full frontend regression suite: **423 passed** (+23 new tests across 4 new test files), 0 regressions introduced.
+
+### Files touched
+
+- `backend/app/routers/reports.py`
+- `backend/tests/test_reports.py`
+- `frontend/src/components/reports/IncomeAllocationChart.jsx` (new)
+- `frontend/src/components/reports/InvestmentTrendsChart.jsx` (new)
+- `frontend/src/pages/IncomeAllocationPage.jsx` (new)
+- `frontend/src/pages/InvestmentTrendsPage.jsx` (new)
+- `frontend/src/components/Layout.jsx`
+- `frontend/src/__tests__/Layout.test.jsx`
+- `frontend/src/__tests__/IncomeAllocationChart.test.jsx` (new)
+- `frontend/src/__tests__/IncomeAllocationPage.test.jsx` (new)
+- `frontend/src/__tests__/InvestmentTrendsChart.test.jsx` (new)
+- `frontend/src/__tests__/InvestmentTrendsPage.test.jsx` (new)
+- `README.md`
+- `images/dosh_reports_preview.gif` (new)
+- `docs/DEVELOPMENT_ACTIVITIES.md`
+- `docs/RELEASE_NOTES.md`
+- `docs/CHANGES.md`
+- `AGENTS.md`
+- `docs/MIGRATION_AND_RELEASE_MANAGEMENT.md`
+
+---
+
 ## Session: Budget vs Actual Timezone Fix (patch) (2026-05-01)
 
 ### What changed

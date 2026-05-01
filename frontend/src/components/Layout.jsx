@@ -1,9 +1,10 @@
-import { Outlet, NavLink, Link, useMatch } from 'react-router-dom'
+import { Outlet, NavLink, Link, useMatch, useLocation, useSearchParams } from 'react-router-dom'
 import PropTypes from 'prop-types'
 import {
   WalletIcon, Bars3Icon, XMarkIcon, MoonIcon, SunIcon,
   ChevronRightIcon, ChevronDownIcon, ChevronLeftIcon,
   PresentationChartBarIcon,
+  ChartBarIcon, ArrowTrendingUpIcon, CurrencyDollarIcon,
 } from '@heroicons/react/24/outline'
 import { useState, useEffect, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
@@ -18,7 +19,7 @@ import { getAppInfo, getBudgets, getBudgetSetupAssessment, getPeriodDetail, getP
 import { getCycleStage } from '../utils/periodStage'
 
 function displayVersion(version) {
-  return `v${version || '0.9.5-beta'}`
+  return `v${version || '0.9.6-beta'}`
 }
 
 function PeriodShortcutGroup({ title, periods, activePeriodId, onNav, budgetId, emptyMessage = null, moreText = null, moreTo = null, moreSubtle = false }) {
@@ -168,7 +169,7 @@ function CurrentBudgetPanel({ budget, activePeriodId, onNav, shortcutsExpanded =
   const pendingClosurePeriods = orderedPeriods.filter(period => getCycleStage(period) === 'PENDING_CLOSURE')
   const visiblePendingClosurePeriods = pendingClosurePeriods.slice(0, 2)
   const allHistoricalPeriods = orderedPeriods.filter(period => getCycleStage(period) === 'CLOSED')
-  const historicalPeriods = allHistoricalPeriods.slice(-4).reverse()
+  const historicalPeriods = allHistoricalPeriods.slice(-2).reverse()
   const hasMoreFuturePeriods = allFuturePeriods.length > futurePeriods.length
   const hasMorePendingClosurePeriods = pendingClosurePeriods.length > visiblePendingClosurePeriods.length
   const hasMoreHistoricalPeriods = allHistoricalPeriods.length > historicalPeriods.length
@@ -314,6 +315,47 @@ function ReportsBudgetList({ budgets, currentBudgetId, onNav }) {
   )
 }
 
+const REPORT_LINKS = [
+  { key: 'budget-vs-actual', title: 'Budget vs Actual', icon: ChartBarIcon, path: '/reports/budget-vs-actual' },
+  { key: 'income-allocation', title: 'Income Allocation', icon: ArrowTrendingUpIcon, path: '/reports/income-allocation' },
+  { key: 'investment-trends', title: 'Investment Trends', icon: CurrencyDollarIcon, path: '/reports/investment-trends' },
+]
+
+function CurrentReportsPanel({ budgetId, onNav }) {
+  const location = useLocation()
+
+  return (
+    <div className="mt-3 space-y-2 rounded-2xl border border-dosh-200 bg-dosh-50/60 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.4)] dark:border-dosh-700/75 dark:bg-slate-950 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-dosh-700 dark:text-dosh-300">Available Reports</span>
+      </div>
+      <div className="space-y-1.5">
+        {REPORT_LINKS.map(report => {
+          const target = `${report.path}?budgetId=${budgetId}`
+          const isActive = location.pathname === report.path
+          const Icon = report.icon
+          return (
+            <Link
+              key={report.key}
+              to={target}
+              onClick={onNav}
+              className={clsx(
+                'flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition-colors',
+                isActive
+                  ? 'border-dosh-400 bg-dosh-600 text-white'
+                  : 'border-gray-200 bg-white text-gray-700 hover:border-dosh-400 hover:bg-dosh-50 hover:text-dosh-900 dark:border-slate-800 dark:bg-slate-950/85 dark:text-slate-200 dark:hover:border-dosh-700 dark:hover:bg-slate-900 dark:hover:text-white'
+              )}
+            >
+              <Icon className={clsx('h-4 w-4 shrink-0', isActive ? 'text-white' : 'text-dosh-600 dark:text-dosh-400')} />
+              <span className="truncate">{report.title}</span>
+            </Link>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 function LayoutNav({ budgets, currentBudgetId, activePeriodId, budgetsExpanded, setBudgetsExpanded, reportsExpanded, setReportsExpanded, onBudgetOrPeriod, onReports, onNav }) {
   const currentBudget = budgets.find(budget => budget.budgetid === currentBudgetId)
   const reportsTarget = currentBudget ? `/reports/${currentBudget.budgetid}` : '/reports'
@@ -432,6 +474,13 @@ function LayoutNav({ budgets, currentBudgetId, activePeriodId, budgetsExpanded, 
           onNav={onNav}
         />
       ) : null}
+
+      {reportsExpanded && currentBudget ? (
+        <CurrentReportsPanel
+          budgetId={currentBudget.budgetid}
+          onNav={onNav}
+        />
+      ) : null}
     </div>
   )
 }
@@ -452,6 +501,7 @@ export default function Layout() {
   const periodMatch = useMatch('/budgets/:budgetId/periods/:periodId')
   const reportsMatch = useMatch('/reports/*')
   const reportsBudgetMatch = useMatch('/reports/:budgetId')
+  const [searchParams] = useSearchParams()
 
   let activeBudgetId = null
   if (budgetMatch) {
@@ -461,7 +511,18 @@ export default function Layout() {
   } else if (periodMatch) {
     activeBudgetId = Number.parseInt(periodMatch.params.budgetId, 10)
   } else if (reportsBudgetMatch) {
-    activeBudgetId = Number.parseInt(reportsBudgetMatch.params.budgetId, 10)
+    const pathBudgetId = Number.parseInt(reportsBudgetMatch.params.budgetId, 10)
+    if (!Number.isNaN(pathBudgetId)) {
+      activeBudgetId = pathBudgetId
+    }
+  }
+
+  // If still no budgetId, check query params on any reports page
+  if (activeBudgetId === null && reportsMatch) {
+    const queryBudgetId = searchParams.get('budgetId')
+    if (queryBudgetId) {
+      activeBudgetId = Number.parseInt(queryBudgetId, 10) || null
+    }
   }
   const activePeriodId = periodMatch ? Number.parseInt(periodMatch.params.periodId, 10) : null
 
@@ -761,6 +822,11 @@ CurrentBudgetPanel.propTypes = {
 ReportsBudgetList.propTypes = {
   budgets: PropTypes.arrayOf(PropTypes.object).isRequired,
   currentBudgetId: PropTypes.number,
+  onNav: PropTypes.func.isRequired,
+}
+
+CurrentReportsPanel.propTypes = {
+  budgetId: PropTypes.number.isRequired,
   onNav: PropTypes.func.isRequired,
 }
 

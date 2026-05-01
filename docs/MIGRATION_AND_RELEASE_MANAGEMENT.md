@@ -12,8 +12,8 @@ Use it when:
 
 ## Current Baseline
 
-- current canonical app version: `0.9.4-beta`
-- current UI display format: `v0.9.4-beta`
+- current canonical app version: `0.9.6-beta`
+- current UI display format: `v0.9.6-beta`
 - current app state classification: `beta`
 - current schema management authority: Alembic
 - current deployment path: Docker Compose
@@ -25,7 +25,9 @@ The current repository state and deployed state are treated as aligned for this 
 
 | Version | Date | Note |
 |---|---|---|
-| 0.9.4-beta | 2026-04-30 | Close Account workflow; income deletion relaxation; overdraft guard; account type consolidation; reporting framework foundations |
+| 0.9.6-beta | 2026-05-02 | Income Allocation and Investment Trends reports; sidebar reporting navigation expansion; historic cycles limit reduced to 2 |
+| 0.9.5-beta | 2026-05-01 | Budget vs Actual report; cycle-based filtering; reporting framework foundations |
+| 0.9.4-beta | 2026-04-30 | Close Account workflow; income deletion relaxation; overdraft guard; account type consolidation |
 | 0.9.3-beta | 2026-04-29 | Revert release — restores v0.9.1-beta baseline, stripping v0.9.2-beta cash-only investment changes |
 | 0.9.2-beta | 2026-04-29 | Withdrawn — introduced cash-only investment contra transactions and `invested_amount` display (reverted by 0.9.3-beta) |
 | 0.9.1-beta | 2026-04-29 | Type-agnostic primary account; cash-only budgets can generate cycles |

@@ -250,3 +250,9 @@ export const getBudgetReportSummary = budgetId =>
 
 export const getBudgetVsActualTrends = (budgetId, params = {}) =>
   api.get(`/reports/budgets/${budgetId}/trends/budget-vs-actual`, { params }).then(r => r.data)
+
+export const getIncomeAllocationTrends = (budgetId, params = {}) =>
+  api.get(`/reports/budgets/${budgetId}/trends/income-allocation`, { params }).then(r => r.data)
+
+export const getInvestmentTrends = (budgetId, params = {}) =>
+  api.get(`/reports/budgets/${budgetId}/trends/investment-trends`, { params }).then(r => r.data)

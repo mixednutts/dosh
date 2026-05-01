@@ -24,16 +24,16 @@ const REPORT_CARDS = [
     title: 'Income Allocation',
     description: 'Visualise how income is distributed across categories.',
     icon: ArrowTrendingUpIcon,
-    to: () => '#',
-    enabled: false,
+    to: (budgetId) => `/reports/income-allocation?budgetId=${budgetId}`,
+    enabled: true,
   },
   {
     key: 'investment-trends',
     title: 'Investment Trends',
     description: 'Track investment growth and contribution patterns over time.',
     icon: CurrencyDollarIcon,
-    to: () => '#',
-    enabled: false,
+    to: (budgetId) => `/reports/investment-trends?budgetId=${budgetId}`,
+    enabled: true,
   },
 ]
 

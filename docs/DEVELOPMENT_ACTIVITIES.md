@@ -248,18 +248,34 @@ Activities:
 #### Activity Group: Starter Reports / Graphs
 
 Status:
-- `Completed` (2026-05-01)
+- `Completed` (2026-05-02)
 
 Activities:
 - budget vs actual trend graphs — **shipped** in `frontend/src/components/reports/BudgetVsActualChart.jsx` with Recharts, dark mode support, cycle-based filtering, and surplus toggle
+- income allocation trend graph — **shipped** in `frontend/src/components/reports/IncomeAllocationChart.jsx` with stacked area chart, percentage toggle (expenses + investments as % of income), and total income tooltip
+- investment trends graph — **shipped** in `frontend/src/components/reports/InvestmentTrendsChart.jsx` with forward-looking projected vs actual cumulative growth lines
 - removed budget selector from Reports landing page; `/reports` now auto-redirects to first available budget
-- removed budget dropdown from Budget vs Actual page; budget is sourced from sidebar navigation
-- renamed page title to "Reports" with subtitle "Budget vs Actual"
+- removed budget dropdown from all report pages; budget is sourced from sidebar navigation
 - CycleFilter renamed "Periods" → "Cycles", added "Last 3 Cycles" preset, removed From/To date selector, hidden number input spinners
 - renamed "Exclude current" toggle to "Current Cycle" with inverted semantics (on = include current cycle)
 - added "Range" and "Filters" headings above the two control groups
-- investment trend graphs — deferred, shown as "Coming soon" on landing page
-- income allocation breakdown — deferred, shown as "Coming soon" on landing page
+- Y-axis padding (`{ top: 30, bottom: 10 }`) added to all three report charts to prevent data touching boundaries
+- deliverable: `backend/app/routers/reports.py` (3 endpoints), 5 new frontend components/pages, 8 new test files
+
+#### Activity Group: Reporting Sidebar Navigation
+
+Status:
+- `Completed` (2026-05-02)
+
+Activities:
+- expanded Reporting sidebar section to show Available Reports panel when expanded
+- panel lists three active reports with icons and active state: Budget vs Actual, Income Allocation, Investment Trends
+- report links automatically include `budgetId` query parameter from current budget context
+- fixed `Layout` route matching so report sub-pages (`/reports/budget-vs-actual`, etc.) correctly resolve the current budget from query params
+- fixed `useMatch('/reports/:budgetId')` incorrectly matching non-numeric paths (e.g. `/reports/budget-vs-actual`) by adding numeric validation
+- reduced Historic cycle shortcuts from 4 to 2 most recent, matching Upcoming cycles behaviour
+- updated `Layout.test.jsx` for new shortcut count
+- deliverable: `frontend/src/components/Layout.jsx`, `frontend/src/__tests__/Layout.test.jsx`
 
 #### Activity Group: Demo Budget Expansion and Cycle Filter Period-Based Filtering
 

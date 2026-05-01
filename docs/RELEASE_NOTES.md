@@ -2,9 +2,26 @@
 
 ## Unreleased
 
+## 0.9.6-beta | released | 2026-05-02
+
+### Reporting Framework
+
+The Reporting section now includes three live reports, accessible from the expanded **Reporting** sidebar navigation.
+
+- **Income Allocation** — a stacked area chart showing how your income is distributed across expenses and investments over time. Toggle between dollar values and percentages to see proportions at a glance. In percentage mode the chart always scales to 100% so you can visually compare allocation patterns across cycles.
+- **Investment Trends** — a forward-looking line chart tracking cumulative projected growth against actual contributions. Historical cycles show actuals; upcoming cycles show projections; the current cycle uses committed values so partial progress is reflected accurately.
+- **Budget vs Actual** — unchanged from 0.9.5-beta, now reachable alongside the two new reports.
+- The sidebar Reporting section now expands to show **Available Reports** links for quick navigation between reports without leaving the sidebar.
+- Historic cycle shortcuts in the sidebar are now limited to the 2 most recent closed cycles (down from 4), matching the upcoming cycles behaviour and keeping the sidebar compact.
+
 ### Fixed
 
 - **Budget vs Actual chart no longer drops the earliest cycle for timezones ahead of UTC.** The date range sent to the backend is now formatted in UTC, so cycles starting near the UTC midnight boundary (for example, a Sydney-based budget) are correctly included instead of being filtered out.
+
+### Engineering
+
+- Added 23 frontend tests covering Income Allocation chart, page, Investment Trends chart, and page components.
+- Added 11 backend tests covering income allocation and investment trend endpoints.
 
 ## 0.9.5-beta | released | 2026-05-01
 

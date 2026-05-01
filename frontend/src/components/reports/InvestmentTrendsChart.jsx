@@ -48,31 +48,13 @@ CustomTooltip.propTypes = {
   label: PropTypes.string,
 }
 
-export default function BudgetVsActualChart({ data, showExpenses, showInvestments, showIncome }) {
+export default function InvestmentTrendsChart({ data }) {
   const theme = useChartTheme()
 
-  const lines = []
-
-  if (showIncome) {
-    lines.push(
-      { key: 'income_budget', name: 'Income Budget', color: theme.line1, strokeDasharray: '4 4' },
-      { key: 'income_actual', name: 'Income Actual', color: theme.line2 },
-    )
-  }
-
-  if (showExpenses) {
-    lines.push(
-      { key: 'expense_budget', name: 'Expense Budget', color: theme.line3, strokeDasharray: '4 4' },
-      { key: 'expense_actual', name: 'Expense Actual', color: theme.line4 },
-    )
-  }
-
-  if (showInvestments) {
-    lines.push(
-      { key: 'investment_budget', name: 'Investment Budget', color: theme.line5, strokeDasharray: '4 4' },
-      { key: 'investment_actual', name: 'Investment Actual', color: theme.line6 },
-    )
-  }
+  const lines = [
+    { key: 'cumulative_contributed', name: 'Actual Growth', color: theme.line6 },
+    { key: 'cumulative_projected', name: 'Projected Growth', color: theme.line5, strokeDasharray: '4 4' },
+  ]
 
   return (
     <div className="h-80 w-full sm:h-96">
@@ -117,15 +99,6 @@ export default function BudgetVsActualChart({ data, showExpenses, showInvestment
   )
 }
 
-BudgetVsActualChart.propTypes = {
+InvestmentTrendsChart.propTypes = {
   data: PropTypes.arrayOf(PropTypes.object).isRequired,
-  showExpenses: PropTypes.bool,
-  showInvestments: PropTypes.bool,
-  showIncome: PropTypes.bool,
-}
-
-BudgetVsActualChart.defaultProps = {
-  showExpenses: true,
-  showInvestments: true,
-  showIncome: true,
 }

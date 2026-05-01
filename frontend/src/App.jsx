@@ -10,6 +10,8 @@ const PeriodDetailPage = lazy(() => import('./pages/PeriodDetailPage'))
 const CurrentPeriodRedirect = lazy(() => import('./pages/CurrentPeriodRedirect'))
 const ReportsLandingPage = lazy(() => import('./pages/ReportsLandingPage'))
 const BudgetVsActualPage = lazy(() => import('./pages/BudgetVsActualPage'))
+const IncomeAllocationPage = lazy(() => import('./pages/IncomeAllocationPage'))
+const InvestmentTrendsPage = lazy(() => import('./pages/InvestmentTrendsPage'))
 
 function PageLoadingFallback() {
   return (
@@ -35,6 +37,8 @@ export default function App() {
             <Route path="reports" element={<ReportsLandingPage />} />
             <Route path="reports/:budgetId" element={<ReportsLandingPage />} />
             <Route path="reports/budget-vs-actual" element={<BudgetVsActualPage />} />
+            <Route path="reports/income-allocation" element={<IncomeAllocationPage />} />
+            <Route path="reports/investment-trends" element={<InvestmentTrendsPage />} />
           </Route>
         </Routes>
       </Suspense>
