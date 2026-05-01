@@ -1,8 +1,10 @@
 import React from 'react'
 import { screen, fireEvent, waitFor } from '@testing-library/react'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { render } from '@testing-library/react'
 
 import BudgetVsActualPage from '../pages/BudgetVsActualPage'
-import { renderWithProviders } from '../testUtils'
 
 const mockNavigate = jest.fn()
 
@@ -50,28 +52,54 @@ jest.mock('../components/DateField', () => {
 
 const client = require('../api/client')
 
+function renderWithRouter(route) {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  })
+
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter
+        initialEntries={[route]}
+        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+      >
+        <Routes>
+          <Route path="reports/budget-vs-actual" element={<BudgetVsActualPage />} />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>
+  )
+}
+
 describe('BudgetVsActualPage', () => {
   beforeEach(() => {
     jest.clearAllMocks()
   })
 
-  it('shows budget selector when no budgetId is provided', async () => {
+  it('redirects to first budget when no budgetId is provided', async () => {
     client.getBudgets.mockResolvedValue([
       { budgetid: 1, description: 'Home Budget', budgetowner: 'Alex', budget_frequency: 'Monthly' },
       { budgetid: 2, description: 'Travel Budget', budgetowner: 'Sam', budget_frequency: 'Monthly' },
     ])
-
-    renderWithProviders(<BudgetVsActualPage />, {
-      route: '/reports/budget-vs-actual',
-      path: '/reports/budget-vs-actual',
+    client.getPeriodsForBudget.mockResolvedValue([
+      { finperiodid: 10, startdate: '2026-01-01', enddate: '2026-01-31', cycle_stage: 'CURRENT' },
+    ])
+    client.getBudgetVsActualTrends.mockResolvedValue({
+      periods: [
+        { label: 'Jan 2026', income_budget: 3000, income_actual: 3100, expense_budget: 1500, expense_actual: 1400, investment_budget: 500, investment_actual: 450, cycle_stage: 'CURRENT' },
+      ],
     })
 
-    expect(await screen.findByText('Select a budget to view this report.')).toBeTruthy()
-    expect(await screen.findByRole('option', { name: 'Home Budget' })).toBeTruthy()
-    expect(await screen.findByRole('option', { name: 'Travel Budget' })).toBeTruthy()
+    renderWithRouter('/reports/budget-vs-actual')
+
+    expect(await screen.findByRole('heading', { name: 'Reports' })).toBeTruthy()
+    expect(screen.getAllByText('Budget vs Actual').length).toBeGreaterThanOrEqual(1)
   })
 
-  it('renders breadcrumbs and budget switcher when budgetId is present', async () => {
+  it('renders breadcrumbs when budgetId is present', async () => {
     client.getBudgets.mockResolvedValue([
       { budgetid: 1, description: 'Home Budget', budgetowner: 'Alex', budget_frequency: 'Monthly' },
     ])
@@ -84,15 +112,11 @@ describe('BudgetVsActualPage', () => {
       ],
     })
 
-    renderWithProviders(<BudgetVsActualPage />, {
-      route: '/reports/budget-vs-actual?budgetId=1',
-      path: '/reports/budget-vs-actual',
-    })
+    renderWithRouter('/reports/budget-vs-actual?budgetId=1')
 
-    expect(await screen.findByRole('heading', { name: 'Budget vs Actual' })).toBeTruthy()
-    expect(screen.getByText('Track how actuals compare to budget over time.')).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'Reports' })).toBeTruthy()
+    expect(screen.getAllByText('Budget vs Actual').length).toBeGreaterThanOrEqual(1)
     expect(screen.getByRole('link', { name: 'Budgets' })).toBeTruthy()
-    expect(await screen.findByRole('option', { name: 'Home Budget' })).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Reports' })).toBeTruthy()
   })
 
@@ -105,12 +129,9 @@ describe('BudgetVsActualPage', () => {
     ])
     client.getBudgetVsActualTrends.mockImplementation(() => new Promise(() => {}))
 
-    renderWithProviders(<BudgetVsActualPage />, {
-      route: '/reports/budget-vs-actual?budgetId=1',
-      path: '/reports/budget-vs-actual',
-    })
+    renderWithRouter('/reports/budget-vs-actual?budgetId=1')
 
-    expect(await screen.findByRole('heading', { name: 'Budget vs Actual' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'Reports' })).toBeTruthy()
     expect(document.querySelector('.animate-spin')).toBeTruthy()
   })
 
@@ -123,10 +144,7 @@ describe('BudgetVsActualPage', () => {
     ])
     client.getBudgetVsActualTrends.mockResolvedValue({ periods: [] })
 
-    renderWithProviders(<BudgetVsActualPage />, {
-      route: '/reports/budget-vs-actual?budgetId=1',
-      path: '/reports/budget-vs-actual',
-    })
+    renderWithRouter('/reports/budget-vs-actual?budgetId=1')
 
     expect(await screen.findByText('No periods in selected date range')).toBeTruthy()
     expect(await screen.findByText('Try adjusting the filter to include more budget cycles.')).toBeTruthy()
@@ -145,10 +163,7 @@ describe('BudgetVsActualPage', () => {
       ],
     })
 
-    renderWithProviders(<BudgetVsActualPage />, {
-      route: '/reports/budget-vs-actual?budgetId=1',
-      path: '/reports/budget-vs-actual',
-    })
+    renderWithRouter('/reports/budget-vs-actual?budgetId=1')
 
     expect(await screen.findByTestId('line-chart')).toBeTruthy()
   })
@@ -166,10 +181,7 @@ describe('BudgetVsActualPage', () => {
       ],
     })
 
-    renderWithProviders(<BudgetVsActualPage />, {
-      route: '/reports/budget-vs-actual?budgetId=1',
-      path: '/reports/budget-vs-actual',
-    })
+    renderWithRouter('/reports/budget-vs-actual?budgetId=1')
 
     expect(await screen.findByTestId('line-chart')).toBeTruthy()
 
@@ -182,7 +194,7 @@ describe('BudgetVsActualPage', () => {
     })
   })
 
-  it('excludes current period when Exclude current pill is clicked', async () => {
+  it('excludes current period when Current Cycle pill is toggled off', async () => {
     client.getBudgets.mockResolvedValue([
       { budgetid: 1, description: 'Home Budget', budgetowner: 'Alex', budget_frequency: 'Monthly' },
     ])
@@ -197,17 +209,14 @@ describe('BudgetVsActualPage', () => {
       ],
     })
 
-    renderWithProviders(<BudgetVsActualPage />, {
-      route: '/reports/budget-vs-actual?budgetId=1',
-      path: '/reports/budget-vs-actual',
-    })
+    renderWithRouter('/reports/budget-vs-actual?budgetId=1')
 
     const chart = await screen.findByTestId('line-chart')
     expect(chart).toBeTruthy()
     expect(chart.getAttribute('data-data-count')).toBe('2')
 
-    const excludePill = screen.getByRole('button', { name: 'Exclude current' })
-    fireEvent.click(excludePill)
+    const currentCyclePill = screen.getByRole('button', { name: 'Current Cycle' })
+    fireEvent.click(currentCyclePill)
 
     await waitFor(() => {
       const updatedChart = screen.getByTestId('line-chart')
@@ -228,10 +237,7 @@ describe('BudgetVsActualPage', () => {
       ],
     })
 
-    renderWithProviders(<BudgetVsActualPage />, {
-      route: '/reports/budget-vs-actual?budgetId=1',
-      path: '/reports/budget-vs-actual',
-    })
+    renderWithRouter('/reports/budget-vs-actual?budgetId=1')
 
     await screen.findByTestId('line-chart')
 
@@ -257,10 +263,7 @@ describe('BudgetVsActualPage', () => {
       ],
     })
 
-    renderWithProviders(<BudgetVsActualPage />, {
-      route: '/reports/budget-vs-actual?budgetId=1',
-      path: '/reports/budget-vs-actual',
-    })
+    renderWithRouter('/reports/budget-vs-actual?budgetId=1')
 
     expect(await screen.findByTestId('line-chart')).toBeTruthy()
 

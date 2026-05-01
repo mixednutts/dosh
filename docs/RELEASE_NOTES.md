@@ -2,9 +2,18 @@
 
 ## Unreleased
 
-### Engineering
+## 0.9.5-beta | released | 2026-05-01
 
-- Added 27 frontend tests to close the SonarQube `new_coverage` quality gate gap (79.4% → above 80% threshold). Coverage added for `BudgetVsActualPage`, `CycleFilter`, `BudgetVsActualChart`, and `useChartTheme`.
+### Reporting Framework
+
+The first reporting capability is now live. Navigate to **Reporting** in the sidebar to explore budget trends.
+
+- **Budget vs Actual** — a multi-line trend chart comparing budgeted and actual values for income, expenses, and investments across budget cycles. Supports cycle-count filtering, category toggles, and dark mode.
+- The Reports landing page now automatically opens the first available budget, removing the extra selection step.
+- The Budget vs Actual page no longer shows a budget dropdown; the budget is determined by the sidebar selection.
+- Cycle filter presets are now cycle-based: **Last 12 Cycles**, **Last 6 Cycles**, **Last 3 Cycles**, and **All Cycles**. A custom "Last # cycles" input lets you type any number.
+- The "Exclude current" toggle has been renamed to **Current Cycle** with clearer on/off semantics: on means the current cycle is included in the chart.
+- Small **Range** and **Filters** labels now sit above the two control groups for clearer visual hierarchy.
 
 ### Changed
 
@@ -13,16 +22,20 @@
 - The setup guidance banner on the Budget Cycles page now uses the same clean info-styling as other helper surfaces instead of amber.
 - The budget card edit icon on the Budgets page now uses a cog instead of a pencil, consistent with the Budget Setup link on the Budget Cycle Details page.
 - The Budget Cycle Details page header now has a cog icon that jumps directly to Budget Setup.
-- Budget vs Actual trend chart date filter presets renamed from "Last 12 Months", "Last 6 Months", "All Time" to "Last 12 Periods", "Last 6 Periods", "All Periods".
-- Date range calculation in Budget vs Actual changed from calendar-month subtraction to period-count slicing, so filters align with actual budget cycles rather than calendar months.
+- When entering Budget Setup from a Budget Cycle Details page, the breadcrumb now preserves context: `Budgets > Budget Name > Cycle Details > Setup`, with a link back to the cycle you came from.
 
 ### Added
 
-- **Reporting framework — Budget vs Actual trends.** A new "Reporting" section is available from the sidebar. Choose a budget to see the Reports landing page, then open "Budget vs Actual" to view a multi-line trend chart comparing budgeted and actual values for income, expenses, and investments over time. The chart supports preset date ranges (Last 12 Periods, Last 6 Periods, All Periods) and custom date ranges. A "Show surplus" toggle optionally adds surplus budget and actual lines. The chart is fully responsive and respects dark mode.
-- Custom period count input in Budget vs Actual filter: type any number next to "Last # periods" to dynamically filter the trend chart to that many most-recent budget cycles.
 - Click-to-reveal question mark hints on the Surplus (Budget) and Surplus (Actual) summary cards, explaining what each value represents in plain language.
-- When entering Budget Setup from a Budget Cycle Details page, the breadcrumb now preserves context: `Budgets > Budget Name > Cycle Details > Setup`, with a link back to the cycle you came from.
 - Demo budget now generates 15 historical closed periods (up from 3) with varied spending patterns for richer trend chart demonstrations.
+
+### Fixed
+
+- Backend test `test_creating_active_balance_type_skips_closed_periods_and_adds_to_planned` now correctly asserts that pending-closure periods do not receive newly created balance types (only current and planned periods do).
+
+### Engineering
+
+- Added 27 frontend tests to close the SonarQube `new_coverage` quality gate gap (79.4% → above 80% threshold). Coverage added for `BudgetVsActualPage`, `CycleFilter`, `BudgetVsActualChart`, and `useChartTheme`.
 
 ## 0.9.4-beta | released | 2026-04-30
 

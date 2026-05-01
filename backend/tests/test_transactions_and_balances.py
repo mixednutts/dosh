@@ -256,9 +256,14 @@ def test_creating_active_balance_type_skips_closed_periods_and_adds_to_planned(c
     closed_descs = {row["balancedesc"] for row in closed_balances.json()}
     assert "Late Account" not in closed_descs
 
-    # Future planned periods should have the new account (create_balance_type adds to current + planned)
-    for pid in [second_period_id, third_period_id]:
-        bal = client.get(f"/api/budgets/{budget.budgetid}/periods/{pid}/balances")
-        assert bal.status_code == 200, bal.text
-        descs = {row["balancedesc"] for row in bal.json()}
-        assert "Late Account" in descs
+    # Pending-closure period should NOT have the new account
+    pending_balances = client.get(f"/api/budgets/{budget.budgetid}/periods/{second_period_id}/balances")
+    assert pending_balances.status_code == 200, pending_balances.text
+    pending_descs = {row["balancedesc"] for row in pending_balances.json()}
+    assert "Late Account" not in pending_descs
+
+    # Current / planned periods should have the new account (create_balance_type adds to current + planned)
+    bal = client.get(f"/api/budgets/{budget.budgetid}/periods/{third_period_id}/balances")
+    assert bal.status_code == 200, bal.text
+    descs = {row["balancedesc"] for row in bal.json()}
+    assert "Late Account" in descs

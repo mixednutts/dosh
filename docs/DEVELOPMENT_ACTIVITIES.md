@@ -248,10 +248,16 @@ Activities:
 #### Activity Group: Starter Reports / Graphs
 
 Status:
-- `Active`
+- `Completed` (2026-05-01)
 
 Activities:
 - budget vs actual trend graphs — **shipped** in `frontend/src/components/reports/BudgetVsActualChart.jsx` with Recharts, dark mode support, cycle-based filtering, and surplus toggle
+- removed budget selector from Reports landing page; `/reports` now auto-redirects to first available budget
+- removed budget dropdown from Budget vs Actual page; budget is sourced from sidebar navigation
+- renamed page title to "Reports" with subtitle "Budget vs Actual"
+- CycleFilter renamed "Periods" → "Cycles", added "Last 3 Cycles" preset, removed From/To date selector, hidden number input spinners
+- renamed "Exclude current" toggle to "Current Cycle" with inverted semantics (on = include current cycle)
+- added "Range" and "Filters" headings above the two control groups
 - investment trend graphs — deferred, shown as "Coming soon" on landing page
 - income allocation breakdown — deferred, shown as "Coming soon" on landing page
 

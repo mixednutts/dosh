@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, Navigate, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
   ChartBarIcon,
@@ -123,21 +123,17 @@ export default function ReportsLandingPage() {
     )
   }
 
-  // No budget selected — show budget selector
+  // No budget selected — redirect to first available budget
   if (!numericBudgetId) {
-    return (
-      <div className="space-y-6">
-        <div className="space-y-1">
+    if (budgets.length === 0) {
+      return (
+        <div className="space-y-6">
           <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Reports</h1>
-          <p className="text-sm text-gray-500 dark:text-slate-400">Select a budget to view reports.</p>
+          <p className="text-sm text-gray-500 dark:text-slate-400">No budgets available.</p>
         </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {budgets.map(budget => (
-            <BudgetSelectorCard key={budget.budgetid} budget={budget} />
-          ))}
-        </div>
-      </div>
-    )
+      )
+    }
+    return <Navigate to={`/reports/${budgets[0].budgetid}`} replace />
   }
 
   return (

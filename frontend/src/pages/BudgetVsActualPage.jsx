@@ -1,8 +1,7 @@
 import { useMemo, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { format, parseISO } from 'date-fns'
-import { ChevronDownIcon } from '@heroicons/react/24/outline'
 import clsx from 'clsx'
 import { getBudgets, getPeriodsForBudget, getBudgetVsActualTrends } from '../api/client'
 import BudgetVsActualChart from '../components/reports/BudgetVsActualChart'
@@ -33,9 +32,9 @@ export default function BudgetVsActualPage() {
   const [showExpenses, setShowExpenses] = useState(true)
   const [showInvestments, setShowInvestments] = useState(true)
   const [showIncome, setShowIncome] = useState(true)
-  const [excludeCurrentPeriod, setExcludeCurrentPeriod] = useState(false)
+  const [includeCurrentPeriod, setIncludeCurrentPeriod] = useState(true)
 
-  const { data: budgets = [] } = useQuery({
+  const { data: budgets = [], isLoading: budgetsLoading } = useQuery({
     queryKey: ['budgets'],
     queryFn: getBudgets,
     staleTime: 60_000,
@@ -76,38 +75,27 @@ export default function BudgetVsActualPage() {
   const rawTrendPeriods = trendsData?.periods || []
 
   const trendPeriods = useMemo(() => {
-    if (!excludeCurrentPeriod) return rawTrendPeriods
+    if (includeCurrentPeriod) return rawTrendPeriods
     return rawTrendPeriods.filter(p => p.cycle_stage !== 'CURRENT')
-  }, [rawTrendPeriods, excludeCurrentPeriod])
-
-  const handleBudgetChange = (event) => {
-    const newId = event.target.value
-    if (newId) {
-      window.location.href = `/reports/budget-vs-actual?budgetId=${newId}`
-    }
-  }
+  }, [rawTrendPeriods, includeCurrentPeriod])
 
   if (!budgetId) {
-    return (
-      <div className="space-y-6">
-        <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Budget vs Actual</h1>
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-950/85">
-          <p className="text-sm text-gray-600 dark:text-slate-300">Select a budget to view this report.</p>
-          <div className="mt-4">
-            <select
-              onChange={handleBudgetChange}
-              className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
-              defaultValue=""
-            >
-              <option value="" disabled>Choose a budget...</option>
-              {budgets.map(b => (
-                <option key={b.budgetid} value={b.budgetid}>{b.description || 'Untitled'}</option>
-              ))}
-            </select>
-          </div>
+    if (budgetsLoading) {
+      return (
+        <div className="flex min-h-[40vh] items-center justify-center">
+          <Spinner className="h-8 w-8" />
         </div>
-      </div>
-    )
+      )
+    }
+    if (budgets.length === 0) {
+      return (
+        <div className="space-y-6">
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Budget vs Actual</h1>
+          <p className="text-sm text-gray-500 dark:text-slate-400">No budgets available.</p>
+        </div>
+      )
+    }
+    return <Navigate to={`/reports/budget-vs-actual?budgetId=${budgets[0].budgetid}`} replace />
   }
 
   return (
@@ -124,41 +112,29 @@ export default function BudgetVsActualPage() {
         <span className="font-medium text-gray-900 dark:text-white">Budget vs Actual</span>
       </nav>
 
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Budget vs Actual</h1>
-          <p className="text-sm text-gray-500 dark:text-slate-400">Track how actuals compare to budget over time.</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="relative">
-            <select
-              value={budgetId || ''}
-              onChange={handleBudgetChange}
-              className="appearance-none rounded-xl border border-gray-300 bg-white py-2 pl-3 pr-8 text-sm text-gray-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
-            >
-              {budgets.map(b => (
-                <option key={b.budgetid} value={b.budgetid}>{b.description || 'Untitled'}</option>
-              ))}
-            </select>
-            <ChevronDownIcon className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
-          </div>
-        </div>
+      <div className="space-y-1">
+        <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Reports</h1>
+        <p className="text-sm text-gray-500 dark:text-slate-400">Budget vs Actual</p>
       </div>
 
       <div className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950/85 lg:p-6">
         <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex-1">
+          <div className="flex-1 space-y-1.5">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-slate-500">Range</span>
             <CycleFilter
               budgetPeriods={nonPlannedPeriods}
               onChange={setFilterParams}
               defaultPreset="last12"
             />
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <TogglePill label="Expenses" checked={showExpenses} onChange={setShowExpenses} />
-            <TogglePill label="Investments" checked={showInvestments} onChange={setShowInvestments} />
-            <TogglePill label="Income" checked={showIncome} onChange={setShowIncome} />
-            <TogglePill label="Exclude current" checked={excludeCurrentPeriod} onChange={setExcludeCurrentPeriod} />
+          <div className="space-y-1.5">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-slate-500">Filters</span>
+            <div className="flex flex-wrap items-center gap-2">
+              <TogglePill label="Expenses" checked={showExpenses} onChange={setShowExpenses} />
+              <TogglePill label="Investments" checked={showInvestments} onChange={setShowInvestments} />
+              <TogglePill label="Income" checked={showIncome} onChange={setShowIncome} />
+              <TogglePill label="Current Cycle" checked={includeCurrentPeriod} onChange={setIncludeCurrentPeriod} />
+            </div>
           </div>
         </div>
 
