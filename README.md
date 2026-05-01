@@ -40,7 +40,7 @@ Dosh helps you manage your finances through a structured budget cycle approach:
 ## Preview
 
 ### Dashboard
-(Summary Page Light/Dark ; Cycles Page Light/Dark ; Details Page Light/Dark)
+(Summary Page Light | Dark ; Cycles Page Light | Dark ; Details Page Light | Dark)
 
 ![Dosh Preview](images/dosh_preview1.gif)
 
