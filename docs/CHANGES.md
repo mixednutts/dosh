@@ -4,6 +4,31 @@ This document captures the key product and implementation changes made during re
 
 It is intended to complement [README.md](/home/ubuntu/dosh/README.md), not replace it.
 
+## Session: Budget vs Actual Timezone Fix (patch) (2026-05-01)
+
+### What changed
+
+- **Fixed a timezone mismatch in the Budget vs Actual report that caused the earliest cycle to be excluded for timezones ahead of UTC.**
+  - `frontend/src/pages/BudgetVsActualPage.jsx`: added a `formatUTCDate()` helper that formats a JS `Date` using `getUTCFullYear()`, `getUTCMonth()`, and `getUTCDate()` instead of `date-fns/format`, which uses the browser's local timezone.
+  - The `queryParams` memo now calls `formatUTCDate(filterParams.fromDate)` and `formatUTCDate(filterParams.toDate)` for the `from_date` and `to_date` API query parameters.
+  - Root cause: `CycleFilter` parses period `startdate`/`enddate` ISO strings (e.g. `2024-12-31T14:00:00Z`) into JS `Date` objects. `format(date, 'yyyy-MM-dd')` in a browser running `Australia/Sydney` (+11) formats that instant as `2025-01-01`. The backend extracts `.date()` from the stored UTC datetime, getting `2024-12-31`. The mismatch (`2024-12-31 < 2025-01-01`) caused the backend to exclude the period from the trend response.
+  - By formatting in UTC, both sides now agree on the date boundary, and all periods in the selected range are correctly included.
+
+### Testing
+
+- Full backend regression suite: **349 passed**, 0 regressions introduced.
+- Full frontend regression suite: **397 passed**, 0 regressions introduced.
+
+### Files touched
+
+- `frontend/src/pages/BudgetVsActualPage.jsx`
+- `docs/DEVELOPMENT_ACTIVITIES.md`
+- `docs/RELEASE_NOTES.md`
+- `docs/tests/TEST_RESULTS_SUMMARY.md`
+- `AGENTS.md`
+
+---
+
 ## Session: Demo Budget Expansion and Cycle Filter Period-Based Filtering (patch) (2026-04-30)
 
 ### What changed

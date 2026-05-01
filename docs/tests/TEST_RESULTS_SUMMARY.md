@@ -2,6 +2,52 @@
 
 This document records meaningful automated test results from major working sessions.
 
+## Latest Session: Budget vs Actual Timezone Fix (0.9.5-beta patch)
+
+This session fixed a production bug where the Budget vs Actual report excluded the earliest cycle when the browser timezone was ahead of UTC (e.g. Australia/Sydney).
+
+### Root Cause
+
+- `CycleFilter` parses period `startdate`/`enddate` ISO strings into JS `Date` objects
+- `BudgetVsActualPage.jsx` formatted those dates with `format(date, 'yyyy-MM-dd')`, which uses the **browser's local timezone**
+- For a period starting at `2024-12-31T14:00:00Z`, a Sydney browser formats this as `2025-01-01`
+- The backend extracts `.date()` from the stored UTC datetime, getting `2024-12-31`
+- The mismatch (`2024-12-31 < 2025-01-01`) caused the backend to exclude the period
+
+### Fix
+
+- Replaced local-timezone `format(date, 'yyyy-MM-dd')` with a UTC-aware `formatUTCDate()` helper using `getUTCFullYear()`, `getUTCMonth()`, and `getUTCDate()`
+- This ensures the `from_date`/`to_date` query params match the backend's UTC date extraction
+
+### Verification
+
+```bash
+cd /home/ubuntu/dosh/backend
+source .venv/bin/activate
+python -m pytest tests/ -q
+```
+
+Result:
+
+- Full backend suite: **349 passed**
+- No regressions introduced
+
+```bash
+cd /home/ubuntu/dosh/frontend
+npm test -- --watchAll=false
+```
+
+Result:
+
+- Full frontend suite: **397 passed**
+- No regressions introduced
+
+### What changed
+
+- `frontend/src/pages/BudgetVsActualPage.jsx`: added `formatUTCDate()` helper, replaced `format(filterParams.fromDate, 'yyyy-MM-dd')` and `format(filterParams.toDate, 'yyyy-MM-dd')` with UTC-aware equivalents
+
+---
+
 ## Latest Session: SonarQube Code Quality Cleanup — Four-Phase Refactor (0.6.11-alpha)
 
 This session addressed ~130 SonarQube code-smell findings across four phases with no functional changes.

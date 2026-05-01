@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Fixed
+
+- **Budget vs Actual chart no longer drops the earliest cycle for timezones ahead of UTC.** The date range sent to the backend is now formatted in UTC, so cycles starting near the UTC midnight boundary (for example, a Sydney-based budget) are correctly included instead of being filtered out.
+
 ## 0.9.5-beta | released | 2026-05-01
 
 ### Reporting Framework

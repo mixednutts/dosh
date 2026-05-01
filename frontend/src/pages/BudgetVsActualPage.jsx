@@ -1,12 +1,19 @@
 import { useMemo, useState } from 'react'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { format, parseISO } from 'date-fns'
+import { parseISO } from 'date-fns'
 import clsx from 'clsx'
 import { getBudgets, getPeriodsForBudget, getBudgetVsActualTrends } from '../api/client'
 import BudgetVsActualChart from '../components/reports/BudgetVsActualChart'
 import CycleFilter from '../components/reports/CycleFilter'
 import Spinner from '../components/Spinner'
+
+function formatUTCDate(date) {
+  const y = date.getUTCFullYear()
+  const m = String(date.getUTCMonth() + 1).padStart(2, '0')
+  const d = String(date.getUTCDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
 
 function TogglePill({ label, checked, onChange }) {
   return (
@@ -56,10 +63,10 @@ export default function BudgetVsActualPage() {
   const queryParams = useMemo(() => {
     const params = {}
     if (filterParams.fromDate) {
-      params.from_date = format(filterParams.fromDate, 'yyyy-MM-dd')
+      params.from_date = formatUTCDate(filterParams.fromDate)
     }
     if (filterParams.toDate) {
-      params.to_date = format(filterParams.toDate, 'yyyy-MM-dd')
+      params.to_date = formatUTCDate(filterParams.toDate)
     }
     return params
   }, [filterParams])

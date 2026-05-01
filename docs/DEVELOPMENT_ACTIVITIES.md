@@ -389,6 +389,18 @@ Activities:
 - all backend tests pass (349), all frontend tests pass (393)
 - followed TESTING_STRATEGY.md principles: behavior over implementation, avoid coverage theater
 
+#### Activity Group: Patch/Maintenance — Budget vs Actual Timezone Fix
+
+Status:
+- `Completed` (2026-05-01)
+
+Activities:
+- fixed a timezone mismatch in the Budget vs Actual report where the frontend formatted cycle filter dates using the browser's local timezone while the backend compared against UTC date extractions
+- for timezones east of UTC (e.g. Australia/Sydney), this caused the earliest period in a selected range to be incorrectly excluded server-side
+- replaced local-timezone `format(date, 'yyyy-MM-dd')` with a UTC-aware `formatUTCDate()` helper in `BudgetVsActualPage.jsx`
+- no version bump — ad-hoc bug fix on top of `0.9.5-beta`
+- deliverable: `frontend/src/pages/BudgetVsActualPage.jsx`
+
 #### Activity Group: Frontend Test Hardening
 
 Status:
