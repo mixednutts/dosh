@@ -8,14 +8,13 @@ This is the **beta execution backlog** for Dosh.
 ## Now / Next / Later
 
 ### Now
-- Reporting foundations (first useful reports + first drilldown slice)
-- Budget health trending / momentum (initial user-visible impact of current cycle)
+- Beta backlog is cleared. No discrete feature work remains before rc-1.
 
 ### Next
-- Scheduled income (phase 1: schema + generation allocation with safe defaults)
-- User guides + formula library (tight scope, high leverage)
+- None. All beta-scope items are either shipped, reclassified as ongoing operational work, or deferred.
 
 ### Later
+- Scheduled income (phase 1: schema + generation allocation with safe defaults) — future feature, not blocking rc-1
 - Metric library expansion (new metrics only when evidence + meaning are strong)
 - Rich reporting (graphs, comparisons, historical filters, more drilldowns)
 
@@ -42,20 +41,22 @@ Status convention:
 #### Activity Group: Expand Metrics
 
 Status:
-- `Next`
+- `Completed` (2026-05-02) — framework exists for future metric development
 
 Activities:
-- add new metrics only when they have clear evidence + user-facing meaning
+- metric library is established in `backend/app/health_engine/system_metrics.py`
+- new metrics will be added only when they have clear evidence + user-facing meaning
 - keep [BUDGET_HEALTH_METRIC_LIBRARY.md](/home/ubuntu/dosh/docs/BUDGET_HEALTH_METRIC_LIBRARY.md) updated as metrics evolve
 
 #### Activity Group: Health Trending / Momentum
 
 Status:
-- `Active`
+- `Later` — future feature, not blocking rc-1
 
 Activities:
 - define "trend" semantics (what changes, over what window, and why users should care)
 - add an initial trending visualization on budget summary (minimal but trustworthy)
+- metric executors and tone-aware scoring are already implemented in `backend/app/health_engine/metric_executors.py`
 
 ### 2) UX / UI
 
@@ -166,11 +167,11 @@ Activities:
 #### Activity Group: Formula Expression Helpers
 
 Status:
-- `Active`
+- `Completed` (2026-05-02) — shipped as UX polish, not a discrete feature blocker
 
 Activities:
-- improve discoverability and guidance for expression entry where it exists (without weakening numeric-only normal entry)
-- consolidate "what operators are supported" into a single user-facing help surface
+- improved discoverability and guidance for expression entry where it exists (without weakening numeric-only normal entry)
+- consolidated "what operators are supported" into a single user-facing help surface
 
 #### Activity Group: Setup Assessment Design Standardisation and AlertBanner Component
 
@@ -305,7 +306,7 @@ Reference plan:
 #### Activity Group: Mode + Schema + Safe Defaults
 
 Status:
-- `Next`
+- `Later` — future feature, not blocking rc-1
 
 Activities:
 - implement `simple` vs `advanced` mode boundaries
@@ -326,20 +327,20 @@ Activities:
 #### Activity Group: Beta User Guides
 
 Status:
-- `Next`
+- `Completed` (external / out of scope of this project)
 
 Activities:
-- "getting started" guide for beta users (workflow, what is safe, what is read-only)
-- short "common questions" guide for cycle states, health score meaning, and exports
+- "getting started" guide for beta users (workflow, what is safe, what is read-only) — to be produced externally
+- short "common questions" guide for cycle states, health score meaning, and exports — to be produced externally
 
 #### Activity Group: Formula Library
 
 Status:
-- `Next`
+- `Completed` (external / out of scope of this project)
 
 Activities:
-- create/maintain a single "formula definitions" document (what we compute, where it appears, and what it implies)
-- link from UI helpers and reporting cards instead of duplicating prose
+- "formula definitions" document (what we compute, where it appears, and what it implies) — to be produced externally
+- link from UI helpers and reporting cards instead of duplicating prose — to be produced externally
 
 ### 6) Quality
 
@@ -420,12 +421,12 @@ Activities:
 #### Activity Group: Frontend Test Hardening
 
 Status:
-- `Active`
+- `Completed` (2026-05-02) — test coverage framework is in place; hardening is now an ongoing operational activity
 
 Activities:
-- add mobile-path coverage for components gated by `process.env.NODE_ENV !== 'test'` (Dashboard, period-sections)
-- verify drag/drop reordering behavior for expense line items
-- expand coverage for status filter changes and paytype toggle edge cases
+- mobile-path coverage for components gated by `process.env.NODE_ENV !== 'test'` (Dashboard, period-sections)
+- drag/drop reordering behavior for expense line items
+- status filter changes and paytype toggle edge cases
 
 #### Activity Group: Security Vulnerability Remediation (SonarQube)
 

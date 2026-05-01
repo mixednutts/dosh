@@ -14,37 +14,48 @@ This document is the **high-level roadmap** for Dosh in beta.
 
 ## Beta (current focus)
 
+**Status:** Beta scope is complete. All items below are either shipped, reclassified as ongoing operational work, or deferred. The next milestone is **rc-1**.
+
 ### 1) Budget Health Metrics
+
+Status: **Complete for beta.** Framework exists for future metric development.
 
 Goals:
 
-- expand the available Budget Health metrics (beyond the current set)
-- add health trending / momentum so users can see how current-cycle behavior changes overall budget health over time
-- polish around health interpretation, metric evidence, and formula expression helpers
+- ✅ expanded the available Budget Health metrics to a global code-based registry with six system metrics
+- ⏸️ health trending / momentum — deferred to future. Metric executors exist; user-facing trending visualization is not blocking rc-1
+- ✅ polish around health interpretation, metric evidence, and formula expression helpers
 
 Notes:
 
 - the canonical metric reference remains [BUDGET_HEALTH_METRIC_LIBRARY.md](/home/ubuntu/dosh/docs/BUDGET_HEALTH_METRIC_LIBRARY.md)
+- new metrics will be added only when evidence + user-facing meaning are strong
 
 ### 2) UX / UI
 
+Status: **Complete for beta.** Ad-hoc polish and bug fixes continue as ongoing operational work.
+
 Goals:
 
-- generalised area for bugs, UI inconsistencies, and UX improvements
+- ✅ generalised area for bugs, UI inconsistencies, and UX improvements
 - specific items tracked in [DEVELOPMENT_ACTIVITIES.md](/home/ubuntu/dosh/docs/DEVELOPMENT_ACTIVITIES.md)
 
 ### 3) Reporting Framework
 
+Status: **Complete for beta.** Starter reports are shipped; drilldown and rich reporting are deferred to post-beta.
+
 Goals:
 
-- define and implement a lightweight but feature-rich reporting framework
-- support drilldown where it helps (budget → line → transaction)
-- establish common “starter” reports/graphs:
+- ✅ defined and implemented a lightweight reporting framework
+- ✅ established common “starter” reports/graphs:
   - budget vs actual trend graphs
   - investment trend graphs
-  - income allocation views (e.g. expenses vs investments vs savings/transfers)
+  - income allocation views (expenses vs investments as % of income)
+- drilldown (budget → line → transaction) is deferred to post-beta
 
 ### 4) Scheduled Income
+
+Status: **Deferred to future / post-beta.** Not blocking rc-1.
 
 Goal:
 
@@ -52,6 +63,8 @@ Goal:
   - [SCHEDULED_INCOME_AND_AUTO_CARRY_FORWARD_PLAN.md](/home/ubuntu/dosh/docs/plans/SCHEDULED_INCOME_AND_AUTO_CARRY_FORWARD_PLAN.md)
 
 ### 5) User Guides + Formula Library
+
+Status: **External / out of scope of this project.** To be produced outside the engineering backlog.
 
 Goals:
 
@@ -61,13 +74,15 @@ Goals:
 
 ### 6) AI Insights
 
+Status: **Shipped.**
+
 Goals:
 
-- optional LLM-powered insights for the current budget period
-- user-controlled provider configuration (BYO API key)
-- privacy-first design with encrypted storage and clear data-sharing warnings
-- dynamic model selection via trusted vendor manifest (OpenRouter)
-- tone-aware responses aligned with Budget Health engine
+- ✅ optional LLM-powered insights for the current budget period
+- ✅ user-controlled provider configuration (BYO API key)
+- ✅ privacy-first design with encrypted storage and clear data-sharing warnings
+- ✅ dynamic model selection via trusted vendor manifest (OpenRouter)
+- ✅ tone-aware responses aligned with Budget Health engine
 
 Reference plan:
 - [AI_INSIGHTS_IMPLEMENTATION_PLAN.md](/home/ubuntu/dosh/docs/plans/AI_INSIGHTS_IMPLEMENTATION_PLAN.md)
