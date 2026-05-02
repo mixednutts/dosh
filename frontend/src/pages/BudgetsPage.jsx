@@ -812,8 +812,13 @@ function BudgetStats({ budgetId, budgetName, periods = [], currentPeriodDetail, 
               Overall Health Details
             </button>
           </div>
-          {health.pillars?.some(p => p.key === 'period_trend') && (
-            <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">{health.momentum_summary}</p>
+          {health.overall_summary && (
+            <p className={`mt-3 text-sm font-medium ${healthToneClass(health.overall_status)}`}>
+              {health.overall_summary}
+            </p>
+          )}
+          {health.pillars?.some(p => p.key === 'period_trend') && health.momentum_summary && (
+            <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">{health.momentum_summary}</p>
           )}
         </div>
       )}

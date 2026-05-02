@@ -26,12 +26,14 @@ const mockData = [
     income_actual: 3100,
     expense_actual: 1400,
     investment_actual: 450,
+    surplus_actual: 1250,
   },
   {
     label: 'Feb 2026',
     income_actual: 3000,
     expense_actual: 1550,
     investment_actual: 500,
+    surplus_actual: 950,
   },
 ]
 
@@ -50,10 +52,11 @@ describe('IncomeAllocationChart', () => {
     expect(screen.getByTestId('area-chart').getAttribute('data-data-count')).toBe('2')
   })
 
-  it('renders expense and investment areas and income line by default', () => {
+  it('renders expense, investment, and surplus areas and income line by default', () => {
     renderChart()
     expect(screen.getByTestId('area-expense_actual').textContent).toBe('Expenses')
     expect(screen.getByTestId('area-investment_actual').textContent).toBe('Investments')
+    expect(screen.getByTestId('area-surplus_actual').textContent).toBe('Surplus')
     expect(screen.getByTestId('line-income_actual').textContent).toBe('Income')
   })
 
@@ -61,6 +64,7 @@ describe('IncomeAllocationChart', () => {
     renderChart({ showPercentages: true })
     expect(screen.getByTestId('area-expense_pct').textContent).toBe('Expenses')
     expect(screen.getByTestId('area-investment_pct').textContent).toBe('Investments')
+    expect(screen.getByTestId('area-surplus_pct').textContent).toBe('Surplus')
     expect(screen.queryByTestId('line-income_actual')).toBeNull()
     expect(screen.queryByTestId('area-expense_actual')).toBeNull()
   })
@@ -75,6 +79,14 @@ describe('IncomeAllocationChart', () => {
     renderChart({ showInvestments: false })
     expect(screen.queryByTestId('area-investment_actual')).toBeNull()
     expect(screen.getByTestId('area-expense_actual')).toBeTruthy()
+    expect(screen.getByTestId('area-surplus_actual')).toBeTruthy()
+  })
+
+  it('hides surplus area when showSurplus is false', () => {
+    renderChart({ showSurplus: false })
+    expect(screen.queryByTestId('area-surplus_actual')).toBeNull()
+    expect(screen.getByTestId('area-expense_actual')).toBeTruthy()
+    expect(screen.getByTestId('area-investment_actual')).toBeTruthy()
   })
 
 

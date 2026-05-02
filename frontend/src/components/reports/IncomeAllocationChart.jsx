@@ -120,7 +120,7 @@ PercentageTooltip.propTypes = {
   label: PropTypes.string,
 }
 
-export default function IncomeAllocationChart({ data, showExpenses, showInvestments, showPercentages }) {
+export default function IncomeAllocationChart({ data, showExpenses, showInvestments, showSurplus, showPercentages }) {
   const theme = useChartTheme()
 
   const chartData = useMemo(() => {
@@ -128,12 +128,13 @@ export default function IncomeAllocationChart({ data, showExpenses, showInvestme
     return data.map(p => {
       const income = Number(p.income_actual) || 0
       if (income === 0) {
-        return { ...p, expense_pct: 0, investment_pct: 0 }
+        return { ...p, expense_pct: 0, investment_pct: 0, surplus_pct: 0 }
       }
       return {
         ...p,
         expense_pct: (Number(p.expense_actual) || 0) / income * 100,
         investment_pct: (Number(p.investment_actual) || 0) / income * 100,
+        surplus_pct: (Number(p.surplus_actual) || 0) / income * 100,
       }
     })
   }, [data, showPercentages])
@@ -149,6 +150,12 @@ export default function IncomeAllocationChart({ data, showExpenses, showInvestme
   if (showInvestments) {
     areas.push(
       { key: showPercentages ? 'investment_pct' : 'investment_actual', name: 'Investments', color: theme.line5 },
+    )
+  }
+
+  if (showSurplus) {
+    areas.push(
+      { key: showPercentages ? 'surplus_pct' : 'surplus_actual', name: 'Surplus', color: theme.line7 },
     )
   }
 
@@ -220,11 +227,13 @@ IncomeAllocationChart.propTypes = {
   data: PropTypes.arrayOf(PropTypes.object).isRequired,
   showExpenses: PropTypes.bool,
   showInvestments: PropTypes.bool,
+  showSurplus: PropTypes.bool,
   showPercentages: PropTypes.bool,
 }
 
 IncomeAllocationChart.defaultProps = {
   showExpenses: true,
   showInvestments: true,
+  showSurplus: true,
   showPercentages: false,
 }

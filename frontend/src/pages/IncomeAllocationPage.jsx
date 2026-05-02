@@ -37,6 +37,7 @@ export default function IncomeAllocationPage() {
   const budgetId = Number.parseInt(searchParams.get('budgetId') || '', 10) || null
   const [showExpenses, setShowExpenses] = useState(true)
   const [showInvestments, setShowInvestments] = useState(true)
+  const [showSurplus, setShowSurplus] = useState(true)
   const [showPercentages, setShowPercentages] = useState(false)
   const [includeCurrentPeriod, setIncludeCurrentPeriod] = useState(true)
 
@@ -138,6 +139,7 @@ export default function IncomeAllocationPage() {
             <div className="flex flex-wrap items-center gap-2">
               <TogglePill label="Expenses" checked={showExpenses} onChange={setShowExpenses} />
               <TogglePill label="Investments" checked={showInvestments} onChange={setShowInvestments} />
+              <TogglePill label="Surplus" checked={showSurplus} onChange={setShowSurplus} />
               <TogglePill label="Percentages" checked={showPercentages} onChange={setShowPercentages} />
               <TogglePill label="Current Cycle" checked={includeCurrentPeriod} onChange={setIncludeCurrentPeriod} />
             </div>
@@ -158,6 +160,7 @@ export default function IncomeAllocationPage() {
             data={trendPeriods}
             showExpenses={showExpenses}
             showInvestments={showInvestments}
+            showSurplus={showSurplus}
             showPercentages={showPercentages}
           />
         )}

@@ -258,7 +258,7 @@ def _closed_period_summary(score: int, tone: str) -> str:
             (25, 49): "This cycle had some rough patches worth looking back on.",
             (0, 24): "This cycle was pretty rough — let's take the lessons into the next one.",
         },
-        "direct": {
+        "factual": {
             (75, 100): "Cycle performed within acceptable limits.",
             (50, 74): "Cycle variance detected — performance review recommended.",
             (25, 49): "Cycle had significant issues requiring follow-up.",
@@ -286,7 +286,7 @@ def _current_period_summary(score: int, tone: str) -> str:
             (25, 49): "Heads up — there are some issues worth looking into this period.",
             (0, 24): "Oof, this period is rough — let's sort out the big items first.",
         },
-        "direct": {
+        "factual": {
             (75, 100): "Period is within acceptable limits.",
             (50, 74): "Period variance detected — review recommended.",
             (25, 49): "Period has significant issues requiring action.",

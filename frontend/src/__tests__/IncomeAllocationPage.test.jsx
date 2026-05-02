@@ -194,6 +194,31 @@ describe('IncomeAllocationPage', () => {
     })
   })
 
+  it('toggles surplus visibility via pill', async () => {
+    client.getBudgets.mockResolvedValue([
+      { budgetid: 1, description: 'Home Budget', budgetowner: 'Alex', budget_frequency: 'Monthly' },
+    ])
+    client.getPeriodsForBudget.mockResolvedValue([
+      { finperiodid: 10, startdate: '2026-01-01', enddate: '2026-01-31', cycle_stage: 'CURRENT' },
+    ])
+    client.getIncomeAllocationTrends.mockResolvedValue({
+      periods: [
+        { label: 'Jan 2026', income_actual: 3100, expense_actual: 1400, investment_actual: 450, surplus_actual: 1250, cycle_stage: 'CURRENT' },
+      ],
+    })
+
+    renderWithRouter('/reports/income-allocation?budgetId=1')
+
+    expect(await screen.findByTestId('area-chart')).toBeTruthy()
+
+    const surplusPill = screen.getByRole('button', { name: 'Surplus' })
+    fireEvent.click(surplusPill)
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('area-surplus_actual')).toBeNull()
+    })
+  })
+
   it('excludes current period when Current Cycle pill is toggled off', async () => {
     client.getBudgets.mockResolvedValue([
       { budgetid: 1, description: 'Home Budget', budgetowner: 'Alex', budget_frequency: 'Monthly' },

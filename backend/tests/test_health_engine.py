@@ -326,7 +326,7 @@ def test_health_status_boundaries() -> None:
 
 
 def test_current_period_summary_all_tones_and_bands() -> None:
-    for tone in ("supportive", "friendly", "direct"):
+    for tone in ("supportive", "friendly", "factual"):
         for score in (0, 25, 50, 75, 100):
             summary = _current_period_summary(score, tone)
             assert isinstance(summary, str)
@@ -340,7 +340,7 @@ def test_current_period_summary_fallback() -> None:
 
 
 def test_closed_period_summary_all_tones_and_bands() -> None:
-    for tone in ("supportive", "friendly", "direct"):
+    for tone in ("supportive", "friendly", "factual"):
         for score in (0, 25, 50, 75, 100):
             summary = _closed_period_summary(score, tone)
             assert isinstance(summary, str)

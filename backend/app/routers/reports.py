@@ -57,6 +57,8 @@ class IncomeAllocationTrendOut(PeriodOut):
     expense_actual: Decimal = Decimal("0")
     investment_budget: Decimal = Decimal("0")
     investment_actual: Decimal = Decimal("0")
+    surplus_budget: Decimal = Decimal("0")
+    surplus_actual: Decimal = Decimal("0")
 
 
 class IncomeAllocationTrendsResponseOut(BaseModel):
@@ -207,6 +209,8 @@ def get_income_allocation_trends(
             expense_actual=totals["expense_actual"],
             investment_budget=totals["investment_budget"],
             investment_actual=totals["investment_actual"],
+            surplus_budget=totals["surplus_budget"],
+            surplus_actual=totals["surplus_actual"],
         )
         result.append(trend)
 

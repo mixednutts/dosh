@@ -531,6 +531,64 @@ describe('BudgetsPage', () => {
     expect(screen.getByText('Cycle start')).not.toBeNull()
   })
 
+  it('renders overall budget health summary with tone styling in the dashboard card', async () => {
+    client.getBudgets.mockResolvedValue([
+      {
+        budgetid: 7,
+        budgetowner: 'Alex',
+        description: 'Household',
+        budget_frequency: 'Monthly',
+      },
+    ])
+    client.getPeriodsForBudget.mockResolvedValue([
+      {
+        finperiodid: 101,
+        budgetid: 7,
+        startdate: '2026-04-01T00:00:00',
+        enddate: '2026-04-30T00:00:00',
+        budgetowner: 'Alex',
+        islocked: false,
+        cycle_status: 'ACTIVE',
+        closed_at: null,
+      },
+    ])
+    client.getBudgetHealth.mockResolvedValue({
+      overall_score: 72,
+      overall_status: 'Watch',
+      overall_summary: 'Tracking okay.',
+      momentum_status: 'Stable',
+      momentum_delta: 0,
+      momentum_summary: 'No change since last period.',
+      evaluated_at: '2026-04-20T01:00:00+00:00',
+      pillars: [
+        {
+          name: 'Setup Health',
+          key: 'setup_health',
+          score: 100,
+          status: 'Strong',
+          summary: 'Setup looks good.',
+          weight: 0.4,
+          weighted_contribution: 40,
+          evidence: [],
+        },
+      ],
+      current_period_check: {
+        score: 56,
+        status: 'Watch',
+        summary: 'Expense overrun exceeds configured limits.',
+        metrics: [],
+      },
+    })
+
+    renderWithProviders(<BudgetsPage />, {
+      route: '/budgets',
+      path: '/budgets',
+    })
+
+    await screen.findByText('Tracking okay.')
+    expect(screen.getByText('Tracking okay.')).not.toBeNull()
+  })
+
   it('opens the Budget Health modal with per-metric cards and expandable calculation', async () => {
     client.getBudgets.mockResolvedValue([
       {
@@ -605,7 +663,8 @@ describe('BudgetsPage', () => {
 
     expect(await screen.findByRole('heading', { name: /Budget Health — Household/i })).not.toBeNull()
     expect(screen.getByText('Setup Health')).not.toBeNull()
-    expect(screen.getByText('Tracking okay.')).not.toBeNull()
+    const modal = screen.getByRole('heading', { name: /Budget Health — Household/i }).closest('[class*="max-w"]') ?? document.body
+    expect(within(modal).getByText('Tracking okay.')).not.toBeNull()
 
     // Expandable calculation section
     fireEvent.click(screen.getByRole('button', { name: /Show Details/i }))

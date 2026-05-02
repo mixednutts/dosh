@@ -168,6 +168,33 @@ Activities:
 - updated frontend tests for new generic copy
 - version bump: `0.9.0-beta` → `0.9.1-beta`
 
+#### Activity Group: Budget Health Commentary Consistency
+
+Status:
+- `Completed` (2026-05-02)
+
+Activities:
+- fixed backend tone key mismatch: `_current_period_summary` and `_closed_period_summary` in `runner.py` used `"direct"` key while frontend `TONE_OPTIONS` emits `"factual"`; changed to `"factual"` with defensive `"direct"` fallback
+- overall budget health card on `BudgetsPage.jsx` now renders `overall_summary` with tone-coloured text (`text-sm font-medium` + `healthToneClass`) matching the current-period check pattern
+- momentum summary text hidden entirely when `period_trend` metric is disabled (no fallback text rendered)
+- added "Health Commentary Styling" section to `docs/LOOK_AND_FEEL.md` documenting tone-colour mapping, typography rules, placement, and anti-patterns
+- updated `test_health_engine.py` and `BudgetsPage.test.jsx` expectations
+- deliverable: `backend/app/health_engine/runner.py`, `frontend/src/pages/BudgetsPage.jsx`, `docs/LOOK_AND_FEEL.md`
+
+#### Activity Group: Income Allocation Surplus Display
+
+Status:
+- `Completed` (2026-05-02)
+
+Activities:
+- added `surplus_budget` and `surplus_actual` to `IncomeAllocationTrendOut` and `BudgetVsActualTrendOut` in `reports.py`, sourced from `current_period_totals()`
+- added green stacked Surplus area to `IncomeAllocationChart` with `showSurplus` prop (default true), percentage mode support (`surplus_pct`), and tooltip updates
+- added Surplus toggle pill to `IncomeAllocationPage` allowing users to show/hide the surplus layer
+- updated backend tests in `test_reports.py` and frontend tests in `IncomeAllocationChart.test.jsx`, `IncomeAllocationPage.test.jsx`
+- all backend tests pass (372), all frontend tests pass (426)
+- no version bump — patch on top of `0.9.6-beta`
+- deliverable: `backend/app/routers/reports.py`, `frontend/src/components/reports/IncomeAllocationChart.jsx`, `frontend/src/pages/IncomeAllocationPage.jsx`
+
 #### Activity Group: Formula Expression Helpers
 
 Status:

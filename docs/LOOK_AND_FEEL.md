@@ -166,6 +166,52 @@ Expense events previously used amber. They have been moved to slate so that ambe
 - If a page contains both a warning banner (amber) and an info banner (slate), ensure the warning banner is visually dominant through placement (above the fold) rather than through colour saturation alone.
 - Update tests that assert on Tailwind class names only when the test is explicitly verifying design compliance. Prefer asserting on visible text and ARIA roles.
 
+## Health Commentary Styling
+
+Budget health commentary — including current-period summaries, overall budget health summaries, and momentum text — must follow a consistent visual pattern so users can instantly grasp health status without parsing gray body copy.
+
+### Tone Colour Mapping for Commentary
+
+Health commentary is rendered as a short sentence directly beneath the score circle or health panel header. It must use the status-derived tone colour, **not** neutral gray.
+
+| Health Status | CSS Class (Light) | CSS Class (Dark) | Semantic Meaning |
+|---------------|-------------------|------------------|------------------|
+| **Strong** | `text-success-700` | `dark:text-success-300` | Positive, on track, healthy |
+| **Watch** | `text-amber-700` | `dark:text-amber-300` | Caution, attention warranted |
+| **Needs Attention** | `text-red-700` | `dark:text-red-300` | Critical, action required |
+
+### Typography Rules
+
+- **Size:** `text-sm` (not `text-xs`) for primary commentary
+- **Weight:** `font-medium` (not `font-semibold` or `font-normal`)
+- **Placement:** Immediately below the score / action-button row, with `mt-3` top margin
+- **Secondary text** (e.g. momentum summaries, evaluated-at timestamps): `text-xs text-gray-500 dark:text-gray-400` with `mt-2` when stacked beneath primary commentary
+
+### Implementation Pattern
+
+```jsx
+// Current period check summary
+<p className={`mt-3 text-sm font-medium ${healthToneClass(health.current_period_check.status)}`}>
+  {health.current_period_check.summary}
+</p>
+
+// Overall budget health summary
+<p className={`mt-3 text-sm font-medium ${healthToneClass(health.overall_status)}`}>
+  {health.overall_summary}
+</p>
+
+// Momentum summary (secondary, below overall summary)
+<p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+  {health.momentum_summary}
+</p>
+```
+
+### Rules
+
+- **Do not render overall health commentary in gray.** The overall budget health panel must display `overall_summary` with the same tone-coloured treatment as the current-period check.
+- **Do not omit overall summary when momentum is absent.** The `overall_summary` must always render when available, regardless of whether the `period_trend` metric is enabled.
+- **Keep momentum summaries distinct.** When both overall summary and momentum text are present, momentum sits below the overall summary in smaller, neutral gray text.
+
 ## Related Documents
 
 - [DOCUMENTATION_FRAMEWORK.md](/home/ubuntu/dosh/docs/DOCUMENTATION_FRAMEWORK.md) — documentation governance

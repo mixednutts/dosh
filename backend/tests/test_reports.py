@@ -172,8 +172,8 @@ def test_income_allocation_trends_returns_correct_totals(client, db_session):
     assert Decimal(period["expense_actual"]) == Decimal("0")
     assert Decimal(period["investment_budget"]) == Decimal("0")
     assert Decimal(period["investment_actual"]) == Decimal("0")
-    assert "surplus_budget" not in period
-    assert "surplus_actual" not in period
+    assert "surplus_budget" in period
+    assert "surplus_actual" in period
     assert "label" in period
 
 
