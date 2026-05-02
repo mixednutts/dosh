@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   LockClosedIcon, LockOpenIcon, ChevronRightIcon, ChevronLeftIcon,
   ArrowDownTrayIcon, ArrowUpIcon, SparklesIcon, QuestionMarkCircleIcon,
-  Cog6ToothIcon,
+  Cog6ToothIcon, BoltIcon,
 } from '@heroicons/react/24/outline'
 import {
   getPeriodDetail, getBudget, setPeriodLock, getPeriodsForBudget, getPeriodBalances,
@@ -328,7 +328,7 @@ export default function PeriodDetailPage() {
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="space-y-3">
           {/* Breadcrumb */}
-          <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-sm">
+          <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-sm min-h-[1.25rem]">
             <Link
               to="/budgets"
               className="text-gray-500 hover:text-dosh-600 dark:text-gray-400 dark:hover:text-dosh-400 transition-colors"
@@ -336,7 +336,7 @@ export default function PeriodDetailPage() {
               Budgets
             </Link>
             <ChevronRightIcon className="w-4 h-4 text-gray-300 dark:text-gray-600" />
-            {budget && (
+            {budget ? (
               <>
                 <Link
                   to={`/budgets/${budget.budgetid}`}
@@ -344,6 +344,11 @@ export default function PeriodDetailPage() {
                 >
                   {budget.description}
                 </Link>
+                <ChevronRightIcon className="w-4 h-4 text-gray-300 dark:text-gray-600" />
+              </>
+            ) : (
+              <>
+                <span className="inline-block w-24 h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
                 <ChevronRightIcon className="w-4 h-4 text-gray-300 dark:text-gray-600" />
               </>
             )}
@@ -376,62 +381,118 @@ export default function PeriodDetailPage() {
           </div>
 
           {/* Metadata Line */}
-          {budget && (
-            <div className="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400">
-              <span className="inline-flex items-center gap-1.5">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                {budget.budget_frequency}
-              </span>
-              <span className="w-px h-4 bg-gray-300 dark:bg-gray-600" />
-              <span>{budget.budgetowner}</span>
-            </div>
-          )}
+          <div className="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400 min-h-[1.25rem]">
+            {budget ? (
+              <>
+                <span className="inline-flex items-center gap-1.5">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  {budget.budget_frequency}
+                </span>
+                <span className="w-px h-4 bg-gray-300 dark:bg-gray-600" />
+                <span>{budget.budgetowner}</span>
+              </>
+            ) : (
+              <>
+                <span className="inline-block w-16 h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+                <span className="w-px h-4 bg-gray-300 dark:bg-gray-600" />
+                <span className="inline-block w-20 h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+              </>
+            )}
+          </div>
         </div>
-        <div className="flex gap-2">
-          <button className="btn-secondary" onClick={() => setShowExport(true)} title="Export budget cycle">
-            <ArrowDownTrayIcon className="w-4 h-4" /> Export
-          </button>
-          {budget?.ai_insights_enabled && budget?.ai_api_key_configured && activeCycle && !closed && (
+
+        {/* Toolbar */}
+        <div className="flex items-center gap-2 flex-wrap min-h-[36px]">
+          {/* Secondary actions */}
+          <div className="flex items-center gap-1.5">
             <button
-              className="btn-secondary"
-              onClick={() => {
-                setAiInsightModal(true)
-                setAiInsightLoading(true)
-                setAiInsightError(null)
-                generateAIInsight(budgetid, id, {})
-                  .then(data => {
-                    setAiInsightData(data)
-                    setAiInsightLoading(false)
-                  })
-                  .catch(err => {
-                    setAiInsightError(err?.response?.data?.detail || 'Failed to generate insight.')
-                    setAiInsightLoading(false)
-                  })
-              }}
+              className="btn-secondary !px-2"
+              onClick={() => setShowExport(true)}
+              title="Export budget cycle"
             >
-              <SparklesIcon className="w-4 h-4" /> Generate AI Insights
+              <ArrowDownTrayIcon className="w-4 h-4" />
             </button>
-          )}
-          {autoExpenseEnabled && !closed && (
-            <button className="btn-secondary" onClick={() => runAutoExpenses.mutate()} title="Run Auto Expense">
-              {runAutoExpenses.isPending ? 'Running…' : 'Run Auto Expense'}
-            </button>
-          )}
+
+            {autoExpenseEnabled && !closed && (
+              <button
+                className="btn-secondary !px-2"
+                onClick={() => runAutoExpenses.mutate()}
+                title="Run Auto Expense"
+              >
+                {runAutoExpenses.isPending ? (
+                  <Spinner className="w-4 h-4" />
+                ) : (
+                  <BoltIcon className="w-4 h-4" />
+                )}
+              </button>
+            )}
+
+            {budget?.ai_insights_enabled && budget?.ai_api_key_configured && activeCycle && !closed && (
+              <button
+                className="btn-secondary !px-2"
+                onClick={() => {
+                  setAiInsightModal(true)
+                  setAiInsightLoading(true)
+                  setAiInsightError(null)
+                  generateAIInsight(budgetid, id, {})
+                    .then(data => {
+                      setAiInsightData(data)
+                      setAiInsightLoading(false)
+                    })
+                    .catch(err => {
+                      setAiInsightError(err?.response?.data?.detail || 'Failed to generate insight.')
+                      setAiInsightLoading(false)
+                    })
+                }}
+                title="Generate AI Insights"
+              >
+                <SparklesIcon className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+
+          <span className="hidden sm:block w-px h-5 bg-gray-300 dark:bg-gray-600" />
+
+          {/* Primary action */}
           {activeCycle && !closed && (
             <button className="btn-primary" onClick={openCloseoutModal}>
-              Close Out
+              Close Out Cycle
             </button>
           )}
-          <Link to={`/budgets/${budgetId}/setup`} state={{ fromPeriodId: id }} className="btn-secondary" title="Budget Setup">
-            <Cog6ToothIcon className="w-4 h-4" />
-          </Link>
-          {budgetLockEnabled && !closed && (
-            <button className="btn-secondary" onClick={() => lock.mutate(!locked)} title={locked ? 'Unlock' : 'Lock'}>
-              {locked ? <><LockClosedIcon className="w-4 h-4 text-amber-500" /> Locked</> : <><LockOpenIcon className="w-4 h-4" /> Unlocked</>}
-            </button>
-          )}
+
+          <span className="hidden sm:block w-px h-5 bg-gray-300 dark:bg-gray-600" />
+
+          {/* Settings & Lock */}
+          <div className="flex items-center gap-1.5">
+            <Link
+              to={`/budgets/${budgetId}/setup`}
+              state={{ fromPeriodId: id }}
+              className="btn-secondary !px-2"
+              title="Budget Setup"
+            >
+              <Cog6ToothIcon className="w-4 h-4" />
+            </Link>
+
+            {budgetLockEnabled && !closed && (
+              <button
+                className={`inline-flex items-center justify-center rounded-md border p-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 ${
+                  locked
+                    ? 'border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 focus:ring-amber-400 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-300 dark:hover:bg-amber-900/40'
+                    : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50 focus:ring-slate-400 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700'
+                }`}
+                onClick={() => lock.mutate(!locked)}
+                title={locked ? 'Unlock budget cycle' : 'Lock budget cycle'}
+              >
+                {locked ? (
+                  <LockClosedIcon className="w-4 h-4" />
+                ) : (
+                  <LockOpenIcon className="w-4 h-4" />
+                )}
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

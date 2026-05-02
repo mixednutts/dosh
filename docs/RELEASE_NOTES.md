@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+## 0.9.9-beta | released | 2026-05-03
+
+### Added
+
+- **Health History now shows your Total Health Score.** The Health History report includes a new composite "Total Health Score" line that combines your per-period metric scores into a single weighted average for each cycle. This gives you an at-a-glance view of overall period health alongside the individual metric trends.
+- **Savings accounts are now labeled in Account Balances.** When an account is marked as a savings account, a blue "Savings" badge appears next to the account type in the Account Balances table, making it easier to distinguish savings accounts from everyday transaction accounts at a glance.
+
+### Changed
+
+- **Budget Cycle Details header buttons have been redesigned for consistency.** The top action bar now groups secondary actions (Export, Auto Expense, AI Insights, Settings, and Lock) as uniform icon-only buttons with tooltip hints. The Close Out button has been relabeled to **Close Out Cycle** to make its purpose clearer. The lock button now turns amber when a cycle is locked, giving you instant visual feedback without extra text clutter.
+
 ## 0.9.8-beta | released | 2026-05-03
 
 ### Added

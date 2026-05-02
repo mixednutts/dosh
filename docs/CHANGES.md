@@ -4,6 +4,57 @@ This document captures the key product and implementation changes made during re
 
 It is intended to complement [README.md](/home/ubuntu/dosh/README.md), not replace it.
 
+## Session: Health History Total Health Score, Account Balances Savings Indicator, and Budget Cycle Header Redesign (0.9.9-beta) (2026-05-03)
+
+### What changed
+
+- **Added Total Health Score to the Health History report.**
+  - `backend/app/routers/reports.py`: `get_health_history_trends` now computes a per-period composite score by weighting available `CURRENT_PERIOD` metric snapshots using the active matrix's current weights.
+  - The composite is returned as a synthetic metric (`key: "__composite__"`, `name: "Total Health Score"`) prepended to the response metrics list.
+  - Computed on-the-fly for all periods, so existing historical closed cycles immediately show the composite line without requiring new database snapshots.
+  - Updated `test_reports.py` assertions for the new metric (3 tests updated).
+
+- **Added Savings badge to Account Balances.**
+  - `frontend/src/components/period-sections/BalanceSection.jsx`: When `is_savings` is true, a `.badge-blue` "Savings" badge renders inline next to the account type text.
+  - Applied to both desktop table view and mobile card view.
+  - Updated `BalanceSection.test.jsx` with `is_savings` fixtures and a new test verifying badge presence.
+
+- **Redesigned Budget Cycle Details header button bar.**
+  - `frontend/src/pages/PeriodDetailPage.jsx`: Secondary actions are now consistent icon-only buttons with `title` tooltips (Export, Run Auto Expense, AI Insights, Settings, Lock).
+  - "Close Out" relabeled to **"Close Out Cycle"**.
+  - Lock button uses amber styling when locked to communicate state visually without text clutter.
+  - Vertical dividers group actions | primary | settings/lock.
+  - Added `BoltIcon` import for the Run Auto Expense button.
+
+- **Improved header stability when navigating between cycles.**
+  - Breadcrumb budget name now shows a skeleton pulse placeholder while loading instead of collapsing.
+  - Metadata line (frequency · owner) always renders its container with `min-h-[1.25rem]` and shows skeleton bars when budget data is loading.
+  - Button toolbar uses `min-h-[36px]` to preserve height as conditional buttons appear/disappear.
+
+- **Version bump: `0.9.8-beta` → `0.9.9-beta`.**
+  - Used `scripts/bump_version.py` to update all version touchpoints.
+
+### Testing
+
+- Full backend regression suite: **378 passed** (+3 updated report tests), 0 regressions introduced.
+- Full frontend regression suite: **440 passed** (+1 new test), 0 regressions introduced.
+
+### Files touched
+
+- `backend/app/routers/reports.py`
+- `backend/tests/test_reports.py`
+- `frontend/src/components/period-sections/BalanceSection.jsx`
+- `frontend/src/__tests__/BalanceSection.test.jsx`
+- `frontend/src/pages/PeriodDetailPage.jsx`
+- `frontend/src/__tests__/PeriodDetailPage.test.jsx`
+- `docs/RELEASE_NOTES.md`
+- `docs/DEVELOPMENT_ACTIVITIES.md`
+- `docs/CHANGES.md`
+- `docs/MIGRATION_AND_RELEASE_MANAGEMENT.md`
+- `AGENTS.md`
+
+---
+
 ## Session: Report Period Labels Timezone Fix, Income Allocation UI Layout, and Health History Report (0.9.8-beta) (2026-05-03)
 
 ### What changed

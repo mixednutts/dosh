@@ -16,6 +16,7 @@ describe('BalanceSection', () => {
       opening_amount: '1000.00',
       closing_amount: '1100.00',
       movement_amount: '100.00',
+      is_savings: false,
     },
     {
       balancedesc: 'Savings',
@@ -23,6 +24,7 @@ describe('BalanceSection', () => {
       opening_amount: '500.00',
       closing_amount: '450.00',
       movement_amount: '-50.00',
+      is_savings: true,
     },
   ]
 
@@ -132,6 +134,22 @@ describe('BalanceSection', () => {
 
     expect(screen.getByText('Transaction')).toBeTruthy()
     expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('renders Savings badge when is_savings is true', () => {
+    renderWithProviders(
+      <BalanceSection
+        balances={[
+          { balancedesc: 'Main', balance_type: 'Banking', opening_amount: '100', movement_amount: '0', is_savings: false },
+          { balancedesc: 'Rainy Day', balance_type: 'Banking', opening_amount: '500', movement_amount: '0', is_savings: true },
+        ]}
+        formatters={formatters}
+        onViewTransactions={() => {}}
+      />
+    )
+
+    const badges = screen.queryAllByText('Savings')
+    expect(badges.length).toBeGreaterThanOrEqual(1)
   })
 
   describe('mobile rendering', () => {

@@ -11,7 +11,7 @@ from ..api_docs import DbSession, error_responses
 from ..cycle_constants import CLOSED, CURRENT_STAGE, PENDING_CLOSURE_STAGE, PLANNED
 from ..cycle_management import current_period_totals, cycle_stage, ordered_budget_periods, _to_decimal
 from ..health_engine.system_metrics import get_system_metric
-from ..models import Budget, PeriodHealthResult
+from ..models import Budget, BudgetHealthMatrix, BudgetHealthMatrixItem, PeriodHealthResult
 from ..schemas import PeriodOut
 from ..time_utils import APP_TIMEZONE
 
@@ -375,12 +375,39 @@ def get_health_history_trends(
         name = metric_def["name"] if metric_def else key
         metrics.append(HealthHistoryMetricOut(key=key, name=name))
 
+    # Compute per-period composite score from current matrix weights
+    matrix = db.query(BudgetHealthMatrix).filter_by(budgetid=budget_id, is_active=True).first()
+    matrix_weights: dict[str, float] = {}
+    if matrix:
+        matrix_items = (
+            db.query(BudgetHealthMatrixItem)
+            .filter_by(matrix_id=matrix.matrix_id, is_enabled=True)
+            .all()
+        )
+        for item in matrix_items:
+            metric_def = get_system_metric(item.metric_key)
+            if metric_def and metric_def.get("scope") == "CURRENT_PERIOD":
+                matrix_weights[item.metric_key] = float(item.weight)
+
+    composite_key = "__composite__"
+    if matrix_weights and available_keys:
+        metrics.insert(0, HealthHistoryMetricOut(key=composite_key, name="Total Health Score"))
+
     result_periods = []
     for period in filtered_periods:
         scores: dict[str, int | None] = {}
         period_snaps = snapshots_by_period.get(period.finperiodid, {})
         for key in available_keys:
             scores[key] = period_snaps.get(key)
+
+        if matrix_weights and available_keys:
+            weighted_score = 0.0
+            total_weight = 0.0
+            for key, weight in matrix_weights.items():
+                if key in scores and scores[key] is not None:
+                    weighted_score += scores[key] * weight
+                    total_weight += weight
+            scores[composite_key] = int(weighted_score / total_weight) if total_weight > 0 else None
 
         result_periods.append(
             HealthHistoryPeriodOut(

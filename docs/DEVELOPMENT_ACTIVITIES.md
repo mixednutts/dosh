@@ -210,6 +210,48 @@ Activities:
 - added `HealthHistoryChart.test.jsx` and `HealthHistoryPage.test.jsx`
 - deliverable: `backend/app/routers/reports.py`, `frontend/src/components/reports/HealthHistoryChart.jsx`, `frontend/src/pages/HealthHistoryPage.jsx`, `frontend/src/components/Layout.jsx`
 
+#### Activity Group: Health History Total Health Score
+
+Status:
+- `Completed` (2026-05-03)
+
+Activities:
+- the Health History report now includes a **Total Health Score** composite metric for each period
+- backend computes the weighted average of available `CURRENT_PERIOD` snapshot scores using the active health matrix's current weights
+- synthetic metric key `__composite__` with name "Total Health Score" is prepended to the response metrics list
+- composite is computed on-the-fly for all historical periods, so existing closed cycles immediately show the line without requiring new snapshots
+- frontend requires no changes; the chart renders the new metric line automatically because it consumes the backend's `metrics` array
+- updated backend tests in `test_reports.py` to assert composite score values
+- deliverable: `backend/app/routers/reports.py`, `backend/tests/test_reports.py`
+
+#### Activity Group: Account Balances Savings Indicator
+
+Status:
+- `Completed` (2026-05-03)
+
+Activities:
+- the Account Balances section on the Budget Cycle Details page now shows a **Savings** badge when an account is marked as a savings account (`is_savings === true`)
+- badge uses `.badge-blue` from `LOOK_AND_FEEL.md` (informational/active tone)
+- rendered inline next to the account type text in both desktop table and mobile card views
+- updated `BalanceSection.test.jsx` with `is_savings` fixture data and a new assertion verifying the badge renders
+- deliverable: `frontend/src/components/period-sections/BalanceSection.jsx`, `frontend/src/__tests__/BalanceSection.test.jsx`
+
+#### Activity Group: Budget Cycle Detail Header Button Redesign
+
+Status:
+- `Completed` (2026-05-03)
+
+Activities:
+- redesigned the top button bar on the Budget Cycle Details page for visual consistency
+- secondary actions (Export, Run Auto Expense, AI Insights, Settings, Lock/Unlock) are now uniform **icon-only** buttons with `title` tooltips and consistent square sizing (`!px-2`)
+- **Close Out** relabeled to **"Close Out Cycle"** for clearer function identification
+- Lock button uses **amber styling** when locked (`border-amber-300 bg-amber-50 text-amber-700`) to communicate state visually without text clutter; unlocked state uses standard secondary styling
+- vertical dividers separate the three groups: actions | primary (Close Out Cycle) | settings/lock
+- improved **header stability when navigating between cycles**: breadcrumb budget name and metadata line now render skeleton pulse placeholders while `budget` data is loading, preventing layout jumps
+- button toolbar uses `min-h-[36px]` so height stays consistent as conditional buttons appear/disappear between cycle stages
+- updated `PeriodDetailPage.test.jsx` assertions to use `getByTitle` / `queryByTitle` for icon-only buttons and handle the modal's duplicate "Close Out Cycle" button text
+- deliverable: `frontend/src/pages/PeriodDetailPage.jsx`, `frontend/src/__tests__/PeriodDetailPage.test.jsx`
+
 #### Activity Group: Report Period Label Timezone Fix
 
 Status:

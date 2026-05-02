@@ -382,9 +382,14 @@ def test_health_history_returns_snapshots(client, db_session):
     assert response.status_code == 200
     data = response.json()
     assert len(data["periods"]) == 2
-    assert len(data["metrics"]) == 2
+    assert len(data["metrics"]) == 3
     metric_keys = {m["key"] for m in data["metrics"]}
-    assert metric_keys == {"budget_vs_actual_amount", "budget_vs_actual_lines"}
+    assert metric_keys == {"__composite__", "budget_vs_actual_amount", "budget_vs_actual_lines"}
+
+    # Periods are ordered by startdate ascending; i=1 (older, scores 70/85) comes first,
+    # then i=0 (newer, scores 60/80). Composite = weighted average of available snapshots.
+    assert data["periods"][0]["scores"]["__composite__"] == 76
+    assert data["periods"][1]["scores"]["__composite__"] == 69
 
     for period in data["periods"]:
         assert period["scores"]["budget_vs_actual_amount"] is not None
@@ -430,9 +435,11 @@ def test_health_history_metric_keys_filter(client, db_session):
     )
     assert response.status_code == 200
     data = response.json()
-    assert len(data["metrics"]) == 1
-    assert data["metrics"][0]["key"] == "budget_vs_actual_amount"
+    assert len(data["metrics"]) == 2
+    metric_keys = {m["key"] for m in data["metrics"]}
+    assert metric_keys == {"__composite__", "budget_vs_actual_amount"}
     assert "budget_vs_actual_lines" not in data["periods"][0]["scores"]
+    assert data["periods"][0]["scores"]["__composite__"] == 75
 
 
 def test_health_history_date_range_filter(client, db_session):

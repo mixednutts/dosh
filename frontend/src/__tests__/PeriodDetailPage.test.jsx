@@ -127,8 +127,8 @@ describe('PeriodDetailPage', () => {
     expect(screen.getByText(/This period looks to be tracking along nicely with the current plan\./)).toBeTruthy()
     expect(screen.getByText(/Budget Cycle Notes & Observations/)).toBeTruthy()
     expect(screen.getByText(/Closed out smoothly\./)).toBeTruthy()
-    expect(screen.queryByText('Close Out')).toBeNull()
-    expect(screen.queryByText('Unlocked')).toBeNull()
+    expect(screen.queryByText('Close Out Cycle')).toBeNull()
+    expect(screen.queryByTitle('Lock budget cycle')).toBeNull()
   })
 
   it('shows export alongside lifecycle actions for active cycles and downloads the selected format', async () => {
@@ -161,7 +161,7 @@ describe('PeriodDetailPage', () => {
       path: '/budgets/:budgetId/periods/:periodId',
     })
 
-    expect(await screen.findByText('Close Out')).toBeTruthy()
+    expect(await screen.findByText('Close Out Cycle')).toBeTruthy()
     expect(screen.getByTitle('Export budget cycle')).toBeTruthy()
 
     fireEvent.click(screen.getByTitle('Export budget cycle'))
@@ -225,10 +225,10 @@ describe('PeriodDetailPage', () => {
       path: '/budgets/:budgetId/periods/:periodId',
     })
 
-    expect(await screen.findByText('Run Auto Expense')).toBeTruthy()
+    expect(await screen.findByTitle('Run Auto Expense')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'MANUAL' })).toBeTruthy()
 
-    fireEvent.click(screen.getByText('Run Auto Expense'))
+    fireEvent.click(screen.getByTitle('Run Auto Expense'))
 
     await waitFor(() => {
       expect(client.runPeriodAutoExpenses).toHaveBeenCalledWith(1, 47)
@@ -351,7 +351,7 @@ describe('PeriodDetailPage', () => {
     })
 
     expect(await screen.findByText('Rent')).toBeTruthy()
-    expect(screen.queryByText('Run Auto Expense')).toBeNull()
+    expect(screen.queryByTitle('Run Auto Expense')).toBeNull()
     expect(screen.queryByText('AUTO')).toBeNull()
   })
 
@@ -386,8 +386,8 @@ describe('PeriodDetailPage', () => {
     })
 
     expect(await screen.findByTitle('Export budget cycle')).toBeTruthy()
-    expect(screen.queryByText('Close Out')).toBeNull()
-    expect(screen.queryByText('Unlocked')).toBeNull()
+    expect(screen.queryByText('Close Out Cycle')).toBeNull()
+    expect(screen.queryByTitle('Lock budget cycle')).toBeNull()
   })
 
   it('shows close-out modal preview and requires next-cycle confirmation when missing', async () => {
@@ -442,18 +442,21 @@ describe('PeriodDetailPage', () => {
       path: '/budgets/:budgetId/periods/:periodId',
     })
 
-    fireEvent.click(await screen.findByText('Close Out'))
+    fireEvent.click(await screen.findByText('Close Out Cycle'))
 
     expect(await screen.findByText('Close Out Budget Cycle')).toBeTruthy()
     expect(await screen.findByText(/Closing a budget cycle makes it read-only/i)).toBeTruthy()
     expect(screen.getByText(/Create the next budget cycle automatically during close-out/i)).toBeTruthy()
     expect(screen.getByLabelText(/Carry this amount forward/i)).toBeTruthy()
 
-    const closeButton = screen.getByText('Close Out Cycle')
-    expect(closeButton.disabled).toBe(true)
+    const closeButtons = screen.getAllByText('Close Out Cycle')
+      .map(el => el.closest('button'))
+      .filter(Boolean)
+    const modalCloseButton = closeButtons.find(b => b.disabled)
+    expect(modalCloseButton).toBeTruthy()
 
     fireEvent.click(screen.getByLabelText(/Create the next budget cycle automatically during close-out/i))
-    expect(closeButton.disabled).toBe(false)
+    expect(modalCloseButton.disabled).toBe(false)
   })
 
   it('requires confirmation before marking an under-spent expense as paid', async () => {
@@ -739,7 +742,7 @@ describe('PeriodDetailPage', () => {
 
     expect(await screen.findByText(/Budget cycle is locked\./)).toBeTruthy()
     expect(screen.getByText(/You can still record actuals and transactions, but budget amounts and cycle line structure are protected unless you unlock it\./)).toBeTruthy()
-    expect(screen.getByText('Locked')).toBeTruthy()
+    expect(screen.getByTitle('Unlock budget cycle')).toBeTruthy()
     expect(screen.queryByText('Add New Income Line Item')).toBeNull()
     expect(screen.queryByText('Add New Expense Line Item')).toBeNull()
     expect(screen.getByText('System')).toBeTruthy()

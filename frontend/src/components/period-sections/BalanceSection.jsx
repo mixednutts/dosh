@@ -64,7 +64,12 @@ export function BalanceSection({
     {
       key: 'balance_type',
       label: 'Account Type',
-      render: v => v || <span className="text-gray-400">—</span>,
+      render: (v, row) => (
+        <span className="flex items-center gap-1.5">
+          {v || <span className="text-gray-400">—</span>}
+          {row.is_savings && <span className="badge-blue">Savings</span>}
+        </span>
+      ),
     },
   ]
 
@@ -132,7 +137,12 @@ export function BalanceSection({
                   <td className="table-cell text-right">
                     <span className={`font-medium ${closing >= 0 ? 'text-success-600 dark:text-success-400' : 'text-red-600 dark:text-red-400'}`}>{fmt(closing)}</span>
                   </td>
-                  <td className="table-cell-muted">{b.balance_type || '—'}</td>
+                  <td className="table-cell-muted">
+                    <span className="inline-flex items-center gap-1.5">
+                      {b.balance_type || '—'}
+                      {b.is_savings && <span className="badge-blue">Savings</span>}
+                    </span>
+                  </td>
                   <td className="px-3 py-2">
                     <div className="flex items-center justify-center">
                       <button
