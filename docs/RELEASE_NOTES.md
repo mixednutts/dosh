@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+## 0.9.8-beta | released | 2026-05-03
+
+### Added
+
+- **Health History report.** A new report shows how your per-period health metrics have trended over time. Navigate to **Reporting > Health History** to see a line chart of metric scores across closed budget cycles. Each metric can be toggled on or off from the right-hand panel. Only per-period metrics (such as Budget vs Actual Amount and In-Cycle Expense Revisions) are shown; overall metrics like Setup Health are excluded because they do not vary by cycle.
+
+### Changed
+
+- **Income Allocation percentages toggle is now in its own View section.** The "Percentages" pill on the Income Allocation report has moved from the Filters row into a dedicated "View" control group, making it clearer that this switch changes how the chart is rendered rather than which data is included.
+
+### Fixed
+
+- **Report period labels now respect your budget's timezone.** Period labels on all trend reports (Budget vs Actual, Income Allocation, Investment Trends, and Health History) now correctly convert UTC stored dates to the budget's local timezone before formatting. This fixes the off-by-one-day issue for budgets ahead of UTC (for example, a Sydney-based budget showing "Dec 31" instead of "Jan 01" for a cycle starting on January 1st).
+- **Investment Trends Y-axis now pads correctly.** The Y-axis domain is computed from both cumulative contributed and cumulative projected values, with a 15% top padding, so the line no longer touches the top boundary when projected growth exceeds actual contributions.
+
 ## 0.9.7-beta | released | 2026-05-02
 
 ### Added

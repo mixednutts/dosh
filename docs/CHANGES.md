@@ -4,6 +4,67 @@ This document captures the key product and implementation changes made during re
 
 It is intended to complement [README.md](/home/ubuntu/dosh/README.md), not replace it.
 
+## Session: Report Period Labels Timezone Fix, Income Allocation UI Layout, and Health History Report (0.9.8-beta) (2026-05-03)
+
+### What changed
+
+- **Fixed report period labels to use budget timezone.**
+  - `backend/app/routers/reports.py`: `_period_label(period, timezone_str)` now accepts a timezone parameter and converts UTC `startdate`/`enddate` to the specified timezone via `ZoneInfo` before extracting display dates.
+  - Updated all four trend endpoint callers to pass `budget.timezone`: Budget vs Actual, Income Allocation, Investment Trends, and Health History.
+  - Added `ZoneInfo` import and `APP_TIMEZONE` default from `time_utils`.
+  - Fixes the off-by-one-day label issue for budgets ahead of UTC (e.g. a Sydney budget showing "Dec 31" for a Jan 1st cycle start).
+
+- **Moved Percentages toggle to dedicated View section on Income Allocation report.**
+  - `frontend/src/pages/IncomeAllocationPage.jsx`: Reorganized the control bar so the "Percentages" pill sits under a new "View" heading, separate from "Filters".
+  - Filters now contains: Expenses, Investments, Surplus, Current Cycle.
+  - View now contains: Percentages.
+  - This clarifies that Percentages changes rendering mode, not data filtering.
+
+- **Health History report — shipped.**
+  - Backend endpoint `GET /api/reports/budgets/{id}/trends/health-history` returns per-period `PeriodHealthResult` snapshots.
+  - Filters to `CURRENT_PERIOD` scoped snapshots only; excludes `OVERALL` metrics.
+  - Supports `from_date`, `to_date`, and `metric_keys` query params.
+  - Frontend `HealthHistoryChart.jsx`: Recharts line chart with metric toggles, dark mode support.
+  - Frontend `HealthHistoryPage.jsx`: full page with `CycleFilter`, RHS metric toggle panel, empty state.
+  - Sidebar nav integration: added `/reports/health-history` route, sidebar link, landing page card.
+  - New test files: `HealthHistoryChart.test.jsx`, `HealthHistoryPage.test.jsx`.
+
+- **Investment Trends Y-axis domain fix.**
+  - `frontend/src/components/reports/InvestmentTrendsChart.jsx`: Explicit domain `[0, Math.ceil(max * 1.15)]` computed from both `cumulative_contributed` and `cumulative_projected` values.
+  - Prevents the line from touching the top boundary.
+
+- **Version bump: `0.9.7-beta` → `0.9.8-beta`.**
+  - Used `scripts/bump_version.py` to update all version touchpoints.
+
+### Testing
+
+- Full backend regression suite: **378 passed** (+6 new/updated report tests), 0 regressions introduced.
+- Full frontend regression suite: **439 passed** (+12 new tests across Health History components), 0 regressions introduced.
+
+### Files touched
+
+- `backend/app/routers/reports.py`
+- `backend/tests/test_reports.py`
+- `frontend/src/pages/IncomeAllocationPage.jsx`
+- `frontend/src/pages/HealthHistoryPage.jsx` (new)
+- `frontend/src/components/reports/HealthHistoryChart.jsx` (new)
+- `frontend/src/__tests__/HealthHistoryChart.test.jsx` (new)
+- `frontend/src/__tests__/HealthHistoryPage.test.jsx` (new)
+- `frontend/src/components/reports/InvestmentTrendsChart.jsx`
+- `frontend/src/__tests__/InvestmentTrendsChart.test.jsx`
+- `frontend/src/App.jsx`
+- `frontend/src/components/Layout.jsx`
+- `frontend/src/api/client.js`
+- `frontend/src/pages/ReportsLandingPage.jsx`
+- `docs/RELEASE_NOTES.md`
+- `docs/DEVELOPMENT_ACTIVITIES.md`
+- `docs/CHANGES.md`
+- `docs/MIGRATION_AND_RELEASE_MANAGEMENT.md`
+- `docs/tests/TEST_RESULTS_SUMMARY.md`
+- `AGENTS.md`
+
+---
+
 ## Session: Calendar Unscheduled Expenses Toggle (patch on 0.9.6-beta) (2026-05-02)
 
 ### What changed

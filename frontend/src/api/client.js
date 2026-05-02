@@ -256,3 +256,6 @@ export const getIncomeAllocationTrends = (budgetId, params = {}) =>
 
 export const getInvestmentTrends = (budgetId, params = {}) =>
   api.get(`/reports/budgets/${budgetId}/trends/investment-trends`, { params }).then(r => r.data)
+
+export const getHealthHistoryTrends = (budgetId, params = {}) =>
+  api.get(`/reports/budgets/${budgetId}/trends/health-history`, { params }).then(r => r.data)

@@ -3,15 +3,12 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts'
 import { useChartTheme } from '../../hooks/useChartTheme'
-import { useLocalisation } from '../LocalisationContext'
 
-function formatCurrencyShort(value) {
-  if (value >= 1000) return `$${(value / 1000).toFixed(1)}k`
-  return `$${value}`
-}
+const METRIC_COLOR_ORDER = [
+  'line1', 'line2', 'line3', 'line4', 'line5', 'line6', 'line7', 'line8',
+]
 
-function CustomTooltip({ active, payload, label }) {
-  const { formatCurrency } = useLocalisation()
+function CustomTooltip({ active, payload, label, metricNames }) {
   const theme = useChartTheme()
 
   if (!active || !payload?.length) return null
@@ -33,8 +30,8 @@ function CustomTooltip({ active, payload, label }) {
               className="inline-block h-2 w-2 rounded-full"
               style={{ backgroundColor: entry.color }}
             />
-            <span className="flex-1">{entry.name}:</span>
-            <span className="font-medium">{formatCurrency(entry.value)}</span>
+            <span className="flex-1">{metricNames[entry.dataKey] || entry.name}:</span>
+            <span className="font-medium">{entry.value}</span>
           </div>
         ))}
       </div>
@@ -46,21 +43,25 @@ CustomTooltip.propTypes = {
   active: PropTypes.bool,
   payload: PropTypes.arrayOf(PropTypes.object),
   label: PropTypes.string,
+  metricNames: PropTypes.objectOf(PropTypes.string),
 }
 
-export default function InvestmentTrendsChart({ data }) {
+export default function HealthHistoryChart({ data, metrics, visibleMetrics }) {
   const theme = useChartTheme()
 
-  const lines = [
-    { key: 'cumulative_contributed', name: 'Actual Growth', color: theme.line6 },
-    { key: 'cumulative_projected', name: 'Projected Growth', color: theme.line5, strokeDasharray: '4 4' },
-  ]
-
-  const allValues = data.flatMap(d =>
-    [d.cumulative_contributed, d.cumulative_projected].filter(v => v != null)
-  )
-  const maxVal = allValues.length ? Math.max(...allValues) : 0
-  const yMax = maxVal > 0 ? Math.ceil(maxVal * 1.15) : 100
+  const metricNames = {}
+  const lines = []
+  metrics.forEach((metric, index) => {
+    const colorKey = METRIC_COLOR_ORDER[index % METRIC_COLOR_ORDER.length]
+    metricNames[metric.key] = metric.name
+    if (visibleMetrics.has(metric.key)) {
+      lines.push({
+        key: metric.key,
+        name: metric.name,
+        color: theme[colorKey],
+      })
+    }
+  })
 
   return (
     <div className="h-80 w-full sm:h-96">
@@ -77,11 +78,10 @@ export default function InvestmentTrendsChart({ data }) {
             tick={{ fill: theme.text, fontSize: 12 }}
             axisLine={{ stroke: theme.grid }}
             tickLine={{ stroke: theme.grid }}
-            tickFormatter={formatCurrencyShort}
-            domain={[0, yMax]}
+            domain={[0, 100]}
             padding={{ top: 10, bottom: 10 }}
           />
-          <Tooltip content={<CustomTooltip />} />
+          <Tooltip content={<CustomTooltip metricNames={metricNames} />} />
           <Legend
             wrapperStyle={{ color: theme.text, fontSize: 12 }}
             iconType="circle"
@@ -95,9 +95,9 @@ export default function InvestmentTrendsChart({ data }) {
               name={line.name}
               stroke={line.color}
               strokeWidth={2}
-              strokeDasharray={line.strokeDasharray}
               dot={{ r: 3, fill: line.color }}
               activeDot={{ r: 5 }}
+              connectNulls
             />
           ))}
         </LineChart>
@@ -106,6 +106,13 @@ export default function InvestmentTrendsChart({ data }) {
   )
 }
 
-InvestmentTrendsChart.propTypes = {
+HealthHistoryChart.propTypes = {
   data: PropTypes.arrayOf(PropTypes.object).isRequired,
+  metrics: PropTypes.arrayOf(
+    PropTypes.shape({
+      key: PropTypes.string.isRequired,
+      name: PropTypes.string.isRequired,
+    })
+  ).isRequired,
+  visibleMetrics: PropTypes.instanceOf(Set).isRequired,
 }

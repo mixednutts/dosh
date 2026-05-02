@@ -2,6 +2,58 @@
 
 This document records meaningful automated test results from major working sessions.
 
+## Latest Session: Report Period Labels Timezone Fix, Income Allocation UI Layout, and Health History Report (0.9.8-beta)
+
+This session fixed report period labels to use the budget's timezone, reorganised the Income Allocation percentages toggle into a dedicated View section, and shipped the Health History report.
+
+### Verification
+
+```bash
+cd /home/ubuntu/dosh/backend
+source .venv/bin/activate
+python -m pytest tests/ -q
+```
+
+Result:
+
+- Full backend suite: **378 passed**
+- No regressions introduced
+
+```bash
+cd /home/ubuntu/dosh/frontend
+npm test -- --watchAll=false
+```
+
+Result:
+
+- Full frontend suite: **439 passed**
+- No regressions introduced
+
+### Deployment Verification
+
+```bash
+cd /home/ubuntu/dosh
+docker compose build dosh
+docker compose up -d dosh
+curl -sS http://127.0.0.1:3080/api/health
+```
+
+Result:
+
+- Docker image built and deployed successfully
+- Health endpoint returned `200` with `{"status":"ok","app":"Dosh"}`
+
+### What changed
+
+- `backend/app/routers/reports.py`: `_period_label()` now converts UTC datetimes to budget timezone before formatting; all four trend endpoints pass `budget.timezone`
+- `frontend/src/pages/IncomeAllocationPage.jsx`: "Percentages" toggle moved from Filters to new "View" section
+- `frontend/src/pages/HealthHistoryPage.jsx` (new): Health History report page with CycleFilter and metric toggles
+- `frontend/src/components/reports/HealthHistoryChart.jsx` (new): Recharts line chart for per-period health metric snapshots
+- `frontend/src/__tests__/HealthHistoryChart.test.jsx` (new): 4 tests for chart rendering and metric line toggles
+- `frontend/src/__tests__/HealthHistoryPage.test.jsx` (new): 8 tests for page rendering, empty state, and metric filtering
+
+---
+
 ## Latest Session: Calendar Unscheduled Expenses Toggle (0.9.6-beta patch)
 
 This session added an "Include Unscheduled Expenses" toggle to the full calendar modal, allowing users to show or hide expenses with `freqtype === 'Always'`.

@@ -134,14 +134,21 @@ export default function IncomeAllocationPage() {
               defaultPreset="last12"
             />
           </div>
-          <div className="space-y-1.5">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-slate-500">Filters</span>
-            <div className="flex flex-wrap items-center gap-2">
-              <TogglePill label="Expenses" checked={showExpenses} onChange={setShowExpenses} />
-              <TogglePill label="Investments" checked={showInvestments} onChange={setShowInvestments} />
-              <TogglePill label="Surplus" checked={showSurplus} onChange={setShowSurplus} />
-              <TogglePill label="Percentages" checked={showPercentages} onChange={setShowPercentages} />
-              <TogglePill label="Current Cycle" checked={includeCurrentPeriod} onChange={setIncludeCurrentPeriod} />
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+            <div className="space-y-1.5">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-slate-500">Filters</span>
+              <div className="flex flex-wrap items-center gap-2">
+                <TogglePill label="Expenses" checked={showExpenses} onChange={setShowExpenses} />
+                <TogglePill label="Investments" checked={showInvestments} onChange={setShowInvestments} />
+                <TogglePill label="Surplus" checked={showSurplus} onChange={setShowSurplus} />
+                <TogglePill label="Current Cycle" checked={includeCurrentPeriod} onChange={setIncludeCurrentPeriod} />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-slate-500">View</span>
+              <div className="flex flex-wrap items-center gap-2">
+                <TogglePill label="Percentages" checked={showPercentages} onChange={setShowPercentages} />
+              </div>
             </div>
           </div>
         </div>

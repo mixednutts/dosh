@@ -1,6 +1,7 @@
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Annotated, Optional
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
@@ -9,8 +10,10 @@ from sqlalchemy.orm import Session
 from ..api_docs import DbSession, error_responses
 from ..cycle_constants import CLOSED, CURRENT_STAGE, PENDING_CLOSURE_STAGE, PLANNED
 from ..cycle_management import current_period_totals, cycle_stage, ordered_budget_periods, _to_decimal
-from ..models import Budget
+from ..health_engine.system_metrics import get_system_metric
+from ..models import Budget, PeriodHealthResult
 from ..schemas import PeriodOut
+from ..time_utils import APP_TIMEZONE
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 
@@ -77,13 +80,34 @@ class InvestmentTrendsResponseOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
-def _period_label(period) -> str:
+class HealthHistoryMetricOut(BaseModel):
+    key: str
+    name: str
+
+
+class HealthHistoryPeriodOut(BaseModel):
+    finperiodid: int
+    label: str
+    startdate: date
+    enddate: date
+    cycle_stage: str
+    scores: dict[str, int | None]
+
+
+class HealthHistoryResponseOut(BaseModel):
+    periods: list[HealthHistoryPeriodOut]
+    metrics: list[HealthHistoryMetricOut]
+    model_config = {"from_attributes": True}
+
+
+def _period_label(period, timezone_str: str = APP_TIMEZONE) -> str:
     start = period.startdate
     end = period.enddate
+    tz = ZoneInfo(timezone_str)
     if isinstance(start, datetime):
-        start = start.date()
+        start = start.astimezone(tz).date()
     if isinstance(end, datetime):
-        end = end.date()
+        end = end.astimezone(tz).date()
     return f"{start.strftime('%b %d')}–{end.strftime('%b %d')}"
 
 
@@ -134,7 +158,7 @@ def get_budget_vs_actual_trends(
             continue
 
         totals = current_period_totals(period, db)
-        label = _period_label(period)
+        label = _period_label(period, budget.timezone)
 
         trend = BudgetVsActualTrendOut(
             finperiodid=period.finperiodid,
@@ -190,7 +214,7 @@ def get_income_allocation_trends(
             continue
 
         totals = current_period_totals(period, db)
-        label = _period_label(period)
+        label = _period_label(period, budget.timezone)
 
         trend = IncomeAllocationTrendOut(
             finperiodid=period.finperiodid,
@@ -258,7 +282,7 @@ def get_investment_trends(
             cumulative_committed += committed
             contributed = cumulative_committed
 
-        label = _period_label(period)
+        label = _period_label(period, budget.timezone)
 
         trend = InvestmentTrendOut(
             finperiodid=period.finperiodid,
@@ -277,3 +301,96 @@ def get_investment_trends(
         result.append(trend)
 
     return InvestmentTrendsResponseOut(periods=result)
+
+
+@router.get(
+    "/budgets/{budget_id}/trends/health-history",
+    response_model=HealthHistoryResponseOut,
+    responses=error_responses(404),
+)
+def get_health_history_trends(
+    budget_id: int,
+    db: DbSession,
+    from_date: Annotated[Optional[date], Query()] = None,
+    to_date: Annotated[Optional[date], Query()] = None,
+    metric_keys: Annotated[Optional[str], Query()] = None,
+):
+    budget = db.get(Budget, budget_id)
+    if not budget:
+        raise HTTPException(404, "Budget not found")
+
+    periods = ordered_budget_periods(budget_id, db)
+    if not periods:
+        return HealthHistoryResponseOut(periods=[], metrics=[])
+
+    non_planned = [p for p in periods if cycle_stage(p) != PLANNED]
+    if not non_planned:
+        return HealthHistoryResponseOut(periods=[], metrics=[])
+
+    effective_from, effective_to = _effective_date_range(non_planned, from_date, to_date)
+
+    requested_keys = None
+    if metric_keys:
+        requested_keys = set(metric_keys.split(","))
+
+    period_ids = []
+    filtered_periods = []
+    for period in non_planned:
+        if not _period_in_range(period, effective_from, effective_to):
+            continue
+        filtered_periods.append(period)
+        period_ids.append(period.finperiodid)
+
+    snapshots = (
+        db.query(PeriodHealthResult)
+        .filter(
+            PeriodHealthResult.finperiodid.in_(period_ids),
+            PeriodHealthResult.is_snapshot == True,
+        )
+        .all()
+    )
+
+    snapshots_by_period: dict[int, dict[str, int]] = {}
+    all_metric_keys: set[str] = set()
+    for snap in snapshots:
+        all_metric_keys.add(snap.metric_key)
+        if snap.finperiodid not in snapshots_by_period:
+            snapshots_by_period[snap.finperiodid] = {}
+        snapshots_by_period[snap.finperiodid][snap.metric_key] = snap.score
+
+    if requested_keys:
+        available_keys = sorted(requested_keys & all_metric_keys)
+    else:
+        available_keys = sorted(all_metric_keys)
+
+    # Exclude OVERALL-scoped metrics; health history only shows per-period metrics
+    available_keys = [
+        key for key in available_keys
+        if get_system_metric(key) and get_system_metric(key).get("scope") == "CURRENT_PERIOD"
+    ]
+
+    metrics = []
+    for key in available_keys:
+        metric_def = get_system_metric(key)
+        name = metric_def["name"] if metric_def else key
+        metrics.append(HealthHistoryMetricOut(key=key, name=name))
+
+    result_periods = []
+    for period in filtered_periods:
+        scores: dict[str, int | None] = {}
+        period_snaps = snapshots_by_period.get(period.finperiodid, {})
+        for key in available_keys:
+            scores[key] = period_snaps.get(key)
+
+        result_periods.append(
+            HealthHistoryPeriodOut(
+                finperiodid=period.finperiodid,
+                label=_period_label(period, budget.timezone),
+                startdate=period.startdate.date() if isinstance(period.startdate, datetime) else period.startdate,
+                enddate=period.enddate.date() if isinstance(period.enddate, datetime) else period.enddate,
+                cycle_stage=cycle_stage(period),
+                scores=scores,
+            )
+        )
+
+    return HealthHistoryResponseOut(periods=result_periods, metrics=metrics)

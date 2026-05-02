@@ -299,3 +299,195 @@ def test_investment_trends_projected_exceeds_contributed_for_planned(client, db_
         for p in planned_periods:
             assert p["cumulative_contributed"] is None
             assert Decimal(p["cumulative_projected"]) >= Decimal("0")
+
+
+# ── Health History ────────────────────────────────────────────────────────────
+
+def test_health_history_404_for_missing_budget(client):
+    response = client.get("/api/reports/budgets/99999/trends/health-history")
+    assert response.status_code == 404
+
+
+def test_health_history_empty_budget(client, db_session):
+    from tests.factories import create_budget
+    budget = create_budget(db_session)
+    response = client.get(f"/api/reports/budgets/{budget.budgetid}/trends/health-history")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["periods"] == []
+    assert data["metrics"] == []
+
+
+def test_health_history_no_snapshots_returns_empty_metrics(client, db_session):
+    from tests.factories import create_minimum_budget_setup, generate_periods
+    from app.time_utils import utc_now
+
+    setup = create_minimum_budget_setup(db_session)
+    budget = setup["budget"]
+    start = utc_now().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=30)
+    generate_periods(client, budgetid=budget.budgetid, startdate=start, count=2)
+
+    response = client.get(f"/api/reports/budgets/{budget.budgetid}/trends/health-history")
+    assert response.status_code == 200
+    data = response.json()
+    # Periods exist but no snapshots, so metrics are empty and scores absent
+    assert len(data["periods"]) >= 1
+    assert data["metrics"] == []
+
+
+def test_health_history_returns_snapshots(client, db_session):
+    from tests.factories import create_budget
+    from app.models import FinancialPeriod, PeriodHealthResult, BudgetHealthMatrix
+    from app.cycle_constants import CLOSED
+
+    budget = create_budget(db_session)
+    db_session.commit()
+
+    now = datetime.now(timezone.utc)
+    for i in range(2):
+        period = FinancialPeriod(
+            budgetid=budget.budgetid,
+            startdate=now - timedelta(days=30 * (i + 2)),
+            enddate=now - timedelta(days=30 * (i + 1)),
+            cycle_status=CLOSED,
+            islocked=True,
+        )
+        db_session.add(period)
+        db_session.flush()
+
+        matrix = db_session.query(BudgetHealthMatrix).filter_by(budgetid=budget.budgetid, is_active=True).first()
+        db_session.add(PeriodHealthResult(
+            finperiodid=period.finperiodid,
+            matrix_id=matrix.matrix_id,
+            metric_key="budget_vs_actual_amount",
+            score=60 + i * 10,
+            status="Watch",
+            summary="Test",
+            evidence_json="[]",
+            is_snapshot=True,
+        ))
+        db_session.add(PeriodHealthResult(
+            finperiodid=period.finperiodid,
+            matrix_id=matrix.matrix_id,
+            metric_key="budget_vs_actual_lines",
+            score=80 + i * 5,
+            status="Strong",
+            summary="Test",
+            evidence_json="[]",
+            is_snapshot=True,
+        ))
+    db_session.commit()
+
+    response = client.get(f"/api/reports/budgets/{budget.budgetid}/trends/health-history")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["periods"]) == 2
+    assert len(data["metrics"]) == 2
+    metric_keys = {m["key"] for m in data["metrics"]}
+    assert metric_keys == {"budget_vs_actual_amount", "budget_vs_actual_lines"}
+
+    for period in data["periods"]:
+        assert period["scores"]["budget_vs_actual_amount"] is not None
+        assert period["scores"]["budget_vs_actual_lines"] is not None
+
+
+def test_health_history_metric_keys_filter(client, db_session):
+    from tests.factories import create_budget
+    from app.models import FinancialPeriod, PeriodHealthResult, BudgetHealthMatrix
+    from app.cycle_constants import CLOSED
+
+    budget = create_budget(db_session)
+    db_session.commit()
+
+    now = datetime.now(timezone.utc)
+    period = FinancialPeriod(
+        budgetid=budget.budgetid,
+        startdate=now - timedelta(days=30),
+        enddate=now - timedelta(days=1),
+        cycle_status=CLOSED,
+        islocked=True,
+    )
+    db_session.add(period)
+    db_session.flush()
+
+    matrix = db_session.query(BudgetHealthMatrix).filter_by(budgetid=budget.budgetid, is_active=True).first()
+    for key in ("budget_vs_actual_amount", "budget_vs_actual_lines"):
+        db_session.add(PeriodHealthResult(
+            finperiodid=period.finperiodid,
+            matrix_id=matrix.matrix_id,
+            metric_key=key,
+            score=75,
+            status="Strong",
+            summary="Test",
+            evidence_json="[]",
+            is_snapshot=True,
+        ))
+    db_session.commit()
+
+    response = client.get(
+        f"/api/reports/budgets/{budget.budgetid}/trends/health-history",
+        params={"metric_keys": "budget_vs_actual_amount"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["metrics"]) == 1
+    assert data["metrics"][0]["key"] == "budget_vs_actual_amount"
+    assert "budget_vs_actual_lines" not in data["periods"][0]["scores"]
+
+
+def test_health_history_date_range_filter(client, db_session):
+    from tests.factories import create_budget
+    from app.models import FinancialPeriod, PeriodHealthResult, BudgetHealthMatrix
+    from app.cycle_constants import CLOSED
+
+    budget = create_budget(db_session)
+    db_session.commit()
+
+    now = datetime.now(timezone.utc)
+    # Older period (should be excluded)
+    old_period = FinancialPeriod(
+        budgetid=budget.budgetid,
+        startdate=now - timedelta(days=90),
+        enddate=now - timedelta(days=60),
+        cycle_status=CLOSED,
+        islocked=True,
+    )
+    db_session.add(old_period)
+    db_session.flush()
+
+    # Recent period (should be included)
+    recent_period = FinancialPeriod(
+        budgetid=budget.budgetid,
+        startdate=now - timedelta(days=30),
+        enddate=now - timedelta(days=1),
+        cycle_status=CLOSED,
+        islocked=True,
+    )
+    db_session.add(recent_period)
+    db_session.flush()
+
+    matrix = db_session.query(BudgetHealthMatrix).filter_by(budgetid=budget.budgetid, is_active=True).first()
+    for p in (old_period, recent_period):
+        db_session.add(PeriodHealthResult(
+            finperiodid=p.finperiodid,
+            matrix_id=matrix.matrix_id,
+            metric_key="budget_vs_actual_amount",
+            score=80,
+            status="Strong",
+            summary="Test",
+            evidence_json="[]",
+            is_snapshot=True,
+        ))
+    db_session.commit()
+
+    from_date = (now - timedelta(days=45)).date().isoformat()
+    to_date = now.date().isoformat()
+
+    response = client.get(
+        f"/api/reports/budgets/{budget.budgetid}/trends/health-history",
+        params={"from_date": from_date, "to_date": to_date},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["periods"]) == 1
+    assert data["periods"][0]["finperiodid"] == recent_period.finperiodid

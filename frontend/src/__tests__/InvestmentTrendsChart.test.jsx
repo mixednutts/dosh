@@ -13,7 +13,9 @@ jest.mock('recharts', () => ({
     <span data-testid={`line-${dataKey}`} data-dash={strokeDasharray || ''}>{name}</span>
   ),
   XAxis: () => <div data-testid="x-axis" />,
-  YAxis: ({ tickFormatter }) => <div data-testid="y-axis" data-has-formatter={!!tickFormatter} />,
+  YAxis: ({ tickFormatter, domain }) => (
+    <div data-testid="y-axis" data-has-formatter={!!tickFormatter} data-domain={JSON.stringify(domain)} />
+  ),
   CartesianGrid: () => <div data-testid="cartesian-grid" />,
   Tooltip: ({ content }) => <div data-testid="tooltip">{content}</div>,
   Legend: () => <div data-testid="legend" />,
@@ -62,6 +64,14 @@ describe('InvestmentTrendsChart', () => {
   it('renders YAxis with currency formatter', () => {
     renderChart()
     expect(screen.getByTestId('y-axis').getAttribute('data-has-formatter')).toBe('true')
+  })
+
+  it('computes YAxis domain from both actual and projected values', () => {
+    renderChart()
+    const domainAttr = screen.getByTestId('y-axis').getAttribute('data-domain')
+    const domain = JSON.parse(domainAttr)
+    // max(950, 1000) * 1.15 = 1150 -> ceil = 1150
+    expect(domain).toEqual([0, 1150])
   })
 
   describe('CustomTooltip', () => {

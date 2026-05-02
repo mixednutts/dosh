@@ -5,6 +5,7 @@ import {
   ChartBarIcon,
   ArrowTrendingUpIcon,
   CurrencyDollarIcon,
+  HeartIcon,
 } from '@heroicons/react/24/outline'
 import clsx from 'clsx'
 import { getBudgets, getBudgetReportSummary } from '../api/client'
@@ -33,6 +34,14 @@ const REPORT_CARDS = [
     description: 'Track investment growth and contribution patterns over time.',
     icon: CurrencyDollarIcon,
     to: (budgetId) => `/reports/investment-trends?budgetId=${budgetId}`,
+    enabled: true,
+  },
+  {
+    key: 'health-history',
+    title: 'Health History',
+    description: 'Visualise budget health scores for closed periods over time.',
+    icon: HeartIcon,
+    to: (budgetId) => `/reports/health-history?budgetId=${budgetId}`,
     enabled: true,
   },
 ]

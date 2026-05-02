@@ -4,7 +4,7 @@ import {
   WalletIcon, Bars3Icon, XMarkIcon, MoonIcon, SunIcon,
   ChevronRightIcon, ChevronDownIcon, ChevronLeftIcon,
   PresentationChartBarIcon,
-  ChartBarIcon, ArrowTrendingUpIcon, CurrencyDollarIcon,
+  ChartBarIcon, ArrowTrendingUpIcon, CurrencyDollarIcon, HeartIcon,
 } from '@heroicons/react/24/outline'
 import { useState, useEffect, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
@@ -19,7 +19,7 @@ import { getAppInfo, getBudgets, getBudgetSetupAssessment, getPeriodDetail, getP
 import { getCycleStage } from '../utils/periodStage'
 
 function displayVersion(version) {
-  return `v${version || '0.9.7-beta'}`
+  return `v${version || '0.9.8-beta'}`
 }
 
 function PeriodShortcutGroup({ title, periods, activePeriodId, onNav, budgetId, emptyMessage = null, moreText = null, moreTo = null, moreSubtle = false }) {
@@ -319,6 +319,7 @@ const REPORT_LINKS = [
   { key: 'budget-vs-actual', title: 'Budget vs Actual', icon: ChartBarIcon, path: '/reports/budget-vs-actual' },
   { key: 'income-allocation', title: 'Income Allocation', icon: ArrowTrendingUpIcon, path: '/reports/income-allocation' },
   { key: 'investment-trends', title: 'Investment Trends', icon: CurrencyDollarIcon, path: '/reports/investment-trends' },
+  { key: 'health-history', title: 'Health History', icon: HeartIcon, path: '/reports/health-history' },
 ]
 
 function CurrentReportsPanel({ budgetId, onNav }) {

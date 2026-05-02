@@ -195,6 +195,46 @@ Activities:
 - no version bump — patch on top of `0.9.6-beta`
 - deliverable: `backend/app/routers/reports.py`, `frontend/src/components/reports/IncomeAllocationChart.jsx`, `frontend/src/pages/IncomeAllocationPage.jsx`
 
+#### Activity Group: Health History Report
+
+Status:
+- `Completed` (2026-05-03)
+
+Activities:
+- added backend endpoint `GET /api/reports/budgets/{id}/trends/health-history` returning `PeriodHealthResult` snapshots per period
+- endpoint filters to `CURRENT_PERIOD` scoped snapshots only; excludes `OVERALL` metrics like `setup_health` and `period_trend`
+- supports `from_date`, `to_date`, and `metric_keys` query params
+- frontend `HealthHistoryChart.jsx`: Recharts line chart with multiple metric lines, dark mode support via `useChartTheme`
+- frontend `HealthHistoryPage.jsx`: full report page with `CycleFilter`, metric toggle panel on the right, and empty state
+- integrated into sidebar Reporting navigation with route `/reports/health-history`
+- added `HealthHistoryChart.test.jsx` and `HealthHistoryPage.test.jsx`
+- deliverable: `backend/app/routers/reports.py`, `frontend/src/components/reports/HealthHistoryChart.jsx`, `frontend/src/pages/HealthHistoryPage.jsx`, `frontend/src/components/Layout.jsx`
+
+#### Activity Group: Report Period Label Timezone Fix
+
+Status:
+- `Completed` (2026-05-03)
+
+Activities:
+- fixed `_period_label()` in `reports.py` to convert UTC `startdate`/`enddate` to the budget's timezone via `ZoneInfo` before extracting display dates
+- updated all four trend endpoints (Budget vs Actual, Income Allocation, Investment Trends, Health History) to pass `budget.timezone` to `_period_label()`
+- this fixes the off-by-one-day label issue for budgets ahead of UTC (e.g. Australia/Sydney showing "Dec 31" for a Jan 1st cycle start)
+- all backend tests pass (378), all frontend tests pass (439)
+- deliverable: `backend/app/routers/reports.py`
+
+#### Activity Group: Income Allocation Percentages Toggle Layout
+
+Status:
+- `Completed` (2026-05-03)
+
+Activities:
+- moved the "Percentages" toggle pill out of the Filters flex container into a dedicated "View" section on `IncomeAllocationPage.jsx`
+- Filters now contains: Expenses, Investments, Surplus, Current Cycle
+- View now contains: Percentages
+- this correctly separates data-filtering controls from rendering-mode controls
+- all frontend tests pass (439)
+- deliverable: `frontend/src/pages/IncomeAllocationPage.jsx`
+
 #### Activity Group: Calendar Unscheduled Expenses Toggle
 
 Status:
