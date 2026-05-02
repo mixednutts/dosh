@@ -27,6 +27,14 @@ SYSTEM_METRICS = {
         "default_weight": Decimal("0.60"),
         "default_display_order": 1,
     },
+    "period_trend": {
+        "name": "Period Trend",
+        "description": "Compares the current period's health score against recent historical periods to identify improvement or decline.",
+        "scope": "OVERALL",
+        "default_parameters": {"lookback_periods": 3, "tolerance_points": 5},
+        "default_weight": Decimal("0.30"),
+        "default_display_order": 6,
+    },
     "budget_vs_actual_amount": {
         "name": "Budget vs Actual (Amount)",
         "description": "Expense line actual amount exceeds the budget amount (aggregate overrun).",

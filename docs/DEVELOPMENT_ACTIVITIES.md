@@ -51,12 +51,16 @@ Activities:
 #### Activity Group: Health Trending / Momentum
 
 Status:
-- `Later` — future feature, not blocking rc-1
+- `Completed` (2026-05-02)
 
 Activities:
-- define "trend" semantics (what changes, over what window, and why users should care)
-- add an initial trending visualization on budget summary (minimal but trustworthy)
-- metric executors and tone-aware scoring are already implemented in `backend/app/health_engine/metric_executors.py`
+- shipped the `period_trend` metric as an `OVERALL`-scoped system metric that compares the current period's composite health score against the average of recent closed periods
+- configurable `lookback_periods` (default 3) and `tolerance_points` (default 5) parameters
+- backend executor queries `PeriodHealthResult` snapshots with `is_snapshot=True` for historical periods
+- momentum summary derives from `period_trend` when enabled; falls back to historical `_compute_momentum` when disabled
+- frontend `TrendBadge` component renders a small inner circle on the overall health score with arrow icon + delta value, only when `period_trend` is present in `pillars`
+- momentum text is hidden entirely when `period_trend` is disabled (no fallback text rendered)
+- deliverable: `backend/app/health_engine/system_metrics.py`, `backend/app/health_engine/metric_executors.py`, `backend/app/health_engine/runner.py`, `frontend/src/pages/BudgetsPage.jsx`
 
 ### 2) UX / UI
 

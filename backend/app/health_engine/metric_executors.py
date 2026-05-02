@@ -613,6 +613,183 @@ def _budget_cycles_pending_closeout_executor(
     }
 
 
+def _period_trend_executor(
+    *,
+    db: Session,
+    budget: Budget,
+    period: FinancialPeriod | None,
+    parameters: dict,
+    scoring_sensitivity: int,
+    tone: str,
+    current_period_composite_score: int | None = None,
+    **kwargs,
+) -> dict:
+    """Evaluate whether the current period is improving or declining vs recent historical periods."""
+    from ..models import FinancialPeriod, PeriodHealthResult
+    from ..cycle_constants import CLOSED
+    from .system_metrics import SYSTEM_METRICS
+
+    lookback = max(1, int(parameters.get("lookback_periods", 3)))
+    tolerance = max(0, int(parameters.get("tolerance_points", 5)))
+
+    if period is None or current_period_composite_score is None:
+        return {
+            "score": 100,
+            "status": HEALTH_STRONG,
+            "summary": _NO_CURRENT_PERIOD_SUMMARY,
+            "evidence": [{"label": "Period", "value": "None", "detail": _NO_CURRENT_PERIOD_DETAIL}],
+            "calculation": _NO_CURRENT_PERIOD_CALC,
+            "delta": 0,
+            "trend": "Stable",
+        }
+
+    closed_periods = (
+        db.query(FinancialPeriod)
+        .filter(
+            FinancialPeriod.budgetid == budget.budgetid,
+            FinancialPeriod.cycle_status == CLOSED,
+        )
+        .order_by(FinancialPeriod.enddate.desc())
+        .limit(lookback)
+        .all()
+    )
+
+    historical_scores = []
+    for cp in closed_periods:
+        snapshots = (
+            db.query(PeriodHealthResult)
+            .filter(
+                PeriodHealthResult.finperiodid == cp.finperiodid,
+                PeriodHealthResult.is_snapshot == True,
+            )
+            .all()
+        )
+        if snapshots:
+            # Prefer CURRENT_PERIOD scoped snapshots for apples-to-apples comparison
+            current_period_snapshots = [
+                s for s in snapshots
+                if SYSTEM_METRICS.get(s.metric_key, {}).get("scope") == "CURRENT_PERIOD"
+            ]
+            if current_period_snapshots:
+                historical_scores.append(int(sum(s.score for s in current_period_snapshots) / len(current_period_snapshots)))
+            else:
+                historical_scores.append(int(sum(s.score for s in snapshots) / len(snapshots)))
+
+    if not historical_scores:
+        score = 100
+        status = HEALTH_STRONG
+        calculation = "No closed periods with health snapshots found → score = 100."
+        delta = 0
+        trend = "Stable"
+        summaries = {
+            "supportive": "Not enough historical data yet to show a trend — keep tracking!",
+            "factual": "Insufficient historical period data to establish a trend.",
+            "friendly": "Not enough history to spot a trend yet — you're doing fine!",
+        }
+    else:
+        historical_avg = sum(historical_scores) / len(historical_scores)
+        delta = current_period_composite_score - historical_avg
+
+        sensitivity_factor = max(0.01, Decimal(scoring_sensitivity) / Decimal(50))
+
+        if delta >= -tolerance:
+            score = 100
+            calculation = (
+                f"Current = {current_period_composite_score}. "
+                f"Historical avg ({len(historical_scores)} periods) = {historical_avg:.1f}. "
+                f"Delta = {delta:.1f}. Within tolerance ({tolerance}) → score = 100."
+            )
+        else:
+            excess = abs(delta) - tolerance
+            raw_score = 100 - (excess * float(sensitivity_factor) * 1.5)
+            score = int(_clamp(raw_score, 0, 100))
+            calculation = (
+                f"Current = {current_period_composite_score}. "
+                f"Historical avg ({len(historical_scores)} periods) = {historical_avg:.1f}. "
+                f"Delta = {delta:.1f}. Tolerance = {tolerance}. "
+                f"Excess = {excess:.1f}. Sensitivity = {sensitivity_factor:.2f}. "
+                f"Score = 100 - ({excess:.1f} × {sensitivity_factor:.2f} × 1.5) = {score}."
+            )
+
+        status = _health_status(score)
+
+        if delta >= 5:
+            trend = "Improving"
+        elif delta <= -5:
+            trend = "Declining"
+        else:
+            trend = "Stable"
+
+        summaries = {
+            "supportive": (
+                "Current period is performing better than recent cycles — great momentum!"
+                if trend == "Improving"
+                else "Current period is below recent cycles — a small focus shift could help."
+                if trend == "Declining"
+                else "Current period is tracking in line with recent cycles — steady progress."
+            ),
+            "factual": (
+                "Current period score exceeds the historical average."
+                if trend == "Improving"
+                else "Current period score is below the historical average."
+                if trend == "Declining"
+                else "Current period score is aligned with the historical average."
+            ),
+            "friendly": (
+                "Nice — you're doing better than your recent cycles!"
+                if trend == "Improving"
+                else "A little off your recent pace — nothing a quick review can't fix."
+                if trend == "Declining"
+                else "You're right on pace with your recent cycles — nice consistency!"
+            ),
+        }
+
+    evidence = [
+        {
+            "label": "Current period score",
+            "value": str(current_period_composite_score),
+            "raw_value": current_period_composite_score,
+            "raw_unit": "score",
+            "detail": "Weighted composite score of current-period metrics for this period.",
+        },
+    ]
+    if historical_scores:
+        evidence.extend([
+            {
+                "label": "Historical average",
+                "value": f"{historical_avg:.1f}",
+                "raw_value": round(historical_avg, 1),
+                "raw_unit": "score",
+                "detail": f"Average current-period score across the last {len(historical_scores)} closed period(s).",
+            },
+            {
+                "label": "Trend",
+                "value": trend,
+                "raw_value": trend,
+                "raw_unit": "status",
+                "detail": f"Delta = {delta:.1f} points vs historical average.",
+            },
+        ])
+    else:
+        evidence.append({
+            "label": "Lookback periods",
+            "value": str(lookback),
+            "raw_value": lookback,
+            "raw_unit": "count",
+            "detail": "Number of previous closed periods to include in the trend calculation.",
+        })
+
+    return {
+        "score": score,
+        "status": status,
+        "summary": summaries.get(tone, summaries["factual"]),
+        "evidence": evidence,
+        "calculation": calculation,
+        "delta": int(round(delta)) if isinstance(delta, (int, float, Decimal)) else 0,
+        "trend": trend if historical_scores else "Stable",
+    }
+
+
 METRIC_EXECUTORS = {
     "setup_health": _setup_health_executor,
     "budget_vs_actual_amount": _budget_vs_actual_amount_executor,
@@ -620,6 +797,7 @@ METRIC_EXECUTORS = {
     "in_cycle_budget_adjustments": _in_cycle_budget_adjustments_executor,
     "revisions_on_paid_expenses": _revisions_on_paid_expenses_executor,
     "budget_cycles_pending_closeout": _budget_cycles_pending_closeout_executor,
+    "period_trend": _period_trend_executor,
 }
 
 

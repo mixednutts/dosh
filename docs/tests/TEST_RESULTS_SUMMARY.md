@@ -2,6 +2,57 @@
 
 This document records meaningful automated test results from major working sessions.
 
+## Latest Session: Period Trend Health Metric and Expense Schedule Propagation Fix (0.9.6-beta patch)
+
+This session added the `period_trend` health metric and fixed expense schedule propagation to future unlocked periods.
+
+### Verification
+
+```bash
+cd /home/ubuntu/dosh/backend
+.venv/bin/python -m pytest tests/ -q
+```
+
+Result:
+
+- Full backend suite: **372 passed**
+- No regressions introduced
+
+```bash
+cd /home/ubuntu/dosh/frontend
+CI=true npm test -- --watchAll=false --runInBand
+```
+
+Result:
+
+- Full frontend suite: **423 passed**
+- No regressions introduced
+
+### Deployment Verification
+
+```bash
+cd /home/ubuntu/dosh
+docker compose up --build -d
+curl -sS http://127.0.0.1:3080/api/health
+```
+
+Result:
+
+- Docker image built and deployed successfully
+- Health endpoint returned `{"status":"ok","app":"Dosh"}`
+
+### What changed
+
+- `backend/app/health_engine/system_metrics.py`: Added `period_trend` metric definition
+- `backend/app/health_engine/metric_executors.py`: Implemented `_period_trend_executor()`
+- `backend/app/health_engine/runner.py`: Pre-computes `current_period_composite_score`; derives momentum from `period_trend` when enabled
+- `backend/app/routers/expense_items.py`: `update_expense_item` now creates/removes `PeriodExpense` rows in future unlocked periods based on new schedule
+- `backend/alembic/versions/8d512b6cf2c3_add_period_trend_health_metric.py`: Migration adding `period_trend` to all active matrices
+- `frontend/src/pages/BudgetsPage.jsx`: Added `TrendBadge` component with conditional rendering based on `period_trend` presence
+- `frontend/src/pages/tabs/BudgetHealthTab.jsx`: Added `period_trend` parameter inputs and scoring curve description
+
+---
+
 ## Latest Session: Budget vs Actual Timezone Fix (0.9.5-beta patch)
 
 This session fixed a production bug where the Budget vs Actual report excluded the earliest cycle when the browser timezone was ahead of UTC (e.g. Australia/Sydney).

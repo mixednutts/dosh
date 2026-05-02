@@ -262,7 +262,7 @@ def test_evaluate_period_health_returns_metrics(client, db_session) -> None:
 
     matrix = db_session.query(BudgetHealthMatrix).filter_by(budgetid=budget.budgetid, is_active=True).first()
     results = evaluate_period_health(db_session, budget, None, matrix)
-    assert len(results) == 6
+    assert len(results) == 7
     for r in results:
         assert "score" in r
         assert "status" in r
@@ -426,7 +426,7 @@ def test_persist_period_health_snapshot_creates_rows(client, db_session) -> None
     db_session.commit()
 
     snapshots = db_session.query(PeriodHealthResult).filter_by(finperiodid=period.finperiodid).all()
-    assert len(snapshots) == 6  # default matrix has 6 metrics
+    assert len(snapshots) == 7  # default matrix has 7 metrics
     for snap in snapshots:
         assert snap.is_snapshot is True
         assert snap.score is not None
@@ -457,8 +457,8 @@ def test_evaluate_period_health_skips_unknown_metric_key(client, db_session) -> 
     db_session.commit()
 
     results = evaluate_period_health(db_session, budget, None, matrix)
-    # Should still return results for the 6 valid metrics, skipping the unknown one
-    assert len(results) == 6
+    # Should still return results for the 7 valid metrics, skipping the unknown one
+    assert len(results) == 7
 
 
 def test_evaluate_period_health_handles_invalid_parameters_json(client, db_session) -> None:
@@ -479,7 +479,7 @@ def test_evaluate_period_health_handles_invalid_parameters_json(client, db_sessi
 
     results = evaluate_period_health(db_session, budget, None, matrix)
     # Should still return results, using empty dict for corrupted parameters
-    assert len(results) == 6
+    assert len(results) == 7
 
 
 def test_evaluate_budget_health_finds_current_period_on_last_day(client, db_session) -> None:
@@ -513,3 +513,314 @@ def test_evaluate_budget_health_finds_current_period_on_last_day(client, db_sess
 
     for m in cpc["metrics"]:
         assert m["summary"] != "No current period to evaluate."
+
+
+def test_period_trend_no_historical_periods_returns_strong(client, db_session) -> None:
+    from tests.factories import create_budget
+    from app.models import FinancialPeriod
+
+    budget = create_budget(db_session)
+    period = FinancialPeriod(
+        budgetid=budget.budgetid,
+        startdate=datetime.now(timezone.utc) - timedelta(days=15),
+        enddate=datetime.now(timezone.utc) + timedelta(days=15),
+        islocked=False,
+    )
+    db_session.add(period)
+    db_session.commit()
+
+    executor = get_executor("period_trend")
+    result = executor(
+        db=db_session,
+        budget=budget,
+        period=period,
+        parameters={"lookback_periods": 3, "tolerance_points": 5},
+        scoring_sensitivity=50,
+        tone="factual",
+        current_period_composite_score=75,
+    )
+    assert result["score"] == 100
+    assert result["status"] == "Strong"
+    assert result["trend"] == "Stable"
+    assert "No closed periods" in result["calculation"]
+
+
+def test_period_trend_improving_when_current_exceeds_historical(client, db_session) -> None:
+    from tests.factories import create_budget
+    from app.models import FinancialPeriod, PeriodHealthResult, BudgetHealthMatrix
+    from app.cycle_constants import CLOSED
+
+    budget = create_budget(db_session)
+    matrix = BudgetHealthMatrix(budgetid=budget.budgetid, name="Health", is_active=True)
+    db_session.add(matrix)
+    db_session.flush()
+
+    # Create two closed periods with snapshots
+    for i in range(2):
+        p = FinancialPeriod(
+            budgetid=budget.budgetid,
+            startdate=datetime.now(timezone.utc) - timedelta(days=60 - i * 30),
+            enddate=datetime.now(timezone.utc) - timedelta(days=30 - i * 30),
+            cycle_status=CLOSED,
+            islocked=True,
+        )
+        db_session.add(p)
+        db_session.flush()
+        # Snapshot a CURRENT_PERIOD metric with score 60
+        db_session.add(PeriodHealthResult(
+            finperiodid=p.finperiodid,
+            matrix_id=matrix.matrix_id,
+            metric_key="budget_vs_actual_amount",
+            score=60,
+            status="Watch",
+            summary="Test",
+            evidence_json="[]",
+            is_snapshot=True,
+        ))
+
+    current_period = FinancialPeriod(
+        budgetid=budget.budgetid,
+        startdate=datetime.now(timezone.utc) - timedelta(days=15),
+        enddate=datetime.now(timezone.utc) + timedelta(days=15),
+        islocked=False,
+    )
+    db_session.add(current_period)
+    db_session.commit()
+
+    executor = get_executor("period_trend")
+    result = executor(
+        db=db_session,
+        budget=budget,
+        period=current_period,
+        parameters={"lookback_periods": 3, "tolerance_points": 5},
+        scoring_sensitivity=50,
+        tone="factual",
+        current_period_composite_score=90,
+    )
+    assert result["score"] == 100
+    assert result["trend"] == "Improving"
+    assert result["delta"] == 30
+
+
+def test_period_trend_declining_within_tolerance_returns_strong(client, db_session) -> None:
+    from tests.factories import create_budget
+    from app.models import FinancialPeriod, PeriodHealthResult, BudgetHealthMatrix
+    from app.cycle_constants import CLOSED
+
+    budget = create_budget(db_session)
+    matrix = BudgetHealthMatrix(budgetid=budget.budgetid, name="Health", is_active=True)
+    db_session.add(matrix)
+    db_session.flush()
+
+    p = FinancialPeriod(
+        budgetid=budget.budgetid,
+        startdate=datetime.now(timezone.utc) - timedelta(days=60),
+        enddate=datetime.now(timezone.utc) - timedelta(days=30),
+        cycle_status=CLOSED,
+        islocked=True,
+    )
+    db_session.add(p)
+    db_session.flush()
+    db_session.add(PeriodHealthResult(
+        finperiodid=p.finperiodid,
+        matrix_id=matrix.matrix_id,
+        metric_key="budget_vs_actual_amount",
+        score=80,
+        status="Strong",
+        summary="Test",
+        evidence_json="[]",
+        is_snapshot=True,
+    ))
+
+    current_period = FinancialPeriod(
+        budgetid=budget.budgetid,
+        startdate=datetime.now(timezone.utc) - timedelta(days=15),
+        enddate=datetime.now(timezone.utc) + timedelta(days=15),
+        islocked=False,
+    )
+    db_session.add(current_period)
+    db_session.commit()
+
+    executor = get_executor("period_trend")
+    result = executor(
+        db=db_session,
+        budget=budget,
+        period=current_period,
+        parameters={"lookback_periods": 3, "tolerance_points": 5},
+        scoring_sensitivity=50,
+        tone="factual",
+        current_period_composite_score=76,  # 4 points below historical → within tolerance
+    )
+    assert result["score"] == 100
+    assert result["trend"] == "Stable"
+
+
+def test_period_trend_declining_beyond_tolerance_penalises(client, db_session) -> None:
+    from tests.factories import create_budget
+    from app.models import FinancialPeriod, PeriodHealthResult, BudgetHealthMatrix
+    from app.cycle_constants import CLOSED
+
+    budget = create_budget(db_session)
+    matrix = BudgetHealthMatrix(budgetid=budget.budgetid, name="Health", is_active=True)
+    db_session.add(matrix)
+    db_session.flush()
+
+    p = FinancialPeriod(
+        budgetid=budget.budgetid,
+        startdate=datetime.now(timezone.utc) - timedelta(days=60),
+        enddate=datetime.now(timezone.utc) - timedelta(days=30),
+        cycle_status=CLOSED,
+        islocked=True,
+    )
+    db_session.add(p)
+    db_session.flush()
+    db_session.add(PeriodHealthResult(
+        finperiodid=p.finperiodid,
+        matrix_id=matrix.matrix_id,
+        metric_key="budget_vs_actual_amount",
+        score=80,
+        status="Strong",
+        summary="Test",
+        evidence_json="[]",
+        is_snapshot=True,
+    ))
+
+    current_period = FinancialPeriod(
+        budgetid=budget.budgetid,
+        startdate=datetime.now(timezone.utc) - timedelta(days=15),
+        enddate=datetime.now(timezone.utc) + timedelta(days=15),
+        islocked=False,
+    )
+    db_session.add(current_period)
+    db_session.commit()
+
+    executor = get_executor("period_trend")
+    result = executor(
+        db=db_session,
+        budget=budget,
+        period=current_period,
+        parameters={"lookback_periods": 3, "tolerance_points": 5},
+        scoring_sensitivity=50,
+        tone="factual",
+        current_period_composite_score=50,  # 30 points below historical
+    )
+    # excess = 30 - 5 = 25, factor = 1.0, score = 100 - (25 * 1.5) = 62.5
+    assert result["score"] == 62
+    assert result["trend"] == "Declining"
+    assert result["delta"] == -30
+
+
+def test_period_trend_uses_configured_lookback(client, db_session) -> None:
+    from tests.factories import create_budget
+    from app.models import FinancialPeriod, PeriodHealthResult, BudgetHealthMatrix
+    from app.cycle_constants import CLOSED
+
+    budget = create_budget(db_session)
+    matrix = BudgetHealthMatrix(budgetid=budget.budgetid, name="Health", is_active=True)
+    db_session.add(matrix)
+    db_session.flush()
+
+    # Create 3 closed periods with different scores (most recent = highest)
+    for i, score in enumerate([50, 70, 90]):
+        p = FinancialPeriod(
+            budgetid=budget.budgetid,
+            startdate=datetime.now(timezone.utc) - timedelta(days=120 - i * 30),
+            enddate=datetime.now(timezone.utc) - timedelta(days=90 - i * 30),
+            cycle_status=CLOSED,
+            islocked=True,
+        )
+        db_session.add(p)
+        db_session.flush()
+        db_session.add(PeriodHealthResult(
+            finperiodid=p.finperiodid,
+            matrix_id=matrix.matrix_id,
+            metric_key="budget_vs_actual_amount",
+            score=score,
+            status="Strong",
+            summary="Test",
+            evidence_json="[]",
+            is_snapshot=True,
+        ))
+
+    current_period = FinancialPeriod(
+        budgetid=budget.budgetid,
+        startdate=datetime.now(timezone.utc) - timedelta(days=15),
+        enddate=datetime.now(timezone.utc) + timedelta(days=15),
+        islocked=False,
+    )
+    db_session.add(current_period)
+    db_session.commit()
+
+    executor = get_executor("period_trend")
+
+    # With lookback=1, only the most recent closed period (score 90) is used
+    result_1 = executor(
+        db=db_session, budget=budget, period=current_period,
+        parameters={"lookback_periods": 1, "tolerance_points": 5},
+        scoring_sensitivity=50, tone="factual", current_period_composite_score=80,
+    )
+    assert result_1["delta"] == -10  # 80 - 90
+
+    # With lookback=3, all three periods are averaged (50+70+90)/3 = 70
+    result_3 = executor(
+        db=db_session, budget=budget, period=current_period,
+        parameters={"lookback_periods": 3, "tolerance_points": 5},
+        scoring_sensitivity=50, tone="factual", current_period_composite_score=80,
+    )
+    assert result_3["delta"] == 10  # 80 - 70
+
+
+def test_period_trend_derives_momentum_in_evaluate_budget_health(client, db_session) -> None:
+    from tests.factories import create_budget
+    from app.health_engine_seed import create_default_matrix_for_budget
+    from app.models import FinancialPeriod, PeriodHealthResult, BudgetHealthMatrix, PeriodExpense
+    from app.cycle_constants import CLOSED
+
+    budget = create_budget(db_session)
+    create_default_matrix_for_budget(db_session, budget)
+    db_session.commit()
+
+    matrix = db_session.query(BudgetHealthMatrix).filter_by(budgetid=budget.budgetid, is_active=True).first()
+
+    # Create a closed period with snapshots
+    closed = FinancialPeriod(
+        budgetid=budget.budgetid,
+        startdate=datetime.now(timezone.utc) - timedelta(days=60),
+        enddate=datetime.now(timezone.utc) - timedelta(days=30),
+        cycle_status=CLOSED,
+        islocked=True,
+    )
+    db_session.add(closed)
+    db_session.flush()
+
+    # Add CURRENT_PERIOD scoped snapshots with low scores so current period looks better
+    for metric_key in ["budget_vs_actual_amount", "budget_vs_actual_lines"]:
+        db_session.add(PeriodHealthResult(
+            finperiodid=closed.finperiodid,
+            matrix_id=matrix.matrix_id,
+            metric_key=metric_key,
+            score=50,
+            status="Watch",
+            summary="Test",
+            evidence_json="[]",
+            is_snapshot=True,
+        ))
+
+    # Create current period with no overruns (so CURRENT_PERIOD metrics score 100)
+    current = FinancialPeriod(
+        budgetid=budget.budgetid,
+        startdate=datetime.now(timezone.utc) - timedelta(days=15),
+        enddate=datetime.now(timezone.utc) + timedelta(days=15),
+        islocked=False,
+    )
+    db_session.add(current)
+    db_session.flush()
+    db_session.commit()
+
+    payload = evaluate_budget_health(db_session, budget.budgetid)
+    assert payload is not None
+    assert payload["momentum_status"] == "Improving"
+    assert payload["momentum_delta"] > 0
+    assert "momentum_summary" in payload
+    assert payload["overall_summary"] is not None
+    assert payload["overall_summary"] != ""

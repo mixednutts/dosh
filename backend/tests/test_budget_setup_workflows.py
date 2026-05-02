@@ -1011,3 +1011,194 @@ def test_update_expense_to_scheduled_requires_frequency_value(client, db_session
     )
     assert update.status_code == 422
     assert "frequency value is required" in update.json()["detail"].lower()
+
+
+def test_update_expense_schedule_adds_to_future_periods_where_now_due(client, db_session):
+    """Changing an expense schedule should create PeriodExpense rows in future unlocked periods where it now occurs."""
+    budget = create_budget(db_session, budget_frequency="Monthly")
+    create_income_type(db_session, budgetid=budget.budgetid)
+    create_balance_type(db_session, budgetid=budget.budgetid)
+    # Create an 'Always' expense that exists in all generated periods
+    create_expense_item(db_session, budgetid=budget.budgetid, expensedesc="Rent", freqtype="Always", expenseamount=Decimal("100.00"))
+
+    periods = generate_periods(client, budgetid=budget.budgetid, startdate=datetime(2026, 1, 1), count=3)
+    period_1 = periods[0]
+    period_2 = periods[1]
+    period_3 = periods[2]
+
+    # Verify Rent exists in all three periods
+    for p in periods:
+        detail = client.get(f"/api/budgets/{budget.budgetid}/periods/{p['finperiodid']}").json()
+        assert "Rent" in {e["expensedesc"] for e in detail["expenses"]}
+
+    # Change to Every 75 Days (occurs in Jan and Mar, but not Feb)
+    update = client.patch(
+        f"/api/budgets/{budget.budgetid}/expense-items/Rent",
+        json={
+            "freqtype": "Every N Days",
+            "frequency_value": 75,
+            "effectivedate": "2026-01-01T00:00:00",
+            "expenseamount": "100.00",
+        },
+    )
+    assert update.status_code == 200, update.text
+
+    # Period 1 (Jan) — still occurs on 1 Jan
+    detail_1 = client.get(f"/api/budgets/{budget.budgetid}/periods/{period_1['finperiodid']}").json()
+    expenses_1 = {e["expensedesc"]: e for e in detail_1["expenses"]}
+    assert "Rent" in expenses_1
+    assert expenses_1["Rent"]["budgetamount"] == "100.00"
+
+    # Period 2 (Feb) — no longer occurs (next is 17 Mar)
+    detail_2 = client.get(f"/api/budgets/{budget.budgetid}/periods/{period_2['finperiodid']}").json()
+    expenses_2 = {e["expensedesc"] for e in detail_2["expenses"]}
+    assert "Rent" not in expenses_2
+
+    # Period 3 (Mar) — occurs on 17 Mar
+    detail_3 = client.get(f"/api/budgets/{budget.budgetid}/periods/{period_3['finperiodid']}").json()
+    expenses_3 = {e["expensedesc"]: e for e in detail_3["expenses"]}
+    assert "Rent" in expenses_3
+    assert expenses_3["Rent"]["budgetamount"] == "100.00"
+
+
+def test_update_expense_schedule_removes_from_future_periods_via_later_effective_date(client, db_session):
+    """Pushing an effective date forward should remove the expense from future periods before the new date."""
+    budget = create_budget(db_session, budget_frequency="Monthly")
+    create_income_type(db_session, budgetid=budget.budgetid)
+    create_balance_type(db_session, budgetid=budget.budgetid)
+    create_expense_item(
+        db_session,
+        budgetid=budget.budgetid,
+        expensedesc="Subscription",
+        freqtype="Fixed Day of Month",
+        frequency_value=15,
+        effectivedate=datetime(2026, 1, 1),
+        expenseamount=Decimal("50.00"),
+    )
+
+    periods = generate_periods(client, budgetid=budget.budgetid, startdate=datetime(2026, 1, 1), count=3)
+    period_2 = periods[1]  # Feb
+    period_3 = periods[2]  # Mar
+
+    # Push effective date to 1 March — Feb should lose the expense
+    update = client.patch(
+        f"/api/budgets/{budget.budgetid}/expense-items/Subscription",
+        json={"effectivedate": "2026-03-01T00:00:00"},
+    )
+    assert update.status_code == 200, update.text
+
+    detail_2 = client.get(f"/api/budgets/{budget.budgetid}/periods/{period_2['finperiodid']}").json()
+    assert "Subscription" not in {e["expensedesc"] for e in detail_2["expenses"]}
+
+    detail_3 = client.get(f"/api/budgets/{budget.budgetid}/periods/{period_3['finperiodid']}").json()
+    assert "Subscription" in {e["expensedesc"] for e in detail_3["expenses"]}
+
+
+def test_update_expense_amount_propagates_to_all_future_unlocked_periods(client, db_session):
+    """Changing the amount of an 'Always' expense updates every future unlocked period."""
+    budget = create_budget(db_session, budget_frequency="Monthly")
+    create_income_type(db_session, budgetid=budget.budgetid)
+    create_balance_type(db_session, budgetid=budget.budgetid)
+    create_expense_item(db_session, budgetid=budget.budgetid, expensedesc="Rent", freqtype="Always", expenseamount=Decimal("1000.00"))
+
+    periods = generate_periods(client, budgetid=budget.budgetid, startdate=datetime(2026, 1, 1), count=2)
+
+    update = client.patch(
+        f"/api/budgets/{budget.budgetid}/expense-items/Rent",
+        json={"expenseamount": "1200.00"},
+    )
+    assert update.status_code == 200, update.text
+
+    for p in periods:
+        detail = client.get(f"/api/budgets/{budget.budgetid}/periods/{p['finperiodid']}").json()
+        rent = next(e for e in detail["expenses"] if e["expensedesc"] == "Rent")
+        assert rent["budgetamount"] == "1200.00"
+
+
+def test_update_expense_schedule_does_not_remove_future_periods_with_actuals(client, db_session):
+    """If a future unlocked period already has actuals for the expense, schedule propagation must not delete it."""
+    budget = create_budget(db_session, budget_frequency="Monthly")
+    create_income_type(db_session, budgetid=budget.budgetid)
+    create_balance_type(db_session, budgetid=budget.budgetid)
+    create_expense_item(db_session, budgetid=budget.budgetid, expensedesc="Rent", freqtype="Always", expenseamount=Decimal("100.00"))
+
+    periods = generate_periods(client, budgetid=budget.budgetid, startdate=datetime(2026, 1, 1), count=2)
+    period_2 = periods[1]
+
+    # Record an actual amount in period 2
+    patch = client.patch(
+        f"/api/budgets/{budget.budgetid}/periods/{period_2['finperiodid']}/expense/Rent",
+        json={"actualamount": "50.00"},
+    )
+    assert patch.status_code == 200, patch.text
+
+    # Change schedule so it no longer occurs in period 2 (push effective date past period 2)
+    update = client.patch(
+        f"/api/budgets/{budget.budgetid}/expense-items/Rent",
+        json={"effectivedate": "2026-03-01T00:00:00"},
+    )
+    assert update.status_code == 200, update.text
+
+    # Period 2 should still contain Rent because actuals were recorded
+    detail_2 = client.get(f"/api/budgets/{budget.budgetid}/periods/{period_2['finperiodid']}").json()
+    assert "Rent" in {e["expensedesc"] for e in detail_2["expenses"]}
+
+
+def test_deactivating_expense_removes_from_future_unlocked_periods(client, db_session):
+    """Setting active=False should remove the expense from all future unlocked periods without actuals."""
+    budget = create_budget(db_session, budget_frequency="Monthly")
+    create_income_type(db_session, budgetid=budget.budgetid)
+    create_balance_type(db_session, budgetid=budget.budgetid)
+    create_expense_item(db_session, budgetid=budget.budgetid, expensedesc="Rent", freqtype="Always", expenseamount=Decimal("100.00"))
+
+    periods = generate_periods(client, budgetid=budget.budgetid, startdate=datetime(2026, 1, 1), count=2)
+
+    update = client.patch(
+        f"/api/budgets/{budget.budgetid}/expense-items/Rent",
+        json={"active": False},
+    )
+    assert update.status_code == 200, update.text
+
+    for p in periods:
+        detail = client.get(f"/api/budgets/{budget.budgetid}/periods/{p['finperiodid']}").json()
+        assert "Rent" not in {e["expensedesc"] for e in detail["expenses"]}
+
+
+def test_activating_expense_adds_to_future_unlocked_periods(client, db_session):
+    """Setting active=True on an inactive expense should add it to future unlocked periods according to its schedule."""
+    budget = create_budget(db_session, budget_frequency="Monthly")
+    create_income_type(db_session, budgetid=budget.budgetid)
+    create_balance_type(db_session, budgetid=budget.budgetid)
+    create_expense_item(
+        db_session,
+        budgetid=budget.budgetid,
+        expensedesc="Rent",
+        freqtype="Always",
+        expenseamount=Decimal("100.00"),
+    )
+
+    # Deactivate before generating periods
+    deactivate = client.patch(
+        f"/api/budgets/{budget.budgetid}/expense-items/Rent",
+        json={"active": False},
+    )
+    assert deactivate.status_code == 200, deactivate.text
+
+    periods = generate_periods(client, budgetid=budget.budgetid, startdate=datetime(2026, 1, 1), count=2)
+
+    # Verify Rent is absent before activation
+    for p in periods:
+        detail = client.get(f"/api/budgets/{budget.budgetid}/periods/{p['finperiodid']}").json()
+        assert "Rent" not in {e["expensedesc"] for e in detail["expenses"]}
+
+    update = client.patch(
+        f"/api/budgets/{budget.budgetid}/expense-items/Rent",
+        json={"active": True},
+    )
+    assert update.status_code == 200, update.text
+
+    for p in periods:
+        detail = client.get(f"/api/budgets/{budget.budgetid}/periods/{p['finperiodid']}").json()
+        expenses = {e["expensedesc"]: e for e in detail["expenses"]}
+        assert "Rent" in expenses
+        assert expenses["Rent"]["budgetamount"] == "100.00"

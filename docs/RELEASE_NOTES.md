@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Added
+
+- **Period Trend health metric.** The Budget Health engine now includes a `Period Trend` metric that compares your current period's health score against recent closed periods. When enabled, a small trend badge appears inside the overall health score circle on the budget summary, showing whether health is improving, stable, or declining. You can tune how many past periods to compare against (`lookback_periods`) and how many points of decline are acceptable before the score drops (`tolerance_points`). The metric is disabled by default for existing budgets and can be enabled from Budget Setup under the Budget Health tab.
+
+### Fixed
+
+- **Expense schedule changes now correctly propagate to future periods.** When you change an expense item's schedule (frequency, effective date, or active status) in Budget Setup, the app now creates or removes the corresponding expense lines in future unlocked budget cycles to match the new schedule. Previously, only existing rows were updated and new occurrences were not created.
+
 ## 0.9.6-beta | released | 2026-05-02
 
 ### Reporting Framework

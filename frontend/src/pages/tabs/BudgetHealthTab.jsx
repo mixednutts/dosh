@@ -323,6 +323,26 @@ function MatrixItemCard({ item, onUpdate }) {
               </div>
             </div>
           )}
+
+          {item.metric_key === 'period_trend' && (
+            <div className="rounded-md border border-gray-200 bg-gray-50/50 p-3 dark:border-gray-700 dark:bg-gray-800/40">
+              <p className="mb-2 text-xs font-medium text-gray-700 dark:text-gray-200">Parameters</p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <IntInput
+                  label="Lookback periods"
+                  helper="Number of previous closed periods to include in trend"
+                  value={localParams.lookback_periods ?? 3}
+                  onChange={v => commitParameter('lookback_periods', v)}
+                />
+                <IntInput
+                  label="Tolerance points"
+                  helper="Points of decline that are acceptable before scoring drops"
+                  value={localParams.tolerance_points ?? 5}
+                  onChange={v => commitParameter('tolerance_points', v)}
+                />
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

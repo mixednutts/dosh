@@ -45,6 +45,34 @@ def evaluate_period_health(
         .all()
     )
 
+    # Pre-compute current period composite score from CURRENT_PERIOD metrics
+    # so that OVERALL metrics (like period_trend) can compare against it.
+    current_period_composite_score = None
+    if period is not None:
+        current_period_items = [
+            item for item in items
+            if get_system_metric(item.metric_key) and get_system_metric(item.metric_key)["scope"] == "CURRENT_PERIOD"
+        ]
+        if current_period_items:
+            total_weight = sum(float(item.weight) for item in current_period_items)
+            weighted_score = 0.0
+            for item in current_period_items:
+                try:
+                    parameters = json.loads(item.health_metric_parameters or "{}")
+                except Exception:
+                    parameters = {}
+                executor = get_executor(item.metric_key)
+                result = executor(
+                    db=db,
+                    budget=budget,
+                    period=period,
+                    parameters=parameters,
+                    scoring_sensitivity=item.scoring_sensitivity,
+                    tone=tone,
+                )
+                weighted_score += result["score"] * float(item.weight)
+            current_period_composite_score = int(weighted_score / total_weight) if total_weight > 0 else 50
+
     results = []
 
     for item in items:
@@ -65,9 +93,11 @@ def evaluate_period_health(
             parameters=parameters,
             scoring_sensitivity=item.scoring_sensitivity,
             tone=tone,
+            matrix=matrix,
+            current_period_composite_score=current_period_composite_score,
         )
 
-        results.append({
+        result_dict = {
             "metric_key": item.metric_key,
             "name": metric_def["name"],
             "scope": metric_def["scope"],
@@ -77,7 +107,13 @@ def evaluate_period_health(
             "summary": metric_result["summary"],
             "evidence": metric_result["evidence"],
             "calculation": metric_result.get("calculation"),
-        })
+        }
+        # Pass through extra fields that some executors provide
+        for extra_key in ("delta", "trend", "current_period_composite_score"):
+            if extra_key in metric_result:
+                result_dict[extra_key] = metric_result[extra_key]
+
+        results.append(result_dict)
 
     return results
 
@@ -137,8 +173,22 @@ def evaluate_budget_health(
     overall_score = max(0, min(100, overall_score))
     overall_status = _health_status(overall_score)
 
-    # Compute momentum from historical closed periods
-    momentum_status, momentum_delta = _compute_momentum(db, budgetid, matrix)
+    # Derive momentum only when period_trend metric is enabled
+    period_trend_result = next((r for r in overall_metrics if r["metric_key"] == "period_trend"), None)
+    if period_trend_result and "delta" in period_trend_result:
+        delta = period_trend_result["delta"]
+        if delta >= 5:
+            momentum_status = "Improving"
+        elif delta <= -5:
+            momentum_status = "Declining"
+        else:
+            momentum_status = "Stable"
+        momentum_delta = delta
+        momentum_summary = _momentum_summary(momentum_status, momentum_delta, tone)
+    else:
+        momentum_status = "Stable"
+        momentum_delta = 0
+        momentum_summary = ""
 
     # Build pillars list
     pillars = []
@@ -184,9 +234,11 @@ def evaluate_budget_health(
         "version": "engine-v1",
         "overall_score": overall_score,
         "overall_status": overall_status,
+        "overall_summary": _overall_summary(overall_score, overall_status, tone),
         "pillars": pillars,
         "momentum_status": momentum_status,
         "momentum_delta": momentum_delta,
+        "momentum_summary": momentum_summary,
         "current_period_check": current_period_check,
         "evaluated_at": now.isoformat(),
     }
@@ -246,6 +298,48 @@ def _current_period_summary(score: int, tone: str) -> str:
         if low <= score <= high:
             return message
     return band[(75, 100)]
+
+
+def _overall_summary(score: int, status: str, tone: str) -> str:
+    summaries = {
+        "supportive": {
+            "Strong": "Your budget health is in great shape overall.",
+            "Watch": "Your budget health is okay, but there's room to improve.",
+            "Needs Attention": "Your budget health needs some attention — a few areas could use focus.",
+        },
+        "factual": {
+            "Strong": "Overall budget health is within acceptable parameters.",
+            "Watch": "Overall budget health shows signs of variance.",
+            "Needs Attention": "Overall budget health is below acceptable thresholds.",
+        },
+        "friendly": {
+            "Strong": "Everything's looking great overall!",
+            "Watch": "Not bad overall — a few things to keep an eye on.",
+            "Needs Attention": "Overall things are a bit rough — let's tackle the big items first.",
+        },
+    }
+    return summaries.get(tone, summaries["factual"]).get(status, "Budget health evaluated.")
+
+
+def _momentum_summary(status: str, delta: int, tone: str) -> str:
+    summaries = {
+        "supportive": {
+            "Improving": "Momentum is positive — things are heading in the right direction.",
+            "Declining": "Momentum has dipped — worth a quick check on recent changes.",
+            "Stable": "Momentum is steady — no major shifts since the last cycle.",
+        },
+        "factual": {
+            "Improving": "Positive momentum detected vs historical average.",
+            "Declining": "Negative momentum detected vs historical average.",
+            "Stable": "Momentum is stable vs historical average.",
+        },
+        "friendly": {
+            "Improving": "Things are trending up — nice one!",
+            "Declining": "Trending down a bit — no worries, next cycle will be better.",
+            "Stable": "Holding steady — consistent!",
+        },
+    }
+    return summaries.get(tone, summaries["factual"]).get(status, "Momentum evaluated.")
 
 
 def _health_status(score: int) -> str:

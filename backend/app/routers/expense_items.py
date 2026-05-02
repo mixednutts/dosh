@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException
 from sqlalchemy.orm import Session
 from ..auto_expense import normalize_expense_paytype
 from ..api_docs import DbSession, error_responses
+from ..cycle_constants import PAID, WORKING
 from ..models import Budget, BalanceType, ExpenseItem, FinancialPeriod, PeriodExpense, PeriodTransaction
 from ..schemas import ExpenseItemCreate, ExpenseItemOut, ExpenseItemUpdate, ExpenseItemReorderRequest, SetupHistoryOut
 from ..period_logic import expense_occurs_in_period, normalize_budget_date
@@ -192,12 +193,10 @@ def update_expense_item(
         )
     if "effectivedate" in data and data["effectivedate"] is not None:
         data["effectivedate"] = normalize_budget_date(data["effectivedate"], budget.timezone)
-    # Deactivation is always allowed; it only affects future cycle generation.
-    # Existing cycles retain the expense line until manually removed.
     bump = data.pop("bump_revision", False)
 
     # Detect whether a revision-worthy field changed
-    revision_fields = {"freqtype", "frequency_value", "effectivedate", "expenseamount"}
+    revision_fields = {"active", "freqtype", "frequency_value", "effectivedate", "expenseamount"}
     changed_fields = build_changed_fields(ei, data, revision_fields)
     is_revision = bump or bool(changed_fields)
 
@@ -219,13 +218,16 @@ def update_expense_item(
             revisionnum=ei.revisionnum,
             changed_fields=changed_fields,
         )
-        # Propagate updated budget amounts to future unlocked periods
+        # Propagate schedule changes to future unlocked periods:
+        # create rows where the expense now occurs, update existing rows,
+        # and remove rows where it no longer occurs (when safe to do so).
         future_periods = (
             db.query(FinancialPeriod)
             .filter(
                 FinancialPeriod.budgetid == budgetid,
                 FinancialPeriod.islocked == False,  # noqa: E712
             )
+            .order_by(FinancialPeriod.startdate)
             .all()
         )
         for fp in future_periods:
@@ -239,21 +241,54 @@ def update_expense_item(
                 )
                 .first()
             )
-            if pe and ei.freqtype and ei.frequency_value and ei.effectivedate:
-                new_budget = expense_occurs_in_period(
-                    freqtype=ei.freqtype,
-                    frequency_value=ei.frequency_value,
-                    effectivedate=ei.effectivedate,
-                    period_start=fp.startdate,
-                    period_end=fp.enddate,
-                    expense_amount=Decimal(str(ei.expenseamount)),
-                )
-                if new_budget is not None:
-                    pe.budgetamount = new_budget
+
+            # Determine whether (and how much) the expense occurs in this period
+            occurs_budget = None
+            if ei.active:
+                if ei.freqtype == "Always":
+                    occurs_budget = Decimal(str(ei.expenseamount))
+                elif ei.freqtype and ei.frequency_value and ei.effectivedate:
+                    occurs_budget = expense_occurs_in_period(
+                        freqtype=ei.freqtype,
+                        frequency_value=ei.frequency_value,
+                        effectivedate=ei.effectivedate,
+                        period_start=fp.startdate,
+                        period_end=fp.enddate,
+                        expense_amount=Decimal(str(ei.expenseamount)),
+                    )
+
+            if occurs_budget is not None:
+                if pe:
+                    pe.budgetamount = occurs_budget
                     pe.varianceamount = pe.actualamount - pe.budgetamount
-            elif pe and ei.freqtype == "Always":
-                pe.budgetamount = Decimal(str(ei.expenseamount))
-                pe.varianceamount = pe.actualamount - pe.budgetamount
+                else:
+                    db.add(
+                        PeriodExpense(
+                            finperiodid=fp.finperiodid,
+                            budgetid=budgetid,
+                            expensedesc=expensedesc,
+                            budgetamount=occurs_budget,
+                            actualamount=Decimal("0.00"),
+                            varianceamount=Decimal("0.00"),
+                            is_oneoff=False,
+                            status=WORKING,
+                            revision_snapshot=ei.revisionnum,
+                        )
+                    )
+            else:
+                if pe and Decimal(str(pe.actualamount)) == Decimal("0") and (getattr(pe, "status", WORKING) or WORKING) != PAID:
+                    # Clean up any orphaned budget-adjustment transactions
+                    (
+                        db.query(PeriodTransaction)
+                        .filter(
+                            PeriodTransaction.finperiodid == fp.finperiodid,
+                            PeriodTransaction.source == "expense",
+                            PeriodTransaction.source_key == expensedesc,
+                            PeriodTransaction.entry_kind == "budget_adjustment",
+                        )
+                        .delete(synchronize_session=False)
+                    )
+                    db.delete(pe)
 
     db.commit()
     db.refresh(ei)

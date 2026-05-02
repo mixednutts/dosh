@@ -23,7 +23,7 @@ Status: **Complete for beta.** Framework exists for future metric development.
 Goals:
 
 - ✅ expanded the available Budget Health metrics to a global code-based registry with six system metrics
-- ⏸️ health trending / momentum — deferred to future. Metric executors exist; user-facing trending visualization is not blocking rc-1
+- ✅ health trending / momentum — `period_trend` metric shipped. Compares current period composite score against recent closed-period averages with configurable lookback and tolerance. Trend badge renders on budget summary when enabled.
 - ✅ polish around health interpretation, metric evidence, and formula expression helpers
 
 Notes:

@@ -55,15 +55,30 @@ function momentumToneClass(status) {
   return 'text-gray-500 dark:text-gray-400'
 }
 
-function MomentumIcon({ status }) {
-  if (status === 'Improving') return <ArrowTrendingUpIcon className="h-4 w-4" />
-  if (status === 'Declining') return <ArrowTrendingDownIcon className="h-4 w-4" />
-  return <MinusIcon className="h-4 w-4" />
+function trendBadgeClass(status) {
+  if (status === 'Improving') return 'bg-success-500 text-white'
+  if (status === 'Declining') return 'bg-red-500 text-white'
+  return 'bg-gray-400 text-white'
+}
+
+function MomentumIcon({ status, className = 'h-4 w-4' }) {
+  if (status === 'Improving') return <ArrowTrendingUpIcon className={className} />
+  if (status === 'Declining') return <ArrowTrendingDownIcon className={className} />
+  return <MinusIcon className={className} />
 }
 
 function formatMomentumDelta(value) {
-  if (!value) return '0'
+  if (value === 0 || value === undefined || value === null) return '0'
   return value > 0 ? `+${value}` : `${value}`
+}
+
+function TrendBadge({ status, delta }) {
+  return (
+    <div className={`absolute bottom-0 right-0 flex h-10 w-10 flex-col items-center justify-center rounded-full border-2 border-white shadow-md ${trendBadgeClass(status)} dark:border-gray-800`}>
+      <MomentumIcon status={status} className="h-4 w-4" />
+      <span className="text-[10px] font-bold leading-none">{formatMomentumDelta(delta)}</span>
+    </div>
+  )
 }
 
 
@@ -789,12 +804,17 @@ function BudgetStats({ budgetId, budgetName, periods = [], currentPeriodDetail, 
               <div className={`flex h-20 w-20 items-center justify-center rounded-full shadow-sm ${healthCircleClass(health.overall_status)}`}>
                 <span className="text-3xl font-light tracking-tight">{health.overall_score}</span>
               </div>
+              {health.pillars?.some(p => p.key === 'period_trend') && (
+                <TrendBadge status={health.momentum_status} delta={health.momentum_delta} />
+              )}
             </div>
             <button type="button" className="rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-[11px] font-medium text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700" onClick={onOpenHealth}>
               Overall Health Details
             </button>
           </div>
-          <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">{health.momentum_summary}</p>
+          {health.pillars?.some(p => p.key === 'period_trend') && (
+            <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">{health.momentum_summary}</p>
+          )}
         </div>
       )}
     </div>
@@ -808,6 +828,7 @@ const SCORING_CURVE_DESCRIPTIONS = {
   in_cycle_budget_adjustments: 'Zero adjustments = 100. Each adjustment within tolerance reduces score by 15. Beyond tolerance, penalty per adjustment over.',
   revisions_on_paid_expenses: 'Zero revisions = 100. Each revision within tolerance reduces score by 15. Beyond tolerance, penalty per revision over.',
   budget_cycles_pending_closeout: 'Zero pending = 100. Each pending cycle within tolerance reduces score by 20. Beyond tolerance, penalty per cycle over.',
+  period_trend: 'Current period composite score is compared against the average of recent closed periods. Within tolerance decline = 100. Beyond tolerance, score decays based on sensitivity. Improving or stable trends score well.',
 }
 
 function EvidenceRow({ item }) {
@@ -1055,13 +1076,18 @@ function BudgetHealthModal({ budget, health, onClose }) {
               <div className={`flex h-20 w-20 items-center justify-center rounded-full shadow-sm ${healthCircleClass(health.overall_status)}`}>
                 <span className="text-3xl font-light tracking-tight">{health.overall_score}</span>
               </div>
+              {health.pillars?.some(p => p.key === 'period_trend') && (
+                <TrendBadge status={health.momentum_status} delta={health.momentum_delta} />
+              )}
             </div>
             <div className="min-w-0">
               <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{health.overall_summary}</p>
-              <p className={`mt-1 flex items-center gap-1 text-sm ${momentumToneClass(health.momentum_status)}`}>
-                <MomentumIcon status={health.momentum_status} />
-                <span>{health.momentum_summary}</span>
-              </p>
+              {health.pillars?.some(p => p.key === 'period_trend') && (
+                <p className={`mt-1 flex items-center gap-1 text-sm ${momentumToneClass(health.momentum_status)}`}>
+                  <MomentumIcon status={health.momentum_status} />
+                  <span>{health.momentum_summary}</span>
+                </p>
+              )}
               <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
                 Evaluated {formatDateTime(health.evaluated_at, 'medium')} {timezone}
               </p>

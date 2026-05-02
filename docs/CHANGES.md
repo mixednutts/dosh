@@ -4,6 +4,61 @@ This document captures the key product and implementation changes made during re
 
 It is intended to complement [README.md](/home/ubuntu/dosh/README.md), not replace it.
 
+## Session: Period Trend Health Metric and Expense Schedule Propagation Fix (patch on 0.9.6-beta) (2026-05-02)
+
+### What changed
+
+- **Added `period_trend` as a new `OVERALL`-scoped system health metric.**
+  - `backend/app/health_engine/system_metrics.py`: Added `period_trend` metric with `OVERALL` scope, default weight 0.30, default order 2. Parameters: `lookback_periods` (default 3), `tolerance_points` (default 5).
+  - `backend/app/health_engine/metric_executors.py`: Implemented `_period_trend_executor()` that pre-computes `current_period_composite_score` from `CURRENT_PERIOD` metric scores, queries the last N closed periods' `PeriodHealthResult` snapshots, computes historical average, and derives delta, trend status, and score.
+  - `backend/app/health_engine/runner.py`: Pre-computes `current_period_composite_score` before evaluating metrics. Derives momentum from `period_trend` result when available and enabled; otherwise falls back to `_compute_momentum()`. Only includes `period_trend` in pillars when present in `overall_metrics`.
+  - `frontend/src/pages/BudgetsPage.jsx`: Added `TrendBadge` component — a small inner circle overlapping the main health score that shows an arrow icon + delta value. Only renders when `period_trend` is present in `pillars`. Momentum summary text is conditionally rendered only when `period_trend` is enabled.
+  - `frontend/src/pages/tabs/BudgetHealthTab.jsx`: Added parameter inputs for `lookback_periods` and `tolerance_points`.
+  - Label renamed from "Budget Health Engine" to "Budget Health" site-wide (`BudgetDetailPage.jsx`, `BudgetHealthTab.jsx`, `BudgetsPage.jsx`).
+  - Added `period_trend` scoring curve description to `SCORING_CURVE_DESCRIPTIONS` in `BudgetHealthTab.jsx`.
+
+- **Fixed expense schedule propagation to future unlocked periods.**
+  - `backend/app/routers/expense_items.py`: `update_expense_item` now creates new `PeriodExpense` rows in future unlocked periods where the expense now occurs but didn't exist before, and removes rows where the expense no longer occurs (when `actualamount == 0` and status is not `PAID`).
+  - `active` added to revision-worthy fields so activation/deactivation correctly propagates.
+  - Handles `freqtype == "Always"` and scheduled occurrences via `expense_occurs_in_period()`.
+
+- **Database migration.**
+  - `backend/alembic/versions/8d512b6cf2c3_add_period_trend_health_metric.py`: Adds `period_trend` to all existing active health matrices with default weight 0.30, sensitivity 50, and parameters `{"lookback_periods": 3, "tolerance_points": 5}`.
+
+### Testing
+
+- Full backend regression suite: **372 passed** (+23 new/updated tests), 0 regressions introduced.
+  - Updated `test_health_engine.py` for 7 metrics instead of 6.
+  - Updated `test_health_matrices.py` for `period_trend` presence in default matrix.
+  - Updated `test_budget_setup_workflows.py` for revised propagation behavior.
+  - Updated `backend/tests/migration_helpers.py` HEAD_REVISION to `8d512b6cf2c3`.
+- Full frontend regression suite: **423 passed**, 0 regressions introduced.
+  - Updated `BudgetDetailPage.test.jsx` for "Budget Health" label rename.
+
+### Files touched
+
+- `backend/app/health_engine/system_metrics.py`
+- `backend/app/health_engine/metric_executors.py`
+- `backend/app/health_engine/runner.py`
+- `backend/app/routers/expense_items.py`
+- `backend/alembic/versions/8d512b6cf2c3_add_period_trend_health_metric.py` (new)
+- `backend/tests/test_health_engine.py`
+- `backend/tests/test_health_matrices.py`
+- `backend/tests/test_budget_setup_workflows.py`
+- `backend/tests/migration_helpers.py`
+- `frontend/src/pages/BudgetsPage.jsx`
+- `frontend/src/pages/BudgetDetailPage.jsx`
+- `frontend/src/pages/tabs/BudgetHealthTab.jsx`
+- `frontend/src/__tests__/BudgetDetailPage.test.jsx`
+- `docs/BUDGET_HEALTH_METRIC_LIBRARY.md`
+- `docs/DEVELOPMENT_ACTIVITIES.md`
+- `docs/ROADMAP.md`
+- `docs/RELEASE_NOTES.md`
+- `docs/CHANGES.md`
+- `AGENTS.md`
+
+---
+
 ## Session: Income Allocation and Investment Trends Reports (0.9.6-beta) (2026-05-02)
 
 ### What changed

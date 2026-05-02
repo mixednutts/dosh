@@ -23,6 +23,7 @@ The per-budget items store tunable `weight`, `scoring_sensitivity`, `is_enabled`
 |------------|-------|----------------|-------------|---------------|
 | `setup_health` | `OVERALL` | `40%` | `50` | `0` |
 | `budget_cycles_pending_closeout` | `OVERALL` | `60%` | `50` | `1` |
+| `period_trend` | `OVERALL` | `30%` | `50` | `6` |
 | `budget_vs_actual_amount` | `CURRENT_PERIOD` | `30%` | `50` | `2` |
 | `budget_vs_actual_lines` | `CURRENT_PERIOD` | `25%` | `50` | `3` |
 | `in_cycle_budget_adjustments` | `CURRENT_PERIOD` | `25%` | `50` | `4` |
@@ -165,6 +166,41 @@ The per-budget items store tunable `weight`, `scoring_sensitivity`, `is_enabled`
 
 ---
 
+### `period_trend` — Period Trend
+
+| Attribute | Value |
+|-----------|-------|
+| **Scope** | `OVERALL` |
+| **Description** | Compares the current period's health score against recent historical periods to identify improvement or decline. |
+
+**Calculation:**
+- Pre-compute the current period's composite score as the weighted average of all `CURRENT_PERIOD` metric scores.
+- Query the last `lookback_periods` closed `FinancialPeriod` rows for the budget.
+- For each historical period, retrieve `PeriodHealthResult` snapshots filtered to `CURRENT_PERIOD` scoped metrics and compute the unweighted average.
+- `delta = current_period_composite_score - historical_average`
+- If `delta >= -tolerance_points` → `100`
+- Beyond tolerance → `100 - (excess × sensitivity_factor × 1.5)`
+- `sensitivity_factor = scoring_sensitivity / 50.0`
+
+**Parameters:**
+- `lookback_periods` (int, default `3`) — Number of previous closed periods to include in the trend calculation.
+- `tolerance_points` (int, default `5`) — Points of decline that are acceptable before the score begins to drop.
+
+**Evidence Examples:**
+- `{ label: "Current period score", value: "75", raw_value: 75, raw_unit: "score", detail: "Weighted composite score of current-period metrics for this period." }`
+- `{ label: "Historical average", value: "82.0", raw_value: 82.0, raw_unit: "score", detail: "Average current-period score across the last 3 closed period(s)." }`
+- `{ label: "Trend", value: "Declining", raw_value: "Declining", raw_unit: "status", detail: "Delta = -7.0 points vs historical average." }`
+
+**Calculation Trace Example:**
+- "Current = 75. Historical avg (3 periods) = 82.0. Delta = -7.0. Tolerance = 5. Excess = 2.0. Score = 100 - (2.0 × 1.0 × 1.5) = 97."
+- "Current = 60. Historical avg (3 periods) = 85.0. Delta = -25.0. Tolerance = 5. Excess = 20.0. Sensitivity = 1.0. Score = 100 - (20.0 × 1.0 × 1.5) = 70."
+
+**Additional Return Fields:**
+- `delta` (int) — Difference between current period composite score and historical average.
+- `trend` (str) — "Improving" | "Stable" | "Declining" derived from the delta.
+
+---
+
 ### `budget_cycles_pending_closeout` — Budget Cycles Pending Close-Out
 
 | Attribute | Value |
@@ -205,4 +241,4 @@ The per-budget items store tunable `weight`, `scoring_sensitivity`, `is_enabled`
 | Budget summary & health modals | `frontend/src/pages/BudgetsPage.jsx` |
 | Close-out modal | `frontend/src/components/modals/CloseoutModal.jsx` |
 
-**Last Updated:** 2026-04-20
+**Last Updated:** 2026-05-02

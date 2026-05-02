@@ -20,7 +20,7 @@ const SECTIONS = [
   { id: 'income-types', label: 'Income Sources' },
   { id: 'expense-items', label: 'Expense Items' },
   { id: 'investments', label: 'Investments' },
-  { id: 'budget-health', label: 'Budget Health Engine' },
+  { id: 'budget-health', label: 'Budget Health' },
   { id: 'settings', label: 'Settings' },
 ]
 
@@ -473,7 +473,7 @@ export default function BudgetDetailPage() {
 
       <SectionShell
         id="budget-health"
-        title="Budget Health Engine"
+        title="Budget Health"
         summary="Tell Dosh what feels important to you so the health checks can be a little more aligned with your budgeting style."
         collapsible={COLLAPSIBLE_SECTIONS.has('budget-health')}
         collapsed={collapsedSections['budget-health']}
