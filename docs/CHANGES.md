@@ -4,6 +4,34 @@ This document captures the key product and implementation changes made during re
 
 It is intended to complement [README.md](/home/ubuntu/dosh/README.md), not replace it.
 
+## Session: Calendar Unscheduled Expenses Toggle (patch on 0.9.6-beta) (2026-05-02)
+
+### What changed
+
+- **Added "Include Unscheduled Expenses" toggle to the full calendar modal.**
+  - `frontend/src/pages/BudgetsPage.jsx`: `buildCalendarEvents` now accepts an `includeAlways` parameter. When `true`, expenses with `freqtype === 'Always'` are included as events on the period start date.
+  - `FullCalendarModal` now receives `currentPeriod` and `calendarPeriodDetails` props directly and manages its own `includeAlways` state. Events are rebuilt when the toggle changes.
+  - Added a checkbox labeled "Include Unscheduled Expenses" in the modal header, next to the "Today" button.
+  - Updated `FullCalendarModal` PropTypes to reflect the new prop signature.
+
+### Testing
+
+- Full frontend regression suite: **427 passed** (+1 new test), 0 regressions introduced.
+  - New test `toggles un-scheduled expenses in the full calendar` in `BudgetsPage.test.jsx` verifies an `Always` expense is hidden by default and appears after checking the toggle.
+- Full backend regression suite: **372 passed**, 0 regressions introduced.
+
+### Files touched
+
+- `frontend/src/pages/BudgetsPage.jsx`
+- `frontend/src/__tests__/BudgetsPage.test.jsx`
+- `docs/CHANGES.md`
+- `docs/RELEASE_NOTES.md`
+- `docs/DEVELOPMENT_ACTIVITIES.md`
+- `docs/tests/TEST_RESULTS_SUMMARY.md`
+- `AGENTS.md`
+
+---
+
 ## Session: Period Trend Health Metric and Expense Schedule Propagation Fix (patch on 0.9.6-beta) (2026-05-02)
 
 ### What changed

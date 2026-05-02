@@ -145,7 +145,7 @@ function expenseOccurrencesInRange(expense, periodStart, periodEnd) {
   return []
 }
 
-function buildCalendarEvents(currentPeriod, currentPeriodDetail) {
+function buildCalendarEvents(currentPeriod, currentPeriodDetail, includeAlways = false) {
   const details = Array.isArray(currentPeriodDetail) ? currentPeriodDetail.filter(Boolean) : []
 
   if (details.length === 0) {
@@ -182,8 +182,20 @@ function buildCalendarEvents(currentPeriod, currentPeriodDetail) {
         cycleStatus: detail.period.cycle_status,
       }))
 
-    const expenseEvents = expenses.flatMap(expense =>
-      expenseOccurrencesInRange(expense, periodStart, periodEnd).map((date, index) => ({
+    const expenseEvents = expenses.flatMap(expense => {
+      if (expense.freqtype === 'Always') {
+        if (!includeAlways) return []
+        return [{
+          key: `expense-always-${detail.period.finperiodid}-${expense.expensedesc}`,
+          date: periodStart,
+          kind: 'expense',
+          title: expense.expensedesc,
+          amount: expense.budgetamount,
+          finperiodid: detail.period.finperiodid,
+          cycleStatus: detail.period.cycle_status,
+        }]
+      }
+      return expenseOccurrencesInRange(expense, periodStart, periodEnd).map((date, index) => ({
         key: `expense-${detail.period.finperiodid}-${expense.expensedesc}-${index}-${date.toISOString()}`,
         date,
         kind: 'expense',
@@ -192,7 +204,7 @@ function buildCalendarEvents(currentPeriod, currentPeriodDetail) {
         finperiodid: detail.period.finperiodid,
         cycleStatus: detail.period.cycle_status,
       }))
-    )
+    })
 
     return [cycleStartEvent, ...incomeEvents, ...expenseEvents]
   })
@@ -549,12 +561,14 @@ function CalendarMonthGrid({ periods, visibleMonth, onChangeMonth, today, events
   )
 }
 
-function FullCalendarModal({ budgetName, periods, events, today, onClose }) {
+function FullCalendarModal({ budgetName, periods, currentPeriod, calendarPeriodDetails, today, onClose }) {
   const { formatDate } = useLocalisation()
   const todayMonth = startOfMonth(getCalendarDefaultMonth(periods[0], today))
   const [visibleMonth, setVisibleMonth] = useState(todayMonth)
   const viewingTodayMonth = isSameMonth(visibleMonth, todayMonth)
   const [selectedDay, setSelectedDay] = useState(null)
+  const [includeAlways, setIncludeAlways] = useState(false)
+  const { events } = buildCalendarEvents(currentPeriod, calendarPeriodDetails, includeAlways)
 
   return (
     <>
@@ -571,6 +585,15 @@ function FullCalendarModal({ budgetName, periods, events, today, onClose }) {
             >
               Today {formatDate(today, 'compact')}
             </button>
+            <label className="inline-flex cursor-pointer items-center gap-2 text-xs text-gray-600 dark:text-gray-300">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-gray-300 text-dosh-600 focus:ring-dosh-500 dark:border-gray-600 dark:bg-gray-700 dark:checked:bg-dosh-600"
+                checked={includeAlways}
+                onChange={event => setIncludeAlways(event.target.checked)}
+              />
+              Include Unscheduled Expenses
+            </label>
           </div>
           <CalendarMonthGrid
             periods={periods}
@@ -729,7 +752,8 @@ function CalendarSummaryCard({ currentPeriod, calendarPeriods, calendarPeriodDet
       <FullCalendarModal
         budgetName={budgetName}
         periods={calendarPeriods}
-        events={events}
+        currentPeriod={currentPeriod}
+        calendarPeriodDetails={calendarPeriodDetails}
         today={today}
         onClose={() => setShowFullCalendar(false)}
       />
@@ -1556,7 +1580,8 @@ CalendarMonthGrid.propTypes = {
 FullCalendarModal.propTypes = {
   budgetName: PropTypes.string.isRequired,
   periods: PropTypes.arrayOf(PropTypes.object).isRequired,
-  events: PropTypes.arrayOf(PropTypes.object).isRequired,
+  currentPeriod: PropTypes.object,
+  calendarPeriodDetails: PropTypes.arrayOf(PropTypes.object).isRequired,
   today: PropTypes.instanceOf(Date).isRequired,
   onClose: PropTypes.func.isRequired,
 }

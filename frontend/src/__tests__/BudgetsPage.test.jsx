@@ -531,6 +531,82 @@ describe('BudgetsPage', () => {
     expect(screen.getByText('Cycle start')).not.toBeNull()
   })
 
+  it('toggles un-scheduled expenses in the full calendar', async () => {
+    client.getBudgets.mockResolvedValue([
+      {
+        budgetid: 11,
+        budgetowner: 'Alex',
+        description: 'Always Budget',
+        budget_frequency: 'Monthly',
+      },
+    ])
+    client.getPeriodsForBudget.mockResolvedValue([
+      {
+        finperiodid: 501,
+        budgetid: 11,
+        startdate: '2026-04-01T00:00:00',
+        enddate: '2026-04-30T00:00:00',
+        budgetowner: 'Alex',
+        islocked: false,
+        cycle_status: 'ACTIVE',
+        closed_at: null,
+      },
+    ])
+    client.getPeriodDetail.mockResolvedValue({
+      period: {
+        finperiodid: 501,
+        budgetid: 11,
+        startdate: '2026-04-01T00:00:00',
+        enddate: '2026-04-30T00:00:00',
+        budgetowner: 'Alex',
+        islocked: false,
+        cycle_status: 'ACTIVE',
+        closed_at: null,
+      },
+      incomes: [],
+      expenses: [
+        {
+          finperiodid: 501,
+          budgetid: 11,
+          expensedesc: 'Groceries',
+          budgetamount: 500,
+          actualamount: 0,
+          varianceamount: 0,
+          is_oneoff: false,
+          sort_order: 0,
+          revision_snapshot: 0,
+          status: 'Current',
+          remaining_amount: 500,
+          freqtype: 'Always',
+          frequency_value: null,
+          paytype: 'AUTO',
+          effectivedate: null,
+          note: null,
+          revision_comment: null,
+        },
+      ],
+      investments: [],
+      balances: [],
+      projected_investment: 0,
+      closeout_snapshot: null,
+    })
+
+    renderWithProviders(<BudgetsPage />, {
+      route: '/budgets',
+      path: '/budgets',
+    })
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Open full calendar' }))
+    const dialogHeading = await screen.findByRole('heading', { name: /Calendar for Always Budget/i })
+    const dialog = dialogHeading.closest('[class*="max-w"]') ?? document.body
+
+    expect(within(dialog).queryByText('Groceries')).toBeNull()
+
+    fireEvent.click(within(dialog).getByRole('checkbox', { name: /Include Unscheduled Expenses/i }))
+
+    expect(await within(dialog).findByText('Groceries')).not.toBeNull()
+  })
+
   it('renders overall budget health summary with tone styling in the dashboard card', async () => {
     client.getBudgets.mockResolvedValue([
       {

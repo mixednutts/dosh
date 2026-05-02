@@ -4,6 +4,7 @@
 
 ### Added
 
+- **Calendar now shows unscheduled expenses.** The full calendar view includes a new "Include Unscheduled Expenses" checkbox. When enabled, expenses set to "Always" (unscheduled) appear on the cycle start date alongside your scheduled income and expense events, so nothing is hidden from the calendar.
 - **Income Allocation chart now shows Surplus as a stacked area.** The Income Allocation report includes a new green Surplus layer stacked on top of Expenses and Investments, giving a complete picture of where every dollar of income goes. A toggle pill lets you show or hide the surplus layer. In percentage mode, surplus is included in the 100% stack so you can see the full allocation breakdown at a glance.
 - **Period Trend health metric.** The Budget Health engine now includes a `Period Trend` metric that compares your current period's health score against recent closed periods. When enabled, a small trend badge appears inside the overall health score circle on the budget summary, showing whether health is improving, stable, or declining. You can tune how many past periods to compare against (`lookback_periods`) and how many points of decline are acceptable before the score drops (`tolerance_points`). The metric is disabled by default for existing budgets and can be enabled from Budget Setup under the Budget Health tab.
 

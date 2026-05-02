@@ -2,7 +2,53 @@
 
 This document records meaningful automated test results from major working sessions.
 
-## Latest Session: Period Trend Health Metric and Expense Schedule Propagation Fix (0.9.6-beta patch)
+## Latest Session: Calendar Unscheduled Expenses Toggle (0.9.6-beta patch)
+
+This session added an "Include Unscheduled Expenses" toggle to the full calendar modal, allowing users to show or hide expenses with `freqtype === 'Always'`.
+
+### Verification
+
+```bash
+cd /home/ubuntu/dosh/backend
+.venv/bin/python -m pytest tests/ -q
+```
+
+Result:
+
+- Full backend suite: **372 passed**
+- No regressions introduced
+
+```bash
+cd /home/ubuntu/dosh/frontend
+npx jest --runInBand
+```
+
+Result:
+
+- Full frontend suite: **427 passed**
+- No regressions introduced
+
+### Deployment Verification
+
+```bash
+cd /home/ubuntu/dosh
+docker compose up --build -d
+curl -sS http://127.0.0.1:3080/api/health
+```
+
+Result:
+
+- Docker image built and deployed successfully
+- Health endpoint returned `{"status":"ok","app":"Dosh"}`
+
+### What changed
+
+- `frontend/src/pages/BudgetsPage.jsx`: `buildCalendarEvents` now accepts `includeAlways` parameter; `FullCalendarModal` manages toggle state and rebuilds events
+- `frontend/src/__tests__/BudgetsPage.test.jsx`: Added test verifying toggle behavior for `Always` expenses
+
+---
+
+## Session: Period Trend Health Metric and Expense Schedule Propagation Fix (0.9.6-beta patch)
 
 This session added the `period_trend` health metric and fixed expense schedule propagation to future unlocked periods.
 

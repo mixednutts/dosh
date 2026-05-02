@@ -195,6 +195,20 @@ Activities:
 - no version bump — patch on top of `0.9.6-beta`
 - deliverable: `backend/app/routers/reports.py`, `frontend/src/components/reports/IncomeAllocationChart.jsx`, `frontend/src/pages/IncomeAllocationPage.jsx`
 
+#### Activity Group: Calendar Unscheduled Expenses Toggle
+
+Status:
+- `Completed` (2026-05-02)
+
+Activities:
+- added an "Include Unscheduled Expenses" checkbox to the full calendar modal (`FullCalendarModal`)
+- when enabled, expenses with `freqtype === 'Always'` are rendered as calendar events on the period start date alongside scheduled expenses
+- `buildCalendarEvents` now accepts an `includeAlways` parameter (default `false`)
+- `FullCalendarModal` receives `currentPeriod` and `calendarPeriodDetails` directly and rebuilds events internally when the toggle changes
+- added frontend test in `BudgetsPage.test.jsx` verifying the toggle hides/shows an `Always` expense
+- no version bump — UX polish on top of `0.9.6-beta`
+- deliverable: `frontend/src/pages/BudgetsPage.jsx`, `frontend/src/__tests__/BudgetsPage.test.jsx`
+
 #### Activity Group: Formula Expression Helpers
 
 Status:
