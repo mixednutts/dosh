@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.9.7-beta | released | 2026-05-02
+
 ### Added
 
 - **Calendar now shows unscheduled expenses.** The full calendar view includes a new "Include Unscheduled Expenses" checkbox. When enabled, expenses set to "Always" (unscheduled) appear on the cycle start date alongside your scheduled income and expense events, so nothing is hidden from the calendar.
