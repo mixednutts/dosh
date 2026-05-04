@@ -2,6 +2,40 @@
 
 ## Unreleased
 
+## 1.0.0-rc1 | released | 2026-05-04
+
+Dosh enters its first release candidate. All beta-scope features are complete and the app is considered feature-frozen while final validation and polish continue.
+
+### Added
+
+- **Surplus Outlook health metric** measures whether the current budget cycle is on track to finish with a positive surplus, using configurable tolerance thresholds.
+- **Income Achievement health metric** tracks whether actual income is meeting the budgeted target, with the same tunable scoring curve as expense overrun metrics.
+- **Total Health Score** appears on the Health History report as a composite weighted line combining all per-period metric scores.
+- **Savings badge** in Account Balances visually labels accounts marked as savings.
+
+### Changed
+
+- Budget Cycle Details header redesigned with uniform icon-only secondary action buttons, clearer "Close Out Cycle" labelling, and amber lock-state styling.
+- Sidebar reporting navigation expanded with Available Reports panel for quick jumps between Budget vs Actual, Income Allocation, and Investment Trends.
+- Calendar now supports an "Include Unscheduled Expenses" toggle for Always-scheduled expense visibility.
+- Income Allocation chart supports a stacked Surplus layer with show/hide toggle.
+- Health History report, Investment Trends chart, and percentage-view Income Allocation chart all now render with improved tooltips and axis padding.
+
+### Fixed
+
+- Budget Health details now refresh automatically when returning from a budget cycle detail page.
+- Modal backdrops render correctly via portal rendering, eliminating the top-edge visual gap.
+- Budget vs Actual date filtering now uses UTC-aware formatting so cycles are never dropped due to timezone differences.
+- Report period labels now respect the budget's timezone, fixing the off-by-one-day issue for zones ahead of UTC.
+- Expense schedule changes correctly propagate to future unlocked periods, creating or removing lines as needed.
+
+### Engineering
+
+- Backend test suite expanded to 386 tests; frontend test suite expanded to 440 tests.
+- Dynamic balance calculation with forward-cycle limit and explicit limit-exceeded signalling.
+- Period date boundaries now stored as local midnight in budget timezone, expressed as UTC.
+- Docker Compose stack consolidated to a single service with multi-stage frontend build.
+
 ## 0.9.10-beta | released | 2026-05-04
 
 ### Added
