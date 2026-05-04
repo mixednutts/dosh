@@ -105,4 +105,4 @@ For issues, feature requests, or contributions, please visit the [GitHub reposit
 
 ---
 
-**Note:** Dosh is currently in beta and may contain bugs.  Use at your own risk.
+> **Version 1.0.0-rc1 Release Candidate** — This is a pre-release version. Please report any issues at [github.com/mixednutts/dosh/issues](https://github.com/mixednutts/dosh/issues).

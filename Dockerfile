@@ -14,7 +14,7 @@ RUN npm run build
 # Stage 2: Python runtime
 FROM python:3.12-slim
 WORKDIR /app
-ENV APP_VERSION=0.9.10-beta
+ENV APP_VERSION=1.0.0-rc1
 
 # Copy backend source
 COPY backend/. /app
