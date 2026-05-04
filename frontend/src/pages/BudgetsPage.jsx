@@ -852,6 +852,8 @@ function BudgetStats({ budgetId, budgetName, periods = [], currentPeriodDetail, 
 
 const SCORING_CURVE_DESCRIPTIONS = {
   setup_health: 'Pass/fail per category. All categories met = 100. Missing categories are penalised based on sensitivity.',
+  income_vs_budget: 'Within tolerance = 100. Linear decay to 70 as income shortfall approaches tolerance. Beyond tolerance, penalty per dollar of shortfall.',
+  surplus_health: 'Positive surplus = 100. Within tolerance deficit decays linearly from 100 down to 70. Beyond tolerance, penalty per dollar of deficit over the buffer.',
   budget_vs_actual_amount: 'Within tolerance = 100. Linear decay to 70 as overrun approaches tolerance. Beyond tolerance, penalty per dollar over.',
   budget_vs_actual_lines: 'Within tolerance = 100. Linear decay to 70 as over-budget lines approach tolerance. Beyond tolerance, penalty per line over.',
   in_cycle_budget_adjustments: 'Zero adjustments = 100. Each adjustment within tolerance reduces score by 15. Beyond tolerance, penalty per adjustment over.',
@@ -1352,7 +1354,7 @@ export default function BudgetsPage() {
     queries: budgets.map(budget => ({
       queryKey: ['budget-health', budget.budgetid],
       queryFn: () => getBudgetHealth(budget.budgetid),
-      staleTime: 60_000,
+      staleTime: 0,
     })),
   })
   const calendarPeriodMeta = budgets.flatMap((budget, index) => {

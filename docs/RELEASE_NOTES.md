@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+## 0.9.10-beta | released | 2026-05-04
+
+### Added
+
+- **Two new budget health metrics give you more insight into your current cycle.** The Budget Health engine now includes **Income Achievement**, which tracks whether your actual income is meeting your budgeted target, and **Surplus Outlook**, which measures whether your current period is on track to finish with a positive surplus. Both metrics use the same configurable tolerance system as existing metrics, so you can tune how strict or forgiving the scoring should be.
+
+### Fixed
+
+- **Budget Health details now refresh automatically when you return from a budget cycle.** Previously, the health score and metric cards on the Budgets dashboard could show stale data after navigating away to a cycle detail page and back. Health data now refreshes immediately on return so the numbers you see are always current.
+- **Modal backdrops now render correctly without visual gaps.** Fixed an issue where the title bar of some modals could leak above the viewport edge, causing a thin strip of the page to remain visible at the top of the screen.
+
+### Engineering
+
+- Added `surplus_health` and `income_vs_budget` system metric definitions to the global health metric registry.
+- Added Alembic migrations to backfill both new metrics into all existing active health matrices.
+- Added executor implementations with full evidence payloads, calculation traces, and tone-aware summaries.
+- Updated backend test suite to 386 tests and frontend test suite to 440 tests.
+
 ## 0.9.9-beta | released | 2026-05-03
 
 ### Added

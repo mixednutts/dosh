@@ -48,6 +48,28 @@ Activities:
 - new metrics will be added only when they have clear evidence + user-facing meaning
 - keep [BUDGET_HEALTH_METRIC_LIBRARY.md](/home/ubuntu/dosh/docs/BUDGET_HEALTH_METRIC_LIBRARY.md) updated as metrics evolve
 
+#### Activity Group: Current Period Metric Expansion
+
+Status:
+- `Completed` (2026-05-04)
+
+Activities:
+- added `surplus_health` — Surplus Outlook metric (`CURRENT_PERIOD` scope) measuring whether the current period is projected to finish with a positive surplus
+  - uses `current_period_totals().surplus_actual` as the primary value
+  - tolerance via `upper_tolerance_amount` (default 100)
+  - scoring: positive surplus = 100; within tolerance linear decay 100→70; beyond tolerance penalty per dollar of deficit
+  - Alembic migration `b9d394cc1471` backfills all active matrices
+- added `income_vs_budget` — Income Achievement metric (`CURRENT_PERIOD` scope) measuring whether actual income meets or exceeds budgeted income target
+  - computes shortfall = sum(budget - actual) for PeriodIncome rows where budget > actual
+  - tolerance = min(`upper_tolerance_amount`, `total_budgeted_income * upper_tolerance_pct / 100`)
+  - same scoring curve as expense overrun metrics (100 → linear decay to 70 → penalty)
+  - Alembic migration `0cb0939d083e` backfills all active matrices
+- both metrics include full tone-aware evidence payloads, calculation traces, and frontend scoring curve descriptions
+- updated `test_health_engine.py` with executor tests for both metrics (no period, on track, within tolerance, beyond tolerance)
+- updated `test_health_matrices.py` default matrix count and expected key set
+- updated `migration_helpers.py` HEAD_REVISION to `0cb0939d083e`
+- deliverable: `backend/app/health_engine/system_metrics.py`, `backend/app/health_engine/metric_executors.py`, `frontend/src/pages/BudgetsPage.jsx`, `backend/alembic/versions/b9d394cc1471_add_surplus_health_metric.py`, `backend/alembic/versions/0cb0939d083e_add_income_vs_budget_metric.py`
+
 #### Activity Group: Health Trending / Momentum
 
 Status:

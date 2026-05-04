@@ -35,6 +35,14 @@ SYSTEM_METRICS = {
         "default_weight": Decimal("0.30"),
         "default_display_order": 6,
     },
+    "income_vs_budget": {
+        "name": "Income Achievement",
+        "description": "Whether actual income received is meeting or exceeding the budgeted income target.",
+        "scope": "CURRENT_PERIOD",
+        "default_parameters": {"upper_tolerance_amount": 50, "upper_tolerance_pct": 5},
+        "default_weight": Decimal("0.30"),
+        "default_display_order": 2,
+    },
     "budget_vs_actual_amount": {
         "name": "Budget vs Actual (Amount)",
         "description": "Expense line actual amount exceeds the budget amount (aggregate overrun).",
@@ -66,6 +74,14 @@ SYSTEM_METRICS = {
         "default_parameters": {"upper_tolerance_instances": 2},
         "default_weight": Decimal("0.20"),
         "default_display_order": 5,
+    },
+    "surplus_health": {
+        "name": "Surplus Outlook",
+        "description": "Whether the current period is projected to finish with a positive surplus (income > outflows).",
+        "scope": "CURRENT_PERIOD",
+        "default_parameters": {"upper_tolerance_amount": 100},
+        "default_weight": Decimal("0.30"),
+        "default_display_order": 2,
     },
 }
 

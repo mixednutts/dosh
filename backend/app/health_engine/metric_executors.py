@@ -138,6 +138,214 @@ def _setup_health_executor(
     }
 
 
+def _surplus_health_executor(
+    *,
+    db: Session,
+    budget: Budget,
+    period: FinancialPeriod | None,
+    parameters: dict,
+    scoring_sensitivity: int,
+    tone: str,
+    **kwargs,
+) -> dict:
+    """Evaluate whether the current period is projected to finish with a positive surplus."""
+    from ..cycle_management import current_period_totals
+
+    upper_tolerance_amount = Decimal(str(parameters.get("upper_tolerance_amount", 100)))
+
+    if period is None:
+        return {
+            "score": 100,
+            "status": HEALTH_STRONG,
+            "summary": _NO_CURRENT_PERIOD_SUMMARY,
+            "evidence": [{"label": "Period", "value": "None", "detail": _NO_CURRENT_PERIOD_DETAIL}],
+            "calculation": _NO_CURRENT_PERIOD_CALC,
+        }
+
+    totals = current_period_totals(period, db)
+    surplus = Decimal(str(totals.get("surplus_actual", 0)))
+    income_actual = Decimal(str(totals.get("income_actual", 0)))
+    outflow_total = income_actual - surplus
+
+    sensitivity_factor = max(0.01, Decimal(scoring_sensitivity) / Decimal(50))
+
+    if surplus >= 0:
+        score = 100
+        calculation = f"Surplus = ${surplus:.2f}. {_WITHIN_TOLERANCE_CALC}"
+    elif abs(surplus) <= upper_tolerance_amount:
+        ratio = float(abs(surplus)) / float(upper_tolerance_amount) if upper_tolerance_amount > 0 else 0
+        score = int(100 - (ratio * 30))
+        calculation = f"Surplus = ${surplus:.2f}. Tolerance = ${upper_tolerance_amount:.2f}. Ratio = {ratio:.4f}. Score = 100 - ({ratio:.4f} × 30) = {score}."
+    else:
+        excess = abs(surplus) - upper_tolerance_amount
+        penalty = float(excess) * float(sensitivity_factor) * 1.5
+        score = int(70 - penalty)
+        calculation = f"Surplus = ${surplus:.2f}. Tolerance = ${upper_tolerance_amount:.2f}. Excess = ${excess:.2f}. Sensitivity = {sensitivity_factor:.2f}. Score = 70 - (${excess:.2f} × {sensitivity_factor:.2f} × 1.5) = {score}."
+
+    score = int(_clamp(score, 0, 100))
+    status = _health_status(score)
+
+    summaries = {
+        "supportive": (
+            "Your period is on track to finish with a healthy surplus."
+            if score >= 80
+            else "Your period is tracking toward a deficit — consider reviewing income and outflows."
+        ),
+        "factual": (
+            "Projected surplus is within acceptable parameters."
+            if score >= 80
+            else "Projected surplus is below acceptable thresholds."
+        ),
+        "friendly": (
+            "Looking good — you're on track to finish this period in the black!"
+            if score >= 80
+            else "Heads up — this period looks like it might finish in the red."
+        ),
+    }
+
+    evidence = [
+        {
+            "label": "Projected surplus",
+            "value": f"${surplus:.2f}",
+            "raw_value": float(surplus),
+            "raw_unit": "currency",
+            "limit": f"${upper_tolerance_amount:.2f}",
+            "raw_limit": float(upper_tolerance_amount),
+            "detail": "Projected surplus based on actual income and outflows to date.",
+        },
+        {
+            "label": "Income total",
+            "value": f"${income_actual:.2f}",
+            "raw_value": float(income_actual),
+            "raw_unit": "currency",
+            "detail": "Total actual income recorded for the current period.",
+        },
+        {
+            "label": "Outflow total",
+            "value": f"${outflow_total:.2f}",
+            "raw_value": float(outflow_total),
+            "raw_unit": "currency",
+            "detail": "Total actual outflows (expenses + investments) for the current period.",
+        },
+    ]
+
+    return {
+        "score": score,
+        "status": status,
+        "summary": summaries.get(tone, summaries["factual"]),
+        "evidence": evidence,
+        "calculation": calculation,
+    }
+
+
+def _income_vs_budget_executor(
+    *,
+    db: Session,
+    budget: Budget,
+    period: FinancialPeriod | None,
+    parameters: dict,
+    scoring_sensitivity: int,
+    tone: str,
+    **kwargs,
+) -> dict:
+    """Evaluate income shortfall against tolerance."""
+    from ..models import PeriodIncome
+
+    upper_tolerance_amount = Decimal(str(parameters.get("upper_tolerance_amount", 50)))
+    upper_tolerance_pct = Decimal(str(parameters.get("upper_tolerance_pct", 5)))
+
+    if period is None:
+        return {
+            "score": 100,
+            "status": HEALTH_STRONG,
+            "summary": _NO_CURRENT_PERIOD_SUMMARY,
+            "evidence": [{"label": "Period", "value": "None", "detail": _NO_CURRENT_PERIOD_DETAIL}],
+            "calculation": _NO_CURRENT_PERIOD_CALC,
+        }
+
+    incomes = db.query(PeriodIncome).filter_by(finperiodid=period.finperiodid).all()
+    total_budgeted_income = sum((i.budgetamount or Decimal(0)) for i in incomes)
+    shortfall = sum(
+        ((i.budgetamount or Decimal(0)) - (i.actualamount or Decimal(0)))
+        for i in incomes
+        if (i.budgetamount or Decimal(0)) > (i.actualamount or Decimal(0))
+    )
+    shortfall = max(Decimal(0), shortfall)
+
+    tolerance_pct_value = (total_budgeted_income * upper_tolerance_pct) / Decimal(100)
+    tolerance = min(upper_tolerance_amount, tolerance_pct_value) if total_budgeted_income > 0 else upper_tolerance_amount
+
+    sensitivity_factor = max(0.01, Decimal(scoring_sensitivity) / Decimal(50))
+
+    if shortfall <= 0:
+        score = 100
+        calculation = f"Shortfall = ${shortfall:.2f}. {_WITHIN_TOLERANCE_CALC}"
+    elif shortfall <= tolerance:
+        ratio = float(shortfall) / float(tolerance) if tolerance > 0 else 0
+        score = int(100 - (ratio * 30))
+        calculation = f"Shortfall = ${shortfall:.2f}. Tolerance = ${tolerance:.2f}. Ratio = {ratio:.4f}. Score = 100 - ({ratio:.4f} × 30) = {score}."
+    else:
+        excess = shortfall - tolerance
+        score = int(70 - (float(excess) * float(sensitivity_factor) * 2))
+        calculation = f"Shortfall = ${shortfall:.2f}. Tolerance = ${tolerance:.2f}. Excess = ${excess:.2f}. Sensitivity = {sensitivity_factor:.2f}. Score = 70 - (${excess:.2f} × {sensitivity_factor:.2f} × 2) = {score}."
+
+    score = int(_clamp(score, 0, 100))
+    status = _health_status(score)
+
+    summaries = {
+        "supportive": (
+            "Your income is on track with what you budgeted."
+            if score >= 80
+            else "Your income is falling short of what you budgeted — worth reviewing."
+        ),
+        "factual": (
+            "Income shortfall is within configured limits."
+            if score >= 80
+            else "Income shortfall exceeds configured limits."
+        ),
+        "friendly": (
+            "Nice — your income is matching up with your plan!"
+            if score >= 80
+            else "Looks like income is coming in below budget — might be worth a look."
+        ),
+    }
+
+    evidence = [
+        {
+            "label": "Shortfall amount",
+            "value": f"${shortfall:.2f}",
+            "raw_value": float(shortfall),
+            "raw_unit": "currency",
+            "limit": f"${upper_tolerance_amount:.2f}",
+            "raw_limit": float(upper_tolerance_amount),
+            "detail": "Aggregate amount by which budgeted income exceeds actual income received.",
+        },
+        {
+            "label": "Shortfall percentage limit",
+            "value": f"{upper_tolerance_pct:.1f}%",
+            "raw_value": float(upper_tolerance_pct),
+            "raw_unit": "percentage",
+            "detail": "Percentage of total budgeted income allowed as shortfall.",
+        },
+    ]
+    if total_budgeted_income > 0:
+        evidence.append({
+            "label": "Budgeted income",
+            "value": f"${total_budgeted_income:.2f}",
+            "raw_value": float(total_budgeted_income),
+            "raw_unit": "currency",
+            "detail": "Total budgeted income amount for the current period.",
+        })
+
+    return {
+        "score": score,
+        "status": status,
+        "summary": summaries.get(tone, summaries["factual"]),
+        "evidence": evidence,
+        "calculation": calculation,
+    }
+
+
 def _budget_vs_actual_amount_executor(
     *,
     db: Session,
@@ -792,6 +1000,8 @@ def _period_trend_executor(
 
 METRIC_EXECUTORS = {
     "setup_health": _setup_health_executor,
+    "income_vs_budget": _income_vs_budget_executor,
+    "surplus_health": _surplus_health_executor,
     "budget_vs_actual_amount": _budget_vs_actual_amount_executor,
     "budget_vs_actual_lines": _budget_vs_actual_lines_executor,
     "in_cycle_budget_adjustments": _in_cycle_budget_adjustments_executor,

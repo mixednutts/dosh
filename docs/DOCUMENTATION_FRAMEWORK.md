@@ -39,20 +39,30 @@ It establishes how documentation should be structured, linked, reviewed, and mai
 
 ## AI and Session Initialization
 
-Projects using this framework should support a consistent initialization path for new AI sessions, agent sessions, or contributors.
+Projects using this framework should support a consistent initialization path for new AI sessions, agents, and contributors.
 
 Recommended initialization flow:
 
+**For end users:**
 1. start with `README.md`
-2. follow the README to the primary context or handoff document
-3. use the context or handoff document to branch into roadmap, plans, testing, history, or other source documents as needed
+
+**For contributors:**
+1. start with `README.md` for the user-facing product overview
+2. read `docs/DOCUMENT_REGISTER.md` for the canonical document inventory and document pathing
+3. use the document register to branch into roadmap, plans, testing, history, or other source documents as needed
+
+**For agents:**
+1. start with `README.md` for the user-facing product overview
+2. read `AGENTS.md` for operational constraints, hard controls, and the session-local document pathing table
+3. use the `AGENTS.md` document pathing table to branch into roadmap, plans, testing, history, or other source documents as needed
 
 Initialization rules:
 
-- `README.md` should remain the top-level entry point
-- `README.md` should explicitly point to the primary context or handoff document when one exists
+- `README.md` should remain the top-level entry point for end users
+- `docs/DOCUMENT_REGISTER.md` is the contributor-facing operational entry point; it catalogs the document library and defines source-of-truth boundaries
+- `AGENTS.md` is the agent/session-local operational entry point; it is gitignored and not part of the committed repository
 - the context or handoff document should act as the operational starting point for work, not the README itself
-- deeper documents should be discoverable from the context or handoff document rather than requiring ad hoc searching
+- deeper documents should be discoverable from the document register (for contributors) or from `AGENTS.md` (for agents) rather than requiring ad hoc searching
 - this initialization path should be kept current as the documentation set evolves
 
 ## Recommended Folder Hierarchy
@@ -504,24 +514,27 @@ Document type:
 
 Primary purpose:
 
-- explain what the project is
-- orient new contributors quickly
-- summarize the current product or system shape
+- explain what the product is to end users and prospective users
+- serve as a user-facing product sheet (quick-start, features, screenshots)
+- orient new contributors at a high level before they move to `docs/DOCUMENT_REGISTER.md`
 
 Primary source-of-truth scope:
 
 - project overview
-- high-level architecture or layout
-- primary entry points for understanding the project
+- high-level product description
+- primary user entry points
 
 Key relationships:
 
-- links to roadmap, plans, testing documents, and implementation history
+- `docs/DOCUMENT_REGISTER.md` links to roadmap, plans, testing documents, and implementation history for contributors
+- `README.md` does not duplicate the document library; it stays focused on user-facing product communication
 
 Maintenance notes:
 
 - should stay concise and current
-- should summarize rather than duplicate deeper plans
+- should remain user-facing; do not overload it with contributor-facing document links
+- contributor document discovery lives in `docs/DOCUMENT_REGISTER.md`
+- agent document discovery lives in `AGENTS.md` (session-local, gitignored)
 
 ### Changes
 

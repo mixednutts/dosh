@@ -4,6 +4,56 @@ This document captures the key product and implementation changes made during re
 
 It is intended to complement [README.md](/home/ubuntu/dosh/README.md), not replace it.
 
+## Session: Budget Health Metric Expansion — Surplus Outlook and Income Achievement (0.9.10-beta) (2026-05-04)
+
+### What changed
+
+- **Added `surplus_health` — Surplus Outlook health metric.**
+  - `backend/app/health_engine/system_metrics.py`: Registered `surplus_health` as a `CURRENT_PERIOD` metric with default params `upper_tolerance_amount: 100`, weight `0.30`, display order `2`.
+  - `backend/app/health_engine/metric_executors.py`: Added `_surplus_health_executor` that queries `current_period_totals(period, db)["surplus_actual"]`. Score = 100 when surplus ≥ 0; linear decay 100→70 within tolerance; penalty beyond tolerance.
+  - `backend/alembic/versions/b9d394cc1471_add_surplus_health_metric.py`: Additive migration backfilling `surplus_health` into all existing active health matrices.
+  - Added `surplus_health` scoring curve description to `SCORING_CURVE_DESCRIPTIONS` in `frontend/src/pages/BudgetsPage.jsx`.
+
+- **Added `income_vs_budget` — Income Achievement health metric.**
+  - `backend/app/health_engine/system_metrics.py`: Registered `income_vs_budget` as a `CURRENT_PERIOD` metric with default params `upper_tolerance_amount: 50`, `upper_tolerance_pct: 5`, weight `0.30`, display order `2`.
+  - `backend/app/health_engine/metric_executors.py`: Added `_income_vs_budget_executor` that computes income shortfall from `PeriodIncome` rows. Tolerance = min(absolute, pct of total budgeted income). Same scoring curve as expense overrun metrics.
+  - `backend/alembic/versions/0cb0939d083e_add_income_vs_budget_metric.py`: Additive migration backfilling `income_vs_budget` into all existing active health matrices.
+  - Added `income_vs_budget` scoring curve description to `SCORING_CURVE_DESCRIPTIONS` in `frontend/src/pages/BudgetsPage.jsx`.
+
+- **Fixed modal backdrop rendering via portal.**
+  - `frontend/src/components/Modal.jsx`: Changed from inline rendering to `ReactDOM.createPortal(document.body)` so the `fixed inset-0` backdrop is positioned relative to the viewport rather than being clipped by ancestor containers.
+
+- **Fixed stale health data on dashboard return.**
+  - `frontend/src/pages/BudgetsPage.jsx`: Changed `budget-health` query `staleTime` from `60_000` to `0` so health metrics refresh immediately when navigating back from a period detail page.
+
+- **Version bump: `0.9.9-beta` → `0.9.10-beta`.**
+  - Used `scripts/bump_version.py` to update all version touchpoints.
+
+### Testing
+
+- Full backend regression suite: **386 passed** (+8 new tests: 4 for `income_vs_budget` executor, matrix count updates, and migration helpers), 0 regressions introduced.
+- Full frontend regression suite: **440 passed**, 0 regressions introduced.
+
+### Files touched
+
+- `backend/app/health_engine/system_metrics.py`
+- `backend/app/health_engine/metric_executors.py`
+- `backend/alembic/versions/b9d394cc1471_add_surplus_health_metric.py`
+- `backend/alembic/versions/0cb0939d083e_add_income_vs_budget_metric.py`
+- `backend/tests/test_health_engine.py`
+- `backend/tests/test_health_matrices.py`
+- `backend/tests/migration_helpers.py`
+- `frontend/src/pages/BudgetsPage.jsx`
+- `frontend/src/components/Modal.jsx`
+- `docs/BUDGET_HEALTH_METRIC_LIBRARY.md`
+- `docs/RELEASE_NOTES.md`
+- `docs/DEVELOPMENT_ACTIVITIES.md`
+- `docs/MIGRATION_AND_RELEASE_MANAGEMENT.md`
+- `docs/CHANGES.md`
+- `AGENTS.md`
+
+---
+
 ## Session: Health History Total Health Score, Account Balances Savings Indicator, and Budget Cycle Header Redesign (0.9.9-beta) (2026-05-03)
 
 ### What changed

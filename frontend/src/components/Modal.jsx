@@ -1,9 +1,10 @@
+import { createPortal } from 'react-dom'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import PropTypes from 'prop-types'
 
 export default function Modal({ title, onClose, children, size = 'md' }) {
   const widths = { sm: 'sm:max-w-sm', md: 'sm:max-w-md', lg: 'sm:max-w-lg', xl: 'sm:max-w-xl' }
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60">
       <div className={`bg-white dark:bg-gray-900 shadow-xl w-full sm:w-auto sm:rounded-lg sm:mx-4 ${widths[size]} flex flex-col max-h-[85vh] sm:max-h-[90vh] border-0 sm:border border-gray-200 dark:border-gray-700 rounded-t-xl`}>
         <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-b border-gray-200 dark:border-gray-700 shrink-0">
@@ -14,7 +15,8 @@ export default function Modal({ title, onClose, children, size = 'md' }) {
         </div>
         <div className="overflow-y-auto px-4 sm:px-5 py-4 flex-1 text-gray-900 dark:text-gray-100">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 

@@ -12,8 +12,8 @@ Use it when:
 
 ## Current Baseline
 
-- current canonical app version: `0.9.9-beta`
-- current UI display format: `v0.9.9-beta`
+- current canonical app version: `0.9.10-beta`
+- current UI display format: `v0.9.10-beta`
 - current app state classification: `beta`
 - current schema management authority: Alembic
 - current deployment path: Docker Compose
@@ -25,6 +25,7 @@ The current repository state and deployed state are treated as aligned for this 
 
 | Version | Date | Note |
 |---|---|---|
+| 0.9.10-beta | 2026-05-04 | Surplus Outlook and Income Achievement health metrics; modal backdrop portal fix; stale health data refresh fix |
 | 0.9.9-beta | 2026-05-03 | Health History Total Health Score; Account Balances Savings badge; Budget Cycle header button redesign; Close Out relabeled to Close Out Cycle; header navigation stability improvements |
 | 0.9.8-beta | 2026-05-03 | Health History report; report period label timezone fix; Income Allocation percentages toggle layout fix; Investment Trends Y-axis domain fix |
 | 0.9.7-beta | 2026-05-02 | Period Trend health metric; calendar unscheduled expenses; income allocation surplus display; expense schedule propagation fix |

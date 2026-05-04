@@ -9,12 +9,14 @@ def test_get_health_matrix(client, db_session):
     assert response.status_code == 200
     data = response.json()
     assert "items" in data
-    assert len(data["items"]) == 7
+    assert len(data["items"]) == 9
     metric_keys = {item["metric_key"] for item in data["items"]}
     assert metric_keys == {
         "setup_health",
         "budget_cycles_pending_closeout",
         "period_trend",
+        "surplus_health",
+        "income_vs_budget",
         "budget_vs_actual_amount",
         "budget_vs_actual_lines",
         "in_cycle_budget_adjustments",

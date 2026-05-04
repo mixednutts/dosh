@@ -121,6 +121,248 @@ def test_budget_vs_actual_amount_executor_penalises_overrun(client, db_session) 
     assert result["status"] in ("Watch", "Needs Attention")
 
 
+def test_surplus_health_executor_no_period_returns_100(client, db_session) -> None:
+    from tests.factories import create_budget
+
+    budget = create_budget(db_session)
+    executor = get_executor("surplus_health")
+    result = executor(
+        db=db_session,
+        budget=budget,
+        period=None,
+        parameters={"upper_tolerance_amount": 100},
+        scoring_sensitivity=50,
+        tone="factual",
+    )
+    assert result["score"] == 100
+    assert result["status"] == "Strong"
+
+
+def test_surplus_health_executor_positive_surplus(client, db_session) -> None:
+    from tests.factories import create_budget
+    from app.models import FinancialPeriod, PeriodIncome, PeriodExpense, IncomeType, ExpenseItem
+
+    budget = create_budget(db_session)
+    db_session.add(IncomeType(budgetid=budget.budgetid, incomedesc="Salary", amount=Decimal("2000")))
+    db_session.add(ExpenseItem(budgetid=budget.budgetid, expensedesc="Rent", active=True, expenseamount=Decimal("500")))
+    db_session.commit()
+
+    now = datetime.now(timezone.utc)
+    period = FinancialPeriod(
+        budgetid=budget.budgetid,
+        startdate=now - timedelta(days=30),
+        enddate=now + timedelta(days=1),
+        islocked=False,
+    )
+    db_session.add(period)
+    db_session.flush()
+    db_session.add(PeriodIncome(finperiodid=period.finperiodid, budgetid=budget.budgetid, incomedesc="Salary", budgetamount=Decimal("2000"), actualamount=Decimal("2000")))
+    db_session.add(PeriodExpense(finperiodid=period.finperiodid, budgetid=budget.budgetid, expensedesc="Rent", budgetamount=Decimal("500"), actualamount=Decimal("400")))
+    db_session.commit()
+
+    executor = get_executor("surplus_health")
+    result = executor(
+        db=db_session,
+        budget=budget,
+        period=period,
+        parameters={"upper_tolerance_amount": 100},
+        scoring_sensitivity=50,
+        tone="factual",
+    )
+    assert result["score"] == 100
+    assert result["status"] == "Strong"
+    evidence = {ev["label"]: ev for ev in result["evidence"]}
+    assert "Projected surplus" in evidence
+    assert evidence["Projected surplus"]["raw_value"] == 1600.0
+
+
+def test_surplus_health_executor_within_tolerance_decay(client, db_session) -> None:
+    from tests.factories import create_budget
+    from app.models import FinancialPeriod, PeriodIncome, PeriodExpense, IncomeType, ExpenseItem
+
+    budget = create_budget(db_session)
+    db_session.add(IncomeType(budgetid=budget.budgetid, incomedesc="Salary", amount=Decimal("2000")))
+    db_session.add(ExpenseItem(budgetid=budget.budgetid, expensedesc="Rent", active=True, expenseamount=Decimal("500")))
+    db_session.commit()
+
+    now = datetime.now(timezone.utc)
+    period = FinancialPeriod(
+        budgetid=budget.budgetid,
+        startdate=now - timedelta(days=30),
+        enddate=now + timedelta(days=1),
+        islocked=False,
+    )
+    db_session.add(period)
+    db_session.flush()
+    db_session.add(PeriodIncome(finperiodid=period.finperiodid, budgetid=budget.budgetid, incomedesc="Salary", budgetamount=Decimal("2000"), actualamount=Decimal("2000")))
+    db_session.add(PeriodExpense(finperiodid=period.finperiodid, budgetid=budget.budgetid, expensedesc="Rent", budgetamount=Decimal("500"), actualamount=Decimal("2050")))
+    db_session.commit()
+
+    executor = get_executor("surplus_health")
+    result = executor(
+        db=db_session,
+        budget=budget,
+        period=period,
+        parameters={"upper_tolerance_amount": 100},
+        scoring_sensitivity=50,
+        tone="factual",
+    )
+    # Surplus = 2000 - 2050 = -50. Tolerance = 100. Ratio = 0.5. Score = 100 - (0.5 * 30) = 85
+    assert result["score"] == 85
+    assert result["status"] == "Strong"
+
+
+def test_surplus_health_executor_beyond_tolerance_penalty(client, db_session) -> None:
+    from tests.factories import create_budget
+    from app.models import FinancialPeriod, PeriodIncome, PeriodExpense, IncomeType, ExpenseItem
+
+    budget = create_budget(db_session)
+    db_session.add(IncomeType(budgetid=budget.budgetid, incomedesc="Salary", amount=Decimal("2000")))
+    db_session.add(ExpenseItem(budgetid=budget.budgetid, expensedesc="Rent", active=True, expenseamount=Decimal("500")))
+    db_session.commit()
+
+    now = datetime.now(timezone.utc)
+    period = FinancialPeriod(
+        budgetid=budget.budgetid,
+        startdate=now - timedelta(days=30),
+        enddate=now + timedelta(days=1),
+        islocked=False,
+    )
+    db_session.add(period)
+    db_session.flush()
+    db_session.add(PeriodIncome(finperiodid=period.finperiodid, budgetid=budget.budgetid, incomedesc="Salary", budgetamount=Decimal("2000"), actualamount=Decimal("2000")))
+    db_session.add(PeriodExpense(finperiodid=period.finperiodid, budgetid=budget.budgetid, expensedesc="Rent", budgetamount=Decimal("500"), actualamount=Decimal("2200")))
+    db_session.commit()
+
+    executor = get_executor("surplus_health")
+    result = executor(
+        db=db_session,
+        budget=budget,
+        period=period,
+        parameters={"upper_tolerance_amount": 100},
+        scoring_sensitivity=50,
+        tone="factual",
+    )
+    # Surplus = 2000 - 2200 = -200. Tolerance = 100. Excess = 100.
+    # Sensitivity factor = 1.0. Penalty = 100 * 1.0 * 1.5 = 150. Score = 70 - 150 = -80 → 0
+    assert result["score"] == 0
+    assert result["status"] == "Needs Attention"
+
+
+def test_income_vs_budget_executor_no_period_returns_100(client, db_session) -> None:
+    from tests.factories import create_budget
+
+    budget = create_budget(db_session)
+    executor = get_executor("income_vs_budget")
+    result = executor(
+        db=db_session,
+        budget=budget,
+        period=None,
+        parameters={"upper_tolerance_amount": 50, "upper_tolerance_pct": 5},
+        scoring_sensitivity=50,
+        tone="factual",
+    )
+    assert result["score"] == 100
+    assert result["status"] == "Strong"
+
+
+def test_income_vs_budget_executor_on_track(client, db_session) -> None:
+    from tests.factories import create_budget
+    from app.models import FinancialPeriod, PeriodIncome
+
+    budget = create_budget(db_session)
+    now = datetime.now(timezone.utc)
+    period = FinancialPeriod(
+        budgetid=budget.budgetid,
+        startdate=now - timedelta(days=30),
+        enddate=now + timedelta(days=1),
+        islocked=False,
+    )
+    db_session.add(period)
+    db_session.flush()
+    db_session.add(PeriodIncome(finperiodid=period.finperiodid, budgetid=budget.budgetid, incomedesc="Salary", budgetamount=Decimal("2000"), actualamount=Decimal("2000")))
+    db_session.commit()
+
+    executor = get_executor("income_vs_budget")
+    result = executor(
+        db=db_session,
+        budget=budget,
+        period=period,
+        parameters={"upper_tolerance_amount": 50, "upper_tolerance_pct": 5},
+        scoring_sensitivity=50,
+        tone="factual",
+    )
+    assert result["score"] == 100
+    assert result["status"] == "Strong"
+    evidence = {ev["label"]: ev for ev in result["evidence"]}
+    assert "Shortfall amount" in evidence
+    assert evidence["Shortfall amount"]["raw_value"] == 0.0
+
+
+def test_income_vs_budget_executor_within_tolerance_decay(client, db_session) -> None:
+    from tests.factories import create_budget
+    from app.models import FinancialPeriod, PeriodIncome
+
+    budget = create_budget(db_session)
+    now = datetime.now(timezone.utc)
+    period = FinancialPeriod(
+        budgetid=budget.budgetid,
+        startdate=now - timedelta(days=30),
+        enddate=now + timedelta(days=1),
+        islocked=False,
+    )
+    db_session.add(period)
+    db_session.flush()
+    # Shortfall = 30. Total budgeted = 2000. Tolerance pct = 5% => 100. Tolerance = min(50, 100) = 50.
+    # Ratio = 30/50 = 0.6. Score = 100 - (0.6 * 30) = 82
+    db_session.add(PeriodIncome(finperiodid=period.finperiodid, budgetid=budget.budgetid, incomedesc="Salary", budgetamount=Decimal("2000"), actualamount=Decimal("1970")))
+    db_session.commit()
+
+    executor = get_executor("income_vs_budget")
+    result = executor(
+        db=db_session,
+        budget=budget,
+        period=period,
+        parameters={"upper_tolerance_amount": 50, "upper_tolerance_pct": 5},
+        scoring_sensitivity=50,
+        tone="factual",
+    )
+    assert result["score"] == 82
+    assert result["status"] == "Strong"
+
+
+def test_income_vs_budget_executor_beyond_tolerance_penalty(client, db_session) -> None:
+    from tests.factories import create_budget
+    from app.models import FinancialPeriod, PeriodIncome
+
+    budget = create_budget(db_session)
+    now = datetime.now(timezone.utc)
+    period = FinancialPeriod(
+        budgetid=budget.budgetid,
+        startdate=now - timedelta(days=30),
+        enddate=now + timedelta(days=1),
+        islocked=False,
+    )
+    db_session.add(period)
+    db_session.flush()
+    # Shortfall = 120. Total budgeted = 2000. Tolerance pct = 5% => 100. Tolerance = min(50, 100) = 50.
+    # Excess = 70. Sensitivity = 1.0. Penalty = 70 * 1.0 * 2 = 140. Score = 70 - 140 = -70 → 0
+    db_session.add(PeriodIncome(finperiodid=period.finperiodid, budgetid=budget.budgetid, incomedesc="Salary", budgetamount=Decimal("2000"), actualamount=Decimal("1880")))
+    db_session.commit()
+
+    executor = get_executor("income_vs_budget")
+    result = executor(
+        db=db_session,
+        budget=budget,
+        period=period,
+        parameters={"upper_tolerance_amount": 50, "upper_tolerance_pct": 5},
+        scoring_sensitivity=50,
+        tone="factual",
+    )
+    assert result["score"] == 0
+    assert result["status"] == "Needs Attention"
+
+
 def test_revisions_on_paid_expenses_counts_only_expense_revisions_after_start(client, db_session) -> None:
     from tests.factories import create_budget
     from app.models import FinancialPeriod, PeriodTransaction
@@ -262,7 +504,7 @@ def test_evaluate_period_health_returns_metrics(client, db_session) -> None:
 
     matrix = db_session.query(BudgetHealthMatrix).filter_by(budgetid=budget.budgetid, is_active=True).first()
     results = evaluate_period_health(db_session, budget, None, matrix)
-    assert len(results) == 7
+    assert len(results) == 9
     for r in results:
         assert "score" in r
         assert "status" in r
@@ -426,7 +668,7 @@ def test_persist_period_health_snapshot_creates_rows(client, db_session) -> None
     db_session.commit()
 
     snapshots = db_session.query(PeriodHealthResult).filter_by(finperiodid=period.finperiodid).all()
-    assert len(snapshots) == 7  # default matrix has 7 metrics
+    assert len(snapshots) == 9  # default matrix has 9 metrics
     for snap in snapshots:
         assert snap.is_snapshot is True
         assert snap.score is not None
@@ -457,8 +699,8 @@ def test_evaluate_period_health_skips_unknown_metric_key(client, db_session) -> 
     db_session.commit()
 
     results = evaluate_period_health(db_session, budget, None, matrix)
-    # Should still return results for the 7 valid metrics, skipping the unknown one
-    assert len(results) == 7
+    # Should still return results for the 8 valid metrics, skipping the unknown one
+    assert len(results) == 9
 
 
 def test_evaluate_period_health_handles_invalid_parameters_json(client, db_session) -> None:
@@ -479,7 +721,7 @@ def test_evaluate_period_health_handles_invalid_parameters_json(client, db_sessi
 
     results = evaluate_period_health(db_session, budget, None, matrix)
     # Should still return results, using empty dict for corrupted parameters
-    assert len(results) == 7
+    assert len(results) == 9
 
 
 def test_evaluate_budget_health_finds_current_period_on_last_day(client, db_session) -> None:

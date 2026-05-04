@@ -24,6 +24,8 @@ The per-budget items store tunable `weight`, `scoring_sensitivity`, `is_enabled`
 | `setup_health` | `OVERALL` | `40%` | `50` | `0` |
 | `budget_cycles_pending_closeout` | `OVERALL` | `60%` | `50` | `1` |
 | `period_trend` | `OVERALL` | `30%` | `50` | `6` |
+| `income_vs_budget` | `CURRENT_PERIOD` | `30%` | `50` | `2` |
+| `surplus_health` | `CURRENT_PERIOD` | `30%` | `50` | `2` |
 | `budget_vs_actual_amount` | `CURRENT_PERIOD` | `30%` | `50` | `2` |
 | `budget_vs_actual_lines` | `CURRENT_PERIOD` | `25%` | `50` | `3` |
 | `in_cycle_budget_adjustments` | `CURRENT_PERIOD` | `25%` | `50` | `4` |
@@ -59,6 +61,61 @@ The per-budget items store tunable `weight`, `scoring_sensitivity`, `is_enabled`
 
 **Calculation Trace Example:**
 - "Checks passed = 3/3. Score = 100."
+
+---
+
+### `income_vs_budget` — Income Achievement
+
+| Attribute | Value |
+|-----------|-------|
+| **Scope** | `CURRENT_PERIOD` |
+| **Description** | Whether actual income received is meeting or exceeding the budgeted income target. |
+
+**Calculation:**
+- `shortfall = SUM(budgetamount - actualamount)` for all `PeriodIncome` rows in the current period where `budgetamount > actualamount`.
+- `total_budgeted_income = SUM(budgetamount)` for all income lines.
+- Tolerance is the lower of `upper_tolerance_amount` and `(total_budgeted_income * upper_tolerance_pct / 100)`.
+- If `shortfall <= 0` → `100`
+- If `shortfall <= tolerance` → linear decay to `70`
+- Beyond tolerance → `70 - (excess * sensitivity * 2)`
+
+**Parameters:**
+- `upper_tolerance_amount` (int, default `50`)
+- `upper_tolerance_pct` (int, default `5`)
+
+**Evidence Examples:**
+- `{ label: "Shortfall amount", value: "$0.00", raw_value: 0.00, raw_unit: "currency", limit: "$50.00", raw_limit: 50.00, detail: "Aggregate amount by which budgeted income exceeds actual income received." }`
+- `{ label: "Shortfall percentage limit", value: "5.0%", raw_value: 5.0, raw_unit: "percentage", detail: "Percentage of total budgeted income allowed as shortfall." }`
+
+**Calculation Trace Example:**
+- "Shortfall = $0.00. Tolerance = $50.00. Ratio = 0.0000. Score = 100."
+- "Shortfall = $120.00. Tolerance = $50.00. Excess = $70.00. Sensitivity = 1.00. Score = 70 - ($70.00 × 1.00 × 2) = 0."
+
+---
+
+### `surplus_health` — Surplus Outlook
+
+| Attribute | Value |
+|-----------|-------|
+| **Scope** | `CURRENT_PERIOD` |
+| **Description** | Whether the current period is projected to finish with a positive surplus (income > outflows). |
+
+**Calculation:**
+- `surplus = current_period_totals()["surplus_actual"]` for the current period.
+- Tolerance is `upper_tolerance_amount` (default 100).
+- If `surplus >= 0` → `100`
+- If `abs(surplus) <= tolerance` → linear decay from `100` down to `70`
+- Beyond tolerance → `70 - (excess * sensitivity * 1.5)`
+
+**Parameters:**
+- `upper_tolerance_amount` (int, default `100`)
+
+**Evidence Examples:**
+- `{ label: "Projected surplus", value: "$200.00", raw_value: 200.00, raw_unit: "currency", limit: "$100.00", raw_limit: 100.00, detail: "Projected surplus for the current period based on actual income minus actual expenses and investments." }`
+
+**Calculation Trace Example:**
+- "Surplus = $200.00. Tolerance = $100.00. Score = 100."
+- "Surplus = -$50.00. Tolerance = $100.00. Ratio = 0.5000. Score = 100 - (0.5000 × 30) = 85."
 
 ---
 
@@ -241,4 +298,4 @@ The per-budget items store tunable `weight`, `scoring_sensitivity`, `is_enabled`
 | Budget summary & health modals | `frontend/src/pages/BudgetsPage.jsx` |
 | Close-out modal | `frontend/src/components/modals/CloseoutModal.jsx` |
 
-**Last Updated:** 2026-05-02
+**Last Updated:** 2026-05-04
