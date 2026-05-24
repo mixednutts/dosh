@@ -4,6 +4,51 @@ This document captures the key product and implementation changes made during re
 
 It is intended to complement [README.md](/home/ubuntu/dosh/README.md), not replace it.
 
+## Session: Transfer Income Surplus Exclusion Fix (1.0.0-rc2) (2026-05-25)
+
+### What changed
+
+- **Fixed GitHub issue #11: transfer incomes incorrectly inflated surplus calculations.**
+  - Account-transfer income lines (e.g. `"Transfer: ANZ Transaction Account to Cash"`) were being summed into `surplus_budget` and `surplus_actual` as if they were new external income.
+  - Since transfers are internal net-zero movements (debit one account, credit another), they should not affect the budget's surplus.
+  - Backend: added `is_transfer_income(incomedesc: str) -> bool` to `backend/app/transaction_ledger.py` that identifies transfer lines by their `"Transfer: "` or `"Transfer from "` prefix.
+  - `backend/app/cycle_management.py`: `current_period_totals()` now filters transfer incomes out of surplus calculations. `income_budget` and `income_actual` totals still include transfers for display purposes.
+  - `backend/app/routers/periods.py`: `list_period_summaries_for_budget()` computes `non_transfer_incomes` before deriving surplus contributions and actuals.
+  - `backend/app/ai_insights.py`: `build_period_payload()` filters transfers from `surplus_actual` computation.
+  - Frontend: added `isTransferIncome(incomedesc)` utility to `frontend/src/utils/periodCalculations.jsx`.
+  - `frontend/src/pages/PeriodDetailPage.jsx`: surplus cards now exclude transfer incomes from both `surplusActual` and `surplusBudget`.
+  - `frontend/src/pages/Dashboard.jsx`: both mobile card and desktop table surplus views exclude transfer incomes.
+  - Direct investment income calculations were also updated to operate on the non-transfer income subset as a defensive measure.
+
+### Testing
+
+- Full backend regression suite: **387 passed** (+1 new test), 0 regressions introduced.
+  - New test: `test_transfer_income_excluded_from_surplus` in `test_account_transfer_validation.py` verifies that creating a $100 transfer does not change `surplus_budget` or `surplus_actual`.
+- Full frontend regression suite: **444 passed** (+4 new tests), 0 regressions introduced.
+  - New tests: `isTransferIncome` utility tests in `periodCalculations.test.jsx`.
+  - New test: transfer exclusion in `PeriodDetailPage.test.jsx` verifying surplus remains $200 when a $100 transfer is present alongside $1000 salary and $800 rent.
+
+### Files touched
+
+- `backend/app/transaction_ledger.py`
+- `backend/app/cycle_management.py`
+- `backend/app/routers/periods.py`
+- `backend/app/ai_insights.py`
+- `backend/tests/test_account_transfer_validation.py`
+- `frontend/src/utils/periodCalculations.jsx`
+- `frontend/src/utils/index.js`
+- `frontend/src/pages/PeriodDetailPage.jsx`
+- `frontend/src/pages/Dashboard.jsx`
+- `frontend/src/__tests__/PeriodDetailPage.test.jsx`
+- `frontend/src/__tests__/periodCalculations.test.jsx`
+- `docs/RELEASE_NOTES.md`
+- `docs/DEVELOPMENT_ACTIVITIES.md`
+- `docs/MIGRATION_AND_RELEASE_MANAGEMENT.md`
+- `docs/CHANGES.md`
+- `AGENTS.md`
+
+---
+
 ## Session: Budget Health Metric Expansion — Surplus Outlook and Income Achievement (0.9.10-beta) (2026-05-04)
 
 ### What changed

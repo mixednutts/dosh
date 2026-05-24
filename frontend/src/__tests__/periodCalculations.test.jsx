@@ -6,6 +6,7 @@ import {
   isScheduledExpense,
   hasLineActualActivity,
   getPositiveRemainingValue,
+  isTransferIncome,
   getIncomeSurplusContribution,
   getOutflowSurplusContribution,
   getProgressToneClasses,
@@ -165,5 +166,24 @@ describe('getExpenseScheduleBadge', () => {
   it('returns badge with label for scheduled expense', () => {
     const { container } = render(getExpenseScheduleBadge({ freqtype: 'Fixed Day of Month', frequency_value: 15, effectivedate: '2026-01-01' }))
     expect(container.textContent).toContain('Recurring: Day 15')
+  })
+})
+
+describe('isTransferIncome', () => {
+  it('returns true for Transfer: prefix', () => {
+    expect(isTransferIncome('Transfer: Savings to Main')).toBe(true)
+    expect(isTransferIncome('Transfer: Cash to Brokerage')).toBe(true)
+  })
+
+  it('returns false for regular income descriptions', () => {
+    expect(isTransferIncome('Salary')).toBe(false)
+    expect(isTransferIncome('Interest')).toBe(false)
+    expect(isTransferIncome('Transfer from Savings')).toBe(false)
+  })
+
+  it('returns false for non-string values', () => {
+    expect(isTransferIncome(null)).toBe(false)
+    expect(isTransferIncome(undefined)).toBe(false)
+    expect(isTransferIncome(123)).toBe(false)
   })
 })

@@ -25,6 +25,7 @@ export {
   isScheduledExpense,
   hasLineActualActivity,
   getPositiveRemainingValue,
+  isTransferIncome,
   getIncomeSurplusContribution,
   getOutflowSurplusContribution,
   getProgressToneClasses,

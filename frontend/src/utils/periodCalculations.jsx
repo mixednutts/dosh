@@ -48,6 +48,10 @@ export function getPositiveRemainingValue(remainingAmount) {
   return Math.max(Number(remainingAmount ?? 0), 0)
 }
 
+export function isTransferIncome(incomedesc) {
+  return typeof incomedesc === 'string' && incomedesc.startsWith('Transfer: ')
+}
+
 export function getIncomeSurplusContribution({
   budgetAmount,
   actualAmount,

@@ -8,7 +8,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from . import database
 
 
-APP_VERSION = os.getenv("APP_VERSION", "1.0.0-rc1")
+APP_VERSION = os.getenv("APP_VERSION", "1.0.0-rc2")
 
 
 def get_display_version(version: str | None = None) -> str:

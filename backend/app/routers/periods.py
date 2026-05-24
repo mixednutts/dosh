@@ -69,6 +69,7 @@ from ..transaction_ledger import (
     build_status_change_tx,
     compute_dynamic_period_balances,
     get_primary_account_desc,
+    is_transfer_income,
     sync_period_state,
     validate_transfer_against_source_account,
 )
@@ -1075,12 +1076,16 @@ def list_period_summaries_for_budget(budgetid: int, db: DbSession):
             running_projected = projected_investment
 
         # Compute surplus contributions using the same logic as the frontend detail page
-        income_surplus_contrib = sum((_surplus_contribution_for_income(row) for row in incomes), Decimal("0.00"))
+        # Transfers between internal accounts are net-zero for surplus purposes
+        non_transfer_incomes = [row for row in incomes if not is_transfer_income(row.incomedesc)]
+        income_surplus_contrib = sum((_surplus_contribution_for_income(row) for row in non_transfer_incomes), Decimal("0.00"))
         expense_surplus_contrib = sum((_surplus_contribution_for_expense(row) for row in expenses), Decimal("0.00"))
         investment_surplus_contrib = sum((_surplus_contribution_for_investment(row) for row in investments), Decimal("0.00"))
         _direct_inv_budget, _direct_inv_actual, direct_inv_surplus_budget = _direct_investment_income_for_rows(
-            incomes, income_type_lookup, investment_accounts
+            non_transfer_incomes, income_type_lookup, investment_accounts
         )
+
+        non_transfer_income_actual = sum((Decimal(str(row.actualamount or 0)) for row in non_transfer_incomes), Decimal("0.00"))
 
         summaries.append(PeriodSummaryOut(
             period=PeriodOut.model_validate(period),
@@ -1092,7 +1097,7 @@ def list_period_summaries_for_budget(budgetid: int, db: DbSession):
             investment_budget=investment_budget,
             investment_actual=investment_actual,
             surplus_budget=income_surplus_contrib - expense_surplus_contrib - investment_surplus_contrib - direct_inv_surplus_budget,
-            surplus_actual=income_actual - expense_actual - investment_actual - _direct_inv_actual,
+            surplus_actual=non_transfer_income_actual - expense_actual - investment_actual - _direct_inv_actual,
             projected_investment=projected_investment,
             can_delete=can_delete,
             delete_mode=delete_mode,

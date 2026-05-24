@@ -9,6 +9,7 @@ import httpx
 
 from .encryption import decrypt_value, encryption_ready
 from .models import Budget
+from .transaction_ledger import is_transfer_income
 from .url_security import UnsafeUrlError, validate_external_url
 
 logger = logging.getLogger(__name__)
@@ -54,11 +55,13 @@ def build_period_payload(
     investment_accounts = {
         inv.get("linked_account_desc") for inv in investments if inv.get("linked_account_desc")
     }
+    non_transfer_incomes = [i for i in incomes if not is_transfer_income(i.get("incomedesc", ""))]
+    non_transfer_income_actual = sum(_to_float(i.get("actualamount", 0)) for i in non_transfer_incomes)
     direct_investment_income = sum(
-        _to_float(i.get("actualamount", 0)) for i in incomes
+        _to_float(i.get("actualamount", 0)) for i in non_transfer_incomes
         if i.get("linked_account") in investment_accounts
     )
-    surplus_actual = income_actual - expense_actual - investment_actual - direct_investment_income
+    surplus_actual = non_transfer_income_actual - expense_actual - investment_actual - direct_investment_income
 
     payload: dict[str, Any] = {
         "budget": {

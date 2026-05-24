@@ -279,3 +279,56 @@ def test_paid_transfer_validates_against_actual_plus_increment(client, db_sessio
     )
     assert add_actual_fail.status_code == 422
     assert "sufficient balance" in add_actual_fail.json()["detail"].lower()
+
+
+def test_transfer_income_excluded_from_surplus(client, db_session):
+    """Transfer incomes are net-zero for surplus; they should not inflate surplus_budget or surplus_actual."""
+    budget = create_budget(db_session)
+    create_income_type(db_session, budgetid=budget.budgetid, incomedesc="Salary", amount=Decimal("1000.00"))
+    create_expense_item(db_session, budgetid=budget.budgetid, expensedesc="Rent", expenseamount=Decimal("800.00"))
+
+    primary = client.post(
+        f"/api/budgets/{budget.budgetid}/balance-types/",
+        json={"balancedesc": "Main", "balance_type": "Transaction", "opening_balance": "1000.00", "active": True, "is_primary": True},
+    )
+    assert primary.status_code == 201
+
+    savings = client.post(
+        f"/api/budgets/{budget.budgetid}/balance-types/",
+        json={"balancedesc": "Rainy Day", "balance_type": "Savings", "opening_balance": "500.00", "active": True, "is_primary": False},
+    )
+    assert savings.status_code == 201
+
+    active_period = generate_periods(client, budgetid=budget.budgetid, startdate=utc_now().replace(hour=0, minute=0, second=0, microsecond=0), count=1)[0]
+    finperiodid = active_period["finperiodid"]
+
+    # Before transfer: surplus_budget = 1000 - 800 = 200; surplus_actual = 0 - 0 = 0
+    summaries_before = client.get(f"/api/budgets/{budget.budgetid}/periods/summary")
+    assert summaries_before.status_code == 200
+    summary_before = next(s for s in summaries_before.json() if s["period"]["finperiodid"] == finperiodid)
+    assert Decimal(summary_before["income_budget"]) == Decimal("1000.00")
+    assert Decimal(summary_before["surplus_budget"]) == Decimal("200.00")
+    assert Decimal(summary_before["surplus_actual"]) == Decimal("0.00")
+
+    # Create transfer: this should NOT change surplus
+    transfer = client.post(
+        f"/api/budgets/{budget.budgetid}/periods/{finperiodid}/account-transfer",
+        json={"budgetid": budget.budgetid, "source_account": "Rainy Day", "destination_account": "Main", "amount": "100.00"},
+    )
+    assert transfer.status_code == 201
+
+    # Period summaries should exclude transfer from surplus while keeping it in income_budget
+    summaries_after = client.get(f"/api/budgets/{budget.budgetid}/periods/summary")
+    assert summaries_after.status_code == 200
+    summary_after = next(s for s in summaries_after.json() if s["period"]["finperiodid"] == finperiodid)
+    assert Decimal(summary_after["income_budget"]) == Decimal("1100.00")
+    assert Decimal(summary_after["surplus_budget"]) == Decimal("200.00")
+    assert Decimal(summary_after["surplus_actual"]) == Decimal("0.00")
+
+    # Closeout preview totals should also exclude transfer from surplus
+    preview_response = client.get(f"/api/budgets/{budget.budgetid}/periods/{finperiodid}/closeout-preview")
+    assert preview_response.status_code == 200
+    preview = preview_response.json()
+    assert Decimal(preview["totals"]["income_budget"]) == Decimal("1100.00")
+    assert Decimal(preview["totals"]["surplus_budget"]) == Decimal("200.00")
+    assert Decimal(preview["totals"]["surplus_actual"]) == Decimal("0.00")

@@ -23,6 +23,7 @@ import { getCycleStage, getCycleStageLabel } from '../utils/periodStage'
 import {
   getPeriodBudgetMutation,
   getPositiveRemainingValue,
+  isTransferIncome,
   getIncomeSurplusContribution,
   getOutflowSurplusContribution,
 } from '../utils'
@@ -263,17 +264,19 @@ export default function PeriodDetailPage() {
   const investmentLinkedAccounts = new Set(
     investments.map(inv => inv.linked_account_desc).filter(Boolean)
   )
-  const directInvestmentIncomeActual = incomes.reduce((s, inc) => (
+  const nonTransferIncomes = incomes.filter(inc => !isTransferIncome(inc.incomedesc))
+  const directInvestmentIncomeActual = nonTransferIncomes.reduce((s, inc) => (
     investmentLinkedAccounts.has(inc.linked_account) ? s + Number(inc.actualamount) : s
   ), 0)
-  const directInvestmentIncomeBudget = incomes.reduce((s, inc) => (
+  const directInvestmentIncomeBudget = nonTransferIncomes.reduce((s, inc) => (
     investmentLinkedAccounts.has(inc.linked_account)
       ? s + getIncomeSurplusContribution({ budgetAmount: inc.budgetamount, actualAmount: inc.actualamount })
       : s
   ), 0)
 
-  const surplusActual = totalIncomeActual - totalExpenseActual - totalInvestmentActual - directInvestmentIncomeActual
-  const budgetIncomeContribution = incomes.reduce((s, income) => (
+  const nonTransferIncomeActual = nonTransferIncomes.reduce((s, i) => s + Number(i.actualamount), 0)
+  const surplusActual = nonTransferIncomeActual - totalExpenseActual - totalInvestmentActual - directInvestmentIncomeActual
+  const budgetIncomeContribution = nonTransferIncomes.reduce((s, income) => (
     s + getIncomeSurplusContribution({
       budgetAmount: income.budgetamount,
       actualAmount: income.actualamount,

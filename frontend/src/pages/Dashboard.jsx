@@ -6,6 +6,7 @@ import { parseISO } from 'date-fns'
 import Spinner from '../components/Spinner'
 import { useLocalisation } from '../components/LocalisationContext'
 import { getCycleStage, getCycleStageLabel } from '../utils/periodStage'
+import { isTransferIncome } from '../utils'
 
 function BudgetMobileCard({ budget }) {
   const { formatCurrency, formatDateRange, formatDate } = useLocalisation()
@@ -83,14 +84,17 @@ function PeriodMobileCard({ budget, period }) {
     const investmentLinkedAccounts = new Set(
       data.investments.map(inv => inv.linked_account_desc).filter(Boolean)
     )
-    const directInvestmentIncomeBudget = data.incomes.reduce((s, i) => (
+    const nonTransferIncomes = data.incomes.filter(i => !isTransferIncome(i.incomedesc))
+    const nonTransferIncomeBudget = nonTransferIncomes.reduce((s, i) => s + Number(i.budgetamount), 0)
+    const nonTransferIncomeActual = nonTransferIncomes.reduce((s, i) => s + Number(i.actualamount), 0)
+    const directInvestmentIncomeBudget = nonTransferIncomes.reduce((s, i) => (
       investmentLinkedAccounts.has(i.linked_account) ? s + Number(i.budgetamount) : s
     ), 0)
-    const directInvestmentIncomeActual = data.incomes.reduce((s, i) => (
+    const directInvestmentIncomeActual = nonTransferIncomes.reduce((s, i) => (
       investmentLinkedAccounts.has(i.linked_account) ? s + Number(i.actualamount) : s
     ), 0)
-    surplusBudget = incomeBudget - expenseBudget - investmentBudget - directInvestmentIncomeBudget
-    surplusActual = incomeActual - expenseActual - investmentActual - directInvestmentIncomeActual
+    surplusBudget = nonTransferIncomeBudget - expenseBudget - investmentBudget - directInvestmentIncomeBudget
+    surplusActual = nonTransferIncomeActual - expenseActual - investmentActual - directInvestmentIncomeActual
   }
 
   const expenseTone = expenseActual <= expenseBudget ? 'text-success-700 dark:text-success-400' : 'text-red-600 dark:text-red-400'
@@ -236,14 +240,17 @@ function PeriodRow({ budget, period }) {
   const investmentLinkedAccounts = data ? new Set(
     data.investments.map(inv => inv.linked_account_desc).filter(Boolean)
   ) : new Set()
-  const directInvestmentIncomeBudget = data ? data.incomes.reduce((s, i) => (
+  const nonTransferIncomes = data ? data.incomes.filter(i => !isTransferIncome(i.incomedesc)) : []
+  const nonTransferIncomeBudget = data ? nonTransferIncomes.reduce((s, i) => s + Number(i.budgetamount), 0) : null
+  const nonTransferIncomeActual = data ? nonTransferIncomes.reduce((s, i) => s + Number(i.actualamount), 0) : null
+  const directInvestmentIncomeBudget = data ? nonTransferIncomes.reduce((s, i) => (
     investmentLinkedAccounts.has(i.linked_account) ? s + Number(i.budgetamount) : s
   ), 0) : null
-  const directInvestmentIncomeActual = data ? data.incomes.reduce((s, i) => (
+  const directInvestmentIncomeActual = data ? nonTransferIncomes.reduce((s, i) => (
     investmentLinkedAccounts.has(i.linked_account) ? s + Number(i.actualamount) : s
   ), 0) : null
-  const surplusBudget = data ? incomeBudget - effectiveExpenseBudget - investmentBudget - directInvestmentIncomeBudget : null
-  const surplusActual = data ? incomeActual - expenseActual - investmentActual - directInvestmentIncomeActual : null
+  const surplusBudget = data ? nonTransferIncomeBudget - effectiveExpenseBudget - investmentBudget - directInvestmentIncomeBudget : null
+  const surplusActual = data ? nonTransferIncomeActual - expenseActual - investmentActual - directInvestmentIncomeActual : null
 
   const cell = (val, cls = '') => loading
     ? <td className="table-cell text-right"><span className="inline-block w-16 h-4 rounded bg-gray-100 dark:bg-gray-800 animate-pulse" /></td>

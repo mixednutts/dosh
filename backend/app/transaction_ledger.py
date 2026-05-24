@@ -34,6 +34,11 @@ ENTRY_KIND_BUDGET_ADJUSTMENT = "budget_adjustment"
 ENTRY_KIND_STATUS_CHANGE = "status_change"
 
 
+def is_transfer_income(incomedesc: str) -> bool:
+    """Return True if the income description identifies an account-transfer line."""
+    return incomedesc.startswith((TRANSFER_PREFIX, "Transfer: "))
+
+
 @dataclass
 class PeriodTransactionContext:
     finperiodid: int

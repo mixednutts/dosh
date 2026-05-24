@@ -3432,4 +3432,77 @@ describe('PeriodDetailPage', () => {
     const navLinks = document.querySelectorAll('a[href^="/budgets/1/periods/"]')
     expect(navLinks.length).toBe(2) // Previous and next
   })
+
+  it('excludes transfer incomes from surplus calculations', async () => {
+    client.getBudget.mockResolvedValue({
+      budgetid: 1,
+      budgetowner: 'Alex',
+      description: 'Home Budget',
+      budget_frequency: 'Monthly',
+      allow_cycle_lock: true,
+    })
+    client.getPeriodDetail.mockResolvedValue({
+      period: {
+        finperiodid: 200,
+        budgetid: 1,
+        startdate: '2026-07-01T00:00:00',
+        enddate: '2026-07-31T00:00:00',
+        islocked: false,
+        cycle_status: 'ACTIVE',
+      },
+      incomes: [
+        {
+          finperiodid: 200,
+          budgetid: 1,
+          incomedesc: 'Salary',
+          budgetamount: '1000.00',
+          actualamount: '1000.00',
+          varianceamount: '0.00',
+          is_system: false,
+          system_key: null,
+        },
+        {
+          finperiodid: 200,
+          budgetid: 1,
+          incomedesc: 'Transfer: Savings to Main',
+          budgetamount: '100.00',
+          actualamount: '100.00',
+          varianceamount: '0.00',
+          is_system: false,
+          system_key: null,
+        },
+      ],
+      expenses: [
+        {
+          finperiodid: 200,
+          budgetid: 1,
+          expensedesc: 'Rent',
+          budgetamount: '800.00',
+          actualamount: '800.00',
+          remaining_amount: '0.00',
+          freqtype: 'Always',
+          is_oneoff: true,
+          note: null,
+          status: 'Paid',
+          revision_comment: null,
+        },
+      ],
+      investments: [],
+      balances: [],
+      closeout_snapshot: null,
+      projected_investment: '0.00',
+    })
+
+    renderWithProviders(<PeriodDetailPage />, {
+      route: '/budgets/1/periods/200',
+      path: '/budgets/:budgetId/periods/:periodId',
+    })
+
+    expect(await screen.findByText('Surplus (Budget)')).toBeTruthy()
+    // Without transfer exclusion surplus would be 1100 - 800 = 300
+    expectSummaryCardValue('Surplus (Budget)', '$200.00')
+    expectSummaryCardValue('Surplus (Actual)', '$200.00')
+    // Income budget should still include the transfer for display
+    expectSummaryCardValue('Income Budget', '$1,100.00')
+  })
 })

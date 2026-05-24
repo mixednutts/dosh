@@ -555,6 +555,22 @@ Activities:
 - all backend tests pass (349), all frontend tests pass (393)
 - followed TESTING_STRATEGY.md principles: behavior over implementation, avoid coverage theater
 
+#### Activity Group: Patch/Maintenance — Transfer Income Surplus Exclusion Fix
+
+Status:
+- `Completed` (2026-05-25)
+
+Activities:
+- fixed GitHub issue #11: account-transfer income lines were incorrectly inflating `surplus_budget` and `surplus_actual`
+- root cause: transfers are internal net-zero movements (debit source account, credit destination account), not new external income
+- backend: added `is_transfer_income()` to `transaction_ledger.py`; updated `current_period_totals()` in `cycle_management.py`, `list_period_summaries_for_budget()` in `periods.py`, and `build_period_payload()` in `ai_insights.py`
+- frontend: added `isTransferIncome()` to `periodCalculations.jsx`; updated `PeriodDetailPage.jsx` and `Dashboard.jsx` surplus calculations
+- income totals (budget and actual) still include transfers for correct display in the income table; only surplus derivation excludes them
+- added backend regression test `test_transfer_income_excluded_from_surplus`
+- added frontend utility tests and `PeriodDetailPage` transfer exclusion test
+- version bump: `1.0.0-rc1` → `1.0.0-rc2`
+- deliverable: `backend/app/transaction_ledger.py`, `backend/app/cycle_management.py`, `backend/app/routers/periods.py`, `backend/app/ai_insights.py`, `frontend/src/utils/periodCalculations.jsx`, `frontend/src/pages/PeriodDetailPage.jsx`, `frontend/src/pages/Dashboard.jsx`
+
 #### Activity Group: Patch/Maintenance — Budget vs Actual Timezone Fix
 
 Status:

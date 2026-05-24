@@ -36,7 +36,7 @@ from .health_engine import evaluate_period_health, persist_period_health_snapsho
 from .health_engine.metric_executors import _health_status
 from .period_logic import calc_period_end, expense_occurs_in_period
 from .time_utils import app_now_naive, utc_now
-from .transaction_ledger import sync_period_state
+from .transaction_ledger import is_transfer_income, sync_period_state
 
 
 def cycle_status(period: FinancialPeriod) -> str:
@@ -196,14 +196,19 @@ def current_period_totals(period: FinancialPeriod, db: Session) -> dict[str, Dec
         remaining = budget - actual
         return actual + remaining if remaining > Decimal("0.00") else actual
 
+    # Transfers between internal accounts are net-zero for surplus purposes
+    non_transfer_incomes = [i for i in period.period_incomes if not is_transfer_income(i.incomedesc)]
+
     direct_inv_budget, direct_inv_actual, direct_inv_surplus_budget = _direct_investment_income_for_period(period, db)
 
     surplus_budget = (
-        sum((_income_surplus(i) for i in period.period_incomes), Decimal("0"))
+        sum((_income_surplus(i) for i in non_transfer_incomes), Decimal("0"))
         - sum((_outflow_surplus(e) for e in period.period_expenses), Decimal("0"))
         - sum((_outflow_surplus(i, "budgeted_amount") for i in period.period_investments), Decimal("0"))
         - direct_inv_surplus_budget
     )
+
+    non_transfer_income_actual = sum((_to_decimal(i.actualamount) for i in non_transfer_incomes), Decimal("0"))
 
     return {
         "income_budget": income_budget,
@@ -213,7 +218,7 @@ def current_period_totals(period: FinancialPeriod, db: Session) -> dict[str, Dec
         "investment_budget": investment_budget,
         "investment_actual": investment_actual,
         "surplus_budget": surplus_budget,
-        "surplus_actual": income_actual - expense_actual - investment_actual - direct_inv_actual,
+        "surplus_actual": non_transfer_income_actual - expense_actual - investment_actual - direct_inv_actual,
     }
 
 

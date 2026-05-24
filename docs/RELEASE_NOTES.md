@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## 1.0.0-rc2 | released | 2026-05-25
+
+### Fixed
+
+- **Transfer incomes no longer inflate your surplus.** When you move money between accounts using a transfer, the transfer amount is now correctly excluded from Surplus (Budget) and Surplus (Actual). Previously, the app treated transfers as new income, which made your surplus look larger than it really was. Transfers still appear in your income list for account tracking — only the surplus calculation ignores them.
+
+### Engineering
+
+- Backend test suite expanded to 387 tests; frontend test suite expanded to 444 tests.
+
 ## 1.0.0-rc1 | released | 2026-05-04
 
 Dosh enters its first release candidate. All beta-scope features are complete and the app is considered feature-frozen while final validation and polish continue.
